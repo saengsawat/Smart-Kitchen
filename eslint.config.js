@@ -3,7 +3,6 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import js from "@eslint/js";
 import { flatConfigs as importXFlatConfigs } from "eslint-plugin-import-x";
-import { createTypeScriptImportResolver } from "eslint-import-resolver-typescript";
 import eslintConfigPrettier from "eslint-config-prettier";
 import globals from "globals";
 import tseslint from "typescript-eslint";
@@ -51,8 +50,13 @@ export default tseslint.config(
       // TS-aware resolution: understands NodeNext's "./foo.js" -> "./foo.ts"
       // extension mapping and workspace-package resolution, which the plain
       // Node resolver cannot — required for no-restricted-paths below to
-      // actually resolve the boundary-check zones.
-      "import-x/resolver-next": [createTypeScriptImportResolver()],
+      // actually resolve the boundary-check zones. Pinned to the 3.8.x line
+      // (see package.json) because it resolves via pure-JS `enhanced-resolve`
+      // — 3.9+/4.x switch to a native (Rust/napi) resolver whose postinstall
+      // proved unreliable across fresh clones in this environment.
+      "import-x/resolver": {
+        typescript: { alwaysTryTypes: true },
+      },
     },
   },
   // --- Dependency-boundary rule (M0-T1) ---
