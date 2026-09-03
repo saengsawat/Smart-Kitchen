@@ -1,0 +1,16 @@
+{
+  "name": "@smart-kitchen/adapters",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Provider ports + implementations (fixture + real): product lookup, nutrition, LLM, OCR.",
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -b --pretty"
+  },
+  "dependencies": {}
+}

@@ -1,0 +1,9 @@
+# These are read-only for M0-T1 (CLAUDE.md rule 14 / ticket file scope) —
+# excluded so `pnpm format` can never rewrite them.
+docs/
+*.md
+BACKLOG_TRACKER.csv
+
+pnpm-lock.yaml
+**/dist/
+**/coverage/

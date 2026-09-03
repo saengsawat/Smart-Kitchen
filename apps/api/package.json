@@ -1,0 +1,16 @@
+{
+  "name": "api",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Modular monolith backend (ADR-002: Node/TypeScript, Fastify).",
+  "type": "module",
+  "main": "./dist/server.js",
+  "scripts": {
+    "build": "tsc -b --pretty",
+    "start": "node dist/server.js",
+    "typecheck": "tsc -b --pretty"
+  },
+  "dependencies": {
+    "fastify": "^5.12.1"
+  }
+}
