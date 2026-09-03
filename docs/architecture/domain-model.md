@@ -1,0 +1,103 @@
+# Domain Model
+
+**Status:** PROPOSED. Names/boundaries refined from the checklist in the founding task; expected to evolve during M1. Source refs (§) cite [the product brief](../source/product-brief.extracted.md).
+
+## 1. Design principles
+
+1. **Inventory is a ledger, not a number** (§7, §14, §18C). Quantities are derived from append-only transactions; every belief the system holds is explainable ("purchase +2 on 3/4, consumed −0.75 on 3/6 …").
+2. **Product ≠ Ingredient.** A *ProductCatalogItem* is a purchasable branded thing (Kirkland Greek Yogurt 32 oz, GTIN 0096619…); a *CanonicalIngredient* is a cooking-level concept (greek yogurt). Recipes reference ingredients; inventory holds products (or generic items) mapped to ingredients. This mapping is where barcode data, receipt lines, and recipes meet (§18A, §18B).
+3. **Provenance everywhere facts can be wrong** (§14). Any AI- or estimate-derived value carries `{tier: KNOWN_FACT | ESTIMATED | AI_INTERPRETATION, source, confidence?, modelRef?, observedAt, confirmedBy?}`.
+4. **AI proposes, the domain disposes.** Probabilistic subsystems emit *Observations*; only deterministic code (plus user confirmation where required) turns observations into ledger transactions (§2C, §14).
+
+## 2. Entities
+
+### Identity & tenancy
+| Entity | Purpose | Notes |
+|---|---|---|
+| **User** | Authenticated person | Auth identity external ([ADR-004](../adr/ADR-004-authentication.md)); minimal PII here |
+| **Household** | Tenancy + sharing boundary (§12) | Every food-domain row is household-scoped |
+| **HouseholdMembership** | User↔Household + role | Roles: `owner`, `member` for MVP; richer permissions UNKNOWN (Q3) |
+| **MemberProfile** | Per-member personal info, goals (§3) | Age/sex/height/weight/activity/calorie goal — sensitive; optional in MVP |
+| **Preference** | Dietary preference (soft) (§3) | Ranking signal only |
+| **AllergyRestriction** | Hard safety restriction (§3) | Per member; taxonomy code or user-defined; severity flag. **Never** modeled as a Preference |
+
+### Food knowledge (household-independent, shared/cached)
+| Entity | Purpose | Notes |
+|---|---|---|
+| **ProductCatalogItem** | Normalized branded product (§18A) | Our own DB, merged from sources; fields carry per-field provenance |
+| **ProductIdentifier** | GTIN/UPC/EAN/PLU → catalog item | One product may have several codes; codes get reassigned (keep source + seen-at) |
+| **CanonicalIngredient** | Cooking-level food concept | Small curated taxonomy to start; category, default unit kind, default shelf-life by storage location (drives §8 estimates) |
+| **NutritionProfile** | Per-serving/per-100g nutrients (§2A, §9) | Attached to catalog item (branded) or ingredient (generic, e.g. USDA FDC); source + tier required |
+| **AllergenAssertion** | Product/ingredient contains/may-contain allergen (§3) | Deterministic layer input; absence-of-data ≠ absence-of-allergen (SR-2) |
+
+### Inventory (household-scoped) — the core
+| Entity | Purpose | Notes |
+|---|---|---|
+| **InventoryItem** | "This household has greek yogurt (this product) in the fridge" | Links product and/or ingredient + StorageLocation; holds *derived* quantity snapshot |
+| **InventoryLot** | A distinguishable acquisition (batch) | Carries acquisition date, expiration (with tier: printed=KNOWN, shelf-life-derived=ESTIMATED §14), unit size. "2 × 16 oz yogurt" = qty 2 on one lot, or two lots (§2A) |
+| **InventoryTransaction** | Append-only ledger entry | `{lot, type, qtyDelta, unit, reason?, actor (user|system|ai-confirmed), occurredAt, recordedAt, provenance, idempotencyKey, correlationRef (receipt line / meal log / shopping item)}` |
+| **StorageLocation** | Fridge/Freezer/Pantry/Other (§2A) | Fixed enum + optional user labels later |
+
+**Transaction types** (superset of §7): `PURCHASE`, `CONSUME`, `USE_IN_MEAL`, `DISCARD`, `EXPIRE`, `DONATE`, `ADJUSTMENT` (manual correction, signed), `INITIAL_STOCK`. Reasons map 1:1 to §7's list so waste analytics (§15C) fall out of the ledger later for free.
+
+### Acquisition
+| Entity | Purpose | Notes |
+|---|---|---|
+| **Receipt** | Stored scan + parse state (§2B) | Image ref, store, date, status (uploaded→parsed→confirmed), content hash for dedupe (idempotency) |
+| **ReceiptLine** | One parsed line | Raw text + normalized candidate(s) + confidence + user disposition; confirmed lines emit PURCHASE transactions with correlationRef |
+| *(Purchase)* | Not a separate entity in MVP | A purchase **is** a `PURCHASE` transaction (+ optional receipt correlation). Revisit if order-level metadata (store, totals) needs a home beyond Receipt |
+
+### Cooking & consumption
+| Entity | Purpose | Notes |
+|---|---|---|
+| **Recipe** | AI-generated original recipe (§4, §18D) | Stored with generation metadata (model, prompt ref) |
+| **RecipeIngredient** | Ingredient + qty + unit | References CanonicalIngredient; optionality flag |
+| **MealLog** | "We cooked/ate this" (§7, §9) | Emits `USE_IN_MEAL` transactions per ingredient (fast-follow); nutrition totals derive from it |
+| *(Meal/MealPlan)* | Deferred | Multi-day planning (§5) is post-MVP; MealLog suffices until then |
+| **ConsumptionEvent / WasteEvent** | Not separate entities | They are ledger transactions (`CONSUME`/`DISCARD`/`EXPIRE`/`DONATE`); analytics are queries over the ledger |
+
+### Shopping
+| Entity | Purpose | Notes |
+|---|---|---|
+| **ShoppingList** | Household-shared list (§6) | MVP: one active list per household |
+| **ShoppingListItem** | Ingredient/product + required qty + status | `neededQty = max(0, required − usableOnHand)` computed at generation, editable after; check-off can emit PURCHASE flow |
+
+### AI & decisions
+| Entity | Purpose | Notes |
+|---|---|---|
+| **AIObservation** | Any probabilistic output awaiting/holding disposition | Barcode-photo detection, receipt line parse, vision detection (§2C, §14). `{kind, payload, confidence, modelRef, status: proposed|confirmed|rejected|expired}` |
+| **Recommendation** | A recipe suggestion event + user response (§4) | Accept/reject/cooked feeds ranking + telemetry (§15D later) |
+| **Provenance** (value object) | See §1 principle 3 | Embedded, not a table of its own necessarily — see [data-model.md](data-model.md) |
+
+## 3. Ledger vs. mutable quantity — tradeoff analysis
+
+**PROPOSED DECISION** ([ADR-008](../adr/ADR-008-inventory-ledger.md)): append-only `InventoryTransaction` ledger + maintained snapshot on `InventoryItem`/`InventoryLot`.
+
+**For the ledger:**
+- §7 demands a "historical record of food consumption and waste" and §14 demands explainability — a mutated float provides neither.
+- Corrections become first-class data: the correction-rate KPI (§18C, our primary metric) is a query, not new instrumentation.
+- Idempotency is natural (transaction keys) — duplicate receipt processing / retried commands can't double-count (MVP acceptance criterion).
+- Waste/budget analytics (§15B/C), leftover reasoning (§15E), and sync conflict handling (ADR-010) all become ledger queries/merges later.
+
+**Costs / risks:**
+- Reads need a snapshot (or view) — we maintain derived `currentQty` transactionally with each append; a reconciliation job/test asserts `snapshot == Σ transactions` (invariant test, [testing-strategy.md](testing-strategy.md)).
+- Slightly more ceremony for the simplest "set qty to 3" UX — modeled as one `ADJUSTMENT` with delta, so still one write.
+- Not event sourcing of the whole system: **only inventory** is ledgered. Profiles, lists, recipes remain plain CRUD rows. No event store, no CQRS infrastructure (§ constraint: no premature complexity).
+
+**Rejected alternative:** mutable `quantity` column + audit log on the side. Audit logs drift from truth precisely because they're not the write path; reconciliation becomes impossible to guarantee.
+
+## 4. Invariants (enforced + tested)
+
+1. `InventoryItem.currentQty == Σ qtyDelta` of its lots' transactions (reconciliation).
+2. Inventory never goes negative without an explicit `ADJUSTMENT` explaining it (over-consumption clamps and records a flagged adjustment — `PROPOSED`, revisit in M1).
+3. Transactions are immutable; corrections are new transactions.
+4. Every transaction has an idempotency key; replays are no-ops.
+5. Every household-scoped row is reachable only through membership (NFR-1).
+6. An `AIObservation` below its kind's confidence threshold cannot transition to `confirmed` without a user action (§14, SR-4).
+7. No recommendation may surface a recipe whose known ingredients intersect a member's `AllergyRestriction` set (SR-1) — deterministic check, post-generation.
+
+## 5. Open modeling questions
+
+- **OQ-1** Lot granularity for fungibles (rice, oil): per-purchase lots vs single pooled lot per item? `PROPOSED`: lots always, pooled display. Decide in M1 with real UX.
+- **OQ-2** Unit conversion ownership (product-specific density vs ingredient defaults) — RESEARCH REQUIRED during M1-T3.
+- **OQ-3** Are member profiles (weight, goals) per-user-private or household-visible? (Q3/Q5 to product owner; privacy default: private to the member.)

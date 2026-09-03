@@ -1,0 +1,30 @@
+# Dependencies & builds (for when code arrives at M0-T1)
+node_modules/
+dist/
+build/
+coverage/
+*.tsbuildinfo
+
+# Environment & secrets — never commit; .env.example carries names only
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# OS / editor noise
+.DS_Store
+Thumbs.db
+desktop.ini
+*.swp
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# OneDrive / Office lock & temp files
+~$*
+*.tmp
+
+# Logs
+*.log
+logs/
