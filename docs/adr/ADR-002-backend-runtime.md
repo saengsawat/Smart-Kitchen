@@ -1,6 +1,6 @@
 # ADR-002: Backend runtime & framework
 
-**Status:** PROPOSED (runtime); framework OPEN · Target decision point: M0-T1 (scaffolding needs it)
+**Status:** DECIDED — Node.js + TypeScript with **Fastify** (2026-09-03). Runtime ratified via product-owner go-ahead for M0-T1 (which presupposes this stack); framework selected by architect (ENG-owned per D-006): the module boundaries in this architecture come from the domain design and dependency-lint, not a framework — Fastify's lean surface fits that, NestJS's DI/decorator layer would duplicate it. Reversal cost while the API is skeletal: low.
 
 ## Context
 Modular monolith API (ARCHITECTURE.md §1): CRUD + ledger + adapter orchestration. No heavy in-process ML. Small team; type-safety valued (domain invariants); shared types with client desirable.
@@ -22,5 +22,5 @@ Framework (within A): **Fastify + explicit modules** (lean, fast, minimal magic)
 `packages/domain` is pure TS with zero I/O; adapters isolate all vendor SDKs; a future Python worker is an ops addition, not a rewrite.
 
 ## Open questions
-- Fastify vs NestJS (M0-T1).
+- ~~Fastify vs NestJS~~ — resolved 2026-09-03 (Fastify, see Status).
 - ORM/query layer (Drizzle vs Kysely vs Prisma) — interacts with RLS decision in [data-model.md §5](../architecture/data-model.md#5-tenancy-isolation--sensitive-data); decide M1-T2.

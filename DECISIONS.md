@@ -29,8 +29,9 @@ Owners: `PO` = product owner (Dean), `ENG` = engineering.
 ## D-005 — Client platform: Expo/React Native
 - **Status:** PROPOSED · **Record:** [ADR-001](docs/adr/ADR-001-client-platform.md)
 
-## D-006 — Backend runtime: Node/TypeScript (framework open)
-- **Status:** PROPOSED · **Record:** [ADR-002](docs/adr/ADR-002-backend-runtime.md)
+## D-006 — Backend runtime: Node/TypeScript + Fastify
+- **Status:** DECIDED (2026-09-03) · **Owner:** ENG · **Record:** [ADR-002](docs/adr/ADR-002-backend-runtime.md)
+- **Evidence:** PO approved M0-T1 (2026-09-03), which presupposes the Node/TS workspace; framework resolved by architect per ADR-002 rationale (boundaries from domain design + lint, not framework). Low reversal cost noted.
 
 ## D-007 — Database: PostgreSQL
 - **Status:** PROPOSED · **Record:** [ADR-003](docs/adr/ADR-003-database.md)

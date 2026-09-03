@@ -11,21 +11,20 @@ _Last updated: 2026-09-03_
 - Git repository initialized with the foundation commit. Skeleton dirs: `apps/`, `packages/`, `scripts/`, `tests/fixtures/` (READMEs only).
 
 ## In progress
-- Nothing — awaiting approvals.
+- **M0-T1 — Repo & workspace scaffolding**: approved by product owner 2026-09-03; being dispatched to a Sonnet worker (Sonnet review to follow) per CLAUDE.md rules 20–27. ADR-002 closed (Node/TS + Fastify) to unblock it.
 
 ## Blocked decisions (need product owner)
-1. **D-002** MVP scope (reduced vertical slice vs brief §19 Phase 1) — blocks everything.
-2. **D-003 / ADR-008** inventory ledger model — blocks M1.
-3. Go-ahead for ticket **M0-T1** (explicit gate from founding task).
-4. Q1–Q10 open questions ([PRODUCT.md §8](PRODUCT.md#8-unanswered-questions-product-owner-input-needed), [MVP_PRD §14](docs/prd/MVP_PRD.md#14-open-questions)) — Q1 (launch market) and Q3 (household permissions) matter earliest.
+1. **D-002** MVP scope (reduced vertical slice vs brief §19 Phase 1) — formal ratification still pending; M0-T1 is scope-neutral, but this blocks **M1** onward.
+2. **D-003 / ADR-008** inventory ledger model — ratification pending; blocks M1.
+3. Q1–Q10 open questions ([PRODUCT.md §8](PRODUCT.md#8-unanswered-questions-product-owner-input-needed), [MVP_PRD §14](docs/prd/MVP_PRD.md#14-open-questions)) — Q1 (launch market) and Q3 (household permissions) matter earliest.
 
 ## Operational note — repo location
 The repo currently lives inside a OneDrive-synced folder. OneDrive + `.git` is a known source of lock/corruption issues (the source DOCX was already file-locked during extraction). **Recommendation:** move the working clone outside OneDrive (or exclude the folder from sync) and use a proper git remote (GitHub/etc.) as the sync mechanism. Needs user decision before M0-T2 (CI needs a remote anyway).
 
 ## Next 3 actions
-1. Product owner reviews the final report + approves/amends D-002 (MVP scope) and D-003 (ledger).
-2. Decide repo hosting/remote + resolve the OneDrive question above.
-3. On approval: start **M0-T1** (workspace scaffolding) per [BACKLOG.md](BACKLOG.md).
+1. Sonnet worker implements M0-T1 on branch `m0-t1-scaffolding`; independent Sonnet review; architect acceptance.
+2. Product owner ratifies D-002 (MVP scope) and D-003 (ledger) — required before M1 starts.
+3. Decide repo hosting/remote + resolve the OneDrive question above (blocks M0-T2).
 
 ## Major risks (top 3 now)
 1. Inventory-accuracy hypothesis fails (users won't maintain even low-friction inventory) — mitigated by correction-rate telemetry from M3 and receipt fast-follow.
