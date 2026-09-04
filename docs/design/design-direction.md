@@ -27,6 +27,8 @@ Rule adopted: **every neutral has a warm undertone; no cool blue-grays anywhere;
 | `text.secondary` | `#5e5d59` | `#b0aea5` | Claude |
 | `text.tertiary` | `#87867f` | `#87867f` | Claude |
 
+Mockup-validated neutral additions (2026-09-03): `bg.tile #efede3` (icon/photo placeholder tiles), `bg.chipNeutral #eceae0` (neutral chips, muted rows), `border.divider #e8e6dc` (tab strips, prominent dividers — same value as `bg.interactive`).
+
 Depth = **borders + two-tone surfaces, not shadows** (Zapier/Expo — sidesteps iOS `shadowOffset` vs Android `elevation` inconsistency). One soft shadow allowed for overlays/bottom sheets (scanner sheet), warm-tinted per Stripe's formula re-tinted brown (`rgba(60,45,35,0.22)`).
 
 ### Brand accent: terracotta (from Claude), kept scarce (rule from Airbnb/Zapier)
@@ -67,7 +69,7 @@ Intercom's rule adopted with a twist: they reserve one hue exclusively for AI co
 ### Geometry & interaction
 - Radius by role (Airbnb/Expo): 8px buttons/inputs · 12px cards · 16px featured cards/sheets · 9999px chips & badges · 50% circular FAB (scan button — Pinterest's circular action, `bg.interactive` + icon).
 - Press feedback = **scale, not color**: `scale(0.97)` on press via `Pressable` + spring (Wise's pattern; color-based press states are unreliable across Android ripple).
-- Segmented control (Inventory / Recipes / List): 3px bottom-inset indicator in terracotta, hover/inactive in `border.strong` (Zapier's inset-underline — no layout shift).
+- Segmented control (Inventory / Recipes / List): 3px bottom-inset indicator in terracotta on the active tab, hover in `border.strong`, idle tabs unmarked (Zapier's inset-underline — no layout shift).
 - Cards: photography-top recipe/product cards at 16:10 (Airbnb anatomy) — food photos carry the visual warmth so the chrome stays quiet.
 
 ## 3. Safety-specific rules (bind UI to SR-1/SR-2)
@@ -84,4 +86,4 @@ Intercom's rule adopted with a twist: they reserve one hue exclusively for AI co
 ## 5. Open items
 - OQ-D1: brand accent final call — terracotta (recommended) vs fresh-green (alternative) — cheap to flip until M3 mockups; ties to product name/brand (Q8).
 - OQ-D2: optional serif display face — decide with branding.
-- OQ-D3: validate the palette in real mockups (next step: key-screen mockups for PO reaction).
+- OQ-D3: validate the palette in real mockups — first pass done: clickable prototype at [mockups/smart-kitchen-prototype.html](mockups/smart-kitchen-prototype.html) (open in any browser); awaiting PO reaction.

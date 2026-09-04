@@ -1,0 +1,562 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Smart Kitchen — Clickable Prototype</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<style>
+  :root {
+    --page: #f5f4ed;        /* bg.page */
+    --card: #faf9f5;        /* bg.card */
+    --interactive: #e8e6dc; /* bg.interactive / border.divider */
+    --tile: #efede3;        /* bg.tile */
+    --chip-neutral: #eceae0;
+    --border-subtle: #f0eee6;
+    --border-strong: #d1cfc5;
+    --text-1: #141413;
+    --text-2: #5e5d59;
+    --text-3: #87867f;
+    --brand: #c96442;       /* terracotta — CTA, active nav, scan, selection */
+    --brand-press: #a54f33;
+    --brand-tint: #f3e0d8;
+    --danger: #b53333;      /* allergen alerts ONLY */
+    --warn: #ab6400;
+    --warn-text: #8a5200;
+    --positive: #1f7a4d;
+    --ai: #8145b5;
+    --ai-text: #6d3a99;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 28px 0 48px 0;
+    background: #dedbd2;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    color: var(--text-1);
+    -webkit-font-smoothing: antialiased;
+    display: flex; flex-direction: column; align-items: center; gap: 14px;
+  }
+  .hint { font-size: 13px; color: #6b6963; max-width: 420px; text-align: center; line-height: 1.5; }
+  .num { font-variant-numeric: tabular-nums; }
+
+  .phone {
+    width: 390px; height: 844px; background: var(--page);
+    border-radius: 44px; overflow: hidden; position: relative;
+    box-shadow: 0 0 0 10px #141413, 0 0 0 12px #3d3d3a, 0 24px 60px -20px rgba(20,20,19,0.45);
+  }
+  .screen { position: absolute; inset: 0; display: none; flex-direction: column; background: var(--page); }
+  .screen.active { display: flex; }
+
+  .hdr { display: flex; align-items: center; justify-content: space-between; padding: 26px 20px 10px 20px; }
+  .hdr h1 { margin: 0; font-size: 24px; font-weight: 700; letter-spacing: -0.3px; }
+  .hdr .sub { margin-top: 3px; font-size: 13px; color: var(--text-3); }
+  .hdr .sub b { font-weight: 600; color: var(--text-2); }
+  .iconbtn {
+    width: 40px; height: 40px; border-radius: 50%; background: var(--interactive);
+    display: flex; align-items: center; justify-content: center; border: none; cursor: pointer; flex-shrink: 0;
+  }
+  .iconbtn:active { transform: scale(0.94); }
+
+  .tabs { display: flex; gap: 2px; padding: 0 20px; border-bottom: 1px solid var(--interactive); }
+  .tab { padding: 10px 12px; font-size: 14px; font-weight: 500; color: var(--text-2); background: none; border: none; cursor: pointer; font-family: inherit; }
+  .tab.on { font-weight: 600; color: var(--text-1); box-shadow: inset 0 -3px 0 0 var(--brand); }
+
+  .content { flex: 1; display: flex; flex-direction: column; gap: 10px; padding: 14px 20px 10px 20px; overflow-y: auto; }
+
+  .banner {
+    display: flex; align-items: center; gap: 10px; padding: 11px 14px; border-radius: 12px;
+    background: rgba(171,100,0,0.10); border: 1px solid rgba(171,100,0,0.25); cursor: pointer;
+  }
+  .banner .t { flex: 1; font-size: 13px; font-weight: 600; color: var(--warn-text); }
+
+  .row { display: flex; align-items: center; gap: 12px; padding: 12px 14px; background: var(--card); border: 1px solid var(--border-subtle); border-radius: 12px; }
+  .tile { width: 44px; height: 44px; border-radius: 10px; background: var(--tile); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .row .mid { flex: 1; display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+  .row .name { font-size: 15px; font-weight: 600; }
+  .row .meta { font-size: 12.5px; color: var(--text-2); }
+  .row .meta b { font-weight: 600; color: var(--text-1); }
+  .exp-warn { color: var(--warn-text); font-weight: 600; }
+  .exp-ok { color: var(--positive); font-weight: 600; }
+
+  .badge { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 9999px; font-size: 11px; font-weight: 600; letter-spacing: 0.125px; white-space: nowrap; flex-shrink: 0; }
+  .b-fact { background: rgba(31,122,77,0.12); border: 1px solid rgba(31,122,77,0.32); color: var(--positive); }
+  .b-est  { background: rgba(171,100,0,0.10); border: 1px solid rgba(171,100,0,0.30); color: var(--warn-text); }
+  .b-ai   { background: rgba(129,69,181,0.10); border: 1px solid rgba(129,69,181,0.30); color: var(--ai-text); }
+
+  .nav { position: relative; height: 78px; background: var(--card); border-top: 1px solid var(--border-subtle); display: flex; align-items: stretch; flex-shrink: 0; }
+  .nav button { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; color: var(--text-3); background: none; border: none; cursor: pointer; font-family: inherit; font-size: 10.5px; font-weight: 500; }
+  .nav button.on { color: var(--brand); font-weight: 600; }
+  .nav .gap { flex: 0 0 76px; }
+  .fab {
+    position: absolute; left: 50%; top: -26px; transform: translateX(-50%);
+    width: 58px; height: 58px; border-radius: 50%; background: var(--brand); border: 4px solid var(--page);
+    display: flex; align-items: center; justify-content: center; cursor: pointer;
+    box-shadow: rgba(60,45,35,0.22) 0px 8px 18px -8px;
+  }
+  .fab:active { transform: translateX(-50%) scale(0.94); background: var(--brand-press); }
+
+  .card { background: var(--card); border: 1px solid var(--border-subtle); border-radius: 12px; padding: 14px; }
+  .micro { font-size: 10px; font-weight: 600; letter-spacing: 0.8px; text-transform: uppercase; color: var(--text-3); }
+
+  .chip { display: inline-flex; align-items: center; gap: 5px; padding: 7px 14px; border-radius: 9999px; background: var(--card); border: 1px solid var(--border-strong); font-size: 12.5px; font-weight: 500; color: var(--text-2); cursor: pointer; font-family: inherit; }
+  .chip.on { background: var(--brand-tint); border-color: var(--brand); font-weight: 600; color: var(--brand-press); }
+
+  .chip-have { display: inline-flex; align-items: center; gap: 4px; padding: 3px 9px; border-radius: 9999px; background: rgba(31,122,77,0.10); border: 1px solid rgba(31,122,77,0.25); font-size: 11px; font-weight: 600; color: var(--positive); }
+  .chip-miss { display: inline-flex; align-items: center; gap: 4px; padding: 3px 9px; border-radius: 9999px; background: rgba(171,100,0,0.10); border: 1px solid rgba(171,100,0,0.28); font-size: 11px; font-weight: 600; color: var(--warn-text); }
+
+  .cta { height: 52px; border-radius: 10px; background: var(--brand); border: none; cursor: pointer; font-family: inherit; font-size: 16px; font-weight: 600; color: #faf9f5; width: 100%; }
+  .cta:active { background: var(--brand-press); transform: scale(0.99); }
+  .link { color: var(--brand); font-weight: 600; text-decoration: none; cursor: pointer; }
+
+  .check { width: 24px; height: 24px; border-radius: 7px; border: 1.5px solid var(--border-strong); background: var(--card); cursor: pointer; flex-shrink: 0; display: flex; align-items: center; justify-content: center; padding: 0; }
+  .check.done { background: var(--positive); border-color: var(--positive); }
+  .check svg { opacity: 0; }
+  .check.done svg { opacity: 1; }
+  .shoprow.done .name { color: var(--text-3); text-decoration: line-through; }
+
+  .toast {
+    position: absolute; left: 50%; bottom: 96px; transform: translateX(-50%) translateY(8px);
+    background: #30302e; color: #faf9f5; font-size: 13px; font-weight: 500;
+    padding: 10px 16px; border-radius: 9999px; opacity: 0; pointer-events: none;
+    transition: opacity 0.18s, transform 0.18s; white-space: nowrap; max-width: 350px;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  .alertbar { display: flex; align-items: center; gap: 9px; padding: 10px 12px; border-radius: 10px; background: rgba(181,51,51,0.09); border: 1px solid rgba(181,51,51,0.28); }
+  .alertbar .t { font-size: 12.5px; font-weight: 600; color: var(--danger); }
+</style>
+</head>
+<body>
+
+<div class="hint">Clickable prototype — bottom tabs navigate, the orange button opens the scan flow, inventory tabs filter by location, shopping items check off. Sample data for the fictional Chen household.</div>
+
+<div class="phone">
+
+  <!-- ============ SCREEN: INVENTORY ============ -->
+  <section class="screen active" id="scr-inventory">
+    <div class="hdr">
+      <div>
+        <h1>Inventory</h1>
+        <div class="sub">Chen household · <b class="num">42</b> items</div>
+      </div>
+      <button class="iconbtn" onclick="toast('Search — not in this mockup')" aria-label="Search">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#5e5d59" stroke-width="1.8" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M16.5 16.5 L21 21"/></svg>
+      </button>
+    </div>
+
+    <div class="tabs" id="locTabs">
+      <button class="tab on" data-loc="all" onclick="filterLoc(this)">All</button>
+      <button class="tab" data-loc="fridge" onclick="filterLoc(this)">Fridge</button>
+      <button class="tab" data-loc="freezer" onclick="filterLoc(this)">Freezer</button>
+      <button class="tab" data-loc="pantry" onclick="filterLoc(this)">Pantry</button>
+    </div>
+
+    <div class="content" id="invList">
+      <div class="banner" onclick="go('scr-recipes'); toast('Showing recipes that use expiring items')">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8a5200" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l2.5 2.5"/></svg>
+        <div class="t"><span class="num">4</span> items to use this week — see recipe ideas</div>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8a5200" stroke-width="1.8" stroke-linecap="round"><path d="M9 5l7 7-7 7"/></svg>
+      </div>
+
+      <div class="row" data-loc="fridge">
+        <div class="tile"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#5e5d59" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M15.5 5.5a4.2 4.2 0 0 0-6 5.9l-4 4 1.2 1.2 1.3-.3.3 1.6 1.6.3-.3 1.3 1.2 1.2 4-4a4.2 4.2 0 0 0 5.9-6z"/></svg></div>
+        <div class="mid">
+          <div class="name">Chicken breast</div>
+          <div class="meta"><b class="num">1.25 lb</b> · Fridge · <span class="exp-warn">use in 2 days</span></div>
+        </div>
+        <span class="badge b-fact">Fact</span>
+      </div>
+
+      <div class="row" data-loc="fridge">
+        <div class="tile"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#5e5d59" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3h8l-1 4H9z"/><path d="M9 7h6v11a2 2 0 0 1-2 2h-2a2 2 0 0 1-2-2z"/></svg></div>
+        <div class="mid">
+          <div class="name">Greek yogurt</div>
+          <div class="meta"><b class="num">3 × 16 oz</b> · Fridge · <span class="exp-ok">10 days</span></div>
+        </div>
+        <span class="badge b-fact">Fact</span>
+      </div>
+
+      <div class="row" data-loc="fridge">
+        <div class="tile"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#5e5d59" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 7c3.3 0 5.8 2.3 5.8 5.2 0 3.8-2.9 7.6-5.8 8.3-2.9-.7-5.8-4.5-5.8-8.3C6.2 9.3 8.7 7 12 7z"/><path d="M12 7c0-1.8 1-3 1-3"/><path d="M12 7c-1.5-1.2-3.2-1-3.2-1"/></svg></div>
+        <div class="mid">
+          <div class="name">Strawberries</div>
+          <div class="meta"><b class="num">1 lb</b> · Fridge · <span class="exp-warn">use today</span></div>
+        </div>
+        <span class="badge b-ai">AI</span>
+      </div>
+
+      <div class="row" data-loc="fridge">
+        <div class="tile"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#5e5d59" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20c-4.5 0-7.5-3-7.5-7 0-5 4.5-9 11.5-9 0 8-2.5 16-4 16z"/><path d="M5.5 19.5c3-4.5 7-8.5 11-11.5"/></svg></div>
+        <div class="mid">
+          <div class="name">Spinach</div>
+          <div class="meta"><b class="num">5 oz</b> · Fridge · <span class="exp-warn">use in 3 days</span></div>
+        </div>
+        <span class="badge b-fact">Fact</span>
+      </div>
+
+      <div class="row" data-loc="pantry">
+        <div class="tile"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#5e5d59" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h16a8 8 0 0 1-16 0z"/><path d="M9 11V8"/><path d="M12 11V7"/><path d="M15 11V8"/></svg></div>
+        <div class="mid">
+          <div class="name">Basmati rice</div>
+          <div class="meta"><b class="num">~4 cups</b> · Pantry · qty estimated</div>
+        </div>
+        <span class="badge b-est">Est.</span>
+      </div>
+
+      <div class="row" data-loc="fridge">
+        <div class="tile"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#5e5d59" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3h8v3l2 3v12H6V9l2-3z"/><path d="M8 6h8"/></svg></div>
+        <div class="mid">
+          <div class="name">Whole milk</div>
+          <div class="meta"><b class="num">2 cartons</b> · Fridge · <span class="exp-ok">6 days</span></div>
+        </div>
+        <span class="badge b-fact">Fact</span>
+      </div>
+
+      <div class="row" data-loc="freezer">
+        <div class="tile"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#5e5d59" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18"/><path d="M3 12h18"/><path d="M6 6l12 12"/><path d="M18 6L6 18"/></svg></div>
+        <div class="mid">
+          <div class="name">Salmon fillets</div>
+          <div class="meta"><b class="num">2 × 6 oz</b> · Freezer · <span class="exp-ok">2 months</span></div>
+        </div>
+        <span class="badge b-fact">Fact</span>
+      </div>
+
+      <div class="row" data-loc="fridge">
+        <div class="tile"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#5e5d59" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="13" rx="6.5" ry="8"/></svg></div>
+        <div class="mid">
+          <div class="name">Eggs</div>
+          <div class="meta"><b class="num">8 of 12</b> · Fridge · <span class="exp-ok">2 weeks</span></div>
+        </div>
+        <span class="badge b-fact">Fact</span>
+      </div>
+    </div>
+
+    <div class="nav">
+      <button class="on" onclick="go('scr-inventory')"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9h16l-1.5 10a2 2 0 0 1-2 1.7h-9a2 2 0 0 1-2-1.7z"/><path d="M8 9l2.5-5"/><path d="M16 9l-2.5-5"/></svg>Inventory</button>
+      <button onclick="go('scr-recipes')"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/></svg>Recipes</button>
+      <span class="gap"></span>
+      <button onclick="go('scr-shopping')"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h2l2.6 12.4a1 1 0 0 0 1 .6h8.7a1 1 0 0 0 1-.8L20 8H6"/><circle cx="9.5" cy="20" r="1"/><circle cx="17" cy="20" r="1"/></svg>Shopping</button>
+      <button onclick="toast('Profile — not in this mockup')"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-6 8-6s8 2 8 6"/></svg>Profile</button>
+      <div class="fab" onclick="go('scr-scan')"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#faf9f5" stroke-width="1.9" stroke-linecap="round"><path d="M4 8V6a2 2 0 0 1 2-2h2"/><path d="M16 4h2a2 2 0 0 1 2 2v2"/><path d="M20 16v2a2 2 0 0 1-2 2h-2"/><path d="M8 20H6a2 2 0 0 1-2-2v-2"/><path d="M4 12h16"/></svg></div>
+    </div>
+  </section>
+
+  <!-- ============ SCREEN: SCAN & CONFIRM ============ -->
+  <section class="screen" id="scr-scan">
+    <div style="display: flex; align-items: center; gap: 12px; padding: 22px 20px 12px 20px;">
+      <button class="iconbtn" onclick="goBack()" aria-label="Back">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#5e5d59" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>
+      </button>
+      <div style="font-size: 18px; font-weight: 700; letter-spacing: -0.2px;">Confirm item</div>
+    </div>
+
+    <div class="content" style="padding-top: 2px;">
+      <div style="display: flex; align-items: center; gap: 10px; padding: 12px 14px; background: rgba(31,122,77,0.10); border: 1px solid rgba(31,122,77,0.28); border-radius: 12px;">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1f7a4d" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v5c0 4.6-3 7.8-7 9-4-1.2-7-4.4-7-9V6z"/><path d="M9 11.5l2 2 4-4"/></svg>
+        <div>
+          <div style="font-size: 13.5px; font-weight: 600; color: var(--positive);">Known fact — barcode matched</div>
+          <div class="num" style="font-size: 11.5px; color: var(--text-2); margin-top: 2px;">Open Food Facts · GTIN 0689544081128</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <div class="tile" style="width: 64px; height: 64px; border-radius: 12px;">
+            <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#5e5d59" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3h8l-1 4H9z"/><path d="M9 7h6v11a2 2 0 0 1-2 2h-2a2 2 0 0 1-2-2z"/></svg>
+          </div>
+          <div>
+            <div style="font-size: 16px; font-weight: 600; line-height: 1.3;">Fage Total 2% Greek Yogurt</div>
+            <div style="font-size: 13px; color: var(--text-2); margin-top: 3px;">Fage · <span class="num">16 oz</span> cup</div>
+          </div>
+        </div>
+        <div style="display: flex; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border-subtle);">
+          <div style="flex: 1; text-align: center;"><div class="num" style="font-size: 16px; font-weight: 700;">140</div><div class="micro" style="margin-top: 3px;">Cal</div></div>
+          <div style="flex: 1; text-align: center;"><div class="num" style="font-size: 16px; font-weight: 700;">20 g</div><div class="micro" style="margin-top: 3px;">Protein</div></div>
+          <div style="flex: 1; text-align: center;"><div class="num" style="font-size: 16px; font-weight: 700;">5 g</div><div class="micro" style="margin-top: 3px;">Carbs</div></div>
+          <div style="flex: 1; text-align: center;"><div class="num" style="font-size: 16px; font-weight: 700;">4 g</div><div class="micro" style="margin-top: 3px;">Fat</div></div>
+        </div>
+        <div class="num" style="margin-top: 8px; text-align: center; font-size: 10.5px; color: var(--text-3);">per 170 g serving · source: USDA FDC</div>
+      </div>
+
+      <div class="card" style="display: flex; flex-direction: column; gap: 12px;">
+        <div style="display: flex; align-items: center; justify-content: space-between;">
+          <div class="micro">Allergens</div>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span style="display: inline-flex; padding: 3px 10px; border-radius: 9999px; background: var(--chip-neutral); border: 1px solid var(--border-strong); font-size: 11.5px; font-weight: 600; color: var(--text-2);">Milk</span>
+            <span style="display: inline-flex; align-items: center; gap: 4px; font-size: 11.5px; color: var(--positive); font-weight: 500;">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#1f7a4d" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l4.5 4.5L19 7"/></svg>
+              no household match
+            </span>
+          </div>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 5px; padding-top: 12px; border-top: 1px solid var(--border-subtle);">
+          <div style="display: flex; align-items: center; justify-content: space-between;">
+            <div class="micro">Best by</div>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span class="num" style="font-size: 13.5px; font-weight: 600;">Sep 17</span>
+              <span class="badge b-est">Est.</span>
+            </div>
+          </div>
+          <div style="font-size: 11px; color: var(--text-3); text-align: right;">estimated from typical shelf life — tap to correct</div>
+        </div>
+      </div>
+
+      <div class="card" style="display: flex; flex-direction: column; gap: 12px;">
+        <div class="micro">Add to inventory</div>
+        <div style="display: flex; align-items: center; gap: 14px;">
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <button class="iconbtn" style="border-radius: 10px; width: 44px; height: 44px;" onclick="stepQty(-1)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#5e5d59" stroke-width="2" stroke-linecap="round"><path d="M6 12h12"/></svg></button>
+            <div class="num" id="qtyVal" style="width: 34px; text-align: center; font-size: 20px; font-weight: 700;">2</div>
+            <button class="iconbtn" style="border-radius: 10px; width: 44px; height: 44px;" onclick="stepQty(1)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#5e5d59" stroke-width="2" stroke-linecap="round"><path d="M12 6v12"/><path d="M6 12h12"/></svg></button>
+          </div>
+          <div style="font-size: 13px; color: var(--text-2);">units × <span class="num">16 oz</span></div>
+        </div>
+        <div style="display: flex; flex-wrap: wrap; gap: 8px;" id="locChips">
+          <button class="chip on" onclick="pickLoc(this)">Fridge</button>
+          <button class="chip" onclick="pickLoc(this)">Freezer</button>
+          <button class="chip" onclick="pickLoc(this)">Pantry</button>
+          <button class="chip" onclick="pickLoc(this)">Other</button>
+        </div>
+      </div>
+    </div>
+
+    <div style="padding: 12px 20px 26px 20px; display: flex; flex-direction: column; gap: 10px; flex-shrink: 0;">
+      <button class="cta" id="addCta" onclick="confirmAdd()">Add 2 to Fridge</button>
+      <div style="text-align: center; font-size: 13px; color: var(--text-2);">Not right? <span class="link" onclick="toast('Manual edit — not in this mockup')">Edit details</span></div>
+    </div>
+  </section>
+
+  <!-- ============ SCREEN: RECIPES ============ -->
+  <section class="screen" id="scr-recipes">
+    <div class="hdr">
+      <div>
+        <h1>What can I make?</h1>
+        <div class="sub">from <b class="num">42</b> items on hand · dinner for <b class="num">4</b></div>
+      </div>
+    </div>
+
+    <div style="display: flex; gap: 8px; padding: 4px 20px 12px 20px;">
+      <button class="chip on" onclick="toast('Filters are decorative in this mockup')">Dinner</button>
+      <button class="chip" onclick="toast('Filters are decorative in this mockup')">≤ 30 min</button>
+      <button class="chip" onclick="toast('Filters are decorative in this mockup')">High protein</button>
+    </div>
+
+    <div class="content" style="padding-top: 0;">
+      <div class="card" style="padding: 0; overflow: hidden; border-radius: 16px;">
+        <div style="height: 128px; background: var(--tile); display: flex; align-items: center; justify-content: center; position: relative;">
+          <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#87867f" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="12" r="7"/><path d="M18 12h4"/><path d="M8.5 10.5c1-1 4-1 5 0"/></svg>
+          <span style="position: absolute; top: 10px; left: 10px; display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; border-radius: 9999px; background: var(--card); border: 1px solid rgba(171,100,0,0.40); font-size: 11px; font-weight: 600; color: var(--warn-text);">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#8a5200" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l2.5 2.5"/></svg>
+            uses 3 expiring items
+          </span>
+        </div>
+        <div style="padding: 14px; display: flex; flex-direction: column; gap: 9px;">
+          <div style="font-size: 17px; font-weight: 600; letter-spacing: -0.2px;">Chicken &amp; spinach stir-fry</div>
+          <div style="display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--text-2);">
+            <span class="num">25 min</span><span>·</span><span class="num">540 cal / serving</span><span class="badge b-est">Est.</span>
+          </div>
+          <div style="display: flex; flex-wrap: wrap; gap: 6px;">
+            <span class="chip-have">✓ chicken</span><span class="chip-have">✓ spinach</span><span class="chip-have">✓ mushrooms</span><span class="chip-have">✓ rice</span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--positive); font-weight: 500;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1f7a4d" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v5c0 4.6-3 7.8-7 9-4-1.2-7-4.4-7-9V6z"/><path d="M9 11.5l2 2 4-4"/></svg>
+            allergen screen passed for all 4 members
+          </div>
+          <button class="cta" style="height: 44px; font-size: 14px;" onclick="toast('Recipe detail — not in this mockup')">Cook this</button>
+        </div>
+      </div>
+
+      <div class="card" style="display: flex; gap: 12px; border-radius: 16px;">
+        <div class="tile" style="width: 72px; height: 72px; border-radius: 12px;">
+          <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#87867f" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M7 3v6a2 2 0 0 0 4 0V3"/><path d="M9 9v12"/><path d="M16 3c-1.5 1.5-2 4-2 6 0 1.5 1 2 2 2v10"/></svg>
+        </div>
+        <div style="flex: 1; display: flex; flex-direction: column; gap: 7px;">
+          <div style="font-size: 15.5px; font-weight: 600;">Yogurt berry parfait</div>
+          <div style="display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text-2);">
+            <span class="num">10 min</span><span>·</span><span class="num">320 cal</span><span class="badge b-est">Est.</span>
+          </div>
+          <div style="display: flex; flex-wrap: wrap; gap: 6px; align-items: center;">
+            <span class="chip-have">✓ yogurt</span><span class="chip-have">✓ strawberries</span><span class="chip-miss">+ granola</span>
+            <span class="link" style="font-size: 11.5px;" onclick="toast('Granola added to shopping list')">add to list</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="display: flex; flex-direction: column; gap: 10px; border-radius: 16px;">
+        <div class="alertbar">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#b53333" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5L21.5 20h-19z"/><path d="M12 10v4.5"/><circle cx="12" cy="17.2" r="0.4" fill="#b53333"/></svg>
+          <div class="t">Contains peanuts — blocked for Maya's allergy</div>
+        </div>
+        <div style="display: flex; align-items: center; gap: 12px; opacity: 0.5;">
+          <div class="tile">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#87867f" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 14h16a8 8 0 0 1-16 0z"/><path d="M7 14c1-3 3-5 5-5s4 2 5 5"/></svg>
+          </div>
+          <div>
+            <div style="font-size: 15px; font-weight: 600; color: var(--text-2);">Thai peanut noodles</div>
+            <div style="font-size: 12px; color: var(--text-3); margin-top: 3px;"><span class="num">20 min</span> · hidden from suggestions</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="nav">
+      <button onclick="go('scr-inventory')"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9h16l-1.5 10a2 2 0 0 1-2 1.7h-9a2 2 0 0 1-2-1.7z"/><path d="M8 9l2.5-5"/><path d="M16 9l-2.5-5"/></svg>Inventory</button>
+      <button class="on" onclick="go('scr-recipes')"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/></svg>Recipes</button>
+      <span class="gap"></span>
+      <button onclick="go('scr-shopping')"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h2l2.6 12.4a1 1 0 0 0 1 .6h8.7a1 1 0 0 0 1-.8L20 8H6"/><circle cx="9.5" cy="20" r="1"/><circle cx="17" cy="20" r="1"/></svg>Shopping</button>
+      <button onclick="toast('Profile — not in this mockup')"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-6 8-6s8 2 8 6"/></svg>Profile</button>
+      <div class="fab" onclick="go('scr-scan')"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#faf9f5" stroke-width="1.9" stroke-linecap="round"><path d="M4 8V6a2 2 0 0 1 2-2h2"/><path d="M16 4h2a2 2 0 0 1 2 2v2"/><path d="M20 16v2a2 2 0 0 1-2 2h-2"/><path d="M8 20H6a2 2 0 0 1-2-2v-2"/><path d="M4 12h16"/></svg></div>
+    </div>
+  </section>
+
+  <!-- ============ SCREEN: SHOPPING ============ -->
+  <section class="screen" id="scr-shopping">
+    <div class="hdr">
+      <div>
+        <h1>Shopping list</h1>
+        <div class="sub">Chen household · shared · <b class="num" id="buyCount">3</b> to buy</div>
+      </div>
+      <div style="display: flex;">
+        <div style="width: 30px; height: 30px; border-radius: 50%; background: var(--interactive); border: 2px solid var(--page); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600; color: var(--text-2);">DC</div>
+        <div style="width: 30px; height: 30px; border-radius: 50%; background: var(--interactive); border: 2px solid var(--page); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600; color: var(--text-2); margin-left: -8px;">MC</div>
+        <div style="width: 30px; height: 30px; border-radius: 50%; background: var(--chip-neutral); border: 2px solid var(--page); display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 600; color: var(--text-3); margin-left: -8px;">+2</div>
+      </div>
+    </div>
+
+    <div class="content" style="gap: 8px;">
+      <div class="micro" style="padding: 2px 2px 0 2px;">Buy · Meat &amp; seafood</div>
+      <div class="row shoprow">
+        <button class="check" onclick="toggleCheck(this)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#faf9f5" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l4.5 4.5L19 7"/></svg></button>
+        <div class="mid">
+          <div class="name" style="font-weight: 500;">Chicken breast</div>
+          <div class="meta num" style="font-size: 11.5px; color: var(--text-3);">need 2 lb · have 1.25 lb on hand</div>
+        </div>
+        <div class="num" style="font-size: 14px; font-weight: 700;">0.75 lb</div>
+      </div>
+
+      <div class="micro" style="padding: 6px 2px 0 2px;">Buy · Produce</div>
+      <div class="row shoprow">
+        <button class="check" onclick="toggleCheck(this)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#faf9f5" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l4.5 4.5L19 7"/></svg></button>
+        <div class="mid">
+          <div class="name" style="font-weight: 500;">Broccoli</div>
+          <div class="meta num" style="font-size: 11.5px; color: var(--text-3);">need 2 lb · none in inventory</div>
+        </div>
+        <div class="num" style="font-size: 14px; font-weight: 700;">2 lb</div>
+      </div>
+
+      <div class="micro" style="padding: 6px 2px 0 2px;">Buy · Pantry</div>
+      <div class="row shoprow">
+        <button class="check" onclick="toggleCheck(this)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#faf9f5" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l4.5 4.5L19 7"/></svg></button>
+        <div class="mid">
+          <div class="name" style="font-weight: 500;">Granola</div>
+          <div class="meta" style="font-size: 11.5px; color: var(--text-3);">for yogurt berry parfait</div>
+        </div>
+        <div class="num" style="font-size: 14px; font-weight: 700;">1</div>
+      </div>
+
+      <div class="row shoprow done" style="flex-direction: column; align-items: stretch; gap: 8px;">
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <button class="check done" onclick="toggleCheck(this)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#faf9f5" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l4.5 4.5L19 7"/></svg></button>
+          <div class="name" style="flex: 1; font-size: 15px; font-weight: 500;">Olive oil</div>
+          <div class="num" style="font-size: 14px; font-weight: 700; color: var(--text-3);">1</div>
+        </div>
+        <div style="display: flex; align-items: center; gap: 8px; padding-left: 36px;">
+          <span style="font-size: 12px; color: var(--text-2);">Bought it?</span>
+          <button style="display: inline-flex; align-items: center; gap: 4px; padding: 5px 12px; border-radius: 9999px; background: var(--brand-tint); border: 1px solid var(--brand); font-size: 12px; font-weight: 600; color: var(--brand-press); cursor: pointer; font-family: inherit;" onclick="toast('Olive oil added to Pantry — inventory updated')">
+            Add to Pantry
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#a54f33" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <button style="display: flex; align-items: center; gap: 8px; padding: 10px 2px; background: none; border: none; cursor: pointer; font-family: inherit;" onclick="toast('Add item — not in this mockup')">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#c96442" stroke-width="2" stroke-linecap="round"><path d="M12 6v12"/><path d="M6 12h12"/></svg>
+        <span style="font-size: 14px; font-weight: 600; color: var(--brand);">Add item</span>
+      </button>
+
+      <div class="micro" style="padding: 2px 2px 0 2px;">Already have</div>
+      <div class="row" style="background: var(--page); border-color: var(--chip-neutral); padding: 11px 14px;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#87867f" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M8.5 12l2.5 2.5 4.5-4.5"/></svg>
+        <div style="flex: 1; font-size: 14px; font-weight: 500; color: var(--text-2);">Rice</div>
+        <div class="num" style="font-size: 12px; color: var(--text-3);">~4 cups on hand (est.)</div>
+      </div>
+      <div class="row" style="background: var(--page); border-color: var(--chip-neutral); padding: 11px 14px;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#87867f" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M8.5 12l2.5 2.5 4.5-4.5"/></svg>
+        <div style="flex: 1; font-size: 14px; font-weight: 500; color: var(--text-2);">Soy sauce</div>
+        <div class="num" style="font-size: 12px; color: var(--text-3);">sufficient</div>
+      </div>
+    </div>
+
+    <div class="nav">
+      <button onclick="go('scr-inventory')"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9h16l-1.5 10a2 2 0 0 1-2 1.7h-9a2 2 0 0 1-2-1.7z"/><path d="M8 9l2.5-5"/><path d="M16 9l-2.5-5"/></svg>Inventory</button>
+      <button onclick="go('scr-recipes')"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/></svg>Recipes</button>
+      <span class="gap"></span>
+      <button class="on" onclick="go('scr-shopping')"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h2l2.6 12.4a1 1 0 0 0 1 .6h8.7a1 1 0 0 0 1-.8L20 8H6"/><circle cx="9.5" cy="20" r="1"/><circle cx="17" cy="20" r="1"/></svg>Shopping</button>
+      <button onclick="toast('Profile — not in this mockup')"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-6 8-6s8 2 8 6"/></svg>Profile</button>
+      <div class="fab" onclick="go('scr-scan')"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#faf9f5" stroke-width="1.9" stroke-linecap="round"><path d="M4 8V6a2 2 0 0 1 2-2h2"/><path d="M16 4h2a2 2 0 0 1 2 2v2"/><path d="M20 16v2a2 2 0 0 1-2 2h-2"/><path d="M8 20H6a2 2 0 0 1-2-2v-2"/><path d="M4 12h16"/></svg></div>
+    </div>
+  </section>
+
+  <div class="toast" id="toastEl"></div>
+</div>
+
+<script>
+  let prevScreen = 'scr-inventory';
+  let currentScreen = 'scr-inventory';
+
+  function go(id) {
+    if (id === currentScreen) return;
+    prevScreen = currentScreen;
+    currentScreen = id;
+    document.querySelectorAll('.screen').forEach(function (s) { s.classList.toggle('active', s.id === id); });
+  }
+  function goBack() { go(prevScreen === 'scr-scan' ? 'scr-inventory' : prevScreen); }
+
+  function filterLoc(btn) {
+    document.querySelectorAll('#locTabs .tab').forEach(function (t) { t.classList.toggle('on', t === btn); });
+    var loc = btn.dataset.loc;
+    document.querySelectorAll('#invList .row').forEach(function (r) {
+      r.style.display = (loc === 'all' || r.dataset.loc === loc) ? '' : 'none';
+    });
+  }
+
+  var qty = 2;
+  function stepQty(d) {
+    qty = Math.max(1, qty + d);
+    document.getElementById('qtyVal').textContent = qty;
+    updateCta();
+  }
+  var pickedLoc = 'Fridge';
+  function pickLoc(btn) {
+    document.querySelectorAll('#locChips .chip').forEach(function (c) { c.classList.toggle('on', c === btn); });
+    pickedLoc = btn.textContent.trim();
+    updateCta();
+  }
+  function updateCta() {
+    document.getElementById('addCta').textContent = 'Add ' + qty + ' to ' + pickedLoc;
+  }
+  function confirmAdd() {
+    toast('Added ' + qty + ' × Greek yogurt to ' + pickedLoc);
+    go('scr-inventory');
+  }
+
+  function toggleCheck(btn) {
+    btn.classList.toggle('done');
+    var row = btn.closest('.shoprow');
+    if (row) row.classList.toggle('done', btn.classList.contains('done'));
+    var unchecked = 0;
+    document.querySelectorAll('#scr-shopping .check').forEach(function (c) { if (!c.classList.contains('done')) unchecked++; });
+    document.getElementById('buyCount').textContent = unchecked;
+  }
+
+  var toastTimer = null;
+  function toast(msg) {
+    var el = document.getElementById('toastEl');
+    el.textContent = msg;
+    el.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { el.classList.remove('show'); }, 2000);
+  }
+</script>
+</body>
+</html>
