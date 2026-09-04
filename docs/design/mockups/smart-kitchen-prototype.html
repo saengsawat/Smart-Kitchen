@@ -36,7 +36,7 @@
     -webkit-font-smoothing: antialiased;
     display: flex; flex-direction: column; align-items: center; gap: 14px;
   }
-  .hint { font-size: 13px; color: #6b6963; max-width: 420px; text-align: center; line-height: 1.5; }
+  .hint { font-size: 13px; color: #6b6963; max-width: 460px; text-align: center; line-height: 1.5; }
   .num { font-variant-numeric: tabular-nums; }
 
   .phone {
@@ -56,6 +56,7 @@
     display: flex; align-items: center; justify-content: center; border: none; cursor: pointer; flex-shrink: 0;
   }
   .iconbtn:active { transform: scale(0.94); }
+  .avatar { width: 40px; height: 40px; border-radius: 50%; background: var(--interactive); border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 600; color: var(--text-2); font-family: inherit; flex-shrink: 0; }
 
   .tabs { display: flex; gap: 2px; padding: 0 20px; border-bottom: 1px solid var(--interactive); }
   .tab { padding: 10px 12px; font-size: 14px; font-weight: 500; color: var(--text-2); background: none; border: none; cursor: pointer; font-family: inherit; }
@@ -98,6 +99,11 @@
   .card { background: var(--card); border: 1px solid var(--border-subtle); border-radius: 12px; padding: 14px; }
   .micro { font-size: 10px; font-weight: 600; letter-spacing: 0.8px; text-transform: uppercase; color: var(--text-3); }
 
+  .stat { background: var(--card); border: 1px solid var(--border-subtle); border-radius: 12px; padding: 12px 14px; cursor: pointer; display: flex; flex-direction: column; gap: 4px; }
+  .stat:active { background: var(--tile); }
+  .stat .v { font-size: 22px; font-weight: 700; letter-spacing: -0.3px; }
+  .stat .s { font-size: 11px; color: var(--text-3); line-height: 1.35; }
+
   .chip { display: inline-flex; align-items: center; gap: 5px; padding: 7px 14px; border-radius: 9999px; background: var(--card); border: 1px solid var(--border-strong); font-size: 12.5px; font-weight: 500; color: var(--text-2); cursor: pointer; font-family: inherit; }
   .chip.on { background: var(--brand-tint); border-color: var(--brand); font-weight: 600; color: var(--brand-press); }
 
@@ -106,7 +112,12 @@
 
   .cta { height: 52px; border-radius: 10px; background: var(--brand); border: none; cursor: pointer; font-family: inherit; font-size: 16px; font-weight: 600; color: #faf9f5; width: 100%; }
   .cta:active { background: var(--brand-press); transform: scale(0.99); }
+  .cta.sec { background: var(--card); border: 1px solid var(--border-strong); color: var(--text-1); }
+  .cta.sec:active { background: var(--interactive); }
   .link { color: var(--brand); font-weight: 600; text-decoration: none; cursor: pointer; }
+
+  .why { display: none; padding: 10px 12px; border-radius: 10px; background: var(--page); border: 1px solid var(--interactive); font-size: 12px; color: var(--text-2); line-height: 1.5; }
+  .why.open { display: block; }
 
   .check { width: 24px; height: 24px; border-radius: 7px; border: 1.5px solid var(--border-strong); background: var(--card); cursor: pointer; flex-shrink: 0; display: flex; align-items: center; justify-content: center; padding: 0; }
   .check.done { background: var(--positive); border-color: var(--positive); }
@@ -114,11 +125,18 @@
   .check.done svg { opacity: 1; }
   .shoprow.done .name { color: var(--text-3); text-decoration: line-through; }
 
+  .method { display: flex; align-items: center; gap: 12px; padding: 14px; background: var(--card); border: 1px solid var(--border-strong); border-radius: 12px; cursor: pointer; font-family: inherit; text-align: left; width: 100%; }
+  .method:active { background: var(--tile); }
+  .method .mt { font-size: 15px; font-weight: 600; }
+  .method .ms { font-size: 12px; color: var(--text-3); margin-top: 2px; }
+  .demo { display: none; }
+  .demo.open { display: flex; flex-direction: column; gap: 10px; }
+
   .toast {
     position: absolute; left: 50%; bottom: 96px; transform: translateX(-50%) translateY(8px);
     background: #30302e; color: #faf9f5; font-size: 13px; font-weight: 500;
     padding: 10px 16px; border-radius: 9999px; opacity: 0; pointer-events: none;
-    transition: opacity 0.18s, transform 0.18s; white-space: nowrap; max-width: 350px;
+    transition: opacity 0.18s, transform 0.18s; white-space: nowrap; max-width: 350px; z-index: 20;
   }
   .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
@@ -128,12 +146,108 @@
 </head>
 <body>
 
-<div class="hint">Clickable prototype — bottom tabs navigate, the orange button opens the scan flow, inventory tabs filter by location, shopping items check off. Sample data for the fictional Chen household.</div>
+<div class="hint">Clickable prototype — bottom tabs navigate, the orange button opens the Add flow, dashboard tiles jump to their screens, "Why this?" expands, shopping items check off. Sample data for the fictional Chen household. Receipt and photo capture are shown as previews of later phases.</div>
 
 <div class="phone">
 
+  <!-- ============ SCREEN: HOME ============ -->
+  <section class="screen active" id="scr-home">
+    <div class="hdr">
+      <div>
+        <h1>Good evening</h1>
+        <div class="sub">Chen household · <b class="num">4</b> items to use this week</div>
+      </div>
+      <button class="avatar" onclick="toast('Profile — not in this mockup')">DC</button>
+    </div>
+
+    <div class="content">
+      <div class="micro" style="padding: 0 2px;">Tonight's best match · from your inventory</div>
+      <div class="card" style="display: flex; flex-direction: column; gap: 9px; border-radius: 16px;">
+        <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 10px;">
+          <div>
+            <div style="font-size: 17px; font-weight: 600; letter-spacing: -0.2px;">Chicken &amp; spinach stir-fry</div>
+            <div style="display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--text-2); margin-top: 5px;">
+              <span class="num">25 min</span><span>·</span><span class="num">540 cal / serving</span><span class="badge b-est">Est.</span>
+            </div>
+          </div>
+          <span class="badge b-fact num">92% match</span>
+        </div>
+        <div style="display: flex; flex-wrap: wrap; gap: 6px;">
+          <span class="chip-have">✓ chicken</span><span class="chip-have">✓ spinach</span><span class="chip-have">✓ mushrooms</span><span class="chip-have">✓ rice</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--positive); font-weight: 500;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1f7a4d" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v5c0 4.6-3 7.8-7 9-4-1.2-7-4.4-7-9V6z"/><path d="M9 11.5l2 2 4-4"/></svg>
+          allergen screen passed for all 4 members
+        </div>
+        <div class="why" id="whyHome">
+          <b style="color: var(--text-1);">Why this recipe?</b><br>
+          Ranked <span class="num">92%</span> because it uses <b>3 expiring items</b> (chicken · 2 days, spinach and mushrooms · 3 days), needs <b>0 purchases</b>, fits tonight's <span class="num">25 min</span> window, and matches the household's high-protein preference. Score is computed from your inventory — not generated text.
+        </div>
+        <div style="display: flex; gap: 10px;">
+          <button class="cta sec" style="height: 44px; font-size: 14px;" onclick="toggleWhy('whyHome')">Why this?</button>
+          <button class="cta" style="height: 44px; font-size: 14px;" onclick="toast('Recipe detail — not in this mockup')">Cook this</button>
+        </div>
+      </div>
+
+      <div class="micro" style="padding: 4px 2px 0 2px;">Kitchen snapshot</div>
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+        <div class="stat" onclick="go('scr-inventory')">
+          <div class="micro">In stock</div>
+          <div class="v num">42</div>
+          <div class="s">items across fridge, freezer &amp; pantry</div>
+        </div>
+        <div class="stat" onclick="go('scr-inventory'); toast('2 items need your confirmation')">
+          <div class="micro">Inventory accuracy</div>
+          <div class="v num">94%</div>
+          <div class="s"><span style="color: var(--warn-text); font-weight: 600;">2 items</span> need confirmation</div>
+        </div>
+        <div class="stat" onclick="go('scr-recipes')">
+          <div class="micro">Use soon</div>
+          <div class="v num">4</div>
+          <div class="s">items expiring this week</div>
+        </div>
+        <div class="stat" onclick="go('scr-shopping')">
+          <div class="micro">Shopping gaps</div>
+          <div class="v num">3</div>
+          <div class="s">items to buy for planned meals</div>
+        </div>
+      </div>
+
+      <div class="micro" style="padding: 4px 2px 0 2px;">Use it before you lose it</div>
+      <div class="row">
+        <div class="tile"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#5e5d59" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 7c3.3 0 5.8 2.3 5.8 5.2 0 3.8-2.9 7.6-5.8 8.3-2.9-.7-5.8-4.5-5.8-8.3C6.2 9.3 8.7 7 12 7z"/><path d="M12 7c0-1.8 1-3 1-3"/><path d="M12 7c-1.5-1.2-3.2-1-3.2-1"/></svg></div>
+        <div class="mid"><div class="name">Strawberries</div><div class="meta"><b class="num">1 lb</b> · Fridge</div></div>
+        <span class="badge b-est">use today</span>
+      </div>
+      <div class="row">
+        <div class="tile"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#5e5d59" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M15.5 5.5a4.2 4.2 0 0 0-6 5.9l-4 4 1.2 1.2 1.3-.3.3 1.6 1.6.3-.3 1.3 1.2 1.2 4-4a4.2 4.2 0 0 0 5.9-6z"/></svg></div>
+        <div class="mid"><div class="name">Chicken breast</div><div class="meta"><b class="num">1.25 lb</b> · Fridge</div></div>
+        <span class="badge b-est">2 days</span>
+      </div>
+      <div class="row">
+        <div class="tile"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#5e5d59" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20c-4.5 0-7.5-3-7.5-7 0-5 4.5-9 11.5-9 0 8-2.5 16-4 16z"/><path d="M5.5 19.5c3-4.5 7-8.5 11-11.5"/></svg></div>
+        <div class="mid"><div class="name">Spinach</div><div class="meta"><b class="num">5 oz</b> · Fridge</div></div>
+        <span class="badge b-est">3 days</span>
+      </div>
+      <div class="row">
+        <div class="tile"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#5e5d59" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11c0-4 3.6-7 8-7s8 3 8 7z"/><path d="M9 11l-.5 6a2 2 0 0 0 2 2.2h3a2 2 0 0 0 2-2.2L15 11"/></svg></div>
+        <div class="mid"><div class="name">Mushrooms</div><div class="meta"><b class="num">8 oz</b> · Fridge</div></div>
+        <span class="badge b-est">3 days</span>
+      </div>
+    </div>
+
+    <div class="nav">
+      <button class="on" onclick="go('scr-home')"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11l8-7 8 7"/><path d="M6 9.5V20h12V9.5"/></svg>Home</button>
+      <button onclick="go('scr-inventory')"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9h16l-1.5 10a2 2 0 0 1-2 1.7h-9a2 2 0 0 1-2-1.7z"/><path d="M8 9l2.5-5"/><path d="M16 9l-2.5-5"/></svg>Inventory</button>
+      <span class="gap"></span>
+      <button onclick="go('scr-recipes')"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/></svg>Recipes</button>
+      <button onclick="go('scr-shopping')"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h2l2.6 12.4a1 1 0 0 0 1 .6h8.7a1 1 0 0 0 1-.8L20 8H6"/><circle cx="9.5" cy="20" r="1"/><circle cx="17" cy="20" r="1"/></svg>Shopping</button>
+      <div class="fab" onclick="go('scr-add')"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#faf9f5" stroke-width="1.9" stroke-linecap="round"><path d="M4 8V6a2 2 0 0 1 2-2h2"/><path d="M16 4h2a2 2 0 0 1 2 2v2"/><path d="M20 16v2a2 2 0 0 1-2 2h-2"/><path d="M8 20H6a2 2 0 0 1-2-2v-2"/><path d="M4 12h16"/></svg></div>
+    </div>
+  </section>
+
   <!-- ============ SCREEN: INVENTORY ============ -->
-  <section class="screen active" id="scr-inventory">
+  <section class="screen" id="scr-inventory">
     <div class="hdr">
       <div>
         <h1>Inventory</h1>
@@ -194,6 +308,15 @@
         <span class="badge b-fact">Fact</span>
       </div>
 
+      <div class="row" data-loc="fridge">
+        <div class="tile"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#5e5d59" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11c0-4 3.6-7 8-7s8 3 8 7z"/><path d="M9 11l-.5 6a2 2 0 0 0 2 2.2h3a2 2 0 0 0 2-2.2L15 11"/></svg></div>
+        <div class="mid">
+          <div class="name">Mushrooms</div>
+          <div class="meta"><b class="num">8 oz</b> · Fridge · <span class="exp-warn">use in 3 days</span></div>
+        </div>
+        <span class="badge b-ai">AI</span>
+      </div>
+
       <div class="row" data-loc="pantry">
         <div class="tile"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#5e5d59" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h16a8 8 0 0 1-16 0z"/><path d="M9 11V8"/><path d="M12 11V7"/><path d="M15 11V8"/></svg></div>
         <div class="mid">
@@ -232,19 +355,116 @@
     </div>
 
     <div class="nav">
+      <button onclick="go('scr-home')"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11l8-7 8 7"/><path d="M6 9.5V20h12V9.5"/></svg>Home</button>
       <button class="on" onclick="go('scr-inventory')"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9h16l-1.5 10a2 2 0 0 1-2 1.7h-9a2 2 0 0 1-2-1.7z"/><path d="M8 9l2.5-5"/><path d="M16 9l-2.5-5"/></svg>Inventory</button>
-      <button onclick="go('scr-recipes')"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/></svg>Recipes</button>
       <span class="gap"></span>
+      <button onclick="go('scr-recipes')"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/></svg>Recipes</button>
       <button onclick="go('scr-shopping')"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h2l2.6 12.4a1 1 0 0 0 1 .6h8.7a1 1 0 0 0 1-.8L20 8H6"/><circle cx="9.5" cy="20" r="1"/><circle cx="17" cy="20" r="1"/></svg>Shopping</button>
-      <button onclick="toast('Profile — not in this mockup')"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-6 8-6s8 2 8 6"/></svg>Profile</button>
-      <div class="fab" onclick="go('scr-scan')"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#faf9f5" stroke-width="1.9" stroke-linecap="round"><path d="M4 8V6a2 2 0 0 1 2-2h2"/><path d="M16 4h2a2 2 0 0 1 2 2v2"/><path d="M20 16v2a2 2 0 0 1-2 2h-2"/><path d="M8 20H6a2 2 0 0 1-2-2v-2"/><path d="M4 12h16"/></svg></div>
+      <div class="fab" onclick="go('scr-add')"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#faf9f5" stroke-width="1.9" stroke-linecap="round"><path d="M4 8V6a2 2 0 0 1 2-2h2"/><path d="M16 4h2a2 2 0 0 1 2 2v2"/><path d="M20 16v2a2 2 0 0 1-2 2h-2"/><path d="M8 20H6a2 2 0 0 1-2-2v-2"/><path d="M4 12h16"/></svg></div>
+    </div>
+  </section>
+
+  <!-- ============ SCREEN: ADD FOOD ============ -->
+  <section class="screen" id="scr-add">
+    <div style="display: flex; align-items: center; gap: 12px; padding: 22px 20px 12px 20px;">
+      <button class="iconbtn" onclick="goBack()" aria-label="Back">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#5e5d59" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>
+      </button>
+      <div style="font-size: 18px; font-weight: 700; letter-spacing: -0.2px;">Add food</div>
+    </div>
+
+    <div class="content" style="padding-top: 4px;">
+      <button class="method" onclick="go('scr-scan')">
+        <div class="tile"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#a54f33" stroke-width="1.8" stroke-linecap="round"><path d="M4 8V6a2 2 0 0 1 2-2h2"/><path d="M16 4h2a2 2 0 0 1 2 2v2"/><path d="M20 16v2a2 2 0 0 1-2 2h-2"/><path d="M8 20H6a2 2 0 0 1-2-2v-2"/><path d="M4 12h16"/></svg></div>
+        <div style="flex: 1;">
+          <div class="mt">Scan barcode</div>
+          <div class="ms">Point at a product — details fill in automatically</div>
+        </div>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#87867f" stroke-width="1.8" stroke-linecap="round"><path d="M9 5l7 7-7 7"/></svg>
+      </button>
+
+      <button class="method" onclick="showDemo('demoReceipt')">
+        <div class="tile"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#5e5d59" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12v18l-2-1.4L14 21l-2-1.4L10 21l-2-1.4L6 21z"/><path d="M9 8h6"/><path d="M9 12h6"/></svg></div>
+        <div style="flex: 1;">
+          <div class="mt">Scan receipt <span class="badge b-est" style="margin-left: 4px;">fast-follow</span></div>
+          <div class="ms">One photo adds the whole grocery run — after you confirm</div>
+        </div>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#87867f" stroke-width="1.8" stroke-linecap="round"><path d="M9 5l7 7-7 7"/></svg>
+      </button>
+
+      <button class="method" onclick="showDemo('demoPhoto')">
+        <div class="tile"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#5e5d59" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8a2 2 0 0 1 2-2h1.5l1.5-2h6l1.5 2H18a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/><circle cx="12" cy="13" r="3.5"/></svg></div>
+        <div style="flex: 1;">
+          <div class="mt">Photograph a shelf <span class="badge b-ai" style="margin-left: 4px;">future</span></div>
+          <div class="ms">AI proposes what it sees — nothing is added without you</div>
+        </div>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#87867f" stroke-width="1.8" stroke-linecap="round"><path d="M9 5l7 7-7 7"/></svg>
+      </button>
+
+      <button class="method" onclick="showDemo('demoManual')">
+        <div class="tile"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#5e5d59" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20l4-1L20 7l-3-3L5 16z"/><path d="M14 6l3 3"/></svg></div>
+        <div style="flex: 1;">
+          <div class="mt">Add manually</div>
+          <div class="ms">Type it in — always available, never blocked</div>
+        </div>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#87867f" stroke-width="1.8" stroke-linecap="round"><path d="M9 5l7 7-7 7"/></svg>
+      </button>
+
+      <!-- Receipt preview demo -->
+      <div class="demo" id="demoReceipt">
+        <div class="card" style="display: flex; flex-direction: column; gap: 10px;">
+          <div style="display: flex; align-items: center; justify-content: space-between;">
+            <div class="micro">Receipt detected · Costco · Sep 3</div>
+            <span class="badge b-ai">AI</span>
+          </div>
+          <div class="row" style="padding: 10px 12px;">
+            <button class="check done" onclick="toggleCheck(this)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#faf9f5" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l4.5 4.5L19 7"/></svg></button>
+            <div class="mid"><div class="name" style="font-size: 14px;">Chicken breast</div><div class="meta num" style="font-size: 11.5px;">qty 2 · $14.82 · high confidence</div></div>
+          </div>
+          <div class="row" style="padding: 10px 12px;">
+            <button class="check done" onclick="toggleCheck(this)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#faf9f5" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l4.5 4.5L19 7"/></svg></button>
+            <div class="mid"><div class="name" style="font-size: 14px;">Greek yogurt</div><div class="meta num" style="font-size: 11.5px;">qty 3 · $12.47 · high confidence</div></div>
+          </div>
+          <div class="row" style="padding: 10px 12px; border-color: rgba(171,100,0,0.30);">
+            <button class="check" onclick="toggleCheck(this)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#faf9f5" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l4.5 4.5L19 7"/></svg></button>
+            <div class="mid"><div class="name" style="font-size: 14px;">"ORG BNNA 3LB"</div><div class="meta" style="font-size: 11.5px; color: var(--warn-text); font-weight: 600;">low confidence — is this bananas? tap to fix</div></div>
+          </div>
+          <div style="font-size: 11px; color: var(--text-3); line-height: 1.4;">Parsed by AI — nothing enters your inventory until you confirm. The receipt is kept as a purchase record.</div>
+          <button class="cta" style="height: 44px; font-size: 14px;" onclick="toast('2 confirmed items added to inventory'); hideDemos();">Add 2 confirmed items</button>
+        </div>
+      </div>
+
+      <!-- Photo preview demo -->
+      <div class="demo" id="demoPhoto">
+        <div class="card" style="display: flex; flex-direction: column; gap: 8px;">
+          <div style="display: flex; align-items: center; justify-content: space-between;">
+            <div class="micro">Shelf photo · preview of a future capability</div>
+            <span class="badge b-ai">AI</span>
+          </div>
+          <div style="font-size: 14px; font-weight: 600;">We found <span class="num">4</span> possible food items</div>
+          <div style="font-size: 12px; color: var(--text-2);"><span class="num">3</span> high-confidence · <span class="num">1</span> needs review. Detections are proposals — you confirm which become inventory.</div>
+        </div>
+      </div>
+
+      <!-- Manual entry demo -->
+      <div class="demo" id="demoManual">
+        <div class="card" style="display: flex; flex-direction: column; gap: 10px;">
+          <div class="micro">Add manually</div>
+          <input style="width: 100%; padding: 12px 13px; border: 1px solid var(--border-strong); border-radius: 10px; background: var(--card); font-size: 14px; font-family: inherit; color: var(--text-1);" placeholder="Food name">
+          <div style="display: flex; gap: 10px;">
+            <input style="flex: 1; min-width: 0; padding: 12px 13px; border: 1px solid var(--border-strong); border-radius: 10px; background: var(--card); font-size: 14px; font-family: inherit; color: var(--text-1);" placeholder="Quantity">
+            <input style="flex: 1; min-width: 0; padding: 12px 13px; border: 1px solid var(--border-strong); border-radius: 10px; background: var(--card); font-size: 14px; font-family: inherit; color: var(--text-1);" placeholder="Unit">
+          </div>
+          <button class="cta" style="height: 44px; font-size: 14px;" onclick="toast('Item saved to inventory'); hideDemos();">Save item</button>
+        </div>
+      </div>
     </div>
   </section>
 
   <!-- ============ SCREEN: SCAN & CONFIRM ============ -->
   <section class="screen" id="scr-scan">
     <div style="display: flex; align-items: center; gap: 12px; padding: 22px 20px 12px 20px;">
-      <button class="iconbtn" onclick="goBack()" aria-label="Back">
+      <button class="iconbtn" onclick="go('scr-add')" aria-label="Back">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#5e5d59" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>
       </button>
       <div style="font-size: 18px; font-weight: 700; letter-spacing: -0.2px;">Confirm item</div>
@@ -343,12 +563,13 @@
 
     <div class="content" style="padding-top: 0;">
       <div class="card" style="padding: 0; overflow: hidden; border-radius: 16px;">
-        <div style="height: 128px; background: var(--tile); display: flex; align-items: center; justify-content: center; position: relative;">
+        <div style="height: 116px; background: var(--tile); display: flex; align-items: center; justify-content: center; position: relative;">
           <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#87867f" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="12" r="7"/><path d="M18 12h4"/><path d="M8.5 10.5c1-1 4-1 5 0"/></svg>
           <span style="position: absolute; top: 10px; left: 10px; display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; border-radius: 9999px; background: var(--card); border: 1px solid rgba(171,100,0,0.40); font-size: 11px; font-weight: 600; color: var(--warn-text);">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#8a5200" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l2.5 2.5"/></svg>
             uses 3 expiring items
           </span>
+          <span class="badge b-fact num" style="position: absolute; top: 10px; right: 10px;">92% match</span>
         </div>
         <div style="padding: 14px; display: flex; flex-direction: column; gap: 9px;">
           <div style="font-size: 17px; font-weight: 600; letter-spacing: -0.2px;">Chicken &amp; spinach stir-fry</div>
@@ -362,7 +583,14 @@
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1f7a4d" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v5c0 4.6-3 7.8-7 9-4-1.2-7-4.4-7-9V6z"/><path d="M9 11.5l2 2 4-4"/></svg>
             allergen screen passed for all 4 members
           </div>
-          <button class="cta" style="height: 44px; font-size: 14px;" onclick="toast('Recipe detail — not in this mockup')">Cook this</button>
+          <div class="why" id="whyRecipe">
+            <b style="color: var(--text-1);">Why this recipe?</b><br>
+            Ranked <span class="num">92%</span>: uses 3 expiring items, needs 0 purchases, fits ≤ 30 min, matches high-protein preference. Ranking is computed from your inventory — not generated text.
+          </div>
+          <div style="display: flex; gap: 10px;">
+            <button class="cta sec" style="height: 44px; font-size: 14px;" onclick="toggleWhy('whyRecipe')">Why this?</button>
+            <button class="cta" style="height: 44px; font-size: 14px;" onclick="toast('Recipe detail — not in this mockup')">Cook this</button>
+          </div>
         </div>
       </div>
 
@@ -371,7 +599,10 @@
           <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#87867f" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M7 3v6a2 2 0 0 0 4 0V3"/><path d="M9 9v12"/><path d="M16 3c-1.5 1.5-2 4-2 6 0 1.5 1 2 2 2v10"/></svg>
         </div>
         <div style="flex: 1; display: flex; flex-direction: column; gap: 7px;">
-          <div style="font-size: 15.5px; font-weight: 600;">Yogurt berry parfait</div>
+          <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+            <div style="font-size: 15.5px; font-weight: 600;">Yogurt berry parfait</div>
+            <span class="badge b-fact num">84%</span>
+          </div>
           <div style="display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text-2);">
             <span class="num">10 min</span><span>·</span><span class="num">320 cal</span><span class="badge b-est">Est.</span>
           </div>
@@ -400,12 +631,12 @@
     </div>
 
     <div class="nav">
+      <button onclick="go('scr-home')"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11l8-7 8 7"/><path d="M6 9.5V20h12V9.5"/></svg>Home</button>
       <button onclick="go('scr-inventory')"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9h16l-1.5 10a2 2 0 0 1-2 1.7h-9a2 2 0 0 1-2-1.7z"/><path d="M8 9l2.5-5"/><path d="M16 9l-2.5-5"/></svg>Inventory</button>
-      <button class="on" onclick="go('scr-recipes')"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/></svg>Recipes</button>
       <span class="gap"></span>
+      <button class="on" onclick="go('scr-recipes')"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/></svg>Recipes</button>
       <button onclick="go('scr-shopping')"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h2l2.6 12.4a1 1 0 0 0 1 .6h8.7a1 1 0 0 0 1-.8L20 8H6"/><circle cx="9.5" cy="20" r="1"/><circle cx="17" cy="20" r="1"/></svg>Shopping</button>
-      <button onclick="toast('Profile — not in this mockup')"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-6 8-6s8 2 8 6"/></svg>Profile</button>
-      <div class="fab" onclick="go('scr-scan')"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#faf9f5" stroke-width="1.9" stroke-linecap="round"><path d="M4 8V6a2 2 0 0 1 2-2h2"/><path d="M16 4h2a2 2 0 0 1 2 2v2"/><path d="M20 16v2a2 2 0 0 1-2 2h-2"/><path d="M8 20H6a2 2 0 0 1-2-2v-2"/><path d="M4 12h16"/></svg></div>
+      <div class="fab" onclick="go('scr-add')"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#faf9f5" stroke-width="1.9" stroke-linecap="round"><path d="M4 8V6a2 2 0 0 1 2-2h2"/><path d="M16 4h2a2 2 0 0 1 2 2v2"/><path d="M20 16v2a2 2 0 0 1-2 2h-2"/><path d="M8 20H6a2 2 0 0 1-2-2v-2"/><path d="M4 12h16"/></svg></div>
     </div>
   </section>
 
@@ -488,12 +719,12 @@
     </div>
 
     <div class="nav">
+      <button onclick="go('scr-home')"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11l8-7 8 7"/><path d="M6 9.5V20h12V9.5"/></svg>Home</button>
       <button onclick="go('scr-inventory')"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9h16l-1.5 10a2 2 0 0 1-2 1.7h-9a2 2 0 0 1-2-1.7z"/><path d="M8 9l2.5-5"/><path d="M16 9l-2.5-5"/></svg>Inventory</button>
-      <button onclick="go('scr-recipes')"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/></svg>Recipes</button>
       <span class="gap"></span>
+      <button onclick="go('scr-recipes')"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/></svg>Recipes</button>
       <button class="on" onclick="go('scr-shopping')"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h2l2.6 12.4a1 1 0 0 0 1 .6h8.7a1 1 0 0 0 1-.8L20 8H6"/><circle cx="9.5" cy="20" r="1"/><circle cx="17" cy="20" r="1"/></svg>Shopping</button>
-      <button onclick="toast('Profile — not in this mockup')"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-6 8-6s8 2 8 6"/></svg>Profile</button>
-      <div class="fab" onclick="go('scr-scan')"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#faf9f5" stroke-width="1.9" stroke-linecap="round"><path d="M4 8V6a2 2 0 0 1 2-2h2"/><path d="M16 4h2a2 2 0 0 1 2 2v2"/><path d="M20 16v2a2 2 0 0 1-2 2h-2"/><path d="M8 20H6a2 2 0 0 1-2-2v-2"/><path d="M4 12h16"/></svg></div>
+      <div class="fab" onclick="go('scr-add')"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#faf9f5" stroke-width="1.9" stroke-linecap="round"><path d="M4 8V6a2 2 0 0 1 2-2h2"/><path d="M16 4h2a2 2 0 0 1 2 2v2"/><path d="M20 16v2a2 2 0 0 1-2 2h-2"/><path d="M8 20H6a2 2 0 0 1-2-2v-2"/><path d="M4 12h16"/></svg></div>
     </div>
   </section>
 
@@ -501,8 +732,8 @@
 </div>
 
 <script>
-  let prevScreen = 'scr-inventory';
-  let currentScreen = 'scr-inventory';
+  let prevScreen = 'scr-home';
+  let currentScreen = 'scr-home';
 
   function go(id) {
     if (id === currentScreen) return;
@@ -510,7 +741,7 @@
     currentScreen = id;
     document.querySelectorAll('.screen').forEach(function (s) { s.classList.toggle('active', s.id === id); });
   }
-  function goBack() { go(prevScreen === 'scr-scan' ? 'scr-inventory' : prevScreen); }
+  function goBack() { go(prevScreen === currentScreen ? 'scr-home' : prevScreen); }
 
   function filterLoc(btn) {
     document.querySelectorAll('#locTabs .tab').forEach(function (t) { t.classList.toggle('on', t === btn); });
@@ -518,6 +749,17 @@
     document.querySelectorAll('#invList .row').forEach(function (r) {
       r.style.display = (loc === 'all' || r.dataset.loc === loc) ? '' : 'none';
     });
+  }
+
+  function toggleWhy(id) {
+    document.getElementById(id).classList.toggle('open');
+  }
+
+  function showDemo(id) {
+    document.querySelectorAll('.demo').forEach(function (d) { d.classList.toggle('open', d.id === id && !d.classList.contains('open')); });
+  }
+  function hideDemos() {
+    document.querySelectorAll('.demo').forEach(function (d) { d.classList.remove('open'); });
   }
 
   var qty = 2;

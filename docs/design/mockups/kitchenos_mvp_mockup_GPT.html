@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>KitchenOS MVP Mockup</title>
+  <style>
+    :root{
+      --bg:#f6f7f9;
+      --panel:#ffffff;
+      --text:#17191c;
+      --muted:#69717c;
+      --line:#e4e7eb;
+      --accent:#2d6a4f;
+      --accent2:#d8f3dc;
+      --warn:#b26a00;
+      --danger:#a63a3a;
+      --shadow:0 12px 30px rgba(20, 30, 40, .08);
+      --radius:22px;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family:Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background:linear-gradient(180deg,#eef3f0 0%, var(--bg) 30%);
+      color:var(--text);
+    }
+    .app{
+      max-width:430px;
+      margin:0 auto;
+      min-height:100vh;
+      background:var(--bg);
+      box-shadow:0 0 60px rgba(0,0,0,.08);
+      position:relative;
+      padding-bottom:92px;
+    }
+    header{
+      padding:20px 18px 12px;
+      background:linear-gradient(135deg,#174d38,#2d6a4f);
+      color:white;
+      border-radius:0 0 28px 28px;
+      position:sticky;
+      top:0;
+      z-index:5;
+    }
+    .topline{
+      display:flex;align-items:center;justify-content:space-between;gap:10px
+    }
+    .brand{font-weight:800;font-size:20px;letter-spacing:.2px}
+    .avatar{
+      width:36px;height:36px;border-radius:50%;display:grid;place-items:center;
+      background:rgba(255,255,255,.18);font-weight:700
+    }
+    .sub{opacity:.85;font-size:12px;margin-top:4px}
+    .content{padding:16px}
+    .screen{display:none}
+    .screen.active{display:block}
+    .hero{
+      background:var(--panel);border-radius:var(--radius);padding:18px;box-shadow:var(--shadow);
+      margin-top:-6px
+    }
+    .hero h1{margin:0 0 8px;font-size:25px;line-height:1.1}
+    .hero p{margin:0;color:var(--muted);font-size:14px;line-height:1.45}
+    .chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+    .chip{
+      border:1px solid var(--line);background:#fff;padding:8px 10px;border-radius:999px;font-size:12px
+    }
+    .chip.good{background:var(--accent2);border-color:#b9e8c5;color:#1d5a40}
+    .section-title{
+      display:flex;align-items:end;justify-content:space-between;margin:22px 2px 10px
+    }
+    .section-title h2{font-size:17px;margin:0}
+    .section-title span{font-size:12px;color:var(--muted)}
+    .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    .card{
+      background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:14px;box-shadow:0 6px 18px rgba(20,30,40,.04)
+    }
+    .metric{font-size:26px;font-weight:800;margin-top:4px}
+    .small{font-size:12px;color:var(--muted)}
+    .list{display:flex;flex-direction:column;gap:10px}
+    .item{
+      background:#fff;border:1px solid var(--line);border-radius:16px;padding:12px;
+      display:flex;align-items:center;justify-content:space-between;gap:12px
+    }
+    .item-left{display:flex;gap:10px;align-items:center}
+    .icon{
+      width:40px;height:40px;border-radius:12px;background:#f0f4f2;display:grid;place-items:center;font-size:20px
+    }
+    .name{font-weight:700;font-size:14px}
+    .meta{font-size:12px;color:var(--muted);margin-top:2px}
+    .badge{
+      font-size:11px;padding:5px 8px;border-radius:999px;background:#f2f4f7;color:#505761;white-space:nowrap
+    }
+    .badge.warn{background:#fff3dd;color:#8a5300}
+    .badge.danger{background:#fde7e7;color:#8e2e2e}
+    .btn{
+      border:0;background:var(--accent);color:white;font-weight:700;
+      padding:13px 15px;border-radius:14px;cursor:pointer;width:100%;font-size:14px
+    }
+    .btn.secondary{background:white;color:var(--text);border:1px solid var(--line)}
+    .btnrow{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .recommend{
+      border:1px solid #cfe6d8;background:linear-gradient(180deg,#fbfffc,#f2fbf5)
+    }
+    .recommend h3{margin:0 0 4px;font-size:16px}
+    .score{
+      font-size:11px;background:#e6f5ea;color:#245d43;padding:5px 7px;border-radius:999px;font-weight:700
+    }
+    .reason{
+      margin-top:10px;padding:10px;border-radius:12px;background:#fff;border:1px dashed #d5e4da;font-size:12px;color:#4b5b52
+    }
+    .nav{
+      position:fixed;bottom:0;left:50%;transform:translateX(-50%);
+      width:min(430px,100%);background:rgba(255,255,255,.96);backdrop-filter:blur(14px);
+      border-top:1px solid var(--line);display:grid;grid-template-columns:repeat(5,1fr);padding:8px 6px 10px;z-index:9
+    }
+    .nav button{
+      border:0;background:transparent;color:#757d87;font-size:10px;display:flex;flex-direction:column;gap:4px;align-items:center;cursor:pointer
+    }
+    .nav button span:first-child{font-size:20px}
+    .nav button.active{color:var(--accent);font-weight:800}
+    .scanner{
+      border:2px dashed #c7d1cb;border-radius:22px;padding:30px 18px;text-align:center;background:#fff
+    }
+    .scanner .camera{font-size:50px;margin-bottom:12px}
+    .scan-options{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}
+    .search{
+      width:100%;padding:12px 13px;border:1px solid var(--line);border-radius:14px;background:white;font-size:14px
+    }
+    .tabs{display:flex;gap:8px;overflow:auto;padding-bottom:4px;margin-bottom:12px}
+    .tabs button{
+      flex:0 0 auto;border:1px solid var(--line);background:white;padding:8px 11px;border-radius:999px;font-size:12px
+    }
+    .tabs button.active{background:#eaf6ee;color:#215a40;border-color:#cbe5d3;font-weight:700}
+    .cart-line{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center}
+    .qty{
+      display:flex;gap:6px;align-items:center
+    }
+    .qty button{
+      width:28px;height:28px;border-radius:8px;border:1px solid var(--line);background:white;cursor:pointer
+    }
+    .chatbox{
+      background:white;border:1px solid var(--line);border-radius:18px;padding:12px
+    }
+    .bubble{
+      max-width:88%;padding:10px 12px;border-radius:14px;margin:8px 0;font-size:13px;line-height:1.4
+    }
+    .bubble.user{margin-left:auto;background:#eaf6ee}
+    .bubble.ai{background:#f4f5f7}
+    .confidence{font-size:11px;color:var(--muted);margin-top:4px}
+    .footer-note{font-size:11px;color:var(--muted);margin:14px 2px 0;line-height:1.4}
+  </style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="topline">
+      <div>
+        <div class="brand">KitchenOS</div>
+        <div class="sub">Your AI kitchen manager</div>
+      </div>
+      <div class="avatar">A</div>
+    </div>
+  </header>
+
+  <main class="content">
+    <section id="home" class="screen active">
+      <div class="hero">
+        <h1>Good evening 👋</h1>
+        <p>You have a few ingredients that should be used soon. I found dinner options that use what you already own.</p>
+        <div class="chips">
+          <div class="chip good">18 items in stock</div>
+          <div class="chip">3 expiring soon</div>
+          <div class="chip">2 missing for top recipe</div>
+        </div>
+      </div>
+
+      <div class="section-title"><h2>Tonight's best match</h2><span>Based on inventory</span></div>
+      <div class="card recommend">
+        <div style="display:flex;justify-content:space-between;gap:10px;align-items:start">
+          <div>
+            <h3>Chicken Mushroom Stir-Fry</h3>
+            <div class="small">25 min • ~540 cal • 46g protein</div>
+          </div>
+          <div class="score">92% match</div>
+        </div>
+        <div class="reason">Uses chicken, spinach, and mushrooms that should be used within 2–3 days.</div>
+        <div class="btnrow" style="margin-top:12px">
+          <button class="btn secondary" onclick="go('assistant')">Why this?</button>
+          <button class="btn" onclick="alert('Demo: recipe started')">Cook this</button>
+        </div>
+      </div>
+
+      <div class="section-title"><h2>Kitchen snapshot</h2><span>Today</span></div>
+      <div class="grid">
+        <div class="card"><div class="small">Inventory accuracy</div><div class="metric">94%</div><div class="small">2 items need confirmation</div></div>
+        <div class="card"><div class="small">Waste risk</div><div class="metric">3</div><div class="small">items expiring soon</div></div>
+        <div class="card"><div class="small">Calories remaining</div><div class="metric">620</div><div class="small">of 2,000 goal</div></div>
+        <div class="card"><div class="small">Shopping gaps</div><div class="metric">4</div><div class="small">items for planned meals</div></div>
+      </div>
+
+      <div class="section-title"><h2>Use it before you lose it</h2><span>Priority</span></div>
+      <div class="list">
+        <div class="item">
+          <div class="item-left"><div class="icon">🍗</div><div><div class="name">Chicken Breast</div><div class="meta">1.25 lb • Refrigerator</div></div></div>
+          <div class="badge danger">Tomorrow</div>
+        </div>
+        <div class="item">
+          <div class="item-left"><div class="icon">🍄</div><div><div class="name">Mushrooms</div><div class="meta">8 oz • Refrigerator</div></div></div>
+          <div class="badge warn">2 days</div>
+        </div>
+        <div class="item">
+          <div class="item-left"><div class="icon">🥬</div><div><div class="name">Spinach</div><div class="meta">1 bag • Refrigerator</div></div></div>
+          <div class="badge warn">3 days</div>
+        </div>
+      </div>
+    </section>
+
+    <section id="inventory" class="screen">
+      <div class="section-title"><h2>Inventory</h2><span>18 items</span></div>
+      <input class="search" placeholder="Search pantry, fridge, freezer..." />
+      <div class="tabs" style="margin-top:10px">
+        <button class="active">All</button><button>Fridge</button><button>Freezer</button><button>Pantry</button>
+      </div>
+      <div class="list">
+        <div class="item"><div class="item-left"><div class="icon">🍗</div><div><div class="name">Chicken Breast</div><div class="meta">1.25 lb • Known fact</div></div></div><div class="badge">Costco receipt</div></div>
+        <div class="item"><div class="item-left"><div class="icon">🥛</div><div><div class="name">Greek Yogurt</div><div class="meta">2 × 16 oz • Barcode</div></div></div><div class="badge">98% confidence</div></div>
+        <div class="item"><div class="item-left"><div class="icon">🍌</div><div><div class="name">Bananas</div><div class="meta">5 • Estimated shelf life</div></div></div><div class="badge warn">4 days</div></div>
+        <div class="item"><div class="item-left"><div class="icon">🫒</div><div><div class="name">Olive Oil</div><div class="meta">24 oz • Pantry</div></div></div><div class="badge">Manual</div></div>
+      </div>
+      <button class="btn" style="margin-top:14px" onclick="go('add')">+ Add food</button>
+      <div class="footer-note">MVP principle: inventory history should be auditable. Purchases, consumption, expiration, waste, and corrections should be recorded as inventory events.</div>
+    </section>
+
+    <section id="add" class="screen">
+      <div class="section-title"><h2>Add food</h2><span>Fast input</span></div>
+      <div class="scanner">
+        <div class="camera">📷</div>
+        <div class="name">Scan something</div>
+        <div class="small" style="margin-top:5px">Use your camera to add products with minimal typing.</div>
+        <div class="scan-options">
+          <button class="btn" onclick="demoScan('barcode')">Scan barcode</button>
+          <button class="btn secondary" onclick="demoScan('receipt')">Scan receipt</button>
+          <button class="btn secondary" onclick="demoScan('photo')">Photo pantry</button>
+          <button class="btn secondary" onclick="demoScan('manual')">Add manually</button>
+        </div>
+      </div>
+      <div id="scanResult" style="margin-top:14px"></div>
+    </section>
+
+    <section id="plan" class="screen">
+      <div class="section-title"><h2>Meal plan</h2><span>3-day MVP</span></div>
+      <div class="list">
+        <div class="card">
+          <div class="small">Tonight</div>
+          <div class="name" style="margin-top:4px">Chicken Mushroom Stir-Fry</div>
+          <div class="meta">Uses 4 on-hand ingredients • 0 missing</div>
+        </div>
+        <div class="card">
+          <div class="small">Tomorrow</div>
+          <div class="name" style="margin-top:4px">Greek Yogurt Breakfast Bowl</div>
+          <div class="meta">Uses yogurt + bananas • 1 optional item</div>
+        </div>
+        <div class="card">
+          <div class="small">Day 3</div>
+          <div class="name" style="margin-top:4px">Spinach Omelet & Toast</div>
+          <div class="meta">Uses spinach before expiration • 1 missing</div>
+        </div>
+      </div>
+      <div class="section-title"><h2>Shopping list</h2><span>Auto-generated</span></div>
+      <div class="list">
+        <div class="item"><div><div class="name">Broccoli</div><div class="meta">Need 2 lb • Have 0</div></div><input type="checkbox" /></div>
+        <div class="item"><div><div class="name">Whole grain bread</div><div class="meta">Need 1 loaf</div></div><input type="checkbox" /></div>
+      </div>
+    </section>
+
+    <section id="assistant" class="screen">
+      <div class="section-title"><h2>Kitchen Assistant</h2><span>Inventory-aware</span></div>
+      <div class="chatbox">
+        <div class="bubble user">What can I make for dinner in under 30 minutes?</div>
+        <div class="bubble ai">
+          I recommend Chicken Mushroom Stir-Fry. You already have chicken, mushrooms, spinach, rice, and olive oil. It also helps use ingredients that are approaching expiration.
+          <div class="confidence">Recommendation uses confirmed inventory + estimated expiration dates.</div>
+        </div>
+        <div class="bubble user">What am I missing for chicken parmesan?</div>
+        <div class="bubble ai">
+          You have chicken and olive oil. You're missing breadcrumbs, parmesan, mozzarella, and tomato sauce.
+          <div class="confidence">Inventory source: household inventory. Recipe ingredients: AI-generated draft; verify before cooking if allergy-sensitive.</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:10px">
+        <input class="search" id="chatInput" placeholder="Ask about meals, food, or shopping..." />
+        <button class="btn" style="width:auto" onclick="sendChat()">Send</button>
+      </div>
+      <div class="footer-note">Allergen safety should rely on verified ingredient data and deterministic rules, not AI text alone.</div>
+    </section>
+  </main>
+
+  <nav class="nav">
+    <button class="active" data-screen="home" onclick="go('home',this)"><span>🏠</span><span>Home</span></button>
+    <button data-screen="inventory" onclick="go('inventory',this)"><span>🥫</span><span>Inventory</span></button>
+    <button data-screen="add" onclick="go('add',this)"><span>📷</span><span>Add</span></button>
+    <button data-screen="plan" onclick="go('plan',this)"><span>🗓️</span><span>Plan</span></button>
+    <button data-screen="assistant" onclick="go('assistant',this)"><span>✨</span><span>Assistant</span></button>
+  </nav>
+</div>
+
+<script>
+function go(id, btn){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  document.querySelectorAll('.nav button').forEach(b=>b.classList.remove('active'));
+  const target = btn || document.querySelector(`.nav button[data-screen="${id}"]`);
+  if(target) target.classList.add('active');
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+function demoScan(type){
+  const box = document.getElementById('scanResult');
+  const templates = {
+    barcode: `<div class="card"><div class="small">Barcode result</div><div class="name" style="margin-top:5px">Kirkland Greek Yogurt</div><div class="meta">16 oz • 120 cal/serving • Known fact</div><div class="reason">UPC match found. Quantity: 1. Confirm before adding.</div><button class="btn" style="margin-top:10px" onclick="alert('Added to inventory')">Confirm & add</button></div>`,
+    receipt: `<div class="card"><div class="small">Receipt detected</div><div class="list" style="margin-top:10px"><div class="item"><div><div class="name">Chicken Breast</div><div class="meta">Qty 2 • $14.82</div></div><input type="checkbox" checked></div><div class="item"><div><div class="name">Greek Yogurt</div><div class="meta">Qty 3 • $12.47</div></div><input type="checkbox" checked></div><div class="item"><div><div class="name">Bananas</div><div class="meta">Qty 1 • $2.84</div></div><input type="checkbox" checked></div></div><button class="btn" style="margin-top:10px" onclick="alert('Receipt items confirmed')">Confirm items</button></div>`,
+    photo: `<div class="card"><div class="small">Photo recognition</div><div class="name" style="margin-top:5px">We found 4 possible food items</div><div class="meta">3 high-confidence • 1 needs review</div><div class="reason">Photo recognition does not automatically add inventory. Confirm detected items first.</div></div>`,
+    manual: `<div class="card"><input class="search" placeholder="Food name"><div class="btnrow" style="margin-top:10px"><input class="search" placeholder="Quantity"><input class="search" placeholder="Unit"></div><button class="btn" style="margin-top:10px" onclick="alert('Manual item saved')">Save item</button></div>`
+  };
+  box.innerHTML = templates[type];
+}
+function sendChat(){
+  const input=document.getElementById('chatInput');
+  if(!input.value.trim()) return;
+  alert('Mockup only: "'+input.value+'"');
+  input.value='';
+}
+</script>
+</body>
+</html>

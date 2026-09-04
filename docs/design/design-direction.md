@@ -83,7 +83,17 @@ Intercom's rule adopted with a twist: they reserve one hue exclusively for AI co
 - Everything above ships as a typed `packages/contracts` (or `packages/ui`) token module; no raw hex in screens.
 - Claude's ring-shadows translate to RN as `borderWidth: 1` + border color — keep the values, drop the shadow mechanism.
 
-## 5. Open items
+## 5. Adopted from external mockup review (GPT Sol 5.6 mockup, 2026-09-03)
+
+A comparison mockup (`mockups/kitchenos_mvp_mockup_GPT.html`, product-owner supplied) was reviewed against this direction. Four ideas were adopted, re-skinned into our tokens:
+1. **Home dashboard** as the app's landing screen: greeting → "tonight's best match" card → kitchen-snapshot stat tiles → use-it-soon list.
+2. **Explainability affordance:** deterministic match score (e.g. "92% match") + a "Why this?" expander stating the ranking factors — §14 trust expressed as UI. Copy must state the score is computed, not generated.
+3. **Inventory-accuracy tile** ("94% · 2 items need confirmation"): our north-star correction metric surfaced as a user-facing re-engagement hook.
+4. **Multi-method Add screen** (barcode / receipt / shelf photo / manual) with confirm-before-add behavior on every probabilistic path; non-MVP methods carry phase badges ("fast-follow", "future") so mockups stay scope-honest.
+
+Explicitly **rejected** from that mockup: cool blue-gray neutrals and gradients (violates the warm-neutral rule), emoji-as-icons, red badges for expiration urgency (red is allergen-exclusive here), assistant/meal-plan/nutrition-dashboard screens (deferred scope, D-002), and allergy safety as chat-text disclaimer (violates SR-1).
+
+## 6. Open items
 - OQ-D1: brand accent final call — terracotta (recommended) vs fresh-green (alternative) — cheap to flip until M3 mockups; ties to product name/brand (Q8).
 - OQ-D2: optional serif display face — decide with branding.
 - OQ-D3: validate the palette in real mockups — first pass done: clickable prototype at [mockups/smart-kitchen-prototype.html](mockups/smart-kitchen-prototype.html) (open in any browser); awaiting PO reaction.
