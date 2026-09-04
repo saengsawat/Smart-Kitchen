@@ -19,12 +19,12 @@ _Last updated: 2026-09-03_
 3. Q1–Q10 open questions ([PRODUCT.md §8](PRODUCT.md#8-unanswered-questions-product-owner-input-needed), [MVP_PRD §14](docs/prd/MVP_PRD.md#14-open-questions)) — Q1 (launch market) and Q3 (household permissions) matter earliest.
 
 ## Operational note — repo location
-The repo currently lives inside a OneDrive-synced folder. OneDrive + `.git` is a known source of lock/corruption issues (the source DOCX was already file-locked during extraction). **Recommendation:** move the working clone outside OneDrive (or exclude the folder from sync) and use a proper git remote (GitHub/etc.) as the sync mechanism. Needs user decision before M0-T2 (CI needs a remote anyway).
+**Remote decided (2026-09-03):** `https://github.com/saengsawat/Smart-Kitchen` (branch `main`) is the repo's home and sharing mechanism — this unblocks M0-T2 (CI). The working clone still lives inside a OneDrive-synced folder; recommendation stands to move it out (or exclude from sync) now that GitHub is the sync mechanism — especially since `node_modules/` exists and OneDrive syncs it.
 
 ## Next 3 actions
-1. Decide repo hosting/remote + resolve the OneDrive question above (blocks M0-T2; now more urgent — `node_modules/` exists and OneDrive syncs it unless excluded).
-2. Product owner ratifies D-002 (MVP scope) and D-003 (ledger) — required before M1 starts.
-3. Dispatch M0-T2 (CI + quality gates) once the remote exists; M1-T1/M1-T3 can be dispatched in parallel once D-002/D-003 are ratified.
+1. Product owner ratifies D-002 (MVP scope) and D-003 (ledger) — required before M1 starts. Dean's review of the repo + clickable prototype (docs/design/mockups/) feeds this.
+2. Dispatch M0-T2 (CI + quality gates) — unblocked now that the GitHub remote exists.
+3. Move the working clone out of OneDrive (GitHub is now the sync mechanism).
 
 ## Major risks (top 3 now)
 1. Inventory-accuracy hypothesis fails (users won't maintain even low-friction inventory) — mitigated by correction-rate telemetry from M3 and receipt fast-follow.
