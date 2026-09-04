@@ -6,7 +6,21 @@
 
 ## Current phase
 
-**Phase 0 — engineering foundation.** No application code exists yet; this repo currently contains the complete planning/architecture foundation. Live state: [STATUS.md](STATUS.md). There are no setup/run commands yet — they arrive with ticket M0-T1.
+**Phase 0 — engineering foundation.** This repo contains the complete planning/architecture foundation plus workspace scaffolding (ticket M0-T1); no product/domain logic exists yet. Live state: [STATUS.md](STATUS.md).
+
+## Development
+
+Requires Node.js 20+ and [pnpm](https://pnpm.io/) (install via `corepack enable`, or `npm install -g pnpm` if corepack is unavailable in your environment).
+
+```bash
+pnpm install     # install workspace dependencies
+pnpm lint        # ESLint, incl. the packages/domain dependency-boundary rule
+pnpm typecheck   # tsc -b across all workspace packages (TypeScript strict)
+pnpm test        # Vitest, one placeholder test per package
+pnpm format      # Prettier --write (docs/**, *.md, BACKLOG_TRACKER.csv excluded)
+```
+
+Workspace shape (ARCHITECTURE.md §2): `apps/api` (Fastify — [ADR-002](docs/adr/ADR-002-backend-runtime.md)), `packages/domain` (pure, zero-dependency, zero-I/O core), `packages/contracts`, `packages/adapters`. `packages/domain` may import nothing but itself; an import from `packages/adapters` or `packages/contracts`, or any external package, fails `pnpm lint` (`eslint.config.js`).
 
 ## MVP hypothesis
 
@@ -39,13 +53,14 @@ Full proposal: [ARCHITECTURE.md](ARCHITECTURE.md).
 | [CLAUDE.md](CLAUDE.md) | Standing rules for AI-assisted development |
 | [docs/source/](docs/source/) | Original product brief (unaltered DOCX + extracted text) |
 | [docs/research/](docs/research/) | Research spike outputs (e.g. food-data coverage) |
-| `apps/` `packages/` `tests/fixtures/` `scripts/` | Skeletons; filled starting M0-T1 |
+| `apps/` `packages/` | Workspace scaffolding (M0-T1); no product/domain logic yet |
+| `tests/fixtures/` `scripts/` | Skeletons; filled as later tickets need them |
 
 ## How work is managed
 
 - All work flows through [BACKLOG.md](BACKLOG.md) tickets; one ticket at a time, file scope enforced ([CLAUDE.md](CLAUDE.md)).
 - Decisions are made in [DECISIONS.md](DECISIONS.md)/ADRs — a decision without a log entry didn't happen.
-- Recommended baseline (documented, not yet installed): trunk-based development, short-lived branches, conventional commits with ticket refs, PR review, TypeScript strict + ESLint + Prettier + Vitest, CI with secret/dependency scanning, committed lockfiles, `.env.example` templates. Installed at M0-T1/T2.
+- Baseline: trunk-based development, short-lived branches, conventional commits with ticket refs, PR review, TypeScript strict + ESLint + Prettier + Vitest (installed, M0-T1), CI with secret/dependency scanning (M0-T2, not yet installed), committed lockfiles, `.env.example` templates.
 
 ## Current next step
 

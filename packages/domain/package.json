@@ -1,0 +1,16 @@
+{
+  "name": "@smart-kitchen/domain",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Pure domain logic: ledger, units, allergen rules, gap math, ranking. Zero I/O, zero vendor imports.",
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -b --pretty"
+  },
+  "dependencies": {}
+}
