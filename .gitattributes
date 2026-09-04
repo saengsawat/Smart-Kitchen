@@ -1,0 +1,10 @@
+# Normalize line endings: everything is stored and checked out as LF, so
+# Prettier/lint behave identically on Windows (core.autocrlf=true default),
+# macOS, Linux, and CI. Review finding on M0-T1.
+* text=auto eol=lf
+
+# Binary files — never touch line endings
+*.docx binary
+*.xlsx binary
+*.png binary
+*.jpg binary

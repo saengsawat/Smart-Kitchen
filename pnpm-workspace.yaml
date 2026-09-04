@@ -1,6 +1,11 @@
 packages:
   - "apps/*"
   - "packages/*"
+# vitest 5.0.0 (+ its internal packages) was published 2026-09-03 — the same day
+# as ticket M0-T1 — and trips pnpm's default minimum-release-age supply-chain
+# guard, failing install. Exact-version carve-out for a dev-only test runner;
+# becomes a no-op and can be removed once these versions age past the cutoff.
+# Review finding on M0-T1.
 minimumReleaseAgeExclude:
   - "@vitest/mocker@5.0.0"
   - "@vitest/spy@5.0.0"
