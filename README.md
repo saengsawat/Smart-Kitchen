@@ -64,4 +64,4 @@ Full proposal: [ARCHITECTURE.md](ARCHITECTURE.md).
 
 ## Current next step
 
-Product-owner review of the foundation: approve/amend **D-002 (MVP scope)** and **D-003 (inventory ledger)** in [DECISIONS.md](DECISIONS.md), answer the early open questions ([PRODUCT.md §8](PRODUCT.md#8-unanswered-questions-product-owner-input-needed)), then green-light ticket **M0-T1**.
+M0-T1 (scaffolding) is done. Next: decide the repo remote/hosting (and the OneDrive question in [STATUS.md](STATUS.md)) to unblock **M0-T2 (CI)**, and ratify **D-002 (MVP scope)** / **D-003 (inventory ledger)** in [DECISIONS.md](DECISIONS.md) to unblock **M1**.

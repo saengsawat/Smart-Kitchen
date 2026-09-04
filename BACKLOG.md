@@ -29,7 +29,8 @@ Model routing rules (default Sonnet; Opus for the high-risk domain list; separat
 
 ### Epic M0-E1: Workspace & quality gates
 
-#### M0-T1 — Repo & workspace scaffolding
+#### M0-T1 — Repo & workspace scaffolding ✅ DONE 2026-09-03
+*Sonnet impl → independent Sonnet review (PASS WITH FIXES: `.gitattributes`, release-age comment — applied & re-verified) → accepted & merged. ADR-002 framework question closed (Fastify) before dispatch.*
 - **Implementation model:** Sonnet — routine tooling/config on well-trodden patterns; no domain logic, no data-integrity risk.
 - **Review model:** Sonnet — low blast radius; review focuses on boundary-lint correctness and script reproducibility.
 - **Objective:** pnpm monorepo with `apps/api`, `packages/domain`, `packages/contracts`, `packages/adapters` (placeholder packages, no product logic); TypeScript strict everywhere; ESLint + Prettier; Vitest wired; dependency-boundary lint rule proving `domain` imports nothing but stdlib.
@@ -45,7 +46,7 @@ Model routing rules (default Sonnet; Opus for the high-risk domain list; separat
 #### M0-T2 — CI pipeline & quality gates
 - **Implementation model:** Sonnet — standard CI configuration; security-adjacent (secret/dependency scanning) but assembled from stock actions, verified by deliberate-failure PRs.
 - **Review model:** Sonnet — acceptance criteria are self-demonstrating (the three failing test PRs); reviewer checks gate coverage and branch protection.
-- **Objective:** CI (GitHub Actions assumed once hosting of repo is settled — confirm) running lint, typecheck, unit tests, dependency-boundary check, secret scan (gitleaks-class), dependency audit on every PR; trunk-based flow with short-lived branches; conventional commits with ticket refs documented.
+- **Objective:** CI (GitHub Actions assumed once hosting of repo is settled — confirm) running lint, typecheck, unit tests, **format check** (now that `.gitattributes` normalizes line endings), dependency-boundary check, secret scan (gitleaks-class), dependency audit on every PR; trunk-based flow with short-lived branches; conventional commits with ticket refs documented; short CONTRIBUTING notes incl. Windows long-path caveat (`git config core.longpaths true` / Win32 long paths — M0-T1 follow-up) and pnpm/corepack setup.
 - **Context:** ARCHITECTURE.md quality baseline; CLAUDE.md rules.
 - **Dependencies:** M0-T1; repo pushed to a remote (see OneDrive note in STATUS.md — **decide remote/host with user first**).
 - **Invariants:** no merges to main with red CI; lockfile drift fails CI.
@@ -158,6 +159,9 @@ Meal logging → per-ingredient `USE_IN_MEAL` decrements (INV-MEAL-1), expiratio
 Alerting, cost caps enforcement, load/perf pass, security deep-set (isolation fuzzing, abuse limits), deletion/export flows, pre-launch legal gates (R-3/R-4/R-5), beta readiness review.
 
 ---
+
+## Accepted follow-ups from completed tickets
+- From M0-T1 (worker report, triaged at acceptance): Windows long-path CONTRIBUTING note → folded into M0-T2; `apps/api` dev/watch script (`tsx`-style) → add with first real API ticket (M2); OneDrive-sync concern → tracked in STATUS.md, decide before M0-T2.
 
 ## Non-milestone track (continuous)
 - Fixture corpus growth (every prod bug → fixture first).

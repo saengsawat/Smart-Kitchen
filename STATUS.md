@@ -8,10 +8,10 @@ _Last updated: 2026-09-03_
 ## What exists
 - Original product brief preserved in [docs/source/](docs/source/) (DOCX + extracted text).
 - Full documentation foundation: [PRODUCT.md](PRODUCT.md), [MVP PRD](docs/prd/MVP_PRD.md), [ARCHITECTURE.md](ARCHITECTURE.md) (+ domain/data/AI/system-context/testing docs), [DECISIONS.md](DECISIONS.md), ADR-001…010, [BACKLOG.md](BACKLOG.md) (M0–M1 ticketed, M2–M9 epics), [CLAUDE.md](CLAUDE.md).
-- Git repository initialized with the foundation commit. Skeleton dirs: `apps/`, `packages/`, `scripts/`, `tests/fixtures/` (READMEs only).
+- **M0-T1 DONE (2026-09-03):** pnpm workspace (`apps/api` Fastify skeleton + `packages/domain|contracts|adapters` placeholders), TypeScript strict, ESLint/Prettier/Vitest, domain dependency-boundary lint. Implemented by Sonnet worker, independently Sonnet-reviewed (PASS WITH FIXES — `.gitattributes` LF normalization + supply-chain-exclusion comment, applied and re-verified at acceptance), merged to master. First AI worker/reviewer cycle of the project completed cleanly.
 
 ## In progress
-- **M0-T1 — Repo & workspace scaffolding**: approved by product owner 2026-09-03; being dispatched to a Sonnet worker (Sonnet review to follow) per CLAUDE.md rules 20–27. ADR-002 closed (Node/TS + Fastify) to unblock it.
+- Nothing. Next ticket **M0-T2 (CI)** is blocked on the repo remote/OneDrive decision below.
 
 ## Blocked decisions (need product owner)
 1. **D-002** MVP scope (reduced vertical slice vs brief §19 Phase 1) — formal ratification still pending; M0-T1 is scope-neutral, but this blocks **M1** onward.
@@ -22,9 +22,9 @@ _Last updated: 2026-09-03_
 The repo currently lives inside a OneDrive-synced folder. OneDrive + `.git` is a known source of lock/corruption issues (the source DOCX was already file-locked during extraction). **Recommendation:** move the working clone outside OneDrive (or exclude the folder from sync) and use a proper git remote (GitHub/etc.) as the sync mechanism. Needs user decision before M0-T2 (CI needs a remote anyway).
 
 ## Next 3 actions
-1. Sonnet worker implements M0-T1 on branch `m0-t1-scaffolding`; independent Sonnet review; architect acceptance.
+1. Decide repo hosting/remote + resolve the OneDrive question above (blocks M0-T2; now more urgent — `node_modules/` exists and OneDrive syncs it unless excluded).
 2. Product owner ratifies D-002 (MVP scope) and D-003 (ledger) — required before M1 starts.
-3. Decide repo hosting/remote + resolve the OneDrive question above (blocks M0-T2).
+3. Dispatch M0-T2 (CI + quality gates) once the remote exists; M1-T1/M1-T3 can be dispatched in parallel once D-002/D-003 are ratified.
 
 ## Major risks (top 3 now)
 1. Inventory-accuracy hypothesis fails (users won't maintain even low-friction inventory) — mitigated by correction-rate telemetry from M3 and receipt fast-follow.
