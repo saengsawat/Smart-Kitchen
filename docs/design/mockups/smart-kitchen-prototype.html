@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Smart Kitchen — Clickable Prototype</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
 <style>
@@ -142,6 +142,22 @@
 
   .alertbar { display: flex; align-items: center; gap: 9px; padding: 10px 12px; border-radius: 10px; background: rgba(181,51,51,0.09); border: 1px solid rgba(181,51,51,0.28); }
   .alertbar .t { font-size: 12.5px; font-weight: 600; color: var(--danger); }
+
+  /* Real phones: fill the actual screen — no fake bezel, no fixed 390x844 frame */
+  @media (max-width: 560px), (max-height: 940px) and (pointer: coarse) {
+    body { padding: 0; gap: 0; background: var(--page); }
+    .hint { display: none; }
+    .phone {
+      width: 100%;
+      height: 100vh;   /* fallback */
+      height: 100dvh;  /* tracks the real visible area as browser chrome shows/hides */
+      border-radius: 0;
+      box-shadow: none;
+    }
+    .nav { height: calc(78px + env(safe-area-inset-bottom)); padding-bottom: env(safe-area-inset-bottom); }
+    .toast { bottom: calc(96px + env(safe-area-inset-bottom)); }
+    .screen { padding-top: env(safe-area-inset-top); }
+  }
 </style>
 </head>
 <body>
