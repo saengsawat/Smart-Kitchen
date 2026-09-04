@@ -91,7 +91,9 @@ A comparison mockup (`mockups/kitchenos_mvp_mockup_GPT.html`, product-owner supp
 3. **Inventory-accuracy tile** ("94% · 2 items need confirmation"): our north-star correction metric surfaced as a user-facing re-engagement hook.
 4. **Multi-method Add screen** (barcode / receipt / shelf photo / manual) with confirm-before-add behavior on every probabilistic path; non-MVP methods carry phase badges ("fast-follow", "future") so mockups stay scope-honest.
 
-Explicitly **rejected** from that mockup: cool blue-gray neutrals and gradients (violates the warm-neutral rule), emoji-as-icons, red badges for expiration urgency (red is allergen-exclusive here), assistant/meal-plan/nutrition-dashboard screens (deferred scope, D-002), and allergy safety as chat-text disclaimer (violates SR-1).
+Explicitly **rejected** from that mockup: cool blue-gray neutrals and gradients (violates the warm-neutral rule), emoji-as-icons, red badges for expiration urgency (red is allergen-exclusive here), meal-plan/nutrition-dashboard screens (deferred scope, D-002), and allergy safety as chat-text disclaimer (violates SR-1).
+
+**Assistant (added later at PO request, 2026-09-03):** included in the prototype as an explicitly labeled **post-MVP preview** — entered from a Home header button, deliberately *not* in the primary nav (nav reflects MVP scope). The preview demonstrates the safe pattern: every answer carries a provenance caption; the allergen exchange shows the answer coming from verified label data + household rules with the standard red alert bar, and never claims a food is safe. D-002 scope is unchanged — the assistant remains deferred for implementation.
 
 ## 6. Open items
 - OQ-D1: brand accent final call — terracotta (recommended) vs fresh-green (alternative) — cheap to flip until M3 mockups; ties to product name/brand (Q8).
