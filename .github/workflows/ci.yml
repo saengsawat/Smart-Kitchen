@@ -22,9 +22,10 @@ jobs:
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v6.1.0
-        with:
-          # Major pinned to match pnpm-lock.yaml (packageManager: pnpm@12.3.1).
-          version: 12
+        # No `version` input: pnpm/action-setup errors if it's given alongside
+        # package.json's "packageManager" field (even a satisfying prefix like
+        # "12"), so this reads pnpm@12.3.1 from packageManager instead — the
+        # exact version, sourced from the one place it's declared.
 
       - name: Setup Node.js
         uses: actions/setup-node@v7.0.0
