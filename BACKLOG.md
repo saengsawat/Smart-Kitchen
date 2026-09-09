@@ -65,7 +65,8 @@ Model routing rules (default Sonnet; Opus for the high-risk domain list; separat
 
 ### Epic M1-E1: Deterministic domain package
 
-#### M1-T1 — Inventory ledger core
+#### M1-T1 — Inventory ledger core ✅ DONE 2026-09-08
+*Opus worker → independent Opus review (PASS WITH FIXES: forged-systemFlag spread + rehydration input-trust — fixed by worker, re-reviewed, final PASS; fixes mutation-proven) → squash-merged (keeps a gitleaks false-positive fixture commit out of main history). 75 tests incl. INV-LEDGER-1..4 property suites. Handoff: [worker](docs/handoff/M1-T1.worker.md) · [review](docs/handoff/M1-T1.review.md). Clamp/idempotency semantics recorded under D-003.*
 - **Implementation model:** **Opus** — the highest-risk domain work in the system: ledger/reconciliation math, idempotency semantics, immutability guarantees (CLAUDE.md rule-23 list, multiple hits).
 - **Review model:** **Opus** — invariants INV-LEDGER-1..4 are permanent product guarantees; review must adversarially probe derivation, replay, and negative-quantity edge cases.
 - **Objective:** `packages/domain/inventory`: transaction types (`PURCHASE|CONSUME|USE_IN_MEAL|DISCARD|EXPIRE|DONATE|ADJUSTMENT|INITIAL_STOCK`), lot/item aggregates, quantity derivation, idempotency-key semantics, negative-quantity policy (implement the clamp+flagged-adjustment proposal; record outcome in domain-model OQ).
@@ -86,6 +87,7 @@ Model routing rules (default Sonnet; Opus for the high-risk domain list; separat
 - **Dependencies:** M1-T1 (types inform columns); D-007 ratified enough to proceed (PROPOSED→DECIDED expected here).
 - **Invariants:** INV-TENANT-1 test harness exists (even with only fixture users); ledger tables reject UPDATE/DELETE from app role.
 - **Acceptance criteria:** migrate up/down clean on empty + seeded DB; reconciliation query matches domain derivation on generated data.
+- **Acceptance additions from M1-T1 (architect, 2026-09-08):** unique idempotency index scoped `(household_id, idempotency_key)` (ruling on M1-T1 §8.1 — batch imports suffix per line); snapshots updated in the same DB transaction as the append; reconciliation query must agree with domain `reconcile()` on generated data; `rehydrateInventoryItem` is the reference corruption detector for rows read back; store both `qty_delta` and exact `qty_delta_micros`.
 - **Tests:** database tests per testing-strategy §1 (constraints, append-only, isolation), migration reversibility.
 - **File scope:** `apps/api/db/**` (migrations), `packages/domain` untouched except type exports.
 - **Out of scope:** HTTP endpoints (M2), auth integration (M2), receipt/shopping tables (later migrations).
@@ -164,6 +166,7 @@ Alerting, cost caps enforcement, load/perf pass, security deep-set (isolation fu
 
 ## Accepted follow-ups from completed tickets
 - From M0-T1 (worker report, triaged at acceptance): Windows long-path CONTRIBUTING note → folded into M0-T2 (✅ done); `apps/api` dev/watch script (`tsx`-style) → add with first real API ticket (M2); OneDrive-sync concern → tracked in STATUS.md.
+- From M1-T1 (worker §9 + review, triaged at acceptance 2026-09-08): **lot-selection policy (FEFO/FIFO) for consumption** — domain helper + UX input, needed before meal-log decrements (M2/M8, Opus); correction-rate telemetry query over `OVER_CONSUMPTION` clamps + user adjustments (after M1-T2); M1-T3 replaces the ledger's pass-through `Unit` string at the service boundary (in T3's dispatch); boundary schema validation belt-and-braces + who may claim a `system` actor + mustUse-style handling of discarded `AppendResult`s (M2); observation-boundary invariant test for unconfirmed AI-tier rows (M6); timestamp normalisation note added to ADR-010.
 - From M0-T2 (worker report + review, triaged at acceptance 2026-09-08): bump `packageManager` pnpm 12.3.1 → 12.3.4 (one-line maintenance, next ticket that touches package.json); add `workflow_dispatch:` trigger to ci.yml (optional convenience, with that same change); SHA-pin the remaining actions (checkout/setup-node/pnpm-setup — hardening, fold into M9); after the owner applies branch protection, verify a real PR shows both required checks (architect acceptance step, next PR).
 
 ## Non-milestone track (continuous)

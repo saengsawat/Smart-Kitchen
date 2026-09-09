@@ -21,4 +21,5 @@ Ledger appends, idempotency keys, and client-generated IDs are mandatory now (al
 
 ## Open questions
 - How much of inventory browse should be cached for offline read? (M3)
+- Timestamp handling for offline/skewed clients (from M1-T1): the ledger rejects `recordedAt < occurredAt` and treats `occurredAt` string differences as payload conflicts on idempotent retry — the sync/API layer should normalise timestamps (parse-and-canonicalise) before append; decide skew tolerance here.
 - If B triggers: sync engine vs hand-rolled vs DB-native — full evaluation then, not now.

@@ -12,7 +12,9 @@ _Last updated: 2026-09-03_
 - **M0-T2 DONE (2026-09-08) — Milestone 0 complete:** GitHub Actions CI (`quality` + `secret-scan` jobs: frozen-lockfile install, lint, typecheck, test, format check, `pnpm audit`, gitleaks), CONTRIBUTING.md (conventions, setup, Windows long-path caveat, branch-protection checklist), README badge. Sonnet impl, Sonnet review (PASS, no fixes; all five verification runs re-confirmed via live Actions API), merged. Reviewer→architect handoff ran via direct cross-session message — no human relay.
 
 ## In progress
-- **M1 queue running under architect dispatch (CLAUDE.md rules 28–30), PO-approved order: T1 → T3 → T5 → T4 → T2, one at a time.** Currently: **M1-T1 (inventory ledger core, Opus worker/Opus reviewer)** on branch `m1-t1-ledger`. PO has asked for a stop after the M1 queue completes.
+- **M1 queue running under architect dispatch (CLAUDE.md rules 28–30), PO-approved order: T1 → T3 → T5 → T4 → T2, one at a time. PO has asked for a stop after the queue completes.**
+- ✅ **M1-T1 DONE (2026-09-08):** inventory ledger core merged (squash) — exact bigint micro-unit arithmetic, per-lot clamp with unforgeable system flag, idempotent replay + conflict rejection, rehydration as corruption detector; 75 tests incl. INV-LEDGER-1..4. Opus/Opus, PASS after one fix round. Handoff: docs/handoff/M1-T1.{worker,review}.md.
+- Currently: **M1-T3 (units & quantity model, Sonnet worker/Opus reviewer)** on branch `m1-t3-units`.
 
 ## Awaiting owner action
 - **Apply branch protection on `main`** per the checklist in [CONTRIBUTING.md](CONTRIBUTING.md) (require PR; required checks exactly `quality` and `secret-scan`; block force pushes). Architect verifies the branch's `protected` flag afterwards.

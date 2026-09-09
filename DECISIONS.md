@@ -22,6 +22,7 @@ Owners: `PO` = product owner (Dean), `ENG` = engineering.
 - **Date:** 2026-09-03 · **Status:** DECIDED (2026-09-08) · **Owner:** ENG+PO
 - **Decision/record:** [ADR-008](docs/adr/ADR-008-inventory-ledger.md). Alternatives and consequences there.
 - **Evidence:** product owner's foundation-first directive (2026-09-08) approving non-UI foundation build, of which the ledger is the keystone; no objection raised to the ADR-008 recommendation since 2026-09-03.
+- **Implementation addenda (M1-T1, 2026-09-08, reviewed):** negative-quantity semantics settled — never-negative committed state, full-magnitude recording + system-flagged residual `ADJUSTMENT`, per-lot clamping, flag unforgeable by callers. Idempotency: identical-payload replay = no-op; different payload on a reused key = rejected conflict. Quantities: exact scaled-integer (micro-unit) arithmetic, unrepresentable inputs rejected, no balance cap. Details: [docs/handoff/M1-T1.worker.md](docs/handoff/M1-T1.worker.md) + [review](docs/handoff/M1-T1.review.md).
 
 ## D-004 — Modular monolith backend; no microservices/K8s/event streaming/CQRS at MVP
 - **Date:** 2026-09-03 · **Status:** PROPOSED · **Owner:** ENG

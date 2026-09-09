@@ -26,7 +26,7 @@ These encode the product's non-negotiables; each becomes a permanent test with t
 | INV-LEDGER-1 | Inventory cannot silently disappear: for any transaction sequence, `current_qty` == Σ deltas, and every change is attributable to a transaction |
 | INV-LEDGER-2 | Ledger rows are immutable; correction = new `ADJUSTMENT` row |
 | INV-LEDGER-3 | Replaying any write with the same idempotency key is a no-op (retried inventory command ⇒ no duplicate consumption) |
-| INV-LEDGER-4 | Negative quantity is impossible without an explicit flagged adjustment |
+| INV-LEDGER-4 | No committed inventory state is ever negative, at lot or item level; an overshooting decrease is recorded at full magnitude and compensated in the same operation by a system-authored, caller-unforgeable flagged adjustment carrying the exact residual *(wording settled in M1-T1)* |
 | INV-TENANT-1 | Household A can never read/write household B data — exhaustive authz matrix over every endpoint + (if RLS adopted) DB-level test with app-role credentials |
 | INV-SHOP-1 | `needed_qty == max(0, required − usable_on_hand)` for all unit-compatible cases; incompatible units force explicit resolution, never silent guesses |
 | INV-RCPT-1 | Processing the same receipt twice (same content hash) adds inventory at most once |
