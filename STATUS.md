@@ -12,7 +12,7 @@ _Last updated: 2026-09-03_
 - **M0-T2 DONE (2026-09-08) — Milestone 0 complete:** GitHub Actions CI (`quality` + `secret-scan` jobs: frozen-lockfile install, lint, typecheck, test, format check, `pnpm audit`, gitleaks), CONTRIBUTING.md (conventions, setup, Windows long-path caveat, branch-protection checklist), README badge. Sonnet impl, Sonnet review (PASS, no fixes; all five verification runs re-confirmed via live Actions API), merged. Reviewer→architect handoff ran via direct cross-session message — no human relay.
 
 ## In progress
-- Nothing in flight. **M1-T1 (inventory ledger core, Opus/Opus) is next for dispatch** — tree is free.
+- **M1 queue running under architect dispatch (CLAUDE.md rules 28–30), PO-approved order: T1 → T3 → T5 → T4 → T2, one at a time.** Currently: **M1-T1 (inventory ledger core, Opus worker/Opus reviewer)** on branch `m1-t1-ledger`. PO has asked for a stop after the M1 queue completes.
 
 ## Awaiting owner action
 - **Apply branch protection on `main`** per the checklist in [CONTRIBUTING.md](CONTRIBUTING.md) (require PR; required checks exactly `quality` and `secret-scan`; block force pushes). Architect verifies the branch's `protected` flag afterwards.

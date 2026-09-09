@@ -61,6 +61,11 @@ This repo is the project's durable memory. These rules bind every session (human
 26. **A ticket is not DONE merely because code was written.** Done requires: implementation complete; required tests passing; reviewer **PASS** (or PASS WITH FIXES with the fixes completed and re-checked); documentation updated where required; no unresolved architecture conflict; and STATUS.md updated per rule 27.
 27. **STATUS.md updates only on acceptance.** [STATUS.md](STATUS.md) is updated only after reviewed work is accepted by the architect — never by workers mid-ticket, never for unreviewed work.
 
+### Dispatch & handoff (adopted 2026-09-08, PO-approved)
+28. **Architect-dispatched agents.** Workers and reviewers are normally dispatched by the architect as sub-agents with the ticket's designated model; separate agent contexts satisfy rule 22's implementer/reviewer separation. Separate human-run sessions remain equally valid.
+29. **Reports are repo records, not chat.** Every worker's final commit on its branch adds `docs/handoff/<TICKET>.worker.md` (its completion report — always within file scope by definition). Reviewers stay read-only: they return their report to the architect, who commits it as `docs/handoff/<TICKET>.review.md` at acceptance. Handoff reports are audit records; requirements live only in tickets/PRD/ADRs.
+30. **Doc updates a ticket's DoD requires** (e.g. refining domain-model.md) are **proposed in the worker's report** and applied by the architect at acceptance — workers still never edit `docs/**` directly (rule 25 boundary preserved).
+
 ## Current phase note
 
-No application code exists yet. Implementation is gated on product-owner approval of D-002/D-003 ([DECISIONS.md](DECISIONS.md)) and an explicit go-ahead for ticket M0-T1.
+Milestone 0 (scaffolding + CI) is complete. D-003/ADR-008 (inventory ledger) is DECIDED; D-016 approved foundation-first build order — **Milestone 1 (domain core) is underway**. D-002 (MVP scope cut) remains PROPOSED and gates M3 (UI) and M5+ sequencing ([DECISIONS.md](DECISIONS.md)).
