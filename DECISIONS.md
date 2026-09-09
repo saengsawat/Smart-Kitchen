@@ -45,7 +45,8 @@ Owners: `PO` = product owner (Dean), `ENG` = engineering.
 - **Status:** PROPOSED (pattern) · **Record:** [ADR-005](docs/adr/ADR-005-ai-provider-abstraction.md)
 
 ## D-010 — Food data source cascade
-- **Status:** OPEN — RESEARCH REQUIRED (coverage spike M1-T5) · **Record:** [ADR-006](docs/adr/ADR-006-food-data-sources.md)
+- **Status:** PROPOSED (2026-09-09, R-1 evidence from M1-T5; FDC arm still unmeasured) · **Record:** [ADR-006](docs/adr/ADR-006-food-data-sources.md)
+- **Settled sub-decision:** PLU/produce never enters the live barcode cascade (wrong-but-"found" ~60% of PLU "hits" measured) — curated PLU table instead. **New M4 requirement:** FDC-only-resolved products render allergen status unknown + warning (FDC has no allergen field).
 
 ## D-011 — Receipt/OCR pipeline vendor & shape
 - **Status:** OPEN (fixtures-first regardless) · **Record:** [ADR-007](docs/adr/ADR-007-receipt-ocr-pipeline.md)

@@ -18,7 +18,7 @@ ADRs capture decisions that are expensive to reverse or that future contributors
 | [ADR-003](ADR-003-database.md) | Primary database | PROPOSED (PostgreSQL) |
 | [ADR-004](ADR-004-authentication.md) | Authentication | PROPOSED (managed provider; vendor open) |
 | [ADR-005](ADR-005-ai-provider-abstraction.md) | AI provider abstraction | PROPOSED (ports + evals; no vendor pick) |
-| [ADR-006](ADR-006-food-data-sources.md) | Food/product data sources | OPEN (research required) |
+| [ADR-006](ADR-006-food-data-sources.md) | Food/product data sources | PROPOSED (R-1 measured, 2026-09-09; FDC arm pending) |
 | [ADR-007](ADR-007-receipt-ocr-pipeline.md) | Receipt/OCR pipeline | OPEN (fast-follow feature) |
 | [ADR-008](ADR-008-inventory-ledger.md) | Inventory ledger model | DECIDED (2026-09-08) |
 | [ADR-009](ADR-009-image-object-storage.md) | Image/object storage | OPEN (deferred until receipts) |
