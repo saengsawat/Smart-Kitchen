@@ -72,6 +72,15 @@ Owners: `PO` = product owner (Dean), `ENG` = engineering.
 - **Consequences:** D-002 (the exact MVP feature cut) remains PROPOSED and must be ratified before **M3 (client/UI)** and before committing M5+ sequencing. M2 (household + inventory API) is also non-UI but carries its own cost gates (auth vendor, hosting) — dispatch decision at M1 exit.
 - **Alternatives:** wait for full D-002 ratification (rejected: stalls scope-invariant work on a decision it doesn't depend on).
 
+## D-017 — Allergen screening policies (M1-T4, reviewer-endorsed, architect-ratified)
+- **Date:** 2026-09-10 · **Status:** DECIDED (P1–P4) + one OPEN item · **Owner:** ENG (safety policies within brief §3/§18E mandate) — PO may overturn
+- **P1 Cross-contact (`MAY_CONTAIN`):** `severe ⇒ BLOCKED`, `standard ⇒ ALLOWED_WITH_UNKNOWNS + high CROSS_CONTACT warning`. Frozen data in the engine, deliberately NOT a caller option (an option turning a block into a non-block is a forbidden override channel). Rationale: MAY_CONTAIN is a manufacturer statement of uncertainty — mapped to the uncertainty verdict, surfaced never hidden; blocking for standard-severity would remove much of packaged goods with no tolerance channel.
+- **P2:** molluscs stay inside the `shellfish` term data (over-inclusion blocks; under-inclusion exposes). Distinct `mollusc` code arrives with the M4 taxonomy extension.
+- **P3:** coconut stays in `tree_nut` for MVP (FDA labeling alignment); the separate-code split is **pulled forward to M4** (reviewer: highest-cost conservative call in the data).
+- **P4:** severe + unknown data is NOT escalated to BLOCKED at the engine (INV-ALRG-2 prescribes unknown+warning; escalation would collapse "don't know" into "know it's there"); the critical `SEVERE_ALLERGY_UNKNOWN_DATA` warning is the hook for an M6 recommendation-layer filtering policy.
+- **P5 (partial):** a declaration with an empty/missing `source` never licenses absence (implemented). **OPEN:** who may mint a `KNOWN_FACT` `AllergenDeclaration` — the trust root of the permissive verdict; must be decided before M4 wires adapter/catalog data in (same family as the M1-T1 "who may claim a system actor" question).
+- **Accepted residual risk (recorded):** homoglyph (Cyrillic а) and genuine-hyphen (`pea-nut`) text evasion is not caught by matching; invisible-character evasion IS caught (stripped). Mitigation path: M6 suspicious-character detector that *warns and refuses to license absence* — adds warnings, never matches. Evidence: [docs/handoff/M1-T4.review.md](docs/handoff/M1-T4.review.md).
+
 ---
 
 ## Open product-owner questions (not yet decisions)

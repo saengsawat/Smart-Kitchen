@@ -52,7 +52,11 @@ tests/fixtures/
   inventories/     household inventory snapshots + transaction histories for
                    recommendation/gap-math scenarios (incl. near-expiry sets)
   recommendations/ generation contexts + recorded LLM outputs (valid, malformed,
-                   adversarial/allergen-violating, prompt-injection attempts)
+                   adversarial/allergen-violating, prompt-injection attempts).
+                   15 screening-*.json cases exist (M1-T4; schema in that dir's README).
+                   NOTE: packages/domain has no Node fs types by design (zero-I/O boundary),
+                   so its corpus tests mirror these JSONs as in-file constants — keep the two
+                   in sync (a consistency check from packages/adapters is backlogged)
   nutrition/       source profiles + expected computed totals
 ```
 

@@ -28,7 +28,8 @@
 | **ProductIdentifier** | GTIN/UPC/EAN/PLU → catalog item | One product may have several codes; codes get reassigned (keep source + seen-at) |
 | **CanonicalIngredient** | Cooking-level food concept | Small curated taxonomy to start; category, default unit kind, default shelf-life by storage location (drives §8 estimates) |
 | **NutritionProfile** | Per-serving/per-100g nutrients (§2A, §9) | Attached to catalog item (branded) or ingredient (generic, e.g. USDA FDC); source + tier required |
-| **AllergenAssertion** | Product/ingredient contains/may-contain allergen (§3) | Deterministic layer input; absence-of-data ≠ absence-of-allergen (SR-2) |
+| **AllergenAssertion** | Product/ingredient contains/may-contain allergen (§3) | Kinds are `CONTAINS | MAY_CONTAIN` **only** — there is deliberately no negative/"free-from" kind; invented negative kinds are rejected and degrade to unknown (M1-T4). Absence-of-data ≠ absence-of-allergen (SR-2) |
+| **AllergenDeclaration** | A positive, sourced completeness claim (M1-T4) | The **sole licence** for a screening verdict to conclude absence: two independent claims (`majorAllergens` completeness licenses major-code restrictions; `ingredientStatement` completeness licenses user-defined terms — no cross-licensing). Counts only at exact tier `KNOWN_FACT` with a non-empty `source`. Who may mint one = OPEN decision, must be settled before M4 wires adapter data (D-017) |
 
 ### Inventory (household-scoped) — the core
 | Entity | Purpose | Notes |
@@ -95,6 +96,7 @@
 5. Every household-scoped row is reachable only through membership (NFR-1).
 6. An `AIObservation` below its kind's confidence threshold cannot transition to `confirmed` without a user action (§14, SR-4).
 7. No recommendation may surface a recipe whose known ingredients intersect a member's `AllergyRestriction` set (SR-1) — deterministic check, post-generation.
+8. Allergen screening returns a 3-state verdict (`BLOCKED | ALLOWED_WITH_UNKNOWNS | ALLOWED`) with **worst-wins aggregation**: per-restriction outcome → worst across loci → worst across a member's restrictions → household verdict = worst member. `ALLOWED` means *no known match under a valid sourced completeness declaration* — never "safe" — and is unreachable from silence, unsourced declarations, or sub-`KNOWN_FACT` tiers. *(Implemented and adversarially reviewed in M1-T4; policies in D-017.)*
 
 ## 5. Open modeling questions
 
