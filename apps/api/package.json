@@ -8,9 +8,18 @@
   "scripts": {
     "build": "tsc -b --pretty",
     "start": "node dist/server.js",
-    "typecheck": "tsc -b --pretty"
+    "typecheck": "tsc -b --pretty",
+    "db:migrate": "node-pg-migrate --migrations-dir db/migrations --migrations-table sk_migrations up",
+    "db:migrate:down": "node-pg-migrate --migrations-dir db/migrations --migrations-table sk_migrations down"
   },
   "dependencies": {
-    "fastify": "^5.12.1"
+    "@smart-kitchen/domain": "workspace:*",
+    "fastify": "^5.12.1",
+    "node-pg-migrate": "9.0.0",
+    "pg": "8.23.0"
+  },
+  "devDependencies": {
+    "@types/pg": "^8.23.1",
+    "fast-check": "^4.9.0"
   }
 }
