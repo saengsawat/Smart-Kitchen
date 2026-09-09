@@ -31,8 +31,15 @@ export const dbTestsEnabled = typeof databaseUrl === "string" && databaseUrl.tri
 
 const ciFlag = process.env["CI"];
 
-/** True when running on CI, where skipping a database suite is a build failure. */
-export const runningInCi = ciFlag === "true" || ciFlag === "1";
+/**
+ * True when running on CI, where skipping a database suite is a build failure.
+ *
+ * `GITHUB_ACTIONS` is checked as well as `CI` so that the gate does not quietly
+ * disarm itself if the generic variable ever stops being set — the guards below
+ * are only worth having if they cannot be switched off by accident.
+ */
+export const runningInCi =
+  ciFlag === "true" || ciFlag === "1" || process.env["GITHUB_ACTIONS"] === "true";
 
 /**
  * Announces a skipped database suite on stderr — one line per suite, alongside
