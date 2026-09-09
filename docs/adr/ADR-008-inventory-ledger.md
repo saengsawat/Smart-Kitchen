@@ -1,6 +1,6 @@
 # ADR-008: Inventory ledger model
 
-**Status:** PROPOSED (strong lean — foundational; approve before M1) · Owner: eng + product owner
+**Status:** DECIDED (2026-09-08, D-016 foundation-first directive — see [DECISIONS.md](../../DECISIONS.md) D-003) · Owner: eng + product owner
 
 ## Context
 Inventory is the product (brief §18C). §7 requires a historical record of consumption/waste with typed reasons; §14 requires explainable system beliefs; duplicate/retry safety is an MVP acceptance criterion. The core representational choice: mutate a quantity, or record events and derive quantity.

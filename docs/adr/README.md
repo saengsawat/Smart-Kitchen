@@ -20,6 +20,6 @@ ADRs capture decisions that are expensive to reverse or that future contributors
 | [ADR-005](ADR-005-ai-provider-abstraction.md) | AI provider abstraction | PROPOSED (ports + evals; no vendor pick) |
 | [ADR-006](ADR-006-food-data-sources.md) | Food/product data sources | OPEN (research required) |
 | [ADR-007](ADR-007-receipt-ocr-pipeline.md) | Receipt/OCR pipeline | OPEN (fast-follow feature) |
-| [ADR-008](ADR-008-inventory-ledger.md) | Inventory ledger model | PROPOSED (strong lean — foundational) |
+| [ADR-008](ADR-008-inventory-ledger.md) | Inventory ledger model | DECIDED (2026-09-08) |
 | [ADR-009](ADR-009-image-object-storage.md) | Image/object storage | OPEN (deferred until receipts) |
 | [ADR-010](ADR-010-offline-sync.md) | Offline & synchronization strategy | OPEN (online-first MVP proposed) |

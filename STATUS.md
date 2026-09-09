@@ -14,17 +14,18 @@ _Last updated: 2026-09-03_
 - **M0-T2 — CI pipeline & quality gates**: dispatched 2026-09-08 to a Sonnet worker (independent Sonnet review to follow). Ticket amended for missing `gh` CLI (demo branches + public Actions API instead of PR tooling; branch protection = owner checklist).
 
 ## Blocked decisions (need product owner)
-1. **D-002** MVP scope (reduced vertical slice vs brief §19 Phase 1) — formal ratification still pending; M0-T1 is scope-neutral, but this blocks **M1** onward.
-2. **D-003 / ADR-008** inventory ledger model — ratification pending; blocks M1.
-3. Q1–Q10 open questions ([PRODUCT.md §8](PRODUCT.md#8-unanswered-questions-product-owner-input-needed), [MVP_PRD §14](docs/prd/MVP_PRD.md#14-open-questions)) — Q1 (launch market) and Q3 (household permissions) matter earliest.
+1. **D-002** MVP scope (reduced vertical slice vs brief §19 Phase 1) — per **D-016** (foundation-first, 2026-09-08) this no longer blocks M1; it must be ratified (Dean) before **M3 (UI)** and M5+ sequencing.
+2. Q1–Q10 open questions ([PRODUCT.md §8](PRODUCT.md#8-unanswered-questions-product-owner-input-needed), [MVP_PRD §14](docs/prd/MVP_PRD.md#14-open-questions)) — Q1 (launch market) and Q3 (household permissions) matter earliest.
+
+*(D-003 ledger model: DECIDED 2026-09-08 — M1 is unblocked.)*
 
 ## Operational note — repo location
 **Remote decided (2026-09-03):** `https://github.com/saengsawat/Smart-Kitchen` (branch `main`) is the repo's home and sharing mechanism — this unblocks M0-T2 (CI). The working clone still lives inside a OneDrive-synced folder; recommendation stands to move it out (or exclude from sync) now that GitHub is the sync mechanism — especially since `node_modules/` exists and OneDrive syncs it.
 
 ## Next 3 actions
-1. Product owner ratifies D-002 (MVP scope) and D-003 (ledger) — required before M1 starts. Dean's review of the repo + clickable prototype (docs/design/mockups/) feeds this.
-2. Dispatch M0-T2 (CI + quality gates) — unblocked now that the GitHub remote exists.
-3. Move the working clone out of OneDrive (GitHub is now the sync mechanism).
+1. Complete the M0-T2 cycle (worker → review → acceptance; owner applies the branch-protection checklist).
+2. Dispatch M1 foundation tickets — order: **M1-T1** (ledger core, Opus/Opus) → then **M1-T3** (units) and **M1-T5** (lookup ports + R-1 research) → **M1-T4** (allergens) → **M1-T2** (schema, needs M1-T1). One worker session at a time in this clone (shared working tree).
+3. Dean ratifies D-002 (MVP scope) — now needed before **M3 (UI)**, not M1; the repo + prototype are his review package. (Also: move this clone out of OneDrive.)
 
 ## Major risks (top 3 now)
 1. Inventory-accuracy hypothesis fails (users won't maintain even low-friction inventory) — mitigated by correction-rate telemetry from M3 and receipt fast-follow.

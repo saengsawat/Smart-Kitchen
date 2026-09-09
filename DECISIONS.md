@@ -19,8 +19,9 @@ Owners: `PO` = product owner (Dean), `ENG` = engineering.
 - **Consequences:** Receipt scanning — the brief's flagship automation — is deliberately *not* in the first cut; pulled forward if barcode-only friction proves too high.
 
 ## D-003 — Inventory as append-only ledger
-- **Date:** 2026-09-03 · **Status:** PROPOSED (strong lean) — ratify with D-002 · **Owner:** ENG+PO
+- **Date:** 2026-09-03 · **Status:** DECIDED (2026-09-08) · **Owner:** ENG+PO
 - **Decision/record:** [ADR-008](docs/adr/ADR-008-inventory-ledger.md). Alternatives and consequences there.
+- **Evidence:** product owner's foundation-first directive (2026-09-08) approving non-UI foundation build, of which the ledger is the keystone; no objection raised to the ADR-008 recommendation since 2026-09-03.
 
 ## D-004 — Modular monolith backend; no microservices/K8s/event streaming/CQRS at MVP
 - **Date:** 2026-09-03 · **Status:** PROPOSED · **Owner:** ENG
@@ -62,6 +63,12 @@ Owners: `PO` = product owner (Dean), `ENG` = engineering.
 ## D-015 — No scraped recipe content; AI-original recipes for MVP
 - **Date:** 2026-09-03 · **Status:** PROPOSED · **Owner:** PO
 - **Source:** Brief §18D (DOCUMENTED constraint); licensing a recipe DB remains an open product option (Q6).
+
+## D-016 — Foundation-first build order: M1 unblocked ahead of full D-002 ratification
+- **Date:** 2026-09-08 · **Status:** DECIDED · **Owner:** PO (directive: "build foundation first — any tickets that don't relate to UI")
+- **Decision:** Non-UI foundation work proceeds now: remainder of M0, and all of M1 (ledger core, Postgres schema, units model, allergen rule engine, product-lookup ports + R-1 coverage research). These are scope-invariant — required under any plausible MVP cut, including the brief's full Phase 1 — so building them does not pre-empt D-002.
+- **Consequences:** D-002 (the exact MVP feature cut) remains PROPOSED and must be ratified before **M3 (client/UI)** and before committing M5+ sequencing. M2 (household + inventory API) is also non-UI but carries its own cost gates (auth vendor, hosting) — dispatch decision at M1 exit.
+- **Alternatives:** wait for full D-002 ratification (rejected: stalls scope-invariant work on a decision it doesn't depend on).
 
 ---
 
