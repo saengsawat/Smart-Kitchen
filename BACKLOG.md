@@ -47,14 +47,15 @@ Model routing rules (default Sonnet; Opus for the high-risk domain list; separat
 - **Implementation model:** Sonnet — standard CI configuration; security-adjacent (secret/dependency scanning) but assembled from stock actions, verified by deliberate-failure PRs.
 - **Review model:** Sonnet — acceptance criteria are self-demonstrating (the three failing test PRs); reviewer checks gate coverage and branch protection.
 - **Objective:** CI (GitHub Actions assumed once hosting of repo is settled — confirm) running lint, typecheck, unit tests, **format check** (now that `.gitattributes` normalizes line endings), dependency-boundary check, secret scan (gitleaks-class), dependency audit on every PR; trunk-based flow with short-lived branches; conventional commits with ticket refs documented; short CONTRIBUTING notes incl. Windows long-path caveat (`git config core.longpaths true` / Win32 long paths — M0-T1 follow-up) and pnpm/corepack setup.
-- **Context:** ARCHITECTURE.md quality baseline; CLAUDE.md rules.
-- **Dependencies:** M0-T1; repo pushed to a remote (see OneDrive note in STATUS.md — **decide remote/host with user first**).
-- **Invariants:** no merges to main with red CI; lockfile drift fails CI.
-- **Acceptance criteria:** a PR with a lint error, a leaked fake secret, or a domain-boundary violation each fail visibly.
-- **Tests:** CI config exercised by three deliberate-failure test PRs (then closed).
-- **File scope:** `.github/workflows/*` (or host equivalent), `CONTRIBUTING` section in README.
-- **Out of scope:** deployment, E2E infra, coverage gates.
-- **DoD:** branch protection on main; badges/links in README; STATUS.md updated.
+- **Context:** ARCHITECTURE.md quality baseline; CLAUDE.md rules. Remote decided 2026-09-03: `github.com/saengsawat/Smart-Kitchen` (main) → GitHub Actions confirmed as CI host.
+- **Dependencies:** M0-T1 (done); GitHub remote (done).
+- **Invariants:** no merges to main with red CI; lockfile drift fails CI (`--frozen-lockfile`).
+- **Acceptance criteria:** a branch/PR with a lint error, a leaked fake secret, or a domain-boundary violation each fail CI visibly (workflow triggers on both `push` and `pull_request`, so pushed demo branches prove the gates without PR tooling).
+- **Tests:** CI exercised by three deliberate-failure demo branches, run conclusions verified via the repo's public Actions API, then demo branches deleted.
+- **File scope:** `.github/workflows/*`, `CONTRIBUTING.md` (or README CONTRIBUTING section), README badge/link lines.
+- **Out of scope:** deployment, E2E infra, coverage gates, installing new local tooling (incl. `gh` CLI — not installed; do not install without approval).
+- **DoD:** CI green on main; badges/links in README; **branch-protection checklist delivered for the owner to apply in repo Settings** (no admin API access from this machine — architect verifies application at acceptance); STATUS.md updated (architect, on acceptance).
+- *Architect amendment 2026-09-08:* verification method and branch-protection delivery adjusted for missing `gh` CLI; substance of gates unchanged.
 
 ---
 

@@ -11,7 +11,7 @@ _Last updated: 2026-09-03_
 - **M0-T1 DONE (2026-09-03):** pnpm workspace (`apps/api` Fastify skeleton + `packages/domain|contracts|adapters` placeholders), TypeScript strict, ESLint/Prettier/Vitest, domain dependency-boundary lint. Implemented by Sonnet worker, independently Sonnet-reviewed (PASS WITH FIXES — `.gitattributes` LF normalization + supply-chain-exclusion comment, applied and re-verified at acceptance), merged to master. First AI worker/reviewer cycle of the project completed cleanly.
 
 ## In progress
-- Nothing. Next ticket **M0-T2 (CI)** is blocked on the repo remote/OneDrive decision below.
+- **M0-T2 — CI pipeline & quality gates**: dispatched 2026-09-08 to a Sonnet worker (independent Sonnet review to follow). Ticket amended for missing `gh` CLI (demo branches + public Actions API instead of PR tooling; branch protection = owner checklist).
 
 ## Blocked decisions (need product owner)
 1. **D-002** MVP scope (reduced vertical slice vs brief §19 Phase 1) — formal ratification still pending; M0-T1 is scope-neutral, but this blocks **M1** onward.
