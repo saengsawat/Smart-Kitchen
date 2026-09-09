@@ -1,0 +1,49 @@
+{
+  "caseId": "screening-004-missing-data-standard-unknown",
+  "category": "missing-data",
+  "title": "Bare LLM-style recipe, standard milk allergy -> ALLOWED_WITH_UNKNOWNS",
+  "notes": "INV-ALRG-2 core case. Nothing matched, but nothing licenses concluding absence either, so every ingredient is reported unknown.",
+  "input": {
+    "subject": {
+      "kind": "RECIPE",
+      "subjectId": "recipe-grill-01",
+      "title": "Grilled chicken",
+      "ingredients": [
+        {
+          "ref": "chicken breast"
+        },
+        {
+          "ref": "olive oil"
+        },
+        {
+          "ref": "garlic"
+        }
+      ]
+    },
+    "members": [
+      {
+        "memberId": "m-jamie",
+        "restrictions": [
+          {
+            "kind": "MAJOR",
+            "restrictionId": "r1",
+            "allergen": "milk",
+            "severity": "standard"
+          }
+        ]
+      }
+    ]
+  },
+  "expect": {
+    "verdict": "ALLOWED_WITH_UNKNOWNS",
+    "memberVerdicts": {
+      "m-jamie": "ALLOWED_WITH_UNKNOWNS"
+    },
+    "outcomes": {
+      "r1": "UNKNOWN"
+    },
+    "evidenceKinds": [],
+    "unknownReasons": ["NO_ALLERGEN_DATA"],
+    "warningCodes": ["NO_SAFETY_GUARANTEE"]
+  }
+}

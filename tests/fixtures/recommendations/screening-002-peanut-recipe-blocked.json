@@ -1,0 +1,49 @@
+{
+  "caseId": "screening-002-peanut-recipe-blocked",
+  "category": "allergen-violating",
+  "title": "Recipe naming peanut butter vs a peanut allergy -> BLOCKED",
+  "notes": "INV-ALRG-1 core case. The ingredient name alone is sufficient evidence to block; no other field is consulted.",
+  "input": {
+    "subject": {
+      "kind": "RECIPE",
+      "subjectId": "recipe-satay-01",
+      "title": "Chicken satay skewers",
+      "ingredients": [
+        {
+          "ref": "chicken breast"
+        },
+        {
+          "ref": "peanut butter"
+        },
+        {
+          "ref": "lime juice"
+        }
+      ]
+    },
+    "members": [
+      {
+        "memberId": "m-alex",
+        "restrictions": [
+          {
+            "kind": "MAJOR",
+            "restrictionId": "r1",
+            "allergen": "peanut",
+            "severity": "severe"
+          }
+        ]
+      }
+    ]
+  },
+  "expect": {
+    "verdict": "BLOCKED",
+    "memberVerdicts": {
+      "m-alex": "BLOCKED"
+    },
+    "outcomes": {
+      "r1": "MATCH"
+    },
+    "evidenceKinds": ["NAME_TERM"],
+    "unknownReasons": ["NO_ALLERGEN_DATA"],
+    "warningCodes": ["NO_SAFETY_GUARANTEE"]
+  }
+}

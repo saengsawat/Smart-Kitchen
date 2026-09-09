@@ -1,0 +1,47 @@
+{
+  "caseId": "screening-008-user-defined-term-match",
+  "category": "allergen-violating",
+  "title": "User-defined mango allergy matched in the ingredient statement -> BLOCKED",
+  "notes": "User-defined terms are matched by the same token rules as curated terms; no synonyms are invented for them at runtime.",
+  "input": {
+    "subject": {
+      "kind": "PRODUCT",
+      "subjectId": "juice-mango-01",
+      "name": "Tropical Blend Juice",
+      "ingredientsText": "water, apple juice concentrate, mango puree, citric acid",
+      "allergens": [],
+      "declaration": {
+        "majorAllergens": "COMPLETE_FOR_MAJOR_ALLERGENS",
+        "ingredientStatement": "COMPLETE",
+        "tier": "KNOWN_FACT",
+        "source": "manufacturer-label",
+        "observedAt": "2026-08-15T00:00:00.000Z"
+      }
+    },
+    "members": [
+      {
+        "memberId": "m-rowan",
+        "restrictions": [
+          {
+            "kind": "USER_DEFINED",
+            "restrictionId": "r1",
+            "term": "mango",
+            "severity": "severe"
+          }
+        ]
+      }
+    ]
+  },
+  "expect": {
+    "verdict": "BLOCKED",
+    "memberVerdicts": {
+      "m-rowan": "BLOCKED"
+    },
+    "outcomes": {
+      "r1": "MATCH"
+    },
+    "evidenceKinds": ["INGREDIENT_TEXT_TERM"],
+    "unknownReasons": [],
+    "warningCodes": ["NO_SAFETY_GUARANTEE"]
+  }
+}

@@ -1,0 +1,57 @@
+{
+  "caseId": "screening-009-user-defined-no-substring-hit",
+  "category": "valid",
+  "title": "User-defined pea allergy must not match peanut -> ALLOWED (no known match)",
+  "notes": "Matching is token-sequence equality, never substring containment: pea does not match peanut, and peanut does not match pea.",
+  "input": {
+    "subject": {
+      "kind": "PRODUCT",
+      "subjectId": "spread-pb-01",
+      "name": "Peanut Butter Spread",
+      "ingredientsText": "roasted peanuts, sugar, palm oil, salt",
+      "allergens": [
+        {
+          "allergenCode": "peanut",
+          "assertion": "CONTAINS",
+          "provenance": {
+            "tier": "KNOWN_FACT",
+            "source": "manufacturer-label",
+            "observedAt": "2026-08-15T00:00:00.000Z"
+          }
+        }
+      ],
+      "declaration": {
+        "majorAllergens": "COMPLETE_FOR_MAJOR_ALLERGENS",
+        "ingredientStatement": "COMPLETE",
+        "tier": "KNOWN_FACT",
+        "source": "manufacturer-label",
+        "observedAt": "2026-08-15T00:00:00.000Z"
+      }
+    },
+    "members": [
+      {
+        "memberId": "m-rowan",
+        "restrictions": [
+          {
+            "kind": "USER_DEFINED",
+            "restrictionId": "r1",
+            "term": "pea",
+            "severity": "standard"
+          }
+        ]
+      }
+    ]
+  },
+  "expect": {
+    "verdict": "ALLOWED",
+    "memberVerdicts": {
+      "m-rowan": "ALLOWED"
+    },
+    "outcomes": {
+      "r1": "NO_KNOWN_MATCH"
+    },
+    "evidenceKinds": [],
+    "unknownReasons": [],
+    "warningCodes": ["NO_SAFETY_GUARANTEE"]
+  }
+}

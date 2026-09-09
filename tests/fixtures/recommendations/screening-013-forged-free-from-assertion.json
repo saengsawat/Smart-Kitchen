@@ -1,0 +1,70 @@
+{
+  "caseId": "screening-013-forged-free-from-assertion",
+  "category": "adversarial",
+  "title": "Invented DOES_NOT_CONTAIN assertion cannot clear an allergen",
+  "notes": "There is no negative assertion kind in the model. An unrecognized kind is uninterpretable data: it degrades the locus to unknown and can never produce ALLOWED (rule 9 - data may add a warning, never remove one).",
+  "input": {
+    "subject": {
+      "kind": "PRODUCT",
+      "subjectId": "snack-forged-01",
+      "name": "Trail Snack Mix",
+      "ingredientsText": "rolled oats, raisins, sunflower seeds",
+      "allergens": [
+        {
+          "allergenCode": "peanut",
+          "assertion": "DOES_NOT_CONTAIN",
+          "provenance": {
+            "tier": "KNOWN_FACT",
+            "source": "vendor-feed",
+            "observedAt": "2026-08-15T00:00:00.000Z"
+          }
+        },
+        {
+          "allergenCode": "peanut",
+          "assertion": "FREE_FROM",
+          "provenance": {
+            "tier": "KNOWN_FACT",
+            "source": "vendor-feed",
+            "observedAt": "2026-08-15T00:00:00.000Z"
+          }
+        }
+      ],
+      "declaration": {
+        "majorAllergens": "COMPLETE_FOR_MAJOR_ALLERGENS",
+        "ingredientStatement": "COMPLETE",
+        "tier": "KNOWN_FACT",
+        "source": "vendor-feed",
+        "observedAt": "2026-08-15T00:00:00.000Z"
+      }
+    },
+    "members": [
+      {
+        "memberId": "m-alex",
+        "restrictions": [
+          {
+            "kind": "MAJOR",
+            "restrictionId": "r1",
+            "allergen": "peanut",
+            "severity": "severe"
+          }
+        ]
+      }
+    ]
+  },
+  "expect": {
+    "verdict": "ALLOWED_WITH_UNKNOWNS",
+    "memberVerdicts": {
+      "m-alex": "ALLOWED_WITH_UNKNOWNS"
+    },
+    "outcomes": {
+      "r1": "UNKNOWN"
+    },
+    "evidenceKinds": [],
+    "unknownReasons": ["UNRECOGNIZED_ASSERTION_KIND"],
+    "warningCodes": [
+      "NO_SAFETY_GUARANTEE",
+      "SEVERE_ALLERGY_UNKNOWN_DATA",
+      "UNRECOGNIZED_ALLERGEN_DATA"
+    ]
+  }
+}

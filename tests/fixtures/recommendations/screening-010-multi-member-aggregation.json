@@ -1,0 +1,110 @@
+{
+  "caseId": "screening-010-multi-member-aggregation",
+  "category": "valid",
+  "title": "Three members, three outcomes -> household verdict is the worst of them",
+  "notes": "Household verdict = worst member verdict (SR-1/INV-ALRG-1; the aggregation rule is introduced by M1-T4). An ALLOWED member never lifts another member's block.",
+  "input": {
+    "subject": {
+      "kind": "PRODUCT",
+      "subjectId": "cookie-cc-01",
+      "name": "Chocolate Chip Cookies",
+      "ingredientsText": "wheat flour, sugar, butter, chocolate chips, eggs, salt",
+      "allergens": [
+        {
+          "allergenCode": "wheat",
+          "assertion": "CONTAINS",
+          "provenance": {
+            "tier": "KNOWN_FACT",
+            "source": "manufacturer-label",
+            "observedAt": "2026-08-15T00:00:00.000Z"
+          }
+        },
+        {
+          "allergenCode": "milk",
+          "assertion": "CONTAINS",
+          "provenance": {
+            "tier": "KNOWN_FACT",
+            "source": "manufacturer-label",
+            "observedAt": "2026-08-15T00:00:00.000Z"
+          }
+        },
+        {
+          "allergenCode": "egg",
+          "assertion": "CONTAINS",
+          "provenance": {
+            "tier": "KNOWN_FACT",
+            "source": "manufacturer-label",
+            "observedAt": "2026-08-15T00:00:00.000Z"
+          }
+        },
+        {
+          "allergenCode": "tree_nut",
+          "assertion": "MAY_CONTAIN",
+          "provenance": {
+            "tier": "KNOWN_FACT",
+            "source": "manufacturer-label",
+            "observedAt": "2026-08-15T00:00:00.000Z"
+          }
+        }
+      ],
+      "declaration": {
+        "majorAllergens": "COMPLETE_FOR_MAJOR_ALLERGENS",
+        "ingredientStatement": "COMPLETE",
+        "tier": "KNOWN_FACT",
+        "source": "manufacturer-label",
+        "observedAt": "2026-08-15T00:00:00.000Z"
+      }
+    },
+    "members": [
+      {
+        "memberId": "m-alex",
+        "restrictions": [
+          {
+            "kind": "MAJOR",
+            "restrictionId": "r-alex-1",
+            "allergen": "peanut",
+            "severity": "severe"
+          }
+        ]
+      },
+      {
+        "memberId": "m-blair",
+        "restrictions": [
+          {
+            "kind": "MAJOR",
+            "restrictionId": "r-blair-1",
+            "allergen": "tree_nut",
+            "severity": "standard"
+          }
+        ]
+      },
+      {
+        "memberId": "m-casey",
+        "restrictions": [
+          {
+            "kind": "MAJOR",
+            "restrictionId": "r-casey-1",
+            "allergen": "milk",
+            "severity": "severe"
+          }
+        ]
+      }
+    ]
+  },
+  "expect": {
+    "verdict": "BLOCKED",
+    "memberVerdicts": {
+      "m-alex": "ALLOWED",
+      "m-blair": "ALLOWED_WITH_UNKNOWNS",
+      "m-casey": "BLOCKED"
+    },
+    "outcomes": {
+      "r-alex-1": "NO_KNOWN_MATCH",
+      "r-blair-1": "POSSIBLE_MATCH",
+      "r-casey-1": "MATCH"
+    },
+    "evidenceKinds": ["ASSERTION_CONTAINS", "ASSERTION_MAY_CONTAIN", "INGREDIENT_TEXT_TERM"],
+    "unknownReasons": [],
+    "warningCodes": ["NO_SAFETY_GUARANTEE", "CROSS_CONTACT"]
+  }
+}

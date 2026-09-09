@@ -1,0 +1,57 @@
+{
+  "caseId": "screening-001-declared-product-no-known-match",
+  "category": "valid",
+  "title": "Fully declared product, unrelated allergy -> ALLOWED (no known match)",
+  "notes": "The only route to ALLOWED is an explicit KNOWN_FACT completeness declaration. ALLOWED means no known match, never safe.",
+  "input": {
+    "subject": {
+      "kind": "PRODUCT",
+      "subjectId": "dairy-001",
+      "name": "Meadowbrook Whole Milk",
+      "ingredientsText": "grade a milk, vitamin d3",
+      "allergens": [
+        {
+          "allergenCode": "milk",
+          "assertion": "CONTAINS",
+          "provenance": {
+            "tier": "KNOWN_FACT",
+            "source": "manufacturer-label",
+            "observedAt": "2026-08-15T00:00:00.000Z"
+          }
+        }
+      ],
+      "declaration": {
+        "majorAllergens": "COMPLETE_FOR_MAJOR_ALLERGENS",
+        "ingredientStatement": "COMPLETE",
+        "tier": "KNOWN_FACT",
+        "source": "manufacturer-label",
+        "observedAt": "2026-08-15T00:00:00.000Z"
+      }
+    },
+    "members": [
+      {
+        "memberId": "m-jamie",
+        "restrictions": [
+          {
+            "kind": "MAJOR",
+            "restrictionId": "r1",
+            "allergen": "peanut",
+            "severity": "standard"
+          }
+        ]
+      }
+    ]
+  },
+  "expect": {
+    "verdict": "ALLOWED",
+    "memberVerdicts": {
+      "m-jamie": "ALLOWED"
+    },
+    "outcomes": {
+      "r1": "NO_KNOWN_MATCH"
+    },
+    "evidenceKinds": [],
+    "unknownReasons": [],
+    "warningCodes": ["NO_SAFETY_GUARANTEE"]
+  }
+}

@@ -1,0 +1,47 @@
+{
+  "caseId": "screening-014-ai-tier-declaration-cannot-clear",
+  "category": "adversarial",
+  "title": "AI_INTERPRETATION completeness declaration cannot license absence",
+  "notes": "Only a KNOWN_FACT declaration licenses a no-known-match conclusion. An AI-tier claim of completeness is reported as UNVERIFIED_DECLARATION_TIER.",
+  "input": {
+    "subject": {
+      "kind": "PRODUCT",
+      "subjectId": "snack-ai-01",
+      "name": "Trail Snack Mix",
+      "ingredientsText": "rolled oats, raisins, sunflower seeds",
+      "allergens": [],
+      "declaration": {
+        "majorAllergens": "COMPLETE_FOR_MAJOR_ALLERGENS",
+        "ingredientStatement": "COMPLETE",
+        "tier": "AI_INTERPRETATION",
+        "source": "vision-model-v3",
+        "observedAt": "2026-08-15T00:00:00.000Z"
+      }
+    },
+    "members": [
+      {
+        "memberId": "m-jamie",
+        "restrictions": [
+          {
+            "kind": "MAJOR",
+            "restrictionId": "r1",
+            "allergen": "peanut",
+            "severity": "standard"
+          }
+        ]
+      }
+    ]
+  },
+  "expect": {
+    "verdict": "ALLOWED_WITH_UNKNOWNS",
+    "memberVerdicts": {
+      "m-jamie": "ALLOWED_WITH_UNKNOWNS"
+    },
+    "outcomes": {
+      "r1": "UNKNOWN"
+    },
+    "evidenceKinds": [],
+    "unknownReasons": ["UNVERIFIED_DECLARATION_TIER"],
+    "warningCodes": ["NO_SAFETY_GUARANTEE"]
+  }
+}
