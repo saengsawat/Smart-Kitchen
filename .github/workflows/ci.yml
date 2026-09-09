@@ -16,6 +16,32 @@ jobs:
   quality:
     name: quality
     runs-on: ubuntu-latest
+
+    # Postgres for the M1-T2 database suites. Docker is not installed on the
+    # development machine, so those suites skip locally (loudly) and CI is the
+    # gate: `DATABASE_URL` is set on the test step below, and
+    # apps/api/src/db/ci-guard.test.ts FAILS the build if it is ever missing
+    # here — a green run can never mean "the schema was not tested".
+    #
+    # Credentials: there are none. `POSTGRES_HOST_AUTH_METHOD: trust` lets the
+    # throwaway container accept local connections without a password, so no
+    # secret (and nothing that looks like one) enters the repo — CLAUDE.md
+    # rule 12. The container is destroyed with the job; no cloud resource is
+    # created (rule 17).
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_HOST_AUTH_METHOD: trust
+          POSTGRES_DB: smart_kitchen_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+
     steps:
       - name: Checkout
         uses: actions/checkout@v7.0.1
@@ -44,8 +70,13 @@ jobs:
       - name: Typecheck
         run: pnpm typecheck
 
+      # Each database test file creates and drops its own throwaway database on
+      # this server, so DATABASE_URL points at the container's default database
+      # and is used only to connect and issue CREATE DATABASE.
       - name: Test
         run: pnpm test
+        env:
+          DATABASE_URL: postgres://postgres@localhost:5432/smart_kitchen_ci
 
       - name: Format check
         run: pnpm format:check
