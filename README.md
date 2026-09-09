@@ -1,5 +1,7 @@
 # Smart Kitchen App
 
+[![CI](https://github.com/saengsawat/Smart-Kitchen/actions/workflows/ci.yml/badge.svg)](https://github.com/saengsawat/Smart-Kitchen/actions/workflows/ci.yml)
+
 **An AI kitchen manager, not another recipe app.** The system maintains a continuously updated, trustworthy inventory of a household's fridge/freezer/pantry with minimal manual entry (barcode, receipts, later camera), and uses it to close the loop: *what should we cook → what should we buy → what did we use → what's about to expire*.
 
 **Problem:** households don't know what food they own — so they buy duplicates, waste expiring food, and get recipe suggestions disconnected from their actual pantry. Existing apps fail because the user ends up maintaining the inventory by hand and quits.
@@ -61,6 +63,7 @@ Full proposal: [ARCHITECTURE.md](ARCHITECTURE.md).
 - All work flows through [BACKLOG.md](BACKLOG.md) tickets; one ticket at a time, file scope enforced ([CLAUDE.md](CLAUDE.md)).
 - Decisions are made in [DECISIONS.md](DECISIONS.md)/ADRs — a decision without a log entry didn't happen.
 - Baseline: trunk-based development, short-lived branches, conventional commits with ticket refs, PR review, TypeScript strict + ESLint + Prettier + Vitest (installed, M0-T1), CI with secret/dependency scanning (M0-T2, not yet installed), committed lockfiles, `.env.example` templates.
+- Contributor workflow, commit conventions, local setup, and the branch-protection checklist: [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Current next step
 
