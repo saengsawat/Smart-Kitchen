@@ -1,0 +1,102 @@
+{
+  "id": "dairy-004",
+  "kind": "BRANDED",
+  "codes": [
+    {
+      "codeType": "UPC_A",
+      "code": "060000100032"
+    }
+  ],
+  "name": {
+    "value": "Sunrise Greek Yogurt Vanilla",
+    "provenance": {
+      "tier": "KNOWN_FACT",
+      "source": "manufacturer-label",
+      "observedAt": "2026-08-15T00:00:00.000Z"
+    }
+  },
+  "brand": {
+    "value": "Sunrise Dairy",
+    "provenance": {
+      "tier": "KNOWN_FACT",
+      "source": "manufacturer-label",
+      "observedAt": "2026-08-15T00:00:00.000Z"
+    }
+  },
+  "category": {
+    "value": "dairy",
+    "provenance": {
+      "tier": "KNOWN_FACT",
+      "source": "manual-curation",
+      "observedAt": "2026-08-15T00:00:00.000Z"
+    }
+  },
+  "packageSize": {
+    "value": {
+      "qty": 32,
+      "unit": "oz"
+    },
+    "provenance": {
+      "tier": "KNOWN_FACT",
+      "source": "manufacturer-label",
+      "observedAt": "2026-08-15T00:00:00.000Z"
+    }
+  },
+  "servingSize": {
+    "value": {
+      "qty": 170,
+      "unit": "g"
+    },
+    "provenance": {
+      "tier": "KNOWN_FACT",
+      "source": "manufacturer-label",
+      "observedAt": "2026-08-15T00:00:00.000Z"
+    }
+  },
+  "nutrition": [
+    {
+      "basis": "PER_SERVING",
+      "values": {
+        "calories": 140,
+        "proteinG": 15,
+        "carbsG": 15,
+        "fatG": 0,
+        "fiberG": 0,
+        "sugarG": 14,
+        "sodiumMg": 70
+      },
+      "provenance": {
+        "tier": "KNOWN_FACT",
+        "source": "manufacturer-label",
+        "observedAt": "2026-08-15T00:00:00.000Z"
+      }
+    }
+  ],
+  "ingredientsText": {
+    "value": "Cultured pasteurized nonfat milk, sugar, natural vanilla flavor, live active cultures.",
+    "provenance": {
+      "tier": "KNOWN_FACT",
+      "source": "manufacturer-label",
+      "observedAt": "2026-08-15T00:00:00.000Z"
+    }
+  },
+  "allergens": [
+    {
+      "allergenCode": "milk",
+      "assertion": "CONTAINS",
+      "provenance": {
+        "tier": "KNOWN_FACT",
+        "source": "manufacturer-label",
+        "observedAt": "2026-08-15T00:00:00.000Z"
+      }
+    }
+  ],
+  "imageRef": {
+    "value": "https://fixtures.local/images/dairy-004.jpg",
+    "provenance": {
+      "tier": "KNOWN_FACT",
+      "source": "manufacturer-label",
+      "observedAt": "2026-08-15T00:00:00.000Z"
+    }
+  }
+}

@@ -1,0 +1,76 @@
+{
+  "id": "meat-032",
+  "kind": "BRANDED",
+  "codes": [
+    {
+      "codeType": "UPC_A",
+      "code": "060000100162"
+    }
+  ],
+  "name": {
+    "value": "Turkey Breast Cutlets",
+    "provenance": {
+      "tier": "KNOWN_FACT",
+      "source": "manufacturer-label",
+      "observedAt": "2026-08-15T00:00:00.000Z"
+    }
+  },
+  "brand": {
+    "value": "Homestead Poultry",
+    "provenance": {
+      "tier": "KNOWN_FACT",
+      "source": "manufacturer-label",
+      "observedAt": "2026-08-15T00:00:00.000Z"
+    }
+  },
+  "category": {
+    "value": "meat",
+    "provenance": {
+      "tier": "KNOWN_FACT",
+      "source": "manual-curation",
+      "observedAt": "2026-08-15T00:00:00.000Z"
+    }
+  },
+  "packageSize": {
+    "value": {
+      "qty": 1.25,
+      "unit": "lb"
+    },
+    "provenance": {
+      "tier": "KNOWN_FACT",
+      "source": "manufacturer-label",
+      "observedAt": "2026-08-15T00:00:00.000Z"
+    }
+  },
+  "servingSize": {
+    "value": {
+      "qty": 112,
+      "unit": "g"
+    },
+    "provenance": {
+      "tier": "KNOWN_FACT",
+      "source": "manufacturer-label",
+      "observedAt": "2026-08-15T00:00:00.000Z"
+    }
+  },
+  "nutrition": [
+    {
+      "basis": "PER_SERVING",
+      "values": {
+        "calories": 110,
+        "proteinG": 24,
+        "carbsG": 0,
+        "fatG": 1,
+        "fiberG": 0,
+        "sugarG": 0,
+        "sodiumMg": 60
+      },
+      "provenance": {
+        "tier": "KNOWN_FACT",
+        "source": "manufacturer-label",
+        "observedAt": "2026-08-15T00:00:00.000Z"
+      }
+    }
+  ],
+  "allergens": []
+}

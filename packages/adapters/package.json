@@ -12,5 +12,8 @@
   "scripts": {
     "typecheck": "tsc -b --pretty"
   },
-  "dependencies": {}
+  "dependencies": {},
+  "devDependencies": {
+    "@types/node": "^26.4.1"
+  }
 }

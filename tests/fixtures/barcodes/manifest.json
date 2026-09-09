@@ -1,0 +1,691 @@
+[
+  {
+    "code": "060000100001",
+    "codeType": "UPC_A",
+    "expect": "hit",
+    "productId": "dairy-001"
+  },
+  {
+    "code": "060000100018",
+    "codeType": "UPC_A",
+    "expect": "hit",
+    "productId": "dairy-002"
+  },
+  {
+    "code": "060000100025",
+    "codeType": "UPC_A",
+    "expect": "hit",
+    "productId": "dairy-003"
+  },
+  {
+    "code": "060000100032",
+    "codeType": "UPC_A",
+    "expect": "hit",
+    "productId": "dairy-004"
+  },
+  {
+    "code": "060000100049",
+    "codeType": "UPC_A",
+    "expect": "hit",
+    "productId": "dairy-005"
+  },
+  {
+    "code": "060000100056",
+    "codeType": "UPC_A",
+    "expect": "hit",
+    "productId": "dairy-006"
+  },
+  {
+    "code": "060000100063",
+    "codeType": "UPC_A",
+    "expect": "hit",
+    "productId": "dairy-007"
+  },
+  {
+    "code": "060000100070",
+    "codeType": "UPC_A",
+    "expect": "hit",
+    "productId": "dairy-008"
+  },
+  {
+    "code": "060000100087",
+    "codeType": "UPC_A",
+    "expect": "hit",
+    "productId": "dairy-009"
+  },
+  {
+    "code": "060000100094",
+    "codeType": "UPC_A",
+    "expect": "hit",
+    "productId": "dairy-010"
+  },
+  {
+    "code": "4000",
+    "codeType": "PLU",
+    "expect": "hit",
+    "productId": "produce-011",
+    "caseLabel": "generic-plu"
+  },
+  {
+    "code": "4001",
+    "codeType": "PLU",
+    "expect": "hit",
+    "productId": "produce-012",
+    "caseLabel": "generic-plu"
+  },
+  {
+    "code": "4002",
+    "codeType": "PLU",
+    "expect": "hit",
+    "productId": "produce-013",
+    "caseLabel": "generic-plu"
+  },
+  {
+    "code": "4003",
+    "codeType": "PLU",
+    "expect": "hit",
+    "productId": "produce-014",
+    "caseLabel": "generic-plu"
+  },
+  {
+    "code": "4004",
+    "codeType": "PLU",
+    "expect": "hit",
+    "productId": "produce-015",
+    "caseLabel": "generic-plu"
+  },
+  {
+    "code": "4005",
+    "codeType": "PLU",
+    "expect": "hit",
+    "productId": "produce-016",
+    "caseLabel": "generic-plu"
+  },
+  {
+    "code": "4006",
+    "codeType": "PLU",
+    "expect": "hit",
+    "productId": "produce-017",
+    "caseLabel": "generic-plu"
+  },
+  {
+    "code": "4007",
+    "codeType": "PLU",
+    "expect": "hit",
+    "productId": "produce-018",
+    "caseLabel": "generic-plu"
+  },
+  {
+    "code": "4008",
+    "codeType": "PLU",
+    "expect": "hit",
+    "productId": "produce-019",
+    "caseLabel": "generic-plu"
+  },
+  {
+    "code": "4009",
+    "codeType": "PLU",
+    "expect": "hit",
+    "productId": "produce-020",
+    "caseLabel": "missing-nutrition"
+  },
+  {
+    "code": "4010",
+    "codeType": "PLU",
+    "expect": "hit",
+    "productId": "produce-021",
+    "caseLabel": "missing-nutrition"
+  },
+  {
+    "code": "4011",
+    "codeType": "PLU",
+    "expect": "hit",
+    "productId": "produce-022",
+    "caseLabel": "missing-nutrition"
+  },
+  {
+    "code": "4012",
+    "codeType": "PLU",
+    "expect": "hit",
+    "productId": "produce-023",
+    "caseLabel": "missing-nutrition"
+  },
+  {
+    "code": "4013",
+    "codeType": "PLU",
+    "expect": "hit",
+    "productId": "produce-024",
+    "caseLabel": "missing-nutrition"
+  },
+  {
+    "code": "4014",
+    "codeType": "PLU",
+    "expect": "hit",
+    "productId": "produce-025",
+    "caseLabel": "missing-nutrition"
+  },
+  {
+    "code": "060000100100",
+    "codeType": "UPC_A",
+    "expect": "hit",
+    "productId": "meat-026"
+  },
+  {
+    "code": "060000100117",
+    "codeType": "UPC_A",
+    "expect": "hit",
+    "productId": "meat-027"
+  },
+  {
+    "code": "060000100124",
+    "codeType": "UPC_A",
+    "expect": "hit",
+    "productId": "meat-028"
+  },
+  {
+    "code": "060000100131",
+    "codeType": "UPC_A",
+    "expect": "hit",
+    "productId": "meat-029"
+  },
+  {
+    "code": "060000100148",
+    "codeType": "UPC_A",
+    "expect": "hit",
+    "productId": "meat-030"
+  },
+  {
+    "code": "060000100155",
+    "codeType": "UPC_A",
+    "expect": "hit",
+    "productId": "meat-031"
+  },
+  {
+    "code": "060000100162",
+    "codeType": "UPC_A",
+    "expect": "hit",
+    "productId": "meat-032"
+  },
+  {
+    "code": "060000100179",
+    "codeType": "UPC_A",
+    "expect": "hit",
+    "productId": "meat-033"
+  },
+  {
+    "code": "060000100186",
+    "codeType": "UPC_A",
+    "expect": "hit",
+    "productId": "pantry-034"
+  },
+  {
+    "code": "060000100193",
+    "codeType": "UPC_A",
+    "expect": "hit",
+    "productId": "pantry-035"
+  },
+  {
+    "code": "060000100209",
+    "codeType": "UPC_A",
+    "expect": "hit",
+    "productId": "pantry-036"
+  },
+  {
+    "code": "060000100216",
+    "codeType": "UPC_A",
+    "expect": "hit",
+    "productId": "pantry-037"
+  },
+  {
+    "code": "060000100223",
+    "codeType": "UPC_A",
+    "expect": "hit",
+    "productId": "pantry-038"
+  },
+  {
+    "code": "060000100230",
+    "codeType": "UPC_A",
+    "expect": "hit",
+    "productId": "pantry-039"
+  },
+  {
+    "code": "060000100247",
+    "codeType": "UPC_A",
+    "expect": "hit",
+    "productId": "pantry-040"
+  },
+  {
+    "code": "060000100254",
+    "codeType": "UPC_A",
+    "expect": "hit",
+    "productId": "pantry-041"
+  },
+  {
+    "code": "060000100261",
+    "codeType": "UPC_A",
+    "expect": "hit",
+    "productId": "pantry-042"
+  },
+  {
+    "code": "060000100278",
+    "codeType": "UPC_A",
+    "expect": "hit",
+    "productId": "pantry-043"
+  },
+  {
+    "code": "060000100285",
+    "codeType": "UPC_A",
+    "expect": "hit",
+    "productId": "pantry-044"
+  },
+  {
+    "code": "060000100292",
+    "codeType": "UPC_A",
+    "expect": "hit",
+    "productId": "pantry-045"
+  },
+  {
+    "code": "060000100308",
+    "codeType": "UPC_A",
+    "expect": "hit",
+    "productId": "pantry-046"
+  },
+  {
+    "code": "060000100315",
+    "codeType": "UPC_A",
+    "expect": "hit",
+    "productId": "pantry-047"
+  },
+  {
+    "code": "060000100322",
+    "codeType": "UPC_A",
+    "expect": "hit",
+    "productId": "pantry-048"
+  },
+  {
+    "code": "060000100339",
+    "codeType": "UPC_A",
+    "expect": "hit",
+    "productId": "pantry-049"
+  },
+  {
+    "code": "060000100346",
+    "codeType": "UPC_A",
+    "expect": "hit",
+    "productId": "pantry-050"
+  },
+  {
+    "code": "060000100353",
+    "codeType": "UPC_A",
+    "expect": "hit",
+    "productId": "pantry-051"
+  },
+  {
+    "code": "060000100360",
+    "codeType": "UPC_A",
+    "expect": "hit",
+    "productId": "pantry-052"
+  },
+  {
+    "code": "060000100377",
+    "codeType": "UPC_A",
+    "expect": "hit",
+    "productId": "pantry-053"
+  },
+  {
+    "code": "060000100384",
+    "codeType": "UPC_A",
+    "expect": "hit",
+    "productId": "multicode-054",
+    "caseLabel": "multi-code"
+  },
+  {
+    "code": "0060000100384",
+    "codeType": "GTIN13",
+    "expect": "hit",
+    "productId": "multicode-054",
+    "caseLabel": "multi-code"
+  },
+  {
+    "code": "060000100391",
+    "codeType": "UPC_A",
+    "expect": "hit",
+    "productId": "multicode-055",
+    "caseLabel": "multi-code"
+  },
+  {
+    "code": "0060000100391",
+    "codeType": "GTIN13",
+    "expect": "hit",
+    "productId": "multicode-055",
+    "caseLabel": "multi-code"
+  },
+  {
+    "code": "060000100407",
+    "codeType": "UPC_A",
+    "expect": "hit",
+    "productId": "multicode-056",
+    "caseLabel": "multi-code"
+  },
+  {
+    "code": "0060000100407",
+    "codeType": "GTIN13",
+    "expect": "hit",
+    "productId": "multicode-056",
+    "caseLabel": "multi-code"
+  },
+  {
+    "code": "060000100414",
+    "codeType": "UPC_A",
+    "expect": "hit",
+    "productId": "multicode-057",
+    "caseLabel": "multi-code"
+  },
+  {
+    "code": "0060000100414",
+    "codeType": "GTIN13",
+    "expect": "hit",
+    "productId": "multicode-057",
+    "caseLabel": "multi-code"
+  },
+  {
+    "code": "060000100421",
+    "codeType": "UPC_A",
+    "expect": "hit",
+    "productId": "conflict-058",
+    "caseLabel": "multi-source-conflict"
+  },
+  {
+    "code": "060000100438",
+    "codeType": "UPC_A",
+    "expect": "hit",
+    "productId": "conflict-059",
+    "caseLabel": "multi-source-conflict"
+  },
+  {
+    "code": "060000100445",
+    "codeType": "UPC_A",
+    "expect": "hit",
+    "productId": "conflict-060",
+    "caseLabel": "multi-source-conflict"
+  },
+  {
+    "code": "060000100452",
+    "codeType": "UPC_A",
+    "expect": "hit",
+    "productId": "conflict-061",
+    "caseLabel": "multi-source-conflict"
+  },
+  {
+    "code": "060000100469",
+    "codeType": "UPC_A",
+    "expect": "hit",
+    "productId": "conflict-062",
+    "caseLabel": "multi-source-conflict"
+  },
+  {
+    "code": "060000100476",
+    "codeType": "UPC_A",
+    "expect": "hit",
+    "productId": "conflict-063",
+    "caseLabel": "multi-source-conflict"
+  },
+  {
+    "code": "060000100483",
+    "codeType": "UPC_A",
+    "expect": "hit",
+    "productId": "frozen-064"
+  },
+  {
+    "code": "060000100490",
+    "codeType": "UPC_A",
+    "expect": "hit",
+    "productId": "frozen-065"
+  },
+  {
+    "code": "060000100506",
+    "codeType": "UPC_A",
+    "expect": "hit",
+    "productId": "frozen-066"
+  },
+  {
+    "code": "060000100513",
+    "codeType": "UPC_A",
+    "expect": "hit",
+    "productId": "frozen-067"
+  },
+  {
+    "code": "060000100520",
+    "codeType": "UPC_A",
+    "expect": "hit",
+    "productId": "frozen-068"
+  },
+  {
+    "code": "060000100537",
+    "codeType": "UPC_A",
+    "expect": "hit",
+    "productId": "frozen-069"
+  },
+  {
+    "code": "060000100544",
+    "codeType": "UPC_A",
+    "expect": "hit",
+    "productId": "frozen-070"
+  },
+  {
+    "code": "060000100551",
+    "codeType": "UPC_A",
+    "expect": "hit",
+    "productId": "frozen-071"
+  },
+  {
+    "code": "060000100568",
+    "codeType": "UPC_A",
+    "expect": "hit",
+    "productId": "frozen-072"
+  },
+  {
+    "code": "060000100575",
+    "codeType": "UPC_A",
+    "expect": "hit",
+    "productId": "frozen-073"
+  },
+  {
+    "code": "060000100582",
+    "codeType": "UPC_A",
+    "expect": "hit",
+    "productId": "snack-074"
+  },
+  {
+    "code": "060000100599",
+    "codeType": "UPC_A",
+    "expect": "hit",
+    "productId": "snack-075"
+  },
+  {
+    "code": "060000100605",
+    "codeType": "UPC_A",
+    "expect": "hit",
+    "productId": "snack-076"
+  },
+  {
+    "code": "060000100612",
+    "codeType": "UPC_A",
+    "expect": "hit",
+    "productId": "snack-077"
+  },
+  {
+    "code": "060000100629",
+    "codeType": "UPC_A",
+    "expect": "hit",
+    "productId": "snack-078"
+  },
+  {
+    "code": "060000100636",
+    "codeType": "UPC_A",
+    "expect": "hit",
+    "productId": "snack-079"
+  },
+  {
+    "code": "060000100643",
+    "codeType": "UPC_A",
+    "expect": "hit",
+    "productId": "snack-080"
+  },
+  {
+    "code": "060000100650",
+    "codeType": "UPC_A",
+    "expect": "hit",
+    "productId": "snack-081"
+  },
+  {
+    "code": "40010007",
+    "codeType": "EAN8",
+    "expect": "hit",
+    "productId": "snack-082"
+  },
+  {
+    "code": "40010014",
+    "codeType": "EAN8",
+    "expect": "hit",
+    "productId": "snack-083"
+  },
+  {
+    "code": "40010021",
+    "codeType": "EAN8",
+    "expect": "hit",
+    "productId": "snack-084"
+  },
+  {
+    "code": "060000100667",
+    "codeType": "UPC_A",
+    "expect": "hit",
+    "productId": "snack-085"
+  },
+  {
+    "code": "060000100674",
+    "codeType": "UPC_A",
+    "expect": "hit",
+    "productId": "snack-086"
+  },
+  {
+    "code": "4800009000003",
+    "codeType": "EAN13",
+    "expect": "hit",
+    "productId": "snack-087",
+    "caseLabel": "missing-nutrition"
+  },
+  {
+    "code": "4800009000010",
+    "codeType": "EAN13",
+    "expect": "hit",
+    "productId": "snack-088",
+    "caseLabel": "missing-nutrition"
+  },
+  {
+    "code": "060000100681",
+    "codeType": "UPC_A",
+    "expect": "hit",
+    "productId": "baking-089"
+  },
+  {
+    "code": "060000100698",
+    "codeType": "UPC_A",
+    "expect": "hit",
+    "productId": "baking-090"
+  },
+  {
+    "code": "060000100704",
+    "codeType": "UPC_A",
+    "expect": "hit",
+    "productId": "baking-091"
+  },
+  {
+    "code": "060000100711",
+    "codeType": "UPC_A",
+    "expect": "hit",
+    "productId": "baking-092"
+  },
+  {
+    "code": "060000100728",
+    "codeType": "UPC_A",
+    "expect": "hit",
+    "productId": "baking-093"
+  },
+  {
+    "code": "060000100735",
+    "codeType": "UPC_A",
+    "expect": "hit",
+    "productId": "condiment-094"
+  },
+  {
+    "code": "060000100742",
+    "codeType": "UPC_A",
+    "expect": "hit",
+    "productId": "condiment-095"
+  },
+  {
+    "code": "060000100759",
+    "codeType": "UPC_A",
+    "expect": "hit",
+    "productId": "condiment-096"
+  },
+  {
+    "code": "060000100766",
+    "codeType": "UPC_A",
+    "expect": "hit",
+    "productId": "condiment-097"
+  },
+  {
+    "code": "060000100773",
+    "codeType": "UPC_A",
+    "expect": "hit",
+    "productId": "condiment-098"
+  },
+  {
+    "code": "060000100780",
+    "codeType": "UPC_A",
+    "expect": "hit",
+    "productId": "condiment-099"
+  },
+  {
+    "code": "060000100797",
+    "codeType": "UPC_A",
+    "expect": "hit",
+    "productId": "condiment-100"
+  },
+  {
+    "code": "060000100803",
+    "codeType": "UPC_A",
+    "expect": "hit",
+    "productId": "condiment-101"
+  },
+  {
+    "code": "070000100819",
+    "codeType": "UPC_A",
+    "expect": "not-found",
+    "caseLabel": "miss",
+    "notes": "well-formed UPC-A, no fixture registered — simulates a real miss"
+  },
+  {
+    "code": "070000100826",
+    "codeType": "UPC_A",
+    "expect": "not-found",
+    "caseLabel": "miss",
+    "notes": "well-formed UPC-A, no fixture registered — simulates a real miss"
+  },
+  {
+    "code": "99999",
+    "codeType": "PLU",
+    "expect": "not-found",
+    "caseLabel": "miss",
+    "notes": "well-formed PLU, no fixture registered"
+  },
+  {
+    "code": "0070000100833",
+    "codeType": "GTIN13",
+    "expect": "not-found",
+    "caseLabel": "miss",
+    "notes": "well-formed GTIN-13, no fixture registered"
+  }
+]

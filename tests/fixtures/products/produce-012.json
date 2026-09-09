@@ -1,0 +1,68 @@
+{
+  "id": "produce-012",
+  "kind": "GENERIC",
+  "codes": [
+    {
+      "codeType": "PLU",
+      "code": "4001"
+    }
+  ],
+  "name": {
+    "value": "Gala Apple",
+    "provenance": {
+      "tier": "KNOWN_FACT",
+      "source": "manual-curation",
+      "observedAt": "2026-08-15T00:00:00.000Z"
+    }
+  },
+  "category": {
+    "value": "produce",
+    "provenance": {
+      "tier": "KNOWN_FACT",
+      "source": "manual-curation",
+      "observedAt": "2026-08-15T00:00:00.000Z"
+    }
+  },
+  "packageSize": {
+    "value": {
+      "qty": 1,
+      "unit": "each"
+    },
+    "provenance": {
+      "tier": "KNOWN_FACT",
+      "source": "manual-curation",
+      "observedAt": "2026-08-15T00:00:00.000Z"
+    }
+  },
+  "servingSize": {
+    "value": {
+      "qty": 100,
+      "unit": "g"
+    },
+    "provenance": {
+      "tier": "KNOWN_FACT",
+      "source": "usda-fdc:generic",
+      "observedAt": "2026-08-15T00:00:00.000Z"
+    }
+  },
+  "nutrition": [
+    {
+      "basis": "PER_100G",
+      "values": {
+        "calories": 52,
+        "proteinG": 0.3,
+        "carbsG": 13.8,
+        "fatG": 0.2,
+        "fiberG": 2.4,
+        "sugarG": 10.4,
+        "sodiumMg": 1
+      },
+      "provenance": {
+        "tier": "ESTIMATED",
+        "source": "usda-fdc:generic",
+        "observedAt": "2026-08-15T00:00:00.000Z"
+      }
+    }
+  ],
+  "allergens": []
+}

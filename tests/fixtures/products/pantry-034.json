@@ -1,0 +1,76 @@
+{
+  "id": "pantry-034",
+  "kind": "BRANDED",
+  "codes": [
+    {
+      "codeType": "UPC_A",
+      "code": "060000100186"
+    }
+  ],
+  "name": {
+    "value": "Long Grain White Rice",
+    "provenance": {
+      "tier": "KNOWN_FACT",
+      "source": "manufacturer-label",
+      "observedAt": "2026-08-15T00:00:00.000Z"
+    }
+  },
+  "brand": {
+    "value": "Harvest Home",
+    "provenance": {
+      "tier": "KNOWN_FACT",
+      "source": "manufacturer-label",
+      "observedAt": "2026-08-15T00:00:00.000Z"
+    }
+  },
+  "category": {
+    "value": "pantry",
+    "provenance": {
+      "tier": "KNOWN_FACT",
+      "source": "manual-curation",
+      "observedAt": "2026-08-15T00:00:00.000Z"
+    }
+  },
+  "packageSize": {
+    "value": {
+      "qty": 5,
+      "unit": "lb"
+    },
+    "provenance": {
+      "tier": "KNOWN_FACT",
+      "source": "manufacturer-label",
+      "observedAt": "2026-08-15T00:00:00.000Z"
+    }
+  },
+  "servingSize": {
+    "value": {
+      "qty": 45,
+      "unit": "g"
+    },
+    "provenance": {
+      "tier": "KNOWN_FACT",
+      "source": "manufacturer-label",
+      "observedAt": "2026-08-15T00:00:00.000Z"
+    }
+  },
+  "nutrition": [
+    {
+      "basis": "PER_SERVING",
+      "values": {
+        "calories": 160,
+        "proteinG": 3,
+        "carbsG": 36,
+        "fatG": 0,
+        "fiberG": 0.5,
+        "sugarG": 0,
+        "sodiumMg": 0
+      },
+      "provenance": {
+        "tier": "KNOWN_FACT",
+        "source": "manufacturer-label",
+        "observedAt": "2026-08-15T00:00:00.000Z"
+      }
+    }
+  ],
+  "allergens": []
+}

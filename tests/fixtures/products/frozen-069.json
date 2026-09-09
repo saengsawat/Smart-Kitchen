@@ -1,0 +1,103 @@
+{
+  "id": "frozen-069",
+  "kind": "BRANDED",
+  "codes": [
+    {
+      "codeType": "UPC_A",
+      "code": "060000100537"
+    }
+  ],
+  "name": {
+    "value": "Frozen Chicken Nuggets",
+    "provenance": {
+      "tier": "KNOWN_FACT",
+      "source": "manufacturer-label",
+      "observedAt": "2026-08-15T00:00:00.000Z"
+    }
+  },
+  "brand": {
+    "value": "Homestead Poultry",
+    "provenance": {
+      "tier": "KNOWN_FACT",
+      "source": "manufacturer-label",
+      "observedAt": "2026-08-15T00:00:00.000Z"
+    }
+  },
+  "category": {
+    "value": "frozen",
+    "provenance": {
+      "tier": "KNOWN_FACT",
+      "source": "manual-curation",
+      "observedAt": "2026-08-15T00:00:00.000Z"
+    }
+  },
+  "packageSize": {
+    "value": {
+      "qty": 29,
+      "unit": "oz"
+    },
+    "provenance": {
+      "tier": "KNOWN_FACT",
+      "source": "manufacturer-label",
+      "observedAt": "2026-08-15T00:00:00.000Z"
+    }
+  },
+  "servingSize": {
+    "value": {
+      "qty": 84,
+      "unit": "g"
+    },
+    "provenance": {
+      "tier": "KNOWN_FACT",
+      "source": "manufacturer-label",
+      "observedAt": "2026-08-15T00:00:00.000Z"
+    }
+  },
+  "nutrition": [
+    {
+      "basis": "PER_SERVING",
+      "values": {
+        "calories": 200,
+        "proteinG": 10,
+        "carbsG": 13,
+        "fatG": 12,
+        "fiberG": 1,
+        "sugarG": 0,
+        "sodiumMg": 480
+      },
+      "provenance": {
+        "tier": "KNOWN_FACT",
+        "source": "manufacturer-label",
+        "observedAt": "2026-08-15T00:00:00.000Z"
+      }
+    }
+  ],
+  "ingredientsText": {
+    "value": "Chicken, enriched wheat flour, soybean oil.",
+    "provenance": {
+      "tier": "KNOWN_FACT",
+      "source": "manufacturer-label",
+      "observedAt": "2026-08-15T00:00:00.000Z"
+    }
+  },
+  "allergens": [
+    {
+      "allergenCode": "wheat",
+      "assertion": "CONTAINS",
+      "provenance": {
+        "tier": "KNOWN_FACT",
+        "source": "manufacturer-label",
+        "observedAt": "2026-08-15T00:00:00.000Z"
+      }
+    },
+    {
+      "allergenCode": "soy",
+      "assertion": "CONTAINS",
+      "provenance": {
+        "tier": "KNOWN_FACT",
+        "source": "manufacturer-label",
+        "observedAt": "2026-08-15T00:00:00.000Z"
+      }
+    }
+  ]
+}

@@ -1,0 +1,94 @@
+{
+  "id": "dairy-001",
+  "kind": "BRANDED",
+  "codes": [
+    {
+      "codeType": "UPC_A",
+      "code": "060000100001"
+    }
+  ],
+  "name": {
+    "value": "Meadowbrook Whole Milk",
+    "provenance": {
+      "tier": "KNOWN_FACT",
+      "source": "manufacturer-label",
+      "observedAt": "2026-08-15T00:00:00.000Z"
+    }
+  },
+  "brand": {
+    "value": "Meadowbrook Farms",
+    "provenance": {
+      "tier": "KNOWN_FACT",
+      "source": "manufacturer-label",
+      "observedAt": "2026-08-15T00:00:00.000Z"
+    }
+  },
+  "category": {
+    "value": "dairy",
+    "provenance": {
+      "tier": "KNOWN_FACT",
+      "source": "manual-curation",
+      "observedAt": "2026-08-15T00:00:00.000Z"
+    }
+  },
+  "packageSize": {
+    "value": {
+      "qty": 1,
+      "unit": "gal"
+    },
+    "provenance": {
+      "tier": "KNOWN_FACT",
+      "source": "manufacturer-label",
+      "observedAt": "2026-08-15T00:00:00.000Z"
+    }
+  },
+  "servingSize": {
+    "value": {
+      "qty": 1,
+      "unit": "cup"
+    },
+    "provenance": {
+      "tier": "KNOWN_FACT",
+      "source": "manufacturer-label",
+      "observedAt": "2026-08-15T00:00:00.000Z"
+    }
+  },
+  "nutrition": [
+    {
+      "basis": "PER_SERVING",
+      "values": {
+        "calories": 149,
+        "proteinG": 8,
+        "carbsG": 12,
+        "fatG": 8,
+        "fiberG": 0,
+        "sugarG": 12,
+        "sodiumMg": 105
+      },
+      "provenance": {
+        "tier": "KNOWN_FACT",
+        "source": "manufacturer-label",
+        "observedAt": "2026-08-15T00:00:00.000Z"
+      }
+    }
+  ],
+  "allergens": [
+    {
+      "allergenCode": "milk",
+      "assertion": "CONTAINS",
+      "provenance": {
+        "tier": "KNOWN_FACT",
+        "source": "manufacturer-label",
+        "observedAt": "2026-08-15T00:00:00.000Z"
+      }
+    }
+  ],
+  "imageRef": {
+    "value": "https://fixtures.local/images/dairy-001.jpg",
+    "provenance": {
+      "tier": "KNOWN_FACT",
+      "source": "manufacturer-label",
+      "observedAt": "2026-08-15T00:00:00.000Z"
+    }
+  }
+}

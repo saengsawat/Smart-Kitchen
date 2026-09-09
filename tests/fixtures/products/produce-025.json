@@ -1,0 +1,39 @@
+{
+  "id": "produce-025",
+  "kind": "GENERIC",
+  "codes": [
+    {
+      "codeType": "PLU",
+      "code": "4014"
+    }
+  ],
+  "name": {
+    "value": "Cilantro Bunch",
+    "provenance": {
+      "tier": "KNOWN_FACT",
+      "source": "manual-curation",
+      "observedAt": "2026-08-15T00:00:00.000Z"
+    }
+  },
+  "category": {
+    "value": "produce",
+    "provenance": {
+      "tier": "KNOWN_FACT",
+      "source": "manual-curation",
+      "observedAt": "2026-08-15T00:00:00.000Z"
+    }
+  },
+  "packageSize": {
+    "value": {
+      "qty": 1,
+      "unit": "bunch"
+    },
+    "provenance": {
+      "tier": "KNOWN_FACT",
+      "source": "manual-curation",
+      "observedAt": "2026-08-15T00:00:00.000Z"
+    }
+  },
+  "nutrition": [],
+  "allergens": []
+}

@@ -1,0 +1,2787 @@
+{
+  "generatedAt": "2026-09-09T04:59:11.788Z",
+  "basketSize": 110,
+  "results": [
+    {
+      "category": "produce",
+      "description": "Banana",
+      "method": "plu",
+      "query": "4011",
+      "fdc": {
+        "source": "usda-fdc",
+        "lookupMethod": "name-search",
+        "hit": false,
+        "matchedName": null,
+        "resultCount": 0,
+        "totalHits": null,
+        "fields": null,
+        "httpStatus": 429
+      },
+      "off": {
+        "source": "open-food-facts",
+        "lookupMethod": "barcode(plu)",
+        "hit": true,
+        "matchedName": "Bananer Bama",
+        "fields": {
+          "name": true,
+          "brand": true,
+          "nutrition": true,
+          "ingredients": true,
+          "allergens": false,
+          "image": true
+        },
+        "httpStatus": 200
+      }
+    },
+    {
+      "category": "produce",
+      "description": "Gala apple",
+      "method": "plu",
+      "query": "4134",
+      "fdc": {
+        "source": "usda-fdc",
+        "lookupMethod": "name-search",
+        "hit": false,
+        "matchedName": null,
+        "resultCount": 0,
+        "totalHits": null,
+        "fields": null,
+        "httpStatus": 429
+      },
+      "off": {
+        "source": "open-food-facts",
+        "lookupMethod": "barcode(plu)",
+        "hit": true,
+        "matchedName": null,
+        "fields": {
+          "name": false,
+          "brand": false,
+          "nutrition": false,
+          "ingredients": false,
+          "allergens": false,
+          "image": true
+        },
+        "httpStatus": 200
+      }
+    },
+    {
+      "category": "produce",
+      "description": "Navel orange",
+      "method": "plu",
+      "query": "4012",
+      "fdc": false,
+      "off": {
+        "source": "open-food-facts",
+        "lookupMethod": "barcode(plu)",
+        "hit": true,
+        "matchedName": "",
+        "fields": {
+          "name": false,
+          "brand": true,
+          "nutrition": false,
+          "ingredients": false,
+          "allergens": false,
+          "image": true
+        },
+        "httpStatus": 200
+      }
+    },
+    {
+      "category": "produce",
+      "description": "Lemon",
+      "method": "plu",
+      "query": "4053",
+      "fdc": false,
+      "off": {
+        "source": "open-food-facts",
+        "lookupMethod": "barcode(plu)",
+        "hit": true,
+        "matchedName": "Miel du Queyras",
+        "fields": {
+          "name": true,
+          "brand": true,
+          "nutrition": true,
+          "ingredients": false,
+          "allergens": false,
+          "image": true
+        },
+        "httpStatus": 200
+      }
+    },
+    {
+      "category": "produce",
+      "description": "Lime",
+      "method": "plu",
+      "query": "4048",
+      "fdc": false,
+      "off": {
+        "source": "open-food-facts",
+        "lookupMethod": "barcode(plu)",
+        "hit": true,
+        "matchedName": "Lime",
+        "fields": {
+          "name": true,
+          "brand": false,
+          "nutrition": false,
+          "ingredients": true,
+          "allergens": false,
+          "image": true
+        },
+        "httpStatus": 200
+      }
+    },
+    {
+      "category": "produce",
+      "description": "Hass avocado",
+      "method": "plu",
+      "query": "4225",
+      "fdc": {
+        "source": "usda-fdc",
+        "lookupMethod": "name-search",
+        "hit": false,
+        "matchedName": null,
+        "resultCount": 0,
+        "totalHits": null,
+        "fields": null,
+        "httpStatus": 429
+      },
+      "off": {
+        "source": "open-food-facts",
+        "lookupMethod": "barcode(plu)",
+        "hit": false,
+        "matchedName": null,
+        "fields": null,
+        "httpStatus": 404
+      }
+    },
+    {
+      "category": "produce",
+      "description": "Roma tomato",
+      "method": "plu",
+      "query": "4087",
+      "fdc": false,
+      "off": {
+        "source": "open-food-facts",
+        "lookupMethod": "barcode(plu)",
+        "hit": true,
+        "matchedName": "Italian Roma Tomato",
+        "fields": {
+          "name": true,
+          "brand": false,
+          "nutrition": false,
+          "ingredients": true,
+          "allergens": false,
+          "image": true
+        },
+        "httpStatus": 200
+      }
+    },
+    {
+      "category": "produce",
+      "description": "Red bell pepper",
+      "method": "plu",
+      "query": "4688",
+      "fdc": false,
+      "off": {
+        "source": "open-food-facts",
+        "lookupMethod": "barcode(plu)",
+        "hit": true,
+        "matchedName": "Hothouse Red Bell Pepper",
+        "fields": {
+          "name": true,
+          "brand": false,
+          "nutrition": false,
+          "ingredients": true,
+          "allergens": false,
+          "image": true
+        },
+        "httpStatus": 200
+      }
+    },
+    {
+      "category": "produce",
+      "description": "Green bell pepper",
+      "method": "plu",
+      "query": "4065",
+      "fdc": false,
+      "off": {
+        "source": "open-food-facts",
+        "lookupMethod": "barcode(plu)",
+        "hit": true,
+        "matchedName": "Green Bell Pepper",
+        "fields": {
+          "name": true,
+          "brand": true,
+          "nutrition": false,
+          "ingredients": true,
+          "allergens": false,
+          "image": true
+        },
+        "httpStatus": 200
+      }
+    },
+    {
+      "category": "produce",
+      "description": "Yellow onion",
+      "method": "plu",
+      "query": "4082",
+      "fdc": {
+        "source": "usda-fdc",
+        "lookupMethod": "name-search",
+        "hit": false,
+        "matchedName": null,
+        "resultCount": 0,
+        "totalHits": null,
+        "fields": null,
+        "httpStatus": 429
+      },
+      "off": {
+        "source": "open-food-facts",
+        "lookupMethod": "barcode(plu)",
+        "hit": true,
+        "matchedName": "Red Onion",
+        "fields": {
+          "name": true,
+          "brand": false,
+          "nutrition": true,
+          "ingredients": true,
+          "allergens": false,
+          "image": true
+        },
+        "httpStatus": 200
+      }
+    },
+    {
+      "category": "produce",
+      "description": "Russet potato",
+      "method": "plu",
+      "query": "4072",
+      "fdc": false,
+      "off": {
+        "source": "open-food-facts",
+        "lookupMethod": "barcode(plu)",
+        "hit": true,
+        "matchedName": "Zaatar Salmon with Israeli Couscous",
+        "fields": {
+          "name": true,
+          "brand": true,
+          "nutrition": true,
+          "ingredients": false,
+          "allergens": false,
+          "image": false
+        },
+        "httpStatus": 200
+      }
+    },
+    {
+      "category": "produce",
+      "description": "Broccoli crown",
+      "method": "plu",
+      "query": "4060",
+      "fdc": {
+        "source": "usda-fdc",
+        "lookupMethod": "name-search",
+        "hit": false,
+        "matchedName": null,
+        "resultCount": 0,
+        "totalHits": null,
+        "fields": null,
+        "httpStatus": 429
+      },
+      "off": {
+        "source": "open-food-facts",
+        "lookupMethod": "barcode(plu)",
+        "hit": true,
+        "matchedName": "Broccoli",
+        "fields": {
+          "name": true,
+          "brand": false,
+          "nutrition": false,
+          "ingredients": true,
+          "allergens": false,
+          "image": true
+        },
+        "httpStatus": 200
+      }
+    },
+    {
+      "category": "produce",
+      "description": "Cauliflower",
+      "method": "plu",
+      "query": "4064",
+      "fdc": false,
+      "off": {
+        "source": "open-food-facts",
+        "lookupMethod": "barcode(plu)",
+        "hit": true,
+        "matchedName": "Tomat stykk",
+        "fields": {
+          "name": true,
+          "brand": true,
+          "nutrition": false,
+          "ingredients": false,
+          "allergens": false,
+          "image": true
+        },
+        "httpStatus": 200
+      }
+    },
+    {
+      "category": "produce",
+      "description": "Iceberg lettuce",
+      "method": "plu",
+      "query": "4061",
+      "fdc": false,
+      "off": {
+        "source": "open-food-facts",
+        "lookupMethod": "barcode(plu)",
+        "hit": true,
+        "matchedName": "Produto",
+        "fields": {
+          "name": true,
+          "brand": true,
+          "nutrition": false,
+          "ingredients": true,
+          "allergens": false,
+          "image": true
+        },
+        "httpStatus": 200
+      }
+    },
+    {
+      "category": "produce",
+      "description": "Cucumber",
+      "method": "plu",
+      "query": "4062",
+      "fdc": false,
+      "off": {
+        "source": "open-food-facts",
+        "lookupMethod": "barcode(plu)",
+        "hit": true,
+        "matchedName": "Organic Raw Pumpkin Seeds",
+        "fields": {
+          "name": true,
+          "brand": false,
+          "nutrition": true,
+          "ingredients": true,
+          "allergens": false,
+          "image": true
+        },
+        "httpStatus": 200
+      }
+    },
+    {
+      "category": "produce",
+      "description": "Green seedless grapes",
+      "method": "plu",
+      "query": "4022",
+      "fdc": false,
+      "off": {
+        "source": "open-food-facts",
+        "lookupMethod": "barcode(plu)",
+        "hit": false,
+        "matchedName": null,
+        "fields": null,
+        "httpStatus": 429
+      }
+    },
+    {
+      "category": "produce",
+      "description": "Garlic bulb",
+      "method": "plu",
+      "query": "4608",
+      "fdc": false,
+      "off": {
+        "source": "open-food-facts",
+        "lookupMethod": "barcode(plu)",
+        "hit": false,
+        "matchedName": null,
+        "fields": null,
+        "httpStatus": 429
+      }
+    },
+    {
+      "category": "produce",
+      "description": "Celery",
+      "method": "plu",
+      "query": "4070",
+      "fdc": false,
+      "off": {
+        "source": "open-food-facts",
+        "lookupMethod": "barcode(plu)",
+        "hit": true,
+        "matchedName": "Tartelette Banane",
+        "fields": {
+          "name": true,
+          "brand": true,
+          "nutrition": false,
+          "ingredients": false,
+          "allergens": false,
+          "image": true
+        },
+        "httpStatus": 200
+      }
+    },
+    {
+      "category": "produce",
+      "description": "Zucchini squash",
+      "method": "plu",
+      "query": "4067",
+      "fdc": false,
+      "off": {
+        "source": "open-food-facts",
+        "lookupMethod": "barcode(plu)",
+        "hit": false,
+        "matchedName": null,
+        "fields": null,
+        "httpStatus": 429
+      }
+    },
+    {
+      "category": "produce",
+      "description": "Cantaloupe",
+      "method": "plu",
+      "query": "4319",
+      "fdc": false,
+      "off": {
+        "source": "open-food-facts",
+        "lookupMethod": "barcode(plu)",
+        "hit": false,
+        "matchedName": null,
+        "fields": null,
+        "httpStatus": 429
+      }
+    },
+    {
+      "category": "dairy",
+      "description": "Kirkland Signature whole milk, 1 gal",
+      "method": "name",
+      "query": "Kirkland Signature whole milk",
+      "fdc": false,
+      "off": {
+        "source": "open-food-facts",
+        "lookupMethod": "name-search",
+        "hit": true,
+        "matchedName": "Artichoke Hearts",
+        "matchedCode": "96619180905",
+        "resultCount": 5,
+        "fields": {
+          "name": true,
+          "brand": true,
+          "nutrition": true,
+          "ingredients": true,
+          "allergens": true,
+          "image": true
+        },
+        "httpStatus": 200
+      }
+    },
+    {
+      "category": "dairy",
+      "description": "Chobani plain Greek yogurt",
+      "method": "name",
+      "query": "Chobani plain Greek yogurt",
+      "fdc": {
+        "source": "usda-fdc",
+        "lookupMethod": "name-search",
+        "hit": false,
+        "matchedName": null,
+        "resultCount": 0,
+        "totalHits": null,
+        "fields": null,
+        "httpStatus": 429
+      },
+      "off": {
+        "source": "open-food-facts",
+        "lookupMethod": "name-search",
+        "hit": true,
+        "matchedName": "Yaourt à la Grecque nature",
+        "matchedCode": "3175241412060",
+        "resultCount": 5,
+        "fields": {
+          "name": true,
+          "brand": true,
+          "nutrition": true,
+          "ingredients": true,
+          "allergens": true,
+          "image": true
+        },
+        "httpStatus": 200
+      }
+    },
+    {
+      "category": "dairy",
+      "description": "Fage Total 0% Greek yogurt",
+      "method": "name",
+      "query": "Fage Total 0% yogurt",
+      "fdc": false,
+      "off": {
+        "source": "open-food-facts",
+        "lookupMethod": "name-search",
+        "hit": true,
+        "matchedName": "Fage total 0%",
+        "matchedCode": "0950214451108",
+        "resultCount": 5,
+        "fields": {
+          "name": true,
+          "brand": false,
+          "nutrition": true,
+          "ingredients": false,
+          "allergens": false,
+          "image": true
+        },
+        "httpStatus": 200
+      }
+    },
+    {
+      "category": "dairy",
+      "description": "Kraft sharp cheddar cheese block",
+      "method": "name",
+      "query": "Kraft sharp cheddar cheese",
+      "fdc": {
+        "source": "usda-fdc",
+        "lookupMethod": "name-search",
+        "hit": false,
+        "matchedName": null,
+        "resultCount": 0,
+        "totalHits": null,
+        "fields": null,
+        "httpStatus": 429
+      },
+      "off": {
+        "source": "open-food-facts",
+        "lookupMethod": "name-search",
+        "hit": true,
+        "matchedName": "Kraft Sharp Cheddar",
+        "matchedCode": "02162209",
+        "resultCount": 5,
+        "fields": {
+          "name": true,
+          "brand": false,
+          "nutrition": true,
+          "ingredients": false,
+          "allergens": false,
+          "image": true
+        },
+        "httpStatus": 200
+      }
+    },
+    {
+      "category": "dairy",
+      "description": "Land O'Lakes salted butter",
+      "method": "name",
+      "query": "Land O'Lakes salted butter",
+      "fdc": false,
+      "off": {
+        "source": "open-food-facts",
+        "lookupMethod": "name-search",
+        "hit": true,
+        "matchedName": "Petits sablés Ossau-Iraty",
+        "matchedCode": "3700572703992",
+        "resultCount": 5,
+        "fields": {
+          "name": true,
+          "brand": true,
+          "nutrition": true,
+          "ingredients": false,
+          "allergens": false,
+          "image": true
+        },
+        "httpStatus": 200
+      }
+    },
+    {
+      "category": "dairy",
+      "description": "Philadelphia cream cheese",
+      "method": "name",
+      "query": "Philadelphia cream cheese",
+      "fdc": {
+        "source": "usda-fdc",
+        "lookupMethod": "name-search",
+        "hit": false,
+        "matchedName": null,
+        "resultCount": 0,
+        "totalHits": null,
+        "fields": null,
+        "httpStatus": 429
+      },
+      "off": {
+        "source": "open-food-facts",
+        "lookupMethod": "name-search",
+        "hit": true,
+        "matchedName": "Whipped French Onion",
+        "matchedCode": "0021000080458",
+        "resultCount": 5,
+        "fields": {
+          "name": true,
+          "brand": true,
+          "nutrition": true,
+          "ingredients": true,
+          "allergens": true,
+          "image": true
+        },
+        "httpStatus": 200
+      }
+    },
+    {
+      "category": "dairy",
+      "description": "Grade A large eggs, dozen",
+      "method": "name",
+      "query": "large eggs grade A dozen",
+      "fdc": false,
+      "off": {
+        "source": "open-food-facts",
+        "lookupMethod": "name-search",
+        "hit": true,
+        "matchedName": "Grade A Large One Dozen Eggs",
+        "matchedCode": "0070038372806",
+        "resultCount": 5,
+        "fields": {
+          "name": true,
+          "brand": true,
+          "nutrition": true,
+          "ingredients": false,
+          "allergens": false,
+          "image": true
+        },
+        "httpStatus": 200
+      }
+    },
+    {
+      "category": "dairy",
+      "description": "Silk unsweetened almond milk",
+      "method": "name",
+      "query": "Silk unsweetened almondmilk",
+      "fdc": false,
+      "off": {
+        "source": "open-food-facts",
+        "lookupMethod": "name-search",
+        "hit": true,
+        "matchedName": "Unsweetened Almondmilk",
+        "matchedCode": "0025293003842",
+        "resultCount": 5,
+        "fields": {
+          "name": true,
+          "brand": true,
+          "nutrition": true,
+          "ingredients": true,
+          "allergens": true,
+          "image": false
+        },
+        "httpStatus": 200
+      }
+    },
+    {
+      "category": "dairy",
+      "description": "Danone/Dannon plain yogurt",
+      "method": "name",
+      "query": "Dannon plain yogurt",
+      "fdc": false,
+      "off": {
+        "source": "open-food-facts",
+        "lookupMethod": "name-search",
+        "hit": true,
+        "matchedName": "Plain Nonfat Yogurt",
+        "matchedCode": "0036632001801",
+        "resultCount": 5,
+        "fields": {
+          "name": true,
+          "brand": true,
+          "nutrition": true,
+          "ingredients": true,
+          "allergens": false,
+          "image": false
+        },
+        "httpStatus": 200
+      }
+    },
+    {
+      "category": "dairy",
+      "description": "Sargento shredded mozzarella",
+      "method": "name",
+      "query": "Sargento shredded mozzarella",
+      "fdc": false,
+      "off": {
+        "source": "open-food-facts",
+        "lookupMethod": "name-search",
+        "hit": true,
+        "matchedName": "Mexican 4 cheese blend shredded monterey jack, cheddar, queso quesadilla and asadero reduced fat cheeses",
+        "matchedCode": "07203656082",
+        "resultCount": 5,
+        "fields": {
+          "name": true,
+          "brand": true,
+          "nutrition": true,
+          "ingredients": false,
+          "allergens": false,
+          "image": false
+        },
+        "httpStatus": 200
+      }
+    },
+    {
+      "category": "meat",
+      "description": "Tyson boneless skinless chicken breast",
+      "method": "name",
+      "query": "Tyson boneless skinless chicken breast",
+      "fdc": {
+        "source": "usda-fdc",
+        "lookupMethod": "name-search",
+        "hit": false,
+        "matchedName": null,
+        "resultCount": 0,
+        "totalHits": null,
+        "fields": null,
+        "httpStatus": 429
+      },
+      "off": {
+        "source": "open-food-facts",
+        "lookupMethod": "name-search",
+        "hit": true,
+        "matchedName": "Boneless Skinless Chicken Breasts",
+        "matchedCode": "0023700062321",
+        "resultCount": 5,
+        "fields": {
+          "name": true,
+          "brand": true,
+          "nutrition": true,
+          "ingredients": true,
+          "allergens": false,
+          "image": true
+        },
+        "httpStatus": 200
+      }
+    },
+    {
+      "category": "meat",
+      "description": "Perdue ground chicken",
+      "method": "name",
+      "query": "Perdue ground chicken",
+      "fdc": false,
+      "off": {
+        "source": "open-food-facts",
+        "lookupMethod": "name-search",
+        "hit": true,
+        "matchedName": "Perdu Chicken",
+        "matchedCode": "0209924306445",
+        "resultCount": 5,
+        "fields": {
+          "name": true,
+          "brand": true,
+          "nutrition": true,
+          "ingredients": false,
+          "allergens": false,
+          "image": false
+        },
+        "httpStatus": 200
+      }
+    },
+    {
+      "category": "meat",
+      "description": "80/20 ground beef, 1 lb",
+      "method": "name",
+      "query": "80/20 ground beef",
+      "fdc": {
+        "source": "usda-fdc",
+        "lookupMethod": "name-search",
+        "hit": false,
+        "matchedName": null,
+        "resultCount": 0,
+        "totalHits": null,
+        "fields": null,
+        "httpStatus": 429
+      },
+      "off": {
+        "source": "open-food-facts",
+        "lookupMethod": "name-search",
+        "hit": true,
+        "matchedName": "80/20 Ground Beef",
+        "matchedCode": "0201692710066",
+        "resultCount": 5,
+        "fields": {
+          "name": true,
+          "brand": true,
+          "nutrition": true,
+          "ingredients": false,
+          "allergens": false,
+          "image": true
+        },
+        "httpStatus": 200
+      }
+    },
+    {
+      "category": "meat",
+      "description": "Oscar Mayer bacon",
+      "method": "name",
+      "query": "Oscar Mayer bacon",
+      "fdc": false,
+      "off": {
+        "source": "open-food-facts",
+        "lookupMethod": "name-search",
+        "hit": true,
+        "matchedName": "oscar mayer",
+        "matchedCode": "04474487",
+        "resultCount": 5,
+        "fields": {
+          "name": true,
+          "brand": false,
+          "nutrition": false,
+          "ingredients": true,
+          "allergens": true,
+          "image": false
+        },
+        "httpStatus": 200
+      }
+    },
+    {
+      "category": "meat",
+      "description": "Oscar Mayer beef franks",
+      "method": "name",
+      "query": "Oscar Mayer beef franks hot dogs",
+      "fdc": false,
+      "off": {
+        "source": "open-food-facts",
+        "lookupMethod": "name-search",
+        "hit": true,
+        "matchedName": "oscar mayer",
+        "matchedCode": "04474487",
+        "resultCount": 5,
+        "fields": {
+          "name": true,
+          "brand": false,
+          "nutrition": false,
+          "ingredients": true,
+          "allergens": true,
+          "image": false
+        },
+        "httpStatus": 200
+      }
+    },
+    {
+      "category": "meat",
+      "description": "Hillshire Farm smoked sausage",
+      "method": "name",
+      "query": "Hillshire Farm smoked sausage",
+      "fdc": false,
+      "off": {
+        "source": "open-food-facts",
+        "lookupMethod": "name-search",
+        "hit": true,
+        "matchedName": "Hillshire Farm Sausage Smoked, Hot",
+        "matchedCode": "0044500341751",
+        "resultCount": 5,
+        "fields": {
+          "name": true,
+          "brand": true,
+          "nutrition": true,
+          "ingredients": false,
+          "allergens": true,
+          "image": true
+        },
+        "httpStatus": 200
+      }
+    },
+    {
+      "category": "meat",
+      "description": "Atlantic salmon fillet",
+      "method": "name",
+      "query": "Atlantic salmon fillet fresh",
+      "fdc": false,
+      "off": {
+        "source": "open-food-facts",
+        "lookupMethod": "name-search",
+        "hit": true,
+        "matchedName": "Atlantic salmon fillet fresh never frozen",
+        "matchedCode": "0251518710343",
+        "resultCount": 5,
+        "fields": {
+          "name": true,
+          "brand": true,
+          "nutrition": true,
+          "ingredients": false,
+          "allergens": false,
+          "image": false
+        },
+        "httpStatus": 200
+      }
+    },
+    {
+      "category": "meat",
+      "description": "Butterball ground turkey",
+      "method": "name",
+      "query": "Butterball ground turkey",
+      "fdc": {
+        "source": "usda-fdc",
+        "lookupMethod": "name-search",
+        "hit": false,
+        "matchedName": null,
+        "resultCount": 0,
+        "totalHits": null,
+        "fields": null,
+        "httpStatus": 429
+      },
+      "off": {
+        "source": "open-food-facts",
+        "lookupMethod": "name-search",
+        "hit": true,
+        "matchedName": "Traditional Turkey Wieners",
+        "matchedCode": "65822978500",
+        "resultCount": 5,
+        "fields": {
+          "name": true,
+          "brand": true,
+          "nutrition": true,
+          "ingredients": true,
+          "allergens": false,
+          "image": true
+        },
+        "httpStatus": 200
+      }
+    },
+    {
+      "category": "pantry",
+      "description": "Barilla spaghetti",
+      "method": "name",
+      "query": "Barilla spaghetti",
+      "fdc": {
+        "source": "usda-fdc",
+        "lookupMethod": "name-search",
+        "hit": false,
+        "matchedName": null,
+        "resultCount": 0,
+        "totalHits": null,
+        "fields": null,
+        "httpStatus": 429
+      },
+      "off": {
+        "source": "open-food-facts",
+        "lookupMethod": "name-search",
+        "hit": true,
+        "matchedName": "Barilla Spaghetti",
+        "matchedCode": "76808005",
+        "resultCount": 5,
+        "fields": {
+          "name": true,
+          "brand": true,
+          "nutrition": false,
+          "ingredients": false,
+          "allergens": true,
+          "image": false
+        },
+        "httpStatus": 200
+      }
+    },
+    {
+      "category": "pantry",
+      "description": "Ronzoni elbow macaroni",
+      "method": "name",
+      "query": "Ronzoni elbow macaroni",
+      "fdc": false,
+      "off": {
+        "source": "open-food-facts",
+        "lookupMethod": "name-search",
+        "hit": true,
+        "matchedName": "Ronzoni, elbows, enriched macaroni product",
+        "matchedCode": "0071300010136",
+        "resultCount": 5,
+        "fields": {
+          "name": true,
+          "brand": true,
+          "nutrition": true,
+          "ingredients": true,
+          "allergens": true,
+          "image": false
+        },
+        "httpStatus": 200
+      }
+    },
+    {
+      "category": "pantry",
+      "description": "Gold Medal all-purpose flour",
+      "method": "name",
+      "query": "Gold Medal all purpose flour",
+      "fdc": false,
+      "off": {
+        "source": "open-food-facts",
+        "lookupMethod": "name-search",
+        "hit": true,
+        "matchedName": "All Purpose Flour",
+        "matchedCode": "0016000107106",
+        "resultCount": 5,
+        "fields": {
+          "name": true,
+          "brand": true,
+          "nutrition": true,
+          "ingredients": true,
+          "allergens": true,
+          "image": true
+        },
+        "httpStatus": 200
+      }
+    },
+    {
+      "category": "pantry",
+      "description": "Domino granulated sugar",
+      "method": "name",
+      "query": "Domino granulated sugar",
+      "fdc": false,
+      "off": {
+        "source": "open-food-facts",
+        "lookupMethod": "name-search",
+        "hit": true,
+        "matchedName": "Domino granulated sugar",
+        "matchedCode": "0049200009505",
+        "resultCount": 5,
+        "fields": {
+          "name": true,
+          "brand": false,
+          "nutrition": true,
+          "ingredients": false,
+          "allergens": false,
+          "image": false
+        },
+        "httpStatus": 200
+      }
+    },
+    {
+      "category": "pantry",
+      "description": "Bush's Best black beans",
+      "method": "name",
+      "query": "Bush's Best black beans",
+      "fdc": {
+        "source": "usda-fdc",
+        "lookupMethod": "name-search",
+        "hit": false,
+        "matchedName": null,
+        "resultCount": 0,
+        "totalHits": null,
+        "fields": null,
+        "httpStatus": 429
+      },
+      "off": {
+        "source": "open-food-facts",
+        "lookupMethod": "name-search",
+        "hit": true,
+        "matchedName": "Bush’s Best Organic Black Beans",
+        "matchedCode": "0039400118787",
+        "resultCount": 5,
+        "fields": {
+          "name": true,
+          "brand": true,
+          "nutrition": true,
+          "ingredients": true,
+          "allergens": false,
+          "image": false
+        },
+        "httpStatus": 200
+      }
+    },
+    {
+      "category": "pantry",
+      "description": "Hunt's diced tomatoes",
+      "method": "name",
+      "query": "Hunt's diced tomatoes canned",
+      "fdc": false,
+      "off": {
+        "source": "open-food-facts",
+        "lookupMethod": "name-search",
+        "hit": true,
+        "matchedName": "Canned Diced Tomatoes",
+        "matchedCode": "4056489806387",
+        "resultCount": 5,
+        "fields": {
+          "name": true,
+          "brand": true,
+          "nutrition": true,
+          "ingredients": false,
+          "allergens": false,
+          "image": true
+        },
+        "httpStatus": 200
+      }
+    },
+    {
+      "category": "pantry",
+      "description": "Bertolli extra virgin olive oil",
+      "method": "name",
+      "query": "Bertolli extra virgin olive oil",
+      "fdc": false,
+      "off": {
+        "source": "open-food-facts",
+        "lookupMethod": "name-search",
+        "hit": true,
+        "matchedName": "huile d\\'olive vierge extra",
+        "matchedCode": "3256220280",
+        "resultCount": 5,
+        "fields": {
+          "name": true,
+          "brand": true,
+          "nutrition": false,
+          "ingredients": false,
+          "allergens": false,
+          "image": false
+        },
+        "httpStatus": 200
+      }
+    },
+    {
+      "category": "pantry",
+      "description": "Jif creamy peanut butter",
+      "method": "name",
+      "query": "Jif creamy peanut butter",
+      "fdc": {
+        "source": "usda-fdc",
+        "lookupMethod": "name-search",
+        "hit": false,
+        "matchedName": null,
+        "resultCount": 0,
+        "totalHits": null,
+        "fields": null,
+        "httpStatus": 429
+      },
+      "off": {
+        "source": "open-food-facts",
+        "lookupMethod": "name-search",
+        "hit": true,
+        "matchedName": "jif creamy peanut butter",
+        "matchedCode": "05150229",
+        "resultCount": 5,
+        "fields": {
+          "name": true,
+          "brand": false,
+          "nutrition": false,
+          "ingredients": true,
+          "allergens": true,
+          "image": false
+        },
+        "httpStatus": 200
+      }
+    },
+    {
+      "category": "pantry",
+      "description": "Skippy peanut butter",
+      "method": "name",
+      "query": "Skippy creamy peanut butter",
+      "fdc": false,
+      "off": {
+        "source": "open-food-facts",
+        "lookupMethod": "name-search",
+        "hit": true,
+        "matchedName": "Skippy Creamy Peanut Butter",
+        "matchedCode": "08309905",
+        "resultCount": 5,
+        "fields": {
+          "name": true,
+          "brand": true,
+          "nutrition": true,
+          "ingredients": false,
+          "allergens": false,
+          "image": true
+        },
+        "httpStatus": 200
+      }
+    },
+    {
+      "category": "pantry",
+      "description": "Cheerios cereal",
+      "method": "name",
+      "query": "Cheerios cereal General Mills",
+      "fdc": {
+        "source": "usda-fdc",
+        "lookupMethod": "name-search",
+        "hit": false,
+        "matchedName": null,
+        "resultCount": 0,
+        "totalHits": null,
+        "fields": null,
+        "httpStatus": 429
+      },
+      "off": {
+        "source": "open-food-facts",
+        "lookupMethod": "name-search",
+        "hit": true,
+        "matchedName": "General mills cereal",
+        "matchedCode": "0016000275782",
+        "resultCount": 5,
+        "fields": {
+          "name": true,
+          "brand": true,
+          "nutrition": true,
+          "ingredients": false,
+          "allergens": true,
+          "image": true
+        },
+        "httpStatus": 200
+      }
+    },
+    {
+      "category": "pantry",
+      "description": "Quaker old fashioned oats",
+      "method": "name",
+      "query": "Quaker Old Fashioned Oats",
+      "fdc": false,
+      "off": {
+        "source": "open-food-facts",
+        "lookupMethod": "name-search",
+        "hit": true,
+        "matchedName": "quaker old fashion oats",
+        "matchedCode": "24045766",
+        "resultCount": 5,
+        "fields": {
+          "name": true,
+          "brand": false,
+          "nutrition": false,
+          "ingredients": true,
+          "allergens": false,
+          "image": false
+        },
+        "httpStatus": 200
+      }
+    },
+    {
+      "category": "pantry",
+      "description": "Wonder Bread white sandwich bread",
+      "method": "name",
+      "query": "Wonder Bread white sandwich bread",
+      "fdc": false,
+      "off": {
+        "source": "open-food-facts",
+        "lookupMethod": "name-search",
+        "hit": true,
+        "matchedName": "White Bread",
+        "matchedCode": "0063400020405",
+        "resultCount": 5,
+        "fields": {
+          "name": true,
+          "brand": true,
+          "nutrition": true,
+          "ingredients": true,
+          "allergens": true,
+          "image": true
+        },
+        "httpStatus": 200
+      }
+    },
+    {
+      "category": "pantry",
+      "description": "Nabisco Ritz crackers",
+      "method": "name",
+      "query": "Ritz crackers Nabisco",
+      "fdc": false,
+      "off": {
+        "source": "open-food-facts",
+        "lookupMethod": "name-search",
+        "hit": true,
+        "matchedName": "Ritz",
+        "matchedCode": "0044000031114",
+        "resultCount": 5,
+        "fields": {
+          "name": true,
+          "brand": true,
+          "nutrition": true,
+          "ingredients": false,
+          "allergens": true,
+          "image": true
+        },
+        "httpStatus": 200
+      }
+    },
+    {
+      "category": "pantry",
+      "description": "Kikkoman soy sauce",
+      "method": "name",
+      "query": "Kikkoman soy sauce",
+      "fdc": {
+        "source": "usda-fdc",
+        "lookupMethod": "name-search",
+        "hit": false,
+        "matchedName": null,
+        "resultCount": 0,
+        "totalHits": null,
+        "fields": null,
+        "httpStatus": 429
+      },
+      "off": {
+        "source": "open-food-facts",
+        "lookupMethod": "name-search",
+        "hit": true,
+        "matchedName": "Soy Sauce",
+        "matchedCode": "4901515118586",
+        "resultCount": 5,
+        "fields": {
+          "name": true,
+          "brand": true,
+          "nutrition": true,
+          "ingredients": true,
+          "allergens": true,
+          "image": true
+        },
+        "httpStatus": 200
+      }
+    },
+    {
+      "category": "pantry",
+      "description": "French's yellow mustard",
+      "method": "name",
+      "query": "French's classic yellow mustard",
+      "fdc": false,
+      "off": {
+        "source": "open-food-facts",
+        "lookupMethod": "name-search",
+        "hit": true,
+        "matchedName": "French’s classic yellow mustard",
+        "matchedCode": "1962200600000",
+        "resultCount": 5,
+        "fields": {
+          "name": true,
+          "brand": true,
+          "nutrition": false,
+          "ingredients": true,
+          "allergens": true,
+          "image": true
+        },
+        "httpStatus": 200
+      }
+    },
+    {
+      "category": "pantry",
+      "description": "Heinz tomato ketchup",
+      "method": "name",
+      "query": "Heinz tomato ketchup",
+      "fdc": {
+        "source": "usda-fdc",
+        "lookupMethod": "name-search",
+        "hit": false,
+        "matchedName": null,
+        "resultCount": 0,
+        "totalHits": null,
+        "fields": null,
+        "httpStatus": 429
+      },
+      "off": {
+        "source": "open-food-facts",
+        "lookupMethod": "name-search",
+        "hit": true,
+        "matchedName": "Heinz tomato ketchup",
+        "matchedCode": "5433699497502",
+        "resultCount": 5,
+        "fields": {
+          "name": true,
+          "brand": true,
+          "nutrition": true,
+          "ingredients": false,
+          "allergens": false,
+          "image": true
+        },
+        "httpStatus": 200
+      }
+    },
+    {
+      "category": "pantry",
+      "description": "Hellmann's real mayonnaise",
+      "method": "name",
+      "query": "Hellmann's real mayonnaise",
+      "fdc": false,
+      "off": {
+        "source": "open-food-facts",
+        "lookupMethod": "name-search",
+        "hit": true,
+        "matchedName": "Mayonaise",
+        "matchedCode": "1048001265349",
+        "resultCount": 5,
+        "fields": {
+          "name": true,
+          "brand": true,
+          "nutrition": false,
+          "ingredients": false,
+          "allergens": false,
+          "image": false
+        },
+        "httpStatus": 200
+      }
+    },
+    {
+      "category": "pantry",
+      "description": "Pace chunky salsa medium",
+      "method": "name",
+      "query": "Pace chunky salsa medium",
+      "fdc": false,
+      "off": {
+        "source": "open-food-facts",
+        "lookupMethod": "name-search",
+        "hit": true,
+        "matchedName": "Pace chunky salsa",
+        "matchedCode": "0041565273478",
+        "resultCount": 5,
+        "fields": {
+          "name": true,
+          "brand": false,
+          "nutrition": true,
+          "ingredients": false,
+          "allergens": false,
+          "image": true
+        },
+        "httpStatus": 200
+      }
+    },
+    {
+      "category": "pantry",
+      "description": "Rice, long grain white, 5lb bag",
+      "method": "name",
+      "query": "long grain white rice",
+      "fdc": false,
+      "off": {
+        "source": "open-food-facts",
+        "lookupMethod": "name-search",
+        "hit": true,
+        "matchedName": "Long Grain WHite Rice",
+        "matchedCode": "0600350116941",
+        "resultCount": 5,
+        "fields": {
+          "name": true,
+          "brand": true,
+          "nutrition": false,
+          "ingredients": false,
+          "allergens": false,
+          "image": true
+        },
+        "httpStatus": 200
+      }
+    },
+    {
+      "category": "pantry",
+      "description": "Prego traditional pasta sauce",
+      "method": "name",
+      "query": "Prego traditional Italian pasta sauce",
+      "fdc": false,
+      "off": {
+        "source": "open-food-facts",
+        "lookupMethod": "name-search",
+        "hit": true,
+        "matchedName": "Prego sauces italian",
+        "matchedCode": "0051000195173",
+        "resultCount": 5,
+        "fields": {
+          "name": true,
+          "brand": false,
+          "nutrition": true,
+          "ingredients": true,
+          "allergens": false,
+          "image": false
+        },
+        "httpStatus": 200
+      }
+    },
+    {
+      "category": "frozen",
+      "description": "Birds Eye frozen mixed vegetables",
+      "method": "name",
+      "query": "Birds Eye frozen mixed vegetables",
+      "fdc": {
+        "source": "usda-fdc",
+        "lookupMethod": "name-search",
+        "hit": false,
+        "matchedName": null,
+        "resultCount": 0,
+        "totalHits": null,
+        "fields": null,
+        "httpStatus": 429
+      },
+      "off": {
+        "source": "open-food-facts",
+        "lookupMethod": "name-search",
+        "hit": true,
+        "matchedName": "Classic Mixed Vegetables",
+        "matchedCode": "0014500004406",
+        "resultCount": 5,
+        "fields": {
+          "name": true,
+          "brand": true,
+          "nutrition": true,
+          "ingredients": true,
+          "allergens": false,
+          "image": false
+        },
+        "httpStatus": 200
+      }
+    },
+    {
+      "category": "frozen",
+      "description": "DiGiorno rising crust pepperoni pizza",
+      "method": "name",
+      "query": "DiGiorno rising crust pepperoni pizza",
+      "fdc": false,
+      "off": {
+        "source": "open-food-facts",
+        "lookupMethod": "name-search",
+        "hit": true,
+        "matchedName": "Digiorno, rising crust pizza, spicy pepperoni & poblanos",
+        "matchedCode": "0071921615536",
+        "resultCount": 5,
+        "fields": {
+          "name": true,
+          "brand": false,
+          "nutrition": true,
+          "ingredients": false,
+          "allergens": true,
+          "image": false
+        },
+        "httpStatus": 200
+      }
+    },
+    {
+      "category": "frozen",
+      "description": "Breyers vanilla ice cream",
+      "method": "name",
+      "query": "Breyers natural vanilla ice cream",
+      "fdc": {
+        "source": "usda-fdc",
+        "lookupMethod": "name-search",
+        "hit": false,
+        "matchedName": null,
+        "resultCount": 0,
+        "totalHits": null,
+        "fields": null,
+        "httpStatus": 429
+      },
+      "off": {
+        "source": "open-food-facts",
+        "lookupMethod": "name-search",
+        "hit": true,
+        "matchedName": "Lino lada duo",
+        "matchedCode": "3850116007328",
+        "resultCount": 5,
+        "fields": {
+          "name": true,
+          "brand": true,
+          "nutrition": true,
+          "ingredients": true,
+          "allergens": true,
+          "image": true
+        },
+        "httpStatus": 200
+      }
+    },
+    {
+      "category": "frozen",
+      "description": "Eggo homestyle waffles",
+      "method": "name",
+      "query": "Eggo homestyle waffles",
+      "fdc": false,
+      "off": {
+        "source": "open-food-facts",
+        "lookupMethod": "name-search",
+        "hit": true,
+        "matchedName": "Eggo Homestyle Waffle",
+        "matchedCode": "0038000766060",
+        "resultCount": 5,
+        "fields": {
+          "name": true,
+          "brand": true,
+          "nutrition": true,
+          "ingredients": false,
+          "allergens": false,
+          "image": true
+        },
+        "httpStatus": 200
+      }
+    },
+    {
+      "category": "frozen",
+      "description": "Tyson frozen chicken nuggets",
+      "method": "name",
+      "query": "Tyson frozen chicken nuggets",
+      "fdc": false,
+      "off": {
+        "source": "open-food-facts",
+        "lookupMethod": "name-search",
+        "hit": true,
+        "matchedName": "Tyson chicken nuggets",
+        "matchedCode": "16310230",
+        "resultCount": 5,
+        "fields": {
+          "name": true,
+          "brand": true,
+          "nutrition": true,
+          "ingredients": false,
+          "allergens": false,
+          "image": true
+        },
+        "httpStatus": 200
+      }
+    },
+    {
+      "category": "frozen",
+      "description": "Stouffer's lasagna with meat sauce",
+      "method": "name",
+      "query": "Stouffer's lasagna with meat sauce",
+      "fdc": false,
+      "off": {
+        "source": "open-food-facts",
+        "lookupMethod": "name-search",
+        "hit": true,
+        "matchedName": "Classic Lasagna with Meat & Sauce",
+        "matchedCode": "0013800103215",
+        "resultCount": 5,
+        "fields": {
+          "name": true,
+          "brand": true,
+          "nutrition": true,
+          "ingredients": true,
+          "allergens": true,
+          "image": true
+        },
+        "httpStatus": 200
+      }
+    },
+    {
+      "category": "frozen",
+      "description": "Ore-Ida frozen French fries",
+      "method": "name",
+      "query": "Ore-Ida golden crinkles french fries",
+      "fdc": false,
+      "off": {
+        "source": "open-food-facts",
+        "lookupMethod": "name-search",
+        "hit": true,
+        "matchedName": "ore-ida golden crinkle french fried potatoes",
+        "matchedCode": "12700034",
+        "resultCount": 5,
+        "fields": {
+          "name": true,
+          "brand": true,
+          "nutrition": false,
+          "ingredients": true,
+          "allergens": true,
+          "image": true
+        },
+        "httpStatus": 200
+      }
+    },
+    {
+      "category": "frozen",
+      "description": "Dole frozen mixed fruit / berries",
+      "method": "name",
+      "query": "Dole frozen mixed berries",
+      "fdc": false,
+      "off": {
+        "source": "open-food-facts",
+        "lookupMethod": "name-search",
+        "hit": true,
+        "matchedName": "Fruits rouges",
+        "matchedCode": "3564700683460",
+        "resultCount": 5,
+        "fields": {
+          "name": true,
+          "brand": true,
+          "nutrition": false,
+          "ingredients": false,
+          "allergens": false,
+          "image": true
+        },
+        "httpStatus": 200
+      }
+    },
+    {
+      "category": "snacks",
+      "description": "Lay's classic potato chips",
+      "method": "name",
+      "query": "Lay's Classic potato chips",
+      "fdc": {
+        "source": "usda-fdc",
+        "lookupMethod": "name-search",
+        "hit": false,
+        "matchedName": null,
+        "resultCount": 0,
+        "totalHits": null,
+        "fields": null,
+        "httpStatus": 429
+      },
+      "off": {
+        "source": "open-food-facts",
+        "lookupMethod": "name-search",
+        "hit": true,
+        "matchedName": "Lay's Classic Potato chips",
+        "matchedCode": "0028400097802",
+        "resultCount": 5,
+        "fields": {
+          "name": true,
+          "brand": false,
+          "nutrition": true,
+          "ingredients": false,
+          "allergens": false,
+          "image": false
+        },
+        "httpStatus": 200
+      }
+    },
+    {
+      "category": "snacks",
+      "description": "Chips Ahoy! chocolate chip cookies",
+      "method": "name",
+      "query": "Chips Ahoy chocolate chip cookies",
+      "fdc": false,
+      "off": {
+        "source": "open-food-facts",
+        "lookupMethod": "name-search",
+        "hit": true,
+        "matchedName": "Galletas con chispas de chocolate - Chips Ahoy - Chips Ahoy - Chips Ahoy - Chips Ahoy",
+        "matchedCode": "7622201764463",
+        "resultCount": 5,
+        "fields": {
+          "name": true,
+          "brand": false,
+          "nutrition": true,
+          "ingredients": false,
+          "allergens": false,
+          "image": false
+        },
+        "httpStatus": 200
+      }
+    },
+    {
+      "category": "beverages",
+      "description": "Coca-Cola, 12-pack cans",
+      "method": "name",
+      "query": "Coca-Cola classic 12 pack cans",
+      "fdc": {
+        "source": "usda-fdc",
+        "lookupMethod": "name-search",
+        "hit": false,
+        "matchedName": null,
+        "resultCount": 0,
+        "totalHits": null,
+        "fields": null,
+        "httpStatus": 429
+      },
+      "off": {
+        "source": "open-food-facts",
+        "lookupMethod": "name-search",
+        "hit": true,
+        "matchedName": "Coca Cola Can",
+        "matchedCode": "10603499",
+        "resultCount": 5,
+        "fields": {
+          "name": true,
+          "brand": true,
+          "nutrition": true,
+          "ingredients": false,
+          "allergens": false,
+          "image": true
+        },
+        "httpStatus": 200
+      }
+    },
+    {
+      "category": "beverages",
+      "description": "Tropicana 100% orange juice",
+      "method": "name",
+      "query": "Tropicana pure premium orange juice",
+      "fdc": false,
+      "off": {
+        "source": "open-food-facts",
+        "lookupMethod": "name-search",
+        "hit": true,
+        "matchedName": "Pure Premium Orange Juice Calcium And Vitamin D No Pulp",
+        "matchedCode": "48500202777",
+        "resultCount": 5,
+        "fields": {
+          "name": true,
+          "brand": true,
+          "nutrition": true,
+          "ingredients": true,
+          "allergens": false,
+          "image": true
+        },
+        "httpStatus": 200
+      }
+    },
+    {
+      "category": "snacks",
+      "description": "Nature Valley oats & honey granola bars",
+      "method": "name",
+      "query": "Nature Valley oats and honey granola bars",
+      "fdc": {
+        "source": "usda-fdc",
+        "lookupMethod": "name-search",
+        "hit": false,
+        "matchedName": null,
+        "resultCount": 0,
+        "totalHits": null,
+        "fields": null,
+        "httpStatus": 429
+      },
+      "off": {
+        "source": "open-food-facts",
+        "lookupMethod": "name-search",
+        "hit": true,
+        "matchedName": "Granola Protein Oats 'N' Honey",
+        "matchedCode": "0065633461222",
+        "resultCount": 5,
+        "fields": {
+          "name": true,
+          "brand": true,
+          "nutrition": true,
+          "ingredients": true,
+          "allergens": true,
+          "image": true
+        },
+        "httpStatus": 200
+      }
+    },
+    {
+      "category": "snacks",
+      "description": "Blue Diamond roasted salted almonds",
+      "method": "name",
+      "query": "Blue Diamond almonds roasted salted",
+      "fdc": false,
+      "off": {
+        "source": "open-food-facts",
+        "lookupMethod": "name-search",
+        "hit": true,
+        "matchedName": "Blue Diamond Roasted Sea Salt Almonds",
+        "matchedCode": "0041570112991",
+        "resultCount": 5,
+        "fields": {
+          "name": true,
+          "brand": true,
+          "nutrition": true,
+          "ingredients": false,
+          "allergens": false,
+          "image": true
+        },
+        "httpStatus": 200
+      }
+    },
+    {
+      "category": "snacks",
+      "description": "Tostitos tortilla chips",
+      "method": "name",
+      "query": "Tostitos scoops tortilla chips",
+      "fdc": false,
+      "off": {
+        "source": "open-food-facts",
+        "lookupMethod": "name-search",
+        "hit": true,
+        "matchedName": "Tostitos Scoops Tortilla Chips 14.625 Ounce Plastic Bag",
+        "matchedCode": "0028400245562",
+        "resultCount": 5,
+        "fields": {
+          "name": true,
+          "brand": false,
+          "nutrition": true,
+          "ingredients": true,
+          "allergens": false,
+          "image": false
+        },
+        "httpStatus": 200
+      }
+    },
+    {
+      "category": "snacks",
+      "description": "Cheez-It original crackers",
+      "method": "name",
+      "query": "Cheez-It original baked snack crackers",
+      "fdc": false,
+      "off": {
+        "source": "open-food-facts",
+        "lookupMethod": "name-search",
+        "hit": true,
+        "matchedName": "Cheez it original baked snack crackers",
+        "matchedCode": "0024100111640",
+        "resultCount": 5,
+        "fields": {
+          "name": true,
+          "brand": true,
+          "nutrition": true,
+          "ingredients": true,
+          "allergens": true,
+          "image": true
+        },
+        "httpStatus": 200
+      }
+    },
+    {
+      "category": "snacks",
+      "description": "Wrigley's/Trident chewing gum",
+      "method": "name",
+      "query": "Trident spearmint sugar free gum",
+      "fdc": false,
+      "off": {
+        "source": "open-food-facts",
+        "lookupMethod": "name-search",
+        "hit": true,
+        "matchedName": "Trident gum spearmint",
+        "matchedCode": "7622210059574",
+        "resultCount": 5,
+        "fields": {
+          "name": true,
+          "brand": true,
+          "nutrition": true,
+          "ingredients": true,
+          "allergens": false,
+          "image": true
+        },
+        "httpStatus": 200
+      }
+    },
+    {
+      "category": "beverages",
+      "description": "LaCroix sparkling water, lime",
+      "method": "name",
+      "query": "LaCroix sparkling water lime",
+      "fdc": false,
+      "off": {
+        "source": "open-food-facts",
+        "lookupMethod": "name-search",
+        "hit": true,
+        "matchedName": "Naturally Essenced Coconut Sparkling Water",
+        "matchedCode": "0012993101015",
+        "resultCount": 5,
+        "fields": {
+          "name": true,
+          "brand": true,
+          "nutrition": true,
+          "ingredients": false,
+          "allergens": false,
+          "image": false
+        },
+        "httpStatus": 200
+      }
+    },
+    {
+      "category": "beverages",
+      "description": "Folgers classic roast ground coffee",
+      "method": "name",
+      "query": "Folgers classic roast ground coffee",
+      "fdc": {
+        "source": "usda-fdc",
+        "lookupMethod": "name-search",
+        "hit": false,
+        "matchedName": null,
+        "resultCount": 0,
+        "totalHits": null,
+        "fields": null,
+        "httpStatus": 429
+      },
+      "off": {
+        "source": "open-food-facts",
+        "lookupMethod": "name-search",
+        "hit": true,
+        "matchedName": "Folgers classic roast ground coffee",
+        "matchedCode": "0025500304182",
+        "resultCount": 5,
+        "fields": {
+          "name": true,
+          "brand": false,
+          "nutrition": false,
+          "ingredients": true,
+          "allergens": false,
+          "image": true
+        },
+        "httpStatus": 200
+      }
+    },
+    {
+      "category": "beverages",
+      "description": "Lipton black tea bags",
+      "method": "name",
+      "query": "Lipton black tea bags",
+      "fdc": false,
+      "off": {
+        "source": "open-food-facts",
+        "lookupMethod": "name-search",
+        "hit": true,
+        "matchedName": "Lipton Weniger suß original",
+        "matchedCode": "4060800302960",
+        "resultCount": 5,
+        "fields": {
+          "name": true,
+          "brand": true,
+          "nutrition": true,
+          "ingredients": false,
+          "allergens": false,
+          "image": true
+        },
+        "httpStatus": 200
+      }
+    },
+    {
+      "category": "snacks",
+      "description": "Hershey's milk chocolate bar",
+      "method": "name",
+      "query": "Hershey's milk chocolate bar",
+      "fdc": false,
+      "off": {
+        "source": "open-food-facts",
+        "lookupMethod": "name-search",
+        "hit": true,
+        "matchedName": "Hershey's Milk Chocolate Bar",
+        "matchedCode": "03424005",
+        "resultCount": 5,
+        "fields": {
+          "name": true,
+          "brand": true,
+          "nutrition": true,
+          "ingredients": false,
+          "allergens": true,
+          "image": true
+        },
+        "httpStatus": 200
+      }
+    },
+    {
+      "category": "snacks",
+      "description": "Reese's peanut butter cups",
+      "method": "name",
+      "query": "Reese's peanut butter cups",
+      "fdc": false,
+      "off": {
+        "source": "open-food-facts",
+        "lookupMethod": "name-search",
+        "hit": true,
+        "matchedName": "Reeses Peanut Butter Cups",
+        "matchedCode": "0034000938230",
+        "resultCount": 5,
+        "fields": {
+          "name": true,
+          "brand": false,
+          "nutrition": true,
+          "ingredients": false,
+          "allergens": false,
+          "image": true
+        },
+        "httpStatus": 200
+      }
+    },
+    {
+      "category": "snacks",
+      "description": "M&M's milk chocolate candies",
+      "method": "name",
+      "query": "M&M's milk chocolate candies",
+      "fdc": false,
+      "off": {
+        "source": "open-food-facts",
+        "lookupMethod": "name-search",
+        "hit": true,
+        "matchedName": "M&m's, milk chocolate candies",
+        "matchedCode": "0040000491675",
+        "resultCount": 5,
+        "fields": {
+          "name": true,
+          "brand": false,
+          "nutrition": true,
+          "ingredients": true,
+          "allergens": true,
+          "image": false
+        },
+        "httpStatus": 200
+      }
+    },
+    {
+      "category": "baking",
+      "description": "Nestle Toll House semi-sweet chocolate chips",
+      "method": "name",
+      "query": "Nestle Toll House semi sweet chocolate morsels",
+      "fdc": {
+        "source": "usda-fdc",
+        "lookupMethod": "name-search",
+        "hit": false,
+        "matchedName": null,
+        "resultCount": 0,
+        "totalHits": null,
+        "fields": null,
+        "httpStatus": 429
+      },
+      "off": {
+        "source": "open-food-facts",
+        "lookupMethod": "name-search",
+        "hit": true,
+        "matchedName": "Toll house semi-sweet chocolate morsels bag",
+        "matchedCode": "0028000303976",
+        "resultCount": 5,
+        "fields": {
+          "name": true,
+          "brand": true,
+          "nutrition": true,
+          "ingredients": false,
+          "allergens": true,
+          "image": true
+        },
+        "httpStatus": 200
+      }
+    },
+    {
+      "category": "baking",
+      "description": "McCormick pure vanilla extract",
+      "method": "name",
+      "query": "McCormick pure vanilla extract",
+      "fdc": false,
+      "off": {
+        "source": "open-food-facts",
+        "lookupMethod": "name-search",
+        "hit": true,
+        "matchedName": "Pure Vanilla Extract",
+        "matchedCode": "0025638719087",
+        "resultCount": 5,
+        "fields": {
+          "name": true,
+          "brand": true,
+          "nutrition": false,
+          "ingredients": false,
+          "allergens": false,
+          "image": false
+        },
+        "httpStatus": 200
+      }
+    },
+    {
+      "category": "baking",
+      "description": "Arm & Hammer baking soda",
+      "method": "name",
+      "query": "Arm and Hammer baking soda",
+      "fdc": false,
+      "off": {
+        "source": "open-food-facts",
+        "lookupMethod": "name-search",
+        "hit": true,
+        "matchedName": "Arm hammer pure baking soda",
+        "matchedCode": "0033200974031",
+        "resultCount": 5,
+        "fields": {
+          "name": true,
+          "brand": false,
+          "nutrition": true,
+          "ingredients": true,
+          "allergens": false,
+          "image": true
+        },
+        "httpStatus": 200
+      }
+    },
+    {
+      "category": "condiments",
+      "description": "Frank's RedHot original hot sauce",
+      "method": "name",
+      "query": "Frank's RedHot original cayenne pepper sauce",
+      "fdc": false,
+      "off": {
+        "source": "open-food-facts",
+        "lookupMethod": "name-search",
+        "hit": true,
+        "matchedName": "Redhot original cayenne pepper sauce",
+        "matchedCode": "41500930992",
+        "resultCount": 5,
+        "fields": {
+          "name": true,
+          "brand": true,
+          "nutrition": true,
+          "ingredients": false,
+          "allergens": false,
+          "image": false
+        },
+        "httpStatus": 200
+      }
+    },
+    {
+      "category": "condiments",
+      "description": "Sweet Baby Ray's barbecue sauce",
+      "method": "name",
+      "query": "Sweet Baby Ray's original barbecue sauce",
+      "fdc": false,
+      "off": {
+        "source": "open-food-facts",
+        "lookupMethod": "name-search",
+        "hit": true,
+        "matchedName": "Sweet Baby Ray’s Original Barbecue Sauce 510g",
+        "matchedCode": "001340951717802",
+        "resultCount": 5,
+        "fields": {
+          "name": true,
+          "brand": false,
+          "nutrition": false,
+          "ingredients": true,
+          "allergens": true,
+          "image": false
+        },
+        "httpStatus": 200
+      }
+    },
+    {
+      "category": "condiments",
+      "description": "Hidden Valley ranch dressing",
+      "method": "name",
+      "query": "Hidden Valley Original Ranch dressing",
+      "fdc": {
+        "source": "usda-fdc",
+        "lookupMethod": "name-search",
+        "hit": false,
+        "matchedName": null,
+        "resultCount": 0,
+        "totalHits": null,
+        "fields": null,
+        "httpStatus": 429
+      },
+      "off": {
+        "source": "open-food-facts",
+        "lookupMethod": "name-search",
+        "hit": true,
+        "matchedName": "hidden valley the original ranch",
+        "matchedCode": "08927215",
+        "resultCount": 5,
+        "fields": {
+          "name": true,
+          "brand": false,
+          "nutrition": false,
+          "ingredients": true,
+          "allergens": true,
+          "image": false
+        },
+        "httpStatus": 200
+      }
+    },
+    {
+      "category": "condiments",
+      "description": "Newman's Own Italian dressing",
+      "method": "name",
+      "query": "Newman's Own Italian dressing",
+      "fdc": false,
+      "off": {
+        "source": "open-food-facts",
+        "lookupMethod": "name-search",
+        "hit": true,
+        "matchedName": "Newman's own, lite italian dressing",
+        "matchedCode": "0020662000033",
+        "resultCount": 5,
+        "fields": {
+          "name": true,
+          "brand": true,
+          "nutrition": true,
+          "ingredients": false,
+          "allergens": true,
+          "image": false
+        },
+        "httpStatus": 200
+      }
+    },
+    {
+      "category": "condiments",
+      "description": "Rao's marinara sauce",
+      "method": "name",
+      "query": "Rao's Homemade marinara sauce",
+      "fdc": false,
+      "off": {
+        "source": "open-food-facts",
+        "lookupMethod": "name-search",
+        "hit": true,
+        "matchedName": "Rao's Homemade Alfredo",
+        "matchedCode": "7717079001182",
+        "resultCount": 5,
+        "fields": {
+          "name": true,
+          "brand": false,
+          "nutrition": false,
+          "ingredients": true,
+          "allergens": true,
+          "image": false
+        },
+        "httpStatus": 200
+      }
+    },
+    {
+      "category": "produce",
+      "description": "Strawberries, 1 lb clamshell",
+      "method": "name",
+      "query": "fresh strawberries 1 lb clamshell",
+      "fdc": false,
+      "off": {
+        "source": "open-food-facts",
+        "lookupMethod": "name-search",
+        "hit": true,
+        "matchedName": "Clamshell",
+        "matchedCode": "0700010971443",
+        "resultCount": 5,
+        "fields": {
+          "name": true,
+          "brand": true,
+          "nutrition": false,
+          "ingredients": false,
+          "allergens": false,
+          "image": false
+        },
+        "httpStatus": 200
+      }
+    },
+    {
+      "category": "produce",
+      "description": "Blueberries, 1 pint",
+      "method": "name",
+      "query": "fresh blueberries pint",
+      "fdc": false,
+      "off": {
+        "source": "open-food-facts",
+        "lookupMethod": "name-search",
+        "hit": true,
+        "matchedName": "Myrtilles biologique",
+        "matchedCode": "8710147608749",
+        "resultCount": 5,
+        "fields": {
+          "name": true,
+          "brand": true,
+          "nutrition": false,
+          "ingredients": false,
+          "allergens": false,
+          "image": true
+        },
+        "httpStatus": 200
+      }
+    },
+    {
+      "category": "produce",
+      "description": "Baby carrots, 1 lb bag",
+      "method": "name",
+      "query": "baby carrots 1 lb bag",
+      "fdc": false,
+      "off": {
+        "source": "open-food-facts",
+        "lookupMethod": "name-search",
+        "hit": true,
+        "matchedName": "Bledidej Croissance Choco Saveur Banane , Dès 12 Mois,",
+        "matchedCode": "3041090012747",
+        "resultCount": 5,
+        "fields": {
+          "name": true,
+          "brand": true,
+          "nutrition": true,
+          "ingredients": true,
+          "allergens": true,
+          "image": true
+        },
+        "httpStatus": 200
+      }
+    },
+    {
+      "category": "produce",
+      "description": "Baby spinach, 5 oz bag",
+      "method": "name",
+      "query": "baby spinach 5 oz bag",
+      "fdc": false,
+      "off": {
+        "source": "open-food-facts",
+        "lookupMethod": "name-search",
+        "hit": true,
+        "matchedName": "Aptamil 3 800g",
+        "matchedCode": "4056631001264",
+        "resultCount": 5,
+        "fields": {
+          "name": true,
+          "brand": true,
+          "nutrition": false,
+          "ingredients": true,
+          "allergens": true,
+          "image": true
+        },
+        "httpStatus": 200
+      }
+    },
+    {
+      "category": "produce",
+      "description": "Sweet potato",
+      "method": "plu",
+      "query": "4797",
+      "fdc": false,
+      "off": {
+        "source": "open-food-facts",
+        "lookupMethod": "barcode(plu)",
+        "hit": false,
+        "matchedName": null,
+        "fields": null,
+        "httpStatus": 429
+      }
+    },
+    {
+      "category": "produce",
+      "description": "Cilantro bunch",
+      "method": "name",
+      "query": "fresh cilantro bunch",
+      "fdc": false,
+      "off": {
+        "source": "open-food-facts",
+        "lookupMethod": "name-search",
+        "hit": true,
+        "matchedName": "Coriandre",
+        "matchedCode": "2000000144321",
+        "resultCount": 5,
+        "fields": {
+          "name": true,
+          "brand": true,
+          "nutrition": false,
+          "ingredients": true,
+          "allergens": false,
+          "image": true
+        },
+        "httpStatus": 200
+      }
+    },
+    {
+      "category": "produce",
+      "description": "Yellow squash",
+      "method": "plu",
+      "query": "4784",
+      "fdc": false,
+      "off": {
+        "source": "open-food-facts",
+        "lookupMethod": "barcode(plu)",
+        "hit": false,
+        "matchedName": null,
+        "fields": null,
+        "httpStatus": 429
+      }
+    },
+    {
+      "category": "produce",
+      "description": "Red seedless grapes",
+      "method": "plu",
+      "query": "4023",
+      "fdc": false,
+      "off": {
+        "source": "open-food-facts",
+        "lookupMethod": "barcode(plu)",
+        "hit": false,
+        "matchedName": null,
+        "fields": null,
+        "httpStatus": 429
+      }
+    },
+    {
+      "category": "dairy",
+      "description": "Half & half, 1 pint",
+      "method": "name",
+      "query": "half and half cream 1 pint",
+      "fdc": false,
+      "off": {
+        "source": "open-food-facts",
+        "lookupMethod": "name-search",
+        "hit": true,
+        "matchedName": "Iced tea lemonade",
+        "matchedCode": "0726191018609",
+        "resultCount": 5,
+        "fields": {
+          "name": true,
+          "brand": true,
+          "nutrition": true,
+          "ingredients": false,
+          "allergens": false,
+          "image": true
+        },
+        "httpStatus": 200
+      }
+    },
+    {
+      "category": "dairy",
+      "description": "Yoplait original strawberry yogurt",
+      "method": "name",
+      "query": "Yoplait Original strawberry yogurt",
+      "fdc": false,
+      "off": {
+        "source": "open-food-facts",
+        "lookupMethod": "name-search",
+        "hit": true,
+        "matchedName": "Yoplait original Strawberry Yogurt",
+        "matchedCode": "0030430993009",
+        "resultCount": 5,
+        "fields": {
+          "name": true,
+          "brand": false,
+          "nutrition": false,
+          "ingredients": false,
+          "allergens": false,
+          "image": true
+        },
+        "httpStatus": 200
+      }
+    },
+    {
+      "category": "pantry",
+      "description": "Progresso chicken noodle soup",
+      "method": "name",
+      "query": "Progresso chicken noodle soup",
+      "fdc": false,
+      "off": {
+        "source": "open-food-facts",
+        "lookupMethod": "name-search",
+        "hit": true,
+        "matchedName": "Light progresso chicken noodle soup",
+        "matchedCode": "92000411964048200129",
+        "resultCount": 5,
+        "fields": {
+          "name": true,
+          "brand": true,
+          "nutrition": true,
+          "ingredients": false,
+          "allergens": false,
+          "image": true
+        },
+        "httpStatus": 200
+      }
+    },
+    {
+      "category": "pantry",
+      "description": "Campbell's condensed tomato soup",
+      "method": "name",
+      "query": "Campbell's condensed tomato soup",
+      "fdc": {
+        "source": "usda-fdc",
+        "lookupMethod": "name-search",
+        "hit": false,
+        "matchedName": null,
+        "resultCount": 0,
+        "totalHits": null,
+        "fields": null,
+        "httpStatus": 429
+      },
+      "off": {
+        "source": "open-food-facts",
+        "lookupMethod": "name-search",
+        "hit": true,
+        "matchedName": "Campbell’s condensed Tomato Soup",
+        "matchedCode": "9005281000115",
+        "resultCount": 5,
+        "fields": {
+          "name": true,
+          "brand": false,
+          "nutrition": false,
+          "ingredients": false,
+          "allergens": false,
+          "image": true
+        },
+        "httpStatus": 200
+      }
+    },
+    {
+      "category": "pantry",
+      "description": "Welch's grape jelly",
+      "method": "name",
+      "query": "Welch's grape jelly",
+      "fdc": false,
+      "off": {
+        "source": "open-food-facts",
+        "lookupMethod": "name-search",
+        "hit": true,
+        "matchedName": "Welch's grape jelly",
+        "matchedCode": "0041800501632",
+        "resultCount": 5,
+        "fields": {
+          "name": true,
+          "brand": true,
+          "nutrition": true,
+          "ingredients": false,
+          "allergens": false,
+          "image": true
+        },
+        "httpStatus": 200
+      }
+    },
+    {
+      "category": "pantry",
+      "description": "Smucker's strawberry preserves",
+      "method": "name",
+      "query": "Smucker's strawberry preserves",
+      "fdc": false,
+      "off": {
+        "source": "open-food-facts",
+        "lookupMethod": "name-search",
+        "hit": true,
+        "matchedName": "Smucker’s strawberry uncrustables",
+        "matchedCode": "8323659964625",
+        "resultCount": 5,
+        "fields": {
+          "name": true,
+          "brand": true,
+          "nutrition": true,
+          "ingredients": false,
+          "allergens": false,
+          "image": false
+        },
+        "httpStatus": 200
+      }
+    },
+    {
+      "category": "meat",
+      "description": "Oscar Mayer deli sliced ham",
+      "method": "name",
+      "query": "Oscar Mayer deli sliced ham",
+      "fdc": false,
+      "off": {
+        "source": "open-food-facts",
+        "lookupMethod": "name-search",
+        "hit": true,
+        "matchedName": "oscar mayer",
+        "matchedCode": "04474487",
+        "resultCount": 5,
+        "fields": {
+          "name": true,
+          "brand": false,
+          "nutrition": false,
+          "ingredients": true,
+          "allergens": true,
+          "image": false
+        },
+        "httpStatus": 200
+      }
+    },
+    {
+      "category": "meat",
+      "description": "Jimmy Dean pork sausage roll",
+      "method": "name",
+      "query": "Jimmy Dean pork sausage roll",
+      "fdc": false,
+      "off": {
+        "source": "open-food-facts",
+        "lookupMethod": "name-search",
+        "hit": true,
+        "matchedName": "Original Pork Sausage Patties",
+        "matchedCode": "0077900002496",
+        "resultCount": 5,
+        "fields": {
+          "name": true,
+          "brand": true,
+          "nutrition": true,
+          "ingredients": true,
+          "allergens": true,
+          "image": true
+        },
+        "httpStatus": 200
+      }
+    },
+    {
+      "category": "frozen",
+      "description": "Green Giant frozen broccoli florets",
+      "method": "name",
+      "query": "Green Giant frozen broccoli florets",
+      "fdc": false,
+      "off": {
+        "source": "open-food-facts",
+        "lookupMethod": "name-search",
+        "hit": true,
+        "matchedName": "Brocolis en fleurettes",
+        "matchedCode": "3564706705203",
+        "resultCount": 5,
+        "fields": {
+          "name": true,
+          "brand": true,
+          "nutrition": true,
+          "ingredients": false,
+          "allergens": false,
+          "image": true
+        },
+        "httpStatus": 200
+      }
+    },
+    {
+      "category": "frozen",
+      "description": "Ben & Jerry's Chocolate Chip Cookie Dough ice cream",
+      "method": "name",
+      "query": "Ben and Jerry's Chocolate Chip Cookie Dough ice cream",
+      "fdc": false,
+      "off": {
+        "source": "open-food-facts",
+        "lookupMethod": "name-search",
+        "hit": true,
+        "matchedName": "Lino lada duo",
+        "matchedCode": "3850116007328",
+        "resultCount": 5,
+        "fields": {
+          "name": true,
+          "brand": true,
+          "nutrition": true,
+          "ingredients": true,
+          "allergens": true,
+          "image": true
+        },
+        "httpStatus": 200
+      }
+    },
+    {
+      "category": "snacks",
+      "description": "Doritos nacho cheese tortilla chips",
+      "method": "name",
+      "query": "Doritos Nacho Cheese tortilla chips",
+      "fdc": {
+        "source": "usda-fdc",
+        "lookupMethod": "name-search",
+        "hit": false,
+        "matchedName": null,
+        "resultCount": 0,
+        "totalHits": null,
+        "fields": null,
+        "httpStatus": 429
+      },
+      "off": {
+        "source": "open-food-facts",
+        "lookupMethod": "name-search",
+        "hit": true,
+        "matchedName": "Doritos Nacho Cheese Tortilla Chips 11 Ounce Bag",
+        "matchedCode": "0028400156363",
+        "resultCount": 5,
+        "fields": {
+          "name": true,
+          "brand": false,
+          "nutrition": true,
+          "ingredients": true,
+          "allergens": true,
+          "image": false
+        },
+        "httpStatus": 200
+      }
+    },
+    {
+      "category": "snacks",
+      "description": "Oreo original sandwich cookies",
+      "method": "name",
+      "query": "Oreo original chocolate sandwich cookies",
+      "fdc": false,
+      "off": {
+        "source": "open-food-facts",
+        "lookupMethod": "name-search",
+        "hit": true,
+        "matchedName": "Oreo (Chocolate Sandwich Cookies)",
+        "matchedCode": "0044000047009",
+        "resultCount": 5,
+        "fields": {
+          "name": true,
+          "brand": true,
+          "nutrition": true,
+          "ingredients": false,
+          "allergens": true,
+          "image": true
+        },
+        "httpStatus": 200
+      }
+    },
+    {
+      "category": "beverages",
+      "description": "Gatorade lemon-lime sports drink",
+      "method": "name",
+      "query": "Gatorade Thirst Quencher lemon lime",
+      "fdc": false,
+      "off": {
+        "source": "open-food-facts",
+        "lookupMethod": "name-search",
+        "hit": true,
+        "matchedName": "Gatorade, thirst quencher, lemon-lime, lemon-lime",
+        "matchedCode": "0052000208450",
+        "resultCount": 5,
+        "fields": {
+          "name": true,
+          "brand": false,
+          "nutrition": true,
+          "ingredients": true,
+          "allergens": false,
+          "image": false
+        },
+        "httpStatus": 200
+      }
+    }
+  ]
+}

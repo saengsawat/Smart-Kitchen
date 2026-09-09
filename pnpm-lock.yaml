@@ -149,7 +149,11 @@ importers:
         specifier: ^5.12.1
         version: 5.12.1
 
-  packages/adapters: {}
+  packages/adapters:
+    devDependencies:
+      '@types/node':
+        specifier: ^26.4.1
+        version: 26.4.1
 
   packages/contracts: {}
 

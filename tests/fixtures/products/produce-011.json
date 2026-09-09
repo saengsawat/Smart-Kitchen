@@ -1,0 +1,68 @@
+{
+  "id": "produce-011",
+  "kind": "GENERIC",
+  "codes": [
+    {
+      "codeType": "PLU",
+      "code": "4000"
+    }
+  ],
+  "name": {
+    "value": "Banana",
+    "provenance": {
+      "tier": "KNOWN_FACT",
+      "source": "manual-curation",
+      "observedAt": "2026-08-15T00:00:00.000Z"
+    }
+  },
+  "category": {
+    "value": "produce",
+    "provenance": {
+      "tier": "KNOWN_FACT",
+      "source": "manual-curation",
+      "observedAt": "2026-08-15T00:00:00.000Z"
+    }
+  },
+  "packageSize": {
+    "value": {
+      "qty": 1,
+      "unit": "each"
+    },
+    "provenance": {
+      "tier": "KNOWN_FACT",
+      "source": "manual-curation",
+      "observedAt": "2026-08-15T00:00:00.000Z"
+    }
+  },
+  "servingSize": {
+    "value": {
+      "qty": 100,
+      "unit": "g"
+    },
+    "provenance": {
+      "tier": "KNOWN_FACT",
+      "source": "usda-fdc:generic",
+      "observedAt": "2026-08-15T00:00:00.000Z"
+    }
+  },
+  "nutrition": [
+    {
+      "basis": "PER_100G",
+      "values": {
+        "calories": 89,
+        "proteinG": 1.1,
+        "carbsG": 22.8,
+        "fatG": 0.3,
+        "fiberG": 2.6,
+        "sugarG": 12.2,
+        "sodiumMg": 1
+      },
+      "provenance": {
+        "tier": "ESTIMATED",
+        "source": "usda-fdc:generic",
+        "observedAt": "2026-08-15T00:00:00.000Z"
+      }
+    }
+  ],
+  "allergens": []
+}
