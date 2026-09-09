@@ -29,10 +29,21 @@ const databaseUrl = process.env["DATABASE_URL"];
 /** True when a Postgres to test against was configured. */
 export const dbTestsEnabled = typeof databaseUrl === "string" && databaseUrl.trim() !== "";
 
+const ciFlag = process.env["CI"];
+
+/** True when running on CI, where skipping a database suite is a build failure. */
+export const runningInCi = ciFlag === "true" || ciFlag === "1";
+
 /**
  * Announces a skipped database suite on stderr — one line per suite, alongside
  * vitest's own skipped-test count — so a green local run can never be mistaken
  * for a run that exercised the schema.
+ *
+ * **In CI this throws.** Locally a skip is the designed behaviour; in CI it
+ * means the schema, the append-only rules or the isolation policies went
+ * untested behind a green tick. Because every database suite calls this from a
+ * test of its own, each suite carries its own gate: if any one of them skips on
+ * CI, that file fails by name, no log reading required.
  */
 export function noteDbSuiteSkipped(suiteName: string): void {
   const notice =
@@ -44,6 +55,13 @@ export function noteDbSuiteSkipped(suiteName: string): void {
   // default reporter swallows console output from passing tests, and a notice
   // nobody sees is the exact failure mode this function exists to prevent.
   process.stderr.write(`${notice}\n`);
+
+  if (runningInCi) {
+    throw new Error(
+      `Database suite "${suiteName}" skipped on CI. CI must run every database suite: ` +
+        `restore the postgres service container and its DATABASE_URL in .github/workflows/ci.yml.`,
+    );
+  }
 }
 
 function requireDatabaseUrl(): string {

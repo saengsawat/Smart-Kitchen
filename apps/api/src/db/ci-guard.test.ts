@@ -13,10 +13,7 @@
 
 import { Client } from "pg";
 import { describe, expect, it } from "vitest";
-import { dbTestsEnabled } from "./test-support/harness.js";
-
-const ciFlag = process.env["CI"];
-const inCi = ciFlag === "true" || ciFlag === "1";
+import { dbTestsEnabled, runningInCi as inCi } from "./test-support/harness.js";
 
 describe("CI database gate", () => {
   it("CI sets DATABASE_URL so the database suites cannot silently skip", () => {
