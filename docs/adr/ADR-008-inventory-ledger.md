@@ -20,6 +20,6 @@ Inventory is the product (brief §18C). §7 requires a historical record of cons
 Ledger tables are append-only (no UPDATE/DELETE for app role); `packages/domain` owns transaction types and derivation; INV-LEDGER-1..4 become permanent property tests; storage grows linearly (cheap; archive strategy is a someday-problem).
 
 ## Open questions
-- Snapshot maintenance: app-transaction vs DB trigger (M1-T2).
-- Negative-quantity clamping policy (domain-model OQ… decided in M1 with UX input).
-- Lot granularity for fungibles (domain-model OQ-1).
+- ~~Snapshot maintenance: app-transaction vs DB trigger~~ — **RESOLVED (M1-T2, 2026-09-10): DB trigger.** Snapshots are maintained by an `AFTER INSERT` trigger in the same statement as the append, and the runtime role holds **no UPDATE privilege on any snapshot column** — appending a transaction is structurally the only way a quantity can move (CLAUDE.md rule 10 as a privilege boundary, not a convention). Non-negativity is a deferred, `SECURITY DEFINER`, fail-closed constraint trigger (an overshoot and its clamp are legitimately negative between inserts). Reconciliation remains a query + invariant test; the read path additionally refuses snapshot drift and corrupt rows via `rehydrateInventoryItem`.
+- ~~Negative-quantity clamping policy~~ — settled in M1-T1 (full-magnitude recording + system-flagged residual clamp, per lot; see D-003 addenda).
+- Lot granularity for fungibles (domain-model OQ-1) — still open; ledger semantics are lot-scoped either way.

@@ -1,6 +1,15 @@
 # Data Model (candidate relational sketch)
 
-**Status:** PROPOSED — Postgres-shaped ([ADR-003](../adr/ADR-003-database.md) leans Postgres, not yet DECIDED). This is a design sketch, **not** migration code. Entities defined in [domain-model.md](domain-model.md).
+**Status:** PARTIALLY IMPLEMENTED — identity/household/inventory tables are REAL as of M1-T2 ([ADR-003](../adr/ADR-003-database.md) DECIDED: PostgreSQL + RLS); the authoritative schema is `apps/api/db/migrations/`. The rest of this file remains a design sketch for future milestones. Entities defined in [domain-model.md](domain-model.md).
+
+## 0. Implementation notes (M1-T2, 2026-09-10) — where the real schema refined this sketch
+- Ledger rows store BOTH `qty_delta` (numeric display) and `qty_delta_micros` (BIGINT, authoritative) with a DB CHECK enforcing agreement; reconciliation sums micros only. Kept the numeric columns deliberately (cheap corruption detector).
+- Idempotency unique index is **`(household_id, idempotency_key)`** (architect ruling); sequence uniqueness is **`(household_id, item_id, sequence)`** — never unscoped (ADR-003 standing rule 1: unique-index oracles).
+- Snapshots maintained by DB trigger; runtime role has NO UPDATE on snapshot columns (ADR-008). Non-negativity = deferred `SECURITY DEFINER` fail-closed constraint trigger.
+- `text` + CHECK instead of Postgres `ENUM` (reversibility); enum values uppercase matching the TS unions; composite FKs carry `household_id` (and the item's unit), making cross-household references and mixed units referential-integrity failures.
+- The sketch's `CHECK(product_id IS NOT NULL OR ingredient_id IS NOT NULL)` was **dropped** — the domain permits neither ref ("leftover soup" is a real item).
+- `member_profiles` / `preferences` / `allergy_restrictions` deliberately **not created yet** — their access model is unresolved (Q3/OQ-3); creating them would have meant inventing one (rule 3).
+- Views on tenant tables use `security_invoker = true`; app role is `sk_app` (INSERT+SELECT on ledger, no schema CREATE).
 
 ## 1. Conventions
 

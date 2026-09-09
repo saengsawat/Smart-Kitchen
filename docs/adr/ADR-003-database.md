@@ -1,6 +1,15 @@
 # ADR-003: Primary database
 
-**Status:** PROPOSED (strong lean: PostgreSQL) · Target decision point: M1-T2 (first migration)
+**Status:** DECIDED — PostgreSQL, **with Row-Level Security adopted** (2026-09-10, M1-T2 evidence; managed-provider choice remains open for M2 hosting)
+
+## Decision evidence (M1-T2)
+Six migrations + 96 database tests, adversarially reviewed ([record](../handoff/M1-T2.review.md)): RLS policies on every household-scoped table, fail-closed on missing context, exercised as the real non-superuser app role with positive controls; append-only enforced by grants AND trigger; snapshot columns writable only by the ledger trigger (see ADR-008); household-scoped idempotency index; reconciliation views summing exact micros. Anticipated ORM friction did not materialise (raw-SQL migrations + thin mapping). RLS **complements** the app-layer household check — INV-TENANT-1 requires both halves; M2's authz matrix is still mandatory.
+
+**Standing rules (demonstrated by review findings, binding on all future schema work):**
+1. Household-scope **every unique constraint** on tenant tables — RLS does not protect against unique-index oracles (a cross-tenant probe can otherwise read information out of error-type boundaries).
+2. Any trigger that reads household-scoped tables must be `SECURITY DEFINER` with a pinned `search_path`, or it **fails open** under RLS (its verification query gets filtered as the caller).
+3. Views on tenant tables require `security_invoker = true` or they read past every policy.
+- Pre-production gate (M2): dedicated non-superuser owner role for `SECURITY DEFINER` functions.
 
 ## Context
 Needs: transactional ledger appends + snapshot updates (atomicity), relational product catalog with joins (product↔identifier↔ingredient↔nutrition), household tenancy isolation, JSON payloads for observations, boring operations for a small team.

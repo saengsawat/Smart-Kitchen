@@ -35,8 +35,9 @@ Owners: `PO` = product owner (Dean), `ENG` = engineering.
 - **Status:** DECIDED (2026-09-03) · **Owner:** ENG · **Record:** [ADR-002](docs/adr/ADR-002-backend-runtime.md)
 - **Evidence:** PO approved M0-T1 (2026-09-03), which presupposes the Node/TS workspace; framework resolved by architect per ADR-002 rationale (boundaries from domain design + lint, not framework). Low reversal cost noted.
 
-## D-007 — Database: PostgreSQL
-- **Status:** PROPOSED · **Record:** [ADR-003](docs/adr/ADR-003-database.md)
+## D-007 — Database: PostgreSQL (+ RLS adopted)
+- **Status:** DECIDED (2026-09-10) · **Owner:** ENG · **Record:** [ADR-003](docs/adr/ADR-003-database.md)
+- **Evidence:** M1-T2's reviewed schema (6 migrations, 96 DB tests exercised as the real app role; adversarial review incl. two blocking findings fixed and re-verified). Three standing schema rules recorded in the ADR (household-scoped unique constraints; SECURITY DEFINER for RLS-reading triggers; security_invoker views). Managed-provider pick deferred to M2 hosting. Snapshot-maintenance question in ADR-008 also closed (DB trigger).
 
 ## D-008 — Authentication: managed provider (vendor open)
 - **Status:** PROPOSED · **Record:** [ADR-004](docs/adr/ADR-004-authentication.md)

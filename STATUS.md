@@ -1,9 +1,9 @@
 # STATUS.md
 
-_Last updated: 2026-09-03_
+_Last updated: 2026-09-10_
 
 ## Current phase
-**Phase 0 — engineering foundation (docs only).** No application code exists. Implementation is gated on product-owner approvals below.
+**Milestones 0 and 1 COMPLETE.** The deterministic foundation exists, reviewed and merged: inventory ledger, units engine, allergen rule engine, product-lookup ports + fixtures + R-1 research, and the Postgres schema with RLS/append-only enforcement — 475 tests (with DB), CI green. Per PO directive (2026-09-10): next is **UI/UX planning only** (delivered — see below); **no further building** until the PO green-lights M2 (API) and/or M3-E0 → M3 (client).
 
 ## What exists
 - Original product brief preserved in [docs/source/](docs/source/) (DOCX + extracted text).
@@ -17,7 +17,8 @@ _Last updated: 2026-09-03_
 - ✅ **M1-T3 DONE (2026-09-09):** units & quantity model merged (squash) — exact rational conversions (US customary + metric), ground-truth-pinned factors, bridges-only cross-kind, INV-SHOP-1 gap math; 150 tests. Sonnet/Opus, PASS after one fix round. Handoff: docs/handoff/M1-T3.{worker,review}.md.
 - ✅ **M1-T5 DONE (2026-09-09):** product lookup ports + 101-item synthetic fixture corpus + R-1 coverage research merged (squash); 216 tests. ADR-006 promoted OPEN → PROPOSED on measured evidence (OFF ~85% genuine branded match; PLU-as-barcode dangerous → curated table settled; FDC unvalidated 0/27 rate-limited, honestly reported; FDC has no allergen field → M4 unknown+warning rule). Sonnet/Sonnet, PASS after doc-only fixes. Handoff: docs/handoff/M1-T5.{worker,review}.md.
 - ✅ **M1-T4 DONE (2026-09-10):** deterministic allergen rule engine merged (squash) — 3-state verdict with no "safe" state, absence licensed only by sourced KNOWN_FACT completeness declarations, worst-wins aggregation; 163 allergen tests (379 total), mutation-pinned. Adversarial Opus review found and closed three fail-open paths (prototype-key lookup, name-satisfied licence, zero-width obfuscation). Policies ratified as **D-017**; one mandatory pre-M4 gate + accepted residual risk recorded. Handoff: docs/handoff/M1-T4.{worker,review}.md.
-- Currently: **M1-T2 (Postgres schema & migrations, Opus worker/Opus reviewer)** on branch `m1-t2-schema` — the final M1 ticket. *Amended 2026-09-10: Docker absent locally → DB tests gate on `DATABASE_URL` (loud local skip) + CI Postgres service container.*
+- ✅ **M1-T2 DONE (2026-09-10) — MILESTONE 1 COMPLETE:** Postgres schema merged (squash) — 6 migrations, snapshot-by-trigger with no runtime UPDATE privilege on quantities, RLS fail-closed, append-only both layers, household-scoped idempotency/sequence keys; 96 DB tests incl. fast-check round-trip through `rehydrateInventoryItem`. Opus/Opus; review closed an INV-LEDGER-4 fail-open and a tenant-inference oracle; worker self-found a CREATE ROLE CI race. ADR-003 → DECIDED; ADR-008 fully closed. Handoff: docs/handoff/M1-T2.{worker,review}.md.
+- **UI/UX planning package delivered (PO directive, docs only):** [design-principles.md](docs/design/design-principles.md) (10 binding behavior principles) + [ux-plan.md](docs/design/ux-plan.md) (IA, 12-screen inventory, three make-or-break flows, design→build pipeline) + **M3-E0 gate epic** in BACKLOG.md. Nothing built; M3 build double-gated on M3-E0 sign-off + D-002.
 
 ## Awaiting owner action
 - **Apply branch protection on `main`** per the checklist in [CONTRIBUTING.md](CONTRIBUTING.md) (require PR; required checks exactly `quality` and `secret-scan`; block force pushes). Architect verifies the branch's `protected` flag afterwards.
@@ -31,10 +32,10 @@ _Last updated: 2026-09-03_
 ## Operational note — repo location
 **Remote decided (2026-09-03):** `https://github.com/saengsawat/Smart-Kitchen` (branch `main`) is the repo's home and sharing mechanism — this unblocks M0-T2 (CI). The working clone still lives inside a OneDrive-synced folder; recommendation stands to move it out (or exclude from sync) now that GitHub is the sync mechanism — especially since `node_modules/` exists and OneDrive syncs it.
 
-## Next 3 actions
-1. Owner applies the branch-protection checklist (above); architect verifies.
-2. Dispatch M1 foundation tickets — order: **M1-T1** (ledger core, Opus/Opus) → then **M1-T3** (units) and **M1-T5** (lookup ports + R-1 research) → **M1-T4** (allergens) → **M1-T2** (schema, needs M1-T1). One worker at a time in this clone (shared working tree).
-3. Dean ratifies D-002 (MVP scope) — needed before **M3 (UI)**; the repo + prototype are his review package. (Also: move this clone out of OneDrive.)
+## Next 3 actions (all with the product owner — engineering is paused by directive)
+1. **Dean ratifies D-002** (MVP scope) and answers Q1/Q3 — gates M3; M2 (API) also awaits a PO go-ahead (its own cost gates: auth vendor, hosting).
+2. Owner applies the **branch-protection checklist** (CONTRIBUTING.md); review the UX plan's open items (OQ-D1 accent, Q8 name, OQ-D4/D5/D6).
+3. Housekeeping when convenient: move this clone out of OneDrive; decide keep-vs-delete for the untracked `docs/architecture/workflow-diagrams.md`; optionally install Docker for local DB tests.
 
 ## Major risks (top 3 now)
 1. Inventory-accuracy hypothesis fails (users won't maintain even low-friction inventory) — mitigated by correction-rate telemetry from M3 and receipt fast-follow.

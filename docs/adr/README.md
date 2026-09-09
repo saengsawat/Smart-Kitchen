@@ -14,8 +14,8 @@ ADRs capture decisions that are expensive to reverse or that future contributors
 | ADR | Title | Status |
 |---|---|---|
 | [ADR-001](ADR-001-client-platform.md) | Client platform | PROPOSED (Expo/React Native) |
-| [ADR-002](ADR-002-backend-runtime.md) | Backend runtime & framework | PROPOSED (Node/TypeScript; framework open) |
-| [ADR-003](ADR-003-database.md) | Primary database | PROPOSED (PostgreSQL) |
+| [ADR-002](ADR-002-backend-runtime.md) | Backend runtime & framework | DECIDED (2026-09-03: Node/TypeScript + Fastify) |
+| [ADR-003](ADR-003-database.md) | Primary database | DECIDED (2026-09-10: PostgreSQL + RLS; managed provider open) |
 | [ADR-004](ADR-004-authentication.md) | Authentication | PROPOSED (managed provider; vendor open) |
 | [ADR-005](ADR-005-ai-provider-abstraction.md) | AI provider abstraction | PROPOSED (ports + evals; no vendor pick) |
 | [ADR-006](ADR-006-food-data-sources.md) | Food/product data sources | PROPOSED (R-1 measured, 2026-09-09; FDC arm pending) |
