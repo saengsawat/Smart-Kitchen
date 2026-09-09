@@ -1,0 +1,57 @@
+{
+  "caseId": "screening-012-unrecognized-assertion-code",
+  "category": "missing-data",
+  "title": "Allergen code outside the taxonomy -> completeness no longer trusted, majors go unknown",
+  "notes": "A positive contains-claim we cannot interpret invalidates the completeness declaration at that locus. Adding the code to the taxonomy is a data change that restores ALLOWED.",
+  "input": {
+    "subject": {
+      "kind": "PRODUCT",
+      "subjectId": "sauce-eu-01",
+      "name": "Continental Table Sauce",
+      "ingredientsText": "water, vinegar, spices",
+      "allergens": [
+        {
+          "allergenCode": "mustard",
+          "assertion": "CONTAINS",
+          "provenance": {
+            "tier": "KNOWN_FACT",
+            "source": "eu-label",
+            "observedAt": "2026-08-15T00:00:00.000Z"
+          }
+        }
+      ],
+      "declaration": {
+        "majorAllergens": "COMPLETE_FOR_MAJOR_ALLERGENS",
+        "ingredientStatement": "COMPLETE",
+        "tier": "KNOWN_FACT",
+        "source": "eu-label",
+        "observedAt": "2026-08-15T00:00:00.000Z"
+      }
+    },
+    "members": [
+      {
+        "memberId": "m-jamie",
+        "restrictions": [
+          {
+            "kind": "MAJOR",
+            "restrictionId": "r1",
+            "allergen": "peanut",
+            "severity": "standard"
+          }
+        ]
+      }
+    ]
+  },
+  "expect": {
+    "verdict": "ALLOWED_WITH_UNKNOWNS",
+    "memberVerdicts": {
+      "m-jamie": "ALLOWED_WITH_UNKNOWNS"
+    },
+    "outcomes": {
+      "r1": "UNKNOWN"
+    },
+    "evidenceKinds": [],
+    "unknownReasons": ["UNRECOGNIZED_ASSERTION_CODE"],
+    "warningCodes": ["NO_SAFETY_GUARANTEE", "UNRECOGNIZED_ALLERGEN_DATA"]
+  }
+}

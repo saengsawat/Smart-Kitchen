@@ -1,0 +1,57 @@
+{
+  "caseId": "screening-007-cross-contact-standard-warns",
+  "category": "allergen-violating",
+  "title": "Same MAY_CONTAIN vs a standard tree-nut allergy -> ALLOWED_WITH_UNKNOWNS + high warning",
+  "notes": "CROSS_CONTACT_POLICY.standard = WARN_UNKNOWN (PROPOSED). Flipping that one table entry to BLOCK changes this expectation with it.",
+  "input": {
+    "subject": {
+      "kind": "PRODUCT",
+      "subjectId": "bakery-cc-01",
+      "name": "Bakery brownie bites",
+      "ingredientsText": "sugar, cocoa, wheat flour, eggs",
+      "allergens": [
+        {
+          "allergenCode": "tree_nut",
+          "assertion": "MAY_CONTAIN",
+          "provenance": {
+            "tier": "KNOWN_FACT",
+            "source": "manufacturer-label",
+            "observedAt": "2026-08-15T00:00:00.000Z"
+          }
+        }
+      ],
+      "declaration": {
+        "majorAllergens": "COMPLETE_FOR_MAJOR_ALLERGENS",
+        "ingredientStatement": "COMPLETE",
+        "tier": "KNOWN_FACT",
+        "source": "manufacturer-label",
+        "observedAt": "2026-08-15T00:00:00.000Z"
+      }
+    },
+    "members": [
+      {
+        "memberId": "m-blair",
+        "restrictions": [
+          {
+            "kind": "MAJOR",
+            "restrictionId": "r1",
+            "allergen": "tree_nut",
+            "severity": "standard"
+          }
+        ]
+      }
+    ]
+  },
+  "expect": {
+    "verdict": "ALLOWED_WITH_UNKNOWNS",
+    "memberVerdicts": {
+      "m-blair": "ALLOWED_WITH_UNKNOWNS"
+    },
+    "outcomes": {
+      "r1": "POSSIBLE_MATCH"
+    },
+    "evidenceKinds": ["ASSERTION_MAY_CONTAIN"],
+    "unknownReasons": [],
+    "warningCodes": ["NO_SAFETY_GUARANTEE", "CROSS_CONTACT"]
+  }
+}

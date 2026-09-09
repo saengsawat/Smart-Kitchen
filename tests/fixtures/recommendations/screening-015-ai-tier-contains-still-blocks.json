@@ -1,0 +1,58 @@
+{
+  "caseId": "screening-015-ai-tier-contains-still-blocks",
+  "category": "adversarial",
+  "title": "AI-tier CONTAINS assertion still blocks",
+  "notes": "The asymmetry rule 9 requires: AI-sourced data may ADD a block or a warning, it may never clear one. A low-confidence AI_INTERPRETATION contains-claim is honoured as a match.",
+  "input": {
+    "subject": {
+      "kind": "PRODUCT",
+      "subjectId": "snack-ai-02",
+      "name": "Trail Snack Mix",
+      "ingredientsText": "rolled oats, raisins, sunflower seeds",
+      "allergens": [
+        {
+          "allergenCode": "peanut",
+          "assertion": "CONTAINS",
+          "provenance": {
+            "tier": "AI_INTERPRETATION",
+            "source": "label-ocr-v2",
+            "observedAt": "2026-08-15T00:00:00.000Z",
+            "confidence": 0.42
+          }
+        }
+      ],
+      "declaration": {
+        "majorAllergens": "COMPLETE_FOR_MAJOR_ALLERGENS",
+        "ingredientStatement": "COMPLETE",
+        "tier": "KNOWN_FACT",
+        "source": "manufacturer-label",
+        "observedAt": "2026-08-15T00:00:00.000Z"
+      }
+    },
+    "members": [
+      {
+        "memberId": "m-alex",
+        "restrictions": [
+          {
+            "kind": "MAJOR",
+            "restrictionId": "r1",
+            "allergen": "peanut",
+            "severity": "severe"
+          }
+        ]
+      }
+    ]
+  },
+  "expect": {
+    "verdict": "BLOCKED",
+    "memberVerdicts": {
+      "m-alex": "BLOCKED"
+    },
+    "outcomes": {
+      "r1": "MATCH"
+    },
+    "evidenceKinds": ["ASSERTION_CONTAINS"],
+    "unknownReasons": [],
+    "warningCodes": ["NO_SAFETY_GUARANTEE"]
+  }
+}

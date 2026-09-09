@@ -1,0 +1,49 @@
+{
+  "caseId": "screening-005-missing-data-severe-warns",
+  "category": "missing-data",
+  "title": "Same bare recipe, severe allergy -> ALLOWED_WITH_UNKNOWNS + critical warning",
+  "notes": "Severity does not change the verdict for unknown data (INV-ALRG-2 mandates unknown + warning, not blocked); it raises a critical warning the UI must show prominently.",
+  "input": {
+    "subject": {
+      "kind": "RECIPE",
+      "subjectId": "recipe-grill-01",
+      "title": "Grilled chicken",
+      "ingredients": [
+        {
+          "ref": "chicken breast"
+        },
+        {
+          "ref": "olive oil"
+        },
+        {
+          "ref": "garlic"
+        }
+      ]
+    },
+    "members": [
+      {
+        "memberId": "m-alex",
+        "restrictions": [
+          {
+            "kind": "MAJOR",
+            "restrictionId": "r1",
+            "allergen": "milk",
+            "severity": "severe"
+          }
+        ]
+      }
+    ]
+  },
+  "expect": {
+    "verdict": "ALLOWED_WITH_UNKNOWNS",
+    "memberVerdicts": {
+      "m-alex": "ALLOWED_WITH_UNKNOWNS"
+    },
+    "outcomes": {
+      "r1": "UNKNOWN"
+    },
+    "evidenceKinds": [],
+    "unknownReasons": ["NO_ALLERGEN_DATA"],
+    "warningCodes": ["NO_SAFETY_GUARANTEE", "SEVERE_ALLERGY_UNKNOWN_DATA"]
+  }
+}

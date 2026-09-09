@@ -1,0 +1,57 @@
+{
+  "caseId": "screening-006-cross-contact-severe-blocked",
+  "category": "allergen-violating",
+  "title": "MAY_CONTAIN tree nut vs a severe tree-nut allergy -> BLOCKED",
+  "notes": "CROSS_CONTACT_POLICY.severe = BLOCK (PROPOSED; see docs/handoff/M1-T4.worker.md).",
+  "input": {
+    "subject": {
+      "kind": "PRODUCT",
+      "subjectId": "bakery-cc-01",
+      "name": "Bakery brownie bites",
+      "ingredientsText": "sugar, cocoa, wheat flour, eggs",
+      "allergens": [
+        {
+          "allergenCode": "tree_nut",
+          "assertion": "MAY_CONTAIN",
+          "provenance": {
+            "tier": "KNOWN_FACT",
+            "source": "manufacturer-label",
+            "observedAt": "2026-08-15T00:00:00.000Z"
+          }
+        }
+      ],
+      "declaration": {
+        "majorAllergens": "COMPLETE_FOR_MAJOR_ALLERGENS",
+        "ingredientStatement": "COMPLETE",
+        "tier": "KNOWN_FACT",
+        "source": "manufacturer-label",
+        "observedAt": "2026-08-15T00:00:00.000Z"
+      }
+    },
+    "members": [
+      {
+        "memberId": "m-alex",
+        "restrictions": [
+          {
+            "kind": "MAJOR",
+            "restrictionId": "r1",
+            "allergen": "tree_nut",
+            "severity": "severe"
+          }
+        ]
+      }
+    ]
+  },
+  "expect": {
+    "verdict": "BLOCKED",
+    "memberVerdicts": {
+      "m-alex": "BLOCKED"
+    },
+    "outcomes": {
+      "r1": "POSSIBLE_MATCH"
+    },
+    "evidenceKinds": ["ASSERTION_MAY_CONTAIN"],
+    "unknownReasons": [],
+    "warningCodes": ["NO_SAFETY_GUARANTEE", "CROSS_CONTACT_SEVERE"]
+  }
+}

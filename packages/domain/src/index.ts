@@ -9,6 +9,10 @@
  * Modules:
  * - `inventory` — the append-only inventory ledger (M1-T1, ADR-008).
  * - `units` — unit kinds/conversion, standalone beside the ledger (M1-T3).
+ * - `allergens` — deterministic allergen screening (M1-T4, SR-1/SR-2).
+ *   Re-exported explicitly for the same reason as `units`: it too defines its
+ *   own `ok`/`err`/`Outcome` helpers, which stay module-local. Its verdict is
+ *   three-state and `ALLOWED` means *no known match*, never "safe".
  *   Re-exported explicitly (not `export *`) below because both modules
  *   define their own `ok`/`err`/`Outcome` result helpers under those exact
  *   names by design (each module is meant to be self-contained) — an
@@ -51,3 +55,70 @@ export type {
   UnitKind,
   UnitOutcome,
 } from "./units/index.js";
+
+export {
+  ALLERGEN_CODE_ALIASES,
+  ALLERGEN_EXCLUSION_PHRASES,
+  ALLERGEN_EXCLUSIONS,
+  ALLERGEN_TERM_PHRASES,
+  ALLERGEN_TERMS,
+  ASSERTION_KINDS,
+  compileTerm,
+  compileTerms,
+  CROSS_CONTACT_POLICY,
+  findTermMatches,
+  isAllergenError,
+  isMajorAllergenCode,
+  MAJOR_ALLERGEN_CODES,
+  MAJOR_ALLERGEN_LABELS,
+  majorRestriction,
+  MIN_TERM_LENGTH,
+  normalizeAllergenCode,
+  normalizeText,
+  partitionByVerdict,
+  RESTRICTION_SEVERITIES,
+  restrictionLabel,
+  screenSubject,
+  screenSubjects,
+  tokenize,
+  tokensEqual,
+  userDefinedRestriction,
+  validateMembers,
+  validateRestriction,
+} from "./allergens/index.js";
+export type {
+  AllergenAssertionInput,
+  AllergenDeclaration,
+  AllergenError,
+  AllergenErrorCode,
+  AllergenOutcome,
+  AllergenProvenanceTier,
+  AllergyRestriction,
+  AssertionKind,
+  AssertionProvenance,
+  CompiledTerm,
+  EvidenceKind,
+  EvidenceLocus,
+  IngredientStatementCompleteness,
+  MajorAllergenCode,
+  MajorAllergenCompleteness,
+  MemberScreeningResult,
+  ProductSubjectInput,
+  RecipeIngredientInput,
+  RecipeSubjectInput,
+  RestrictionOutcome,
+  RestrictionScreeningResult,
+  RestrictionSeverity,
+  ScreenedMember,
+  ScreeningEvidence,
+  ScreeningInput,
+  ScreeningResult,
+  ScreeningSubjectInput,
+  ScreeningUnknown,
+  ScreeningVerdict,
+  ScreeningWarning,
+  TermMatch,
+  UnknownReason,
+  WarningCode,
+  WarningSeverity,
+} from "./allergens/index.js";

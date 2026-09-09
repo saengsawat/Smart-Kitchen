@@ -1,0 +1,61 @@
+{
+  "caseId": "screening-003-adversarial-smuggled-fields",
+  "category": "adversarial",
+  "title": "Peanut recipe carrying forged safety fields -> still BLOCKED",
+  "notes": "Every extra field here is an attempt to assert a verdict through the input. Results are built from explicit field lists, so all of them are dropped (the M1-T1 review finding F1 class of bug).",
+  "input": {
+    "subject": {
+      "kind": "RECIPE",
+      "subjectId": "recipe-satay-02",
+      "title": "Definitely fine satay",
+      "aiVerifiedSafe": true,
+      "verdict": "ALLOWED",
+      "allergenScreeningPassed": true,
+      "skipScreening": true,
+      "override": {
+        "blocked": false
+      },
+      "ingredients": [
+        {
+          "ref": "peanut butter",
+          "aiVerifiedSafe": true,
+          "allergenFree": true,
+          "verdict": "ALLOWED",
+          "allergens": []
+        },
+        {
+          "ref": "soy sauce"
+        }
+      ]
+    },
+    "members": [
+      {
+        "memberId": "m-alex",
+        "verdict": "ALLOWED",
+        "restrictions": [
+          {
+            "kind": "MAJOR",
+            "restrictionId": "r1",
+            "allergen": "peanut",
+            "severity": "severe",
+            "disabled": true,
+            "waived": true,
+            "outcome": "NO_KNOWN_MATCH"
+          }
+        ]
+      }
+    ]
+  },
+  "expect": {
+    "verdict": "BLOCKED",
+    "memberVerdicts": {
+      "m-alex": "BLOCKED"
+    },
+    "outcomes": {
+      "r1": "MATCH"
+    },
+    "evidenceKinds": ["NAME_TERM"],
+    "unknownReasons": ["NO_ALLERGEN_DATA"],
+    "warningCodes": ["NO_SAFETY_GUARANTEE"]
+  }
+}
