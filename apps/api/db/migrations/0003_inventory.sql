@@ -213,8 +213,19 @@ CREATE TABLE inventory_transactions (
     UNIQUE (household_id, idempotency_key),
 
   -- Per-item monotonicity: no two rows on an item share a sequence.
+  --
+  -- `household_id` leads the key even though it is functionally determined by
+  -- `item_id` (an item belongs to exactly one household, and the composite
+  -- foreign key above makes a transaction's household agree with its item's).
+  -- It is here because unique indexes are checked at insert time, *before*
+  -- foreign keys and AFTER-triggers — so without it, probing another
+  -- household's item with ascending sequence numbers flipped from
+  -- duplicate-key to foreign-key violation exactly at that ledger's length,
+  -- which is an oracle for how much history a household has. Scoping the key
+  -- makes a foreign item's rows uncollidable, so every probe fails the same
+  -- way. Semantically the constraint is unchanged.
   CONSTRAINT inventory_transactions_item_sequence_key
-    UNIQUE (item_id, sequence)
+    UNIQUE (household_id, item_id, sequence)
 );
 
 -- A clamp cannot exist without the transaction it compensates. Self-referential

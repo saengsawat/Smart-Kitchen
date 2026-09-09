@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Append-only enforcement (M1-T2; INV-LEDGER-2, ADR-008, data-model.md §2).
  *
  * The ledger is the system's memory. A row that can be edited is not a fact,
@@ -61,7 +61,9 @@ describe.skipIf(!dbTestsEnabled)(SUITE, () => {
   }, 60_000);
 
   afterAll(async () => {
-    await db.drop();
+    // Optional-chained so a failure in beforeAll surfaces its own error rather
+    // than a teardown TypeError stacked on top of it.
+    await db?.drop();
   });
 
   describe("the runtime role has no way to express a mutation", () => {

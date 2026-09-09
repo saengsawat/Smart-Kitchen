@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Migration reversibility (M1-T2, testing-strategy.md §1 "Database tests" and
  * "Data migration tests").
  *
@@ -14,7 +14,7 @@ import { join } from "node:path";
 import { randomUUID } from "node:crypto";
 import type { Pool } from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { MIGRATIONS_DIR, MIGRATIONS_TABLE, migrateDown, migrateUp } from "./migrate.js";
+import { MIGRATIONS_DIR, MIGRATIONS_TABLE, migrateDownAll, migrateUp } from "./migrate.js";
 import { createTestDatabase, dbTestsEnabled, noteDbSuiteSkipped } from "./test-support/harness.js";
 import type { TestDatabase } from "./test-support/harness.js";
 
@@ -123,7 +123,9 @@ describe.skipIf(!dbTestsEnabled)(SUITE, () => {
   }, 60_000);
 
   afterAll(async () => {
-    await db.drop();
+    // Optional-chained so a failure in beforeAll surfaces its own error rather
+    // than a teardown TypeError stacked on top of it.
+    await db?.drop();
   });
 
   it("migrates up cleanly on an empty database", async () => {
@@ -143,7 +145,7 @@ describe.skipIf(!dbTestsEnabled)(SUITE, () => {
   });
 
   it("migrates down cleanly, leaving only the migrations table", async () => {
-    const reverted = await migrateDown(db.url);
+    const reverted = await migrateDownAll(db.url);
     expect(reverted).toHaveLength(MIGRATION_FILES.length);
 
     const tables = await tableNames(db.pool);
@@ -170,7 +172,7 @@ describe.skipIf(!dbTestsEnabled)(SUITE, () => {
     );
     expect(before.rows[0]?.count).toBe("1");
 
-    await migrateDown(db.url);
+    await migrateDownAll(db.url);
     await migrateUp(db.url);
 
     const after = await db.pool.query<{ count: string }>(
@@ -187,7 +189,7 @@ describe.skipIf(!dbTestsEnabled)(SUITE, () => {
     // Roles are cluster-scoped, so 0001 down revokes rather than drops. What
     // must be true after a rollback is that the role can no longer reach
     // anything in this database.
-    await migrateDown(db.url);
+    await migrateDownAll(db.url);
     const privileges = await db.pool.query<{ count: string }>(
       `SELECT count(*)::text AS count
          FROM information_schema.role_table_grants

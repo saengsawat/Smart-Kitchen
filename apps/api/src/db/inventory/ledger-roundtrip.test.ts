@@ -1,4 +1,4 @@
-﻿/**
+/**
  * INV-LEDGER-1 at the database boundary (M1-T2's key integration test).
  *
  * The domain proved in M1-T1 that `currentQty == Σ deltas` for any transaction
@@ -18,6 +18,7 @@
 
 import { randomUUID } from "node:crypto";
 import fc from "fast-check";
+import type { PoolClient } from "pg";
 import {
   appendTransactions,
   createInventoryItem,
@@ -83,7 +84,9 @@ describe.skipIf(!dbTestsEnabled)(SUITE, () => {
   }, 60_000);
 
   afterAll(async () => {
-    await db.drop();
+    // Optional-chained so a failure in beforeAll surfaces its own error rather
+    // than a teardown TypeError stacked on top of it.
+    await db?.drop();
   });
 
   /** Creates the item, then applies every input through the real write path. */
@@ -354,6 +357,243 @@ describe.skipIf(!dbTestsEnabled)(SUITE, () => {
         observedAt: "2026-03-06T18:29:00.000Z",
         confirmedBy: household.userId,
       });
+    });
+  });
+
+  /**
+   * The read path is the corruption detector, so it needs corrupt rows to
+   * refuse (reviewer findings F4/F5).
+   *
+   * Every row here has to be written past a guard that exists precisely to
+   * stop it, so each test drops the blocking constraint or disables the
+   * blocking trigger **inside a transaction that is always rolled back**.
+   * Postgres DDL is transactional, so the schema and the corrupt row both
+   * vanish; nothing leaks into the next test. Reaching for that hammer is
+   * itself the evidence that the write path cannot produce these rows.
+   */
+  describe("the read path refuses corruption", () => {
+    /** Applies `ddl`, runs `fn`, and rolls the whole thing back. */
+    async function inRolledBackTransaction<T>(
+      ddl: readonly string[],
+      fn: (client: PoolClient) => Promise<T>,
+    ): Promise<T> {
+      const client = await db.pool.connect();
+      try {
+        await client.query("BEGIN");
+        for (const statement of ddl) await client.query(statement);
+        return await fn(client);
+      } finally {
+        await client.query("ROLLBACK");
+        client.release();
+      }
+    }
+
+    /** An item with one lot and one honest PURCHASE of 2 lb, committed. */
+    async function seededItem(): Promise<{ itemId: string; lotId: string }> {
+      const itemId = randomUUID();
+      const lotId = randomUUID();
+      await withHouseholdTransaction(
+        db.pool,
+        household.householdId,
+        async (client) => {
+          await insertInventoryItem(client, {
+            itemId,
+            householdId: household.householdId,
+            unit: UNIT,
+            lots: [{ lotId }],
+          });
+          await appendTransactionToDb(client, household.householdId, itemId, {
+            lotId,
+            type: "PURCHASE",
+            qtyDelta: 2,
+            unit: UNIT,
+            actor: { kind: "user", userId: household.userId },
+            occurredAt: instantAt(0),
+            recordedAt: instantAt(1),
+            provenance: { tier: "KNOWN_FACT", source: "manual-entry" },
+            idempotencyKey: `seed-${randomUUID()}`,
+          });
+        },
+        { assumeRole: APP_ROLE },
+      );
+      return { itemId, lotId };
+    }
+
+    function rawRow(
+      itemId: string,
+      lotId: string,
+      overrides: Readonly<Record<string, unknown>>,
+    ): Readonly<Record<string, unknown>> {
+      return {
+        household_id: household.householdId,
+        item_id: itemId,
+        lot_id: lotId,
+        unit: UNIT,
+        actor_kind: "user",
+        actor_user_id: household.userId,
+        occurred_at: instantAt(0),
+        recorded_at: instantAt(1),
+        provenance_tier: "KNOWN_FACT",
+        provenance_source: "manual-entry",
+        ...overrides,
+      };
+    }
+
+    async function insertRaw(
+      client: PoolClient,
+      row: Readonly<Record<string, unknown>>,
+    ): Promise<void> {
+      const columns = Object.keys(row);
+      const placeholders = columns.map((_column, index) => `$${String(index + 1)}`);
+      await client.query(
+        `INSERT INTO inventory_transactions (${columns.join(", ")})
+         VALUES (${placeholders.join(", ")})`,
+        Object.values(row),
+      );
+    }
+
+    // --- F5: rows rehydrateInventoryItem must refuse -----------------------
+
+    it("refuses a row whose two delta representations disagree", async () => {
+      const { itemId, lotId } = await seededItem();
+      const outcome = await inRolledBackTransaction(
+        [
+          `ALTER TABLE inventory_transactions
+             DROP CONSTRAINT inventory_transactions_qty_forms_agree`,
+        ],
+        async (client) => {
+          await insertRaw(
+            client,
+            rawRow(itemId, lotId, {
+              sequence: 2,
+              type: "PURCHASE",
+              qty_delta: "2",
+              qty_delta_micros: "3000000",
+              idempotency_key: `disagree-${randomUUID()}`,
+            }),
+          );
+          return loadInventoryItem(client, household.householdId, itemId);
+        },
+      );
+
+      expect(outcome.ok).toBe(false);
+      if (!outcome.ok) {
+        expect(outcome.error.code).toBe("CORRUPT_LEDGER");
+        expect(outcome.error.message).toMatch(/disagrees with qtyDeltaMicros/);
+      }
+    });
+
+    it("refuses a user row wearing the ledger's reserved clamp key", async () => {
+      const { itemId, lotId } = await seededItem();
+      const outcome = await inRolledBackTransaction(
+        [
+          `ALTER TABLE inventory_transactions
+             DROP CONSTRAINT inventory_transactions_reserved_marker`,
+        ],
+        async (client) => {
+          await insertRaw(
+            client,
+            rawRow(itemId, lotId, {
+              sequence: 2,
+              type: "ADJUSTMENT",
+              qty_delta: "1",
+              qty_delta_micros: "1000000",
+              idempotency_key: `forged-${randomUUID()}::over-consumption-clamp`,
+            }),
+          );
+          return loadInventoryItem(client, household.householdId, itemId);
+        },
+      );
+
+      expect(outcome.ok).toBe(false);
+      if (!outcome.ok) {
+        expect(outcome.error.code).toBe("CORRUPT_LEDGER");
+        expect(outcome.error.message).toMatch(/not attributed to the ledger/);
+      }
+    });
+
+    it("refuses a ledger with a gap in its sequence", async () => {
+      const { itemId, lotId } = await seededItem();
+      const outcome = await inRolledBackTransaction(
+        [
+          `ALTER TABLE inventory_transactions
+             DISABLE TRIGGER inventory_transactions_apply`,
+        ],
+        async (client) => {
+          // Sequence 2 is skipped entirely.
+          await insertRaw(
+            client,
+            rawRow(itemId, lotId, {
+              sequence: 3,
+              type: "PURCHASE",
+              qty_delta: "1",
+              qty_delta_micros: "1000000",
+              idempotency_key: `gap-${randomUUID()}`,
+            }),
+          );
+          return loadInventoryItem(client, household.householdId, itemId);
+        },
+      );
+
+      expect(outcome.ok).toBe(false);
+      if (!outcome.ok) {
+        expect(outcome.error.code).toBe("CORRUPT_LEDGER");
+        expect(outcome.error.message).toMatch(/contiguous 1\.\.n sequence/);
+      }
+    });
+
+    // --- F4: stored snapshots are checked, not merely read -----------------
+
+    it("refuses an item snapshot that drifted from its ledger", async () => {
+      const { itemId } = await seededItem();
+      const outcome = await inRolledBackTransaction(
+        [`ALTER TABLE inventory_items DISABLE TRIGGER inventory_items_guard`],
+        async (client) => {
+          await client.query(
+            `UPDATE inventory_items
+                SET current_qty_micros = 9000000, current_qty = 9.0
+              WHERE id = $1`,
+            [itemId],
+          );
+          return loadInventoryItem(client, household.householdId, itemId);
+        },
+      );
+
+      expect(outcome.ok).toBe(false);
+      if (!outcome.ok) {
+        expect(outcome.error.code).toBe("CORRUPT_LEDGER");
+        expect(outcome.error.message).toMatch(/stored item snapshot 9000000 != Σ deltas 2000000/);
+      }
+    });
+
+    it("refuses a lot snapshot that drifted from its ledger", async () => {
+      const { itemId, lotId } = await seededItem();
+      const outcome = await inRolledBackTransaction(
+        [`ALTER TABLE inventory_lots DISABLE TRIGGER inventory_lots_guard`],
+        async (client) => {
+          await client.query(
+            `UPDATE inventory_lots
+                SET current_qty_micros = 5000000, current_qty = 5.0
+              WHERE id = $1`,
+            [lotId],
+          );
+          return loadInventoryItem(client, household.householdId, itemId);
+        },
+      );
+
+      expect(outcome.ok).toBe(false);
+      if (!outcome.ok) {
+        expect(outcome.error.code).toBe("CORRUPT_LEDGER");
+        expect(outcome.error.message).toMatch(/stored lot snapshot/);
+      }
+    });
+
+    it("still accepts the honest item it was given", async () => {
+      // The control: none of the above passes because loadInventoryItem simply
+      // refuses everything.
+      const { itemId } = await seededItem();
+      const stored = await readBack(itemId);
+      expect(stored.currentQty.micros).toBe(2_000_000n);
     });
   });
 

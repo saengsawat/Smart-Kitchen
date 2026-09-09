@@ -1,4 +1,4 @@
-﻿/**
+/**
  * What the schema refuses on its own (M1-T2, testing-strategy.md §1
  * "Database tests: constraints").
  *
@@ -50,7 +50,9 @@ describe.skipIf(!dbTestsEnabled)(SUITE, () => {
   }, 60_000);
 
   afterAll(async () => {
-    await db.drop();
+    // Optional-chained so a failure in beforeAll surfaces its own error rather
+    // than a teardown TypeError stacked on top of it.
+    await db?.drop();
   });
 
   /** A fresh item + lot per test, so no test depends on another's balance. */
@@ -483,6 +485,91 @@ describe.skipIf(!dbTestsEnabled)(SUITE, () => {
         [ctx.itemId],
       );
       expect(item.rows[0]?.current_qty_micros).toBe("0");
+    });
+
+    /**
+     * Runs the over-consumption repro as `sk_app`: append a decrease that
+     * overshoots with no clamp, tamper with the request's household context,
+     * then try to commit. Returns the error COMMIT raised, or `undefined` if
+     * it succeeded — which would mean a negative balance is now committed.
+     */
+    async function commitOvershootWithContext(
+      ctx: RawTransactionContext,
+      tamper: string | null,
+    ): Promise<unknown> {
+      const client = await db.pool.connect();
+      try {
+        await client.query("BEGIN");
+        await client.query("SET LOCAL ROLE sk_app");
+        await client.query("SELECT set_config('app.household_id', $1, true)", [ctx.householdId]);
+        await insertRawTransaction(client, ctx, {
+          sequence: 2,
+          type: "CONSUME",
+          qty_delta: "-50",
+          qty_delta_micros: "-50000000",
+          idempotency_key: `overshoot-${randomUUID()}`,
+        });
+        // The attack: make the row invisible to a check that runs at COMMIT.
+        await client.query("SELECT set_config('app.household_id', $1, true)", [tamper ?? ""]);
+        await client.query("COMMIT");
+        return undefined;
+      } catch (error) {
+        return error;
+      } finally {
+        try {
+          await client.query("ROLLBACK");
+        } catch {
+          /* already rolled back by the failed COMMIT */
+        }
+        client.release();
+      }
+    }
+
+    /**
+     * Regression, reviewer finding F1. The deferred checks used to be
+     * SECURITY INVOKER, so their verification SELECT was filtered by the
+     * caller's own RLS context. Clearing `app.household_id` before COMMIT hid
+     * the row from the check, `NOT FOUND` was treated as "nothing to complain
+     * about", and a negative quantity committed — INV-LEDGER-4 failing *open*.
+     * The functions are now SECURITY DEFINER and a missing row raises.
+     */
+    it("cannot be evaded by clearing the household context before COMMIT", async () => {
+      const ctx = await context();
+      await insertRawTransaction(db.pool, ctx, {
+        sequence: 1,
+        type: "PURCHASE",
+        qty_delta: "10",
+        qty_delta_micros: "10000000",
+      });
+
+      const failure = pgFailure(await commitOvershootWithContext(ctx, null));
+      expect(failure.message, "a negative balance committed").toMatch(/INV-LEDGER-4/);
+
+      const item = await db.pool.query<{ current_qty_micros: string }>(
+        `SELECT current_qty_micros FROM inventory_items WHERE id = $1`,
+        [ctx.itemId],
+      );
+      expect(item.rows[0]?.current_qty_micros).toBe("10000000");
+    });
+
+    it("cannot be evaded by switching to another household's context before COMMIT", async () => {
+      const elsewhere = await seedHousehold(db.pool, "Elsewhere");
+      const ctx = await context();
+      await insertRawTransaction(db.pool, ctx, {
+        sequence: 1,
+        type: "PURCHASE",
+        qty_delta: "10",
+        qty_delta_micros: "10000000",
+      });
+
+      const failure = pgFailure(await commitOvershootWithContext(ctx, elsewhere.householdId));
+      expect(failure.message, "a negative balance committed").toMatch(/INV-LEDGER-4/);
+
+      const item = await db.pool.query<{ current_qty_micros: string }>(
+        `SELECT current_qty_micros FROM inventory_items WHERE id = $1`,
+        [ctx.itemId],
+      );
+      expect(item.rows[0]?.current_qty_micros).toBe("10000000");
     });
 
     it("clamps per lot: one lot may not borrow from another", async () => {

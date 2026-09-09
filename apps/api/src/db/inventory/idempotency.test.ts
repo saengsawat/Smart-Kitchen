@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Idempotency and concurrency at the database boundary (M1-T2; INV-LEDGER-3,
  * data-model.md §6).
  *
@@ -56,7 +56,9 @@ describe.skipIf(!dbTestsEnabled)(SUITE, () => {
   }, 60_000);
 
   afterAll(async () => {
-    await db.drop();
+    // Optional-chained so a failure in beforeAll surfaces its own error rather
+    // than a teardown TypeError stacked on top of it.
+    await db?.drop();
   });
 
   function purchase(lotId: string, key: string, qty = 1): TransactionInput {

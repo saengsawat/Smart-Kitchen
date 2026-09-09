@@ -25,11 +25,20 @@
 
 -- Up Migration
 
+-- Create-and-tolerate rather than check-then-create. Roles live in a
+-- cluster-wide catalog, so two databases in the same cluster migrating at the
+-- same moment (which is exactly what the per-file test databases do) can both
+-- pass an `IF NOT EXISTS` check and then collide on `pg_authid`. An advisory
+-- lock cannot serialise it — advisory locks are per-database — so the race is
+-- caught instead of prevented. Postgres reports the collision as either
+-- `duplicate_object` or a raw unique violation depending on where the two
+-- sessions cross, hence both.
 DO $$
 BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_catalog.pg_roles WHERE rolname = 'sk_app') THEN
-    CREATE ROLE sk_app NOLOGIN;
-  END IF;
+  CREATE ROLE sk_app NOLOGIN;
+EXCEPTION
+  WHEN duplicate_object OR unique_violation THEN
+    NULL;
 END
 $$;
 

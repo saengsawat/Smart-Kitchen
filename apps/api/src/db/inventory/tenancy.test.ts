@@ -1,4 +1,4 @@
-﻿/**
+/**
  * INV-TENANT-1 at the database boundary (M1-T2; NFR-1, data-model.md §5).
  *
  * "Household A can never read/write household B data." The endpoint-level half
@@ -89,7 +89,9 @@ describe.skipIf(!dbTestsEnabled)(SUITE, () => {
   }, 60_000);
 
   afterAll(async () => {
-    await db.drop();
+    // Optional-chained so a failure in beforeAll surfaces its own error rather
+    // than a teardown TypeError stacked on top of it.
+    await db?.drop();
   });
 
   describe("positive controls", () => {
@@ -241,16 +243,12 @@ describe.skipIf(!dbTestsEnabled)(SUITE, () => {
             db.pool,
             alpha.householdId,
             (client) =>
-              insertRawTransaction(
-                client,
-                {
-                  householdId: alpha.householdId,
-                  itemId: betaItem.itemId,
-                  lotId: betaItem.lotId,
-                  userId: alpha.userId,
-                },
-                { sequence: 2 },
-              ),
+              insertRawTransaction(client, {
+                householdId: alpha.householdId,
+                itemId: betaItem.itemId,
+                lotId: betaItem.lotId,
+                userId: alpha.userId,
+              }),
             { assumeRole: APP_ROLE },
           ),
         ),
@@ -260,6 +258,54 @@ describe.skipIf(!dbTestsEnabled)(SUITE, () => {
       // it does not.
       expect(failure.code).toBe("23503");
       expect(failure.constraint).toBe("inventory_transactions_item_unit_fkey");
+    });
+
+    /**
+     * Regression, reviewer finding F2. `UNIQUE(item_id, sequence)` was not
+     * household-scoped, and unique indexes are checked before foreign keys and
+     * AFTER-triggers — so walking the sequence number upward against another
+     * household's item flipped from duplicate-key to foreign-key violation
+     * exactly at that ledger's length, reporting how much history the other
+     * household has. The key now leads with `household_id`, so a foreign
+     * item's rows are uncollidable and every probe fails identically.
+     */
+    it("gives away nothing about another household's ledger length", async () => {
+      const probe = async (itemId: string, lotId: string, sequence: number): Promise<string> => {
+        const failure = pgFailure(
+          await captureError(() =>
+            withHouseholdTransaction(
+              db.pool,
+              alpha.householdId,
+              (client) =>
+                insertRawTransaction(
+                  client,
+                  {
+                    householdId: alpha.householdId,
+                    itemId,
+                    lotId,
+                    userId: alpha.userId,
+                  },
+                  { sequence, idempotency_key: `probe-${randomUUID()}` },
+                ),
+              { assumeRole: APP_ROLE },
+            ),
+          ),
+        );
+        return `${failure.code ?? "?"}/${failure.constraint ?? "?"}`;
+      };
+
+      // Beta's item has exactly one transaction, so a leak would show up as a
+      // change in the answer somewhere around sequence 1–2.
+      const againstBeta = await Promise.all(
+        [1, 2, 3, 4].map((sequence) => probe(betaItem.itemId, betaItem.lotId, sequence)),
+      );
+      const againstNothing = await probe(randomUUID(), randomUUID(), 1);
+
+      // Every probe answers the same way, and the same way as a UUID that
+      // simply does not exist: the response distinguishes nothing.
+      expect(new Set(againstBeta).size, `varied by sequence: ${againstBeta.join(", ")}`).toBe(1);
+      expect(againstBeta[0]).toBe(againstNothing);
+      expect(againstNothing).toBe("23503/inventory_transactions_item_unit_fkey");
     });
 
     it("cannot update another household's item metadata", async () => {

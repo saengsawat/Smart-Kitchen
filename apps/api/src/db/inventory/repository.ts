@@ -317,7 +317,56 @@ export async function loadInventoryItem(
     ...(storageLocation.value === undefined ? {} : { storageLocation: storageLocation.value }),
   };
 
-  return rehydrateInventoryItem(shell, recorded);
+  const rehydrated = rehydrateInventoryItem(shell, recorded);
+  if (!rehydrated.ok) return rehydrated;
+
+  // The stored snapshots are read but never trusted — and, until now, never
+  // *checked* either. Comparing them against the ledger the domain just
+  // replayed is what turns "the trigger is the only writer of a snapshot" from
+  // an assumption into something the read path verifies on every load. Drift
+  // means something wrote a quantity outside a transaction append (ADR-008,
+  // CLAUDE.md rule 10), so the read fails rather than returning a
+  // plausible-looking aggregate; repair is an operator action with a flagged
+  // ADJUSTMENT, never a silent overwrite (data-model.md §3).
+  const drift = driftCheck(itemRow, lots.rows, rehydrated.value);
+  return drift ?? rehydrated;
+}
+
+/** Compares stored snapshots with the ledger-derived aggregate. */
+function driftCheck(
+  itemRow: InventoryItemRow,
+  lotRows: readonly InventoryLotRow[],
+  derived: InventoryItem,
+): Outcome<InventoryItem> | undefined {
+  const storedMicros = BigInt(itemRow.current_qty_micros);
+  if (storedMicros !== derived.currentQty.micros) {
+    return err(
+      "CORRUPT_LEDGER",
+      `stored item snapshot ${storedMicros.toString()} != Σ deltas ${derived.currentQty.micros.toString()} (micro-units)`,
+      itemRow.id,
+    );
+  }
+  if (itemRow.next_sequence !== derived.nextSequence) {
+    return err(
+      "CORRUPT_LEDGER",
+      `stored next_sequence ${String(itemRow.next_sequence)} does not follow ${String(derived.transactions.length)} recorded transactions`,
+      itemRow.id,
+    );
+  }
+
+  const derivedLots = new Map(derived.lots.map((lot) => [lot.lotId, lot.currentQty.micros]));
+  for (const lotRow of lotRows) {
+    const storedLotMicros = BigInt(lotRow.current_qty_micros);
+    const derivedLotMicros = derivedLots.get(lotRow.id);
+    if (derivedLotMicros === undefined || storedLotMicros !== derivedLotMicros) {
+      return err(
+        "CORRUPT_LEDGER",
+        `stored lot snapshot ${storedLotMicros.toString()} != Σ deltas ${(derivedLotMicros ?? 0n).toString()} (micro-units)`,
+        lotRow.id,
+      );
+    }
+  }
+  return undefined;
 }
 
 /**

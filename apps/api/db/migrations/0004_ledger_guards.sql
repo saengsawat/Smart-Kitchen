@@ -136,9 +136,14 @@ BEGIN
       USING ERRCODE = '23503';
   END IF;
 
+  -- The message names only values the caller already supplied. Echoing the
+  -- item's real household would hand one tenant another tenant's identifier,
+  -- read through a SECURITY DEFINER function that is not subject to the
+  -- policies — currently unreachable (the composite foreign key rejects this
+  -- row first) but one schema change away from being a disclosure.
   IF v_household_id <> NEW.household_id THEN
-    RAISE EXCEPTION 'inventory_transactions.household_id % does not match item % (household %)',
-      NEW.household_id, NEW.item_id, v_household_id
+    RAISE EXCEPTION 'inventory_transactions for item % does not belong to the household it claims (%)',
+      NEW.item_id, NEW.household_id
       USING ERRCODE = '23514';
   END IF;
 
@@ -222,16 +227,37 @@ CREATE TRIGGER inventory_transactions_no_truncate
 --
 -- Each trigger re-reads the row rather than trusting NEW: a deferred trigger
 -- carries the row image from the moment it was queued, not from commit time.
+--
+-- SECURITY DEFINER is load-bearing, not hygiene. As SECURITY INVOKER the
+-- verification SELECT was itself filtered by the caller's row-level security
+-- context, so a caller could clear or switch `app.household_id` before COMMIT,
+-- make its own row invisible to the check, and have `NOT FOUND` wave a negative
+-- balance through — INV-LEDGER-4 failing *open*, which is the worst way for a
+-- safety invariant to fail. The check must see the row the way the database
+-- sees it, not the way the caller is permitted to.
+--
+-- For the same reason `NOT FOUND` now raises instead of passing. With the
+-- definer's view of the table there is no legitimate way for the row to be
+-- missing except deletion inside the same transaction that moved it, which no
+-- application path does and which we would want to hear about anyway. The
+-- invariant fails closed.
 -- ---------------------------------------------------------------------------
 
 CREATE FUNCTION inventory_items_nonnegative() RETURNS trigger
 LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pg_catalog, public
 AS $$
 DECLARE
   v_micros bigint;
 BEGIN
   SELECT current_qty_micros INTO v_micros FROM inventory_items WHERE id = NEW.id;
-  IF FOUND AND v_micros < 0 THEN
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'INV-LEDGER-4: item % disappeared before its non-negativity check could run',
+      NEW.id
+      USING ERRCODE = '23514';
+  END IF;
+  IF v_micros < 0 THEN
     RAISE EXCEPTION 'INV-LEDGER-4: item % would commit a negative quantity (% micro-units)',
       NEW.id, v_micros
       USING ERRCODE = '23514';
@@ -247,12 +273,19 @@ CREATE CONSTRAINT TRIGGER inventory_items_nonnegative
 
 CREATE FUNCTION inventory_lots_nonnegative() RETURNS trigger
 LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pg_catalog, public
 AS $$
 DECLARE
   v_micros bigint;
 BEGIN
   SELECT current_qty_micros INTO v_micros FROM inventory_lots WHERE id = NEW.id;
-  IF FOUND AND v_micros < 0 THEN
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'INV-LEDGER-4: lot % disappeared before its non-negativity check could run',
+      NEW.id
+      USING ERRCODE = '23514';
+  END IF;
+  IF v_micros < 0 THEN
     RAISE EXCEPTION 'INV-LEDGER-4: lot % would commit a negative quantity (% micro-units)',
       NEW.id, v_micros
       USING ERRCODE = '23514';

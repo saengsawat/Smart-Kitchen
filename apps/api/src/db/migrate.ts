@@ -30,7 +30,11 @@ export const MIGRATIONS_DIR = fileURLToPath(new URL("../../db/migrations", impor
  */
 export const MIGRATIONS_TABLE = "sk_migrations";
 
-/** Number of migrations that exist; `migrateDown` uses it to unwind everything. */
+/**
+ * An upper bound on how many migrations could ever exist, used as
+ * node-pg-migrate's way of saying "all of them". It is not a count of the
+ * migrations in this repo.
+ */
 const ALL = 1_000_000;
 
 function silent(): void {
@@ -53,11 +57,16 @@ export async function migrateUp(databaseUrl: string): Promise<readonly string[]>
   return applied.map((migration) => migration.name);
 }
 
-/** Rolls back `count` migrations (default: all of them). */
-export async function migrateDown(
-  databaseUrl: string,
-  count: number = ALL,
-): Promise<readonly string[]> {
+/**
+ * Rolls back exactly `count` migrations.
+ *
+ * `count` is required, and {@link migrateDownAll} is a separate function, on
+ * purpose: `node-pg-migrate down` on the command line rolls back **one**
+ * migration, so a programmatic `migrateDown(url)` that defaulted to *all* of
+ * them would mean the same word had opposite blast radii depending on where it
+ * was typed. Destroying a schema should never be the default argument.
+ */
+export async function migrateDown(databaseUrl: string, count: number): Promise<readonly string[]> {
   const reverted = await runner({
     databaseUrl,
     dir: MIGRATIONS_DIR,
@@ -70,4 +79,9 @@ export async function migrateDown(
     log: silent,
   });
   return reverted.map((migration) => migration.name);
+}
+
+/** Rolls the database all the way back to empty. Named for what it destroys. */
+export async function migrateDownAll(databaseUrl: string): Promise<readonly string[]> {
+  return migrateDown(databaseUrl, ALL);
 }
