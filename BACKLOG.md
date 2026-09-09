@@ -43,7 +43,8 @@ Model routing rules (default Sonnet; Opus for the high-risk domain list; separat
 - **Out of scope:** CI (M0-T2), any domain logic, DB, client app.
 - **DoD:** CI-ready scripts documented in README dev section; ADR-002 framework question closed; STATUS.md updated.
 
-#### M0-T2 — CI pipeline & quality gates
+#### M0-T2 — CI pipeline & quality gates ✅ DONE 2026-09-08
+*Sonnet impl → independent Sonnet review (PASS, no fixes — all runs re-verified via live Actions API) → accepted & merged. Worker deviation (dropping `version:` input from pnpm/action-setup in favor of exact `packageManager` pinning) architect-approved: forced by action incompatibility, disclosed with run evidence, strictly tighter pinning. Branch protection = owner checklist in CONTRIBUTING.md; architect verifies the `protected` flag after the owner applies it.*
 - **Implementation model:** Sonnet — standard CI configuration; security-adjacent (secret/dependency scanning) but assembled from stock actions, verified by deliberate-failure PRs.
 - **Review model:** Sonnet — acceptance criteria are self-demonstrating (the three failing test PRs); reviewer checks gate coverage and branch protection.
 - **Objective:** CI (GitHub Actions assumed once hosting of repo is settled — confirm) running lint, typecheck, unit tests, **format check** (now that `.gitattributes` normalizes line endings), dependency-boundary check, secret scan (gitleaks-class), dependency audit on every PR; trunk-based flow with short-lived branches; conventional commits with ticket refs documented; short CONTRIBUTING notes incl. Windows long-path caveat (`git config core.longpaths true` / Win32 long paths — M0-T1 follow-up) and pnpm/corepack setup.
@@ -162,7 +163,8 @@ Alerting, cost caps enforcement, load/perf pass, security deep-set (isolation fu
 ---
 
 ## Accepted follow-ups from completed tickets
-- From M0-T1 (worker report, triaged at acceptance): Windows long-path CONTRIBUTING note → folded into M0-T2; `apps/api` dev/watch script (`tsx`-style) → add with first real API ticket (M2); OneDrive-sync concern → tracked in STATUS.md, decide before M0-T2.
+- From M0-T1 (worker report, triaged at acceptance): Windows long-path CONTRIBUTING note → folded into M0-T2 (✅ done); `apps/api` dev/watch script (`tsx`-style) → add with first real API ticket (M2); OneDrive-sync concern → tracked in STATUS.md.
+- From M0-T2 (worker report + review, triaged at acceptance 2026-09-08): bump `packageManager` pnpm 12.3.1 → 12.3.4 (one-line maintenance, next ticket that touches package.json); add `workflow_dispatch:` trigger to ci.yml (optional convenience, with that same change); SHA-pin the remaining actions (checkout/setup-node/pnpm-setup — hardening, fold into M9); after the owner applies branch protection, verify a real PR shows both required checks (architect acceptance step, next PR).
 
 ## Non-milestone track (continuous)
 - Fixture corpus growth (every prod bug → fixture first).

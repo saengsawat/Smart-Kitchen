@@ -62,9 +62,9 @@ Full proposal: [ARCHITECTURE.md](ARCHITECTURE.md).
 
 - All work flows through [BACKLOG.md](BACKLOG.md) tickets; one ticket at a time, file scope enforced ([CLAUDE.md](CLAUDE.md)).
 - Decisions are made in [DECISIONS.md](DECISIONS.md)/ADRs — a decision without a log entry didn't happen.
-- Baseline: trunk-based development, short-lived branches, conventional commits with ticket refs, PR review, TypeScript strict + ESLint + Prettier + Vitest (installed, M0-T1), CI with secret/dependency scanning (M0-T2, not yet installed), committed lockfiles, `.env.example` templates.
+- Baseline: trunk-based development, short-lived branches, conventional commits with ticket refs, PR review, TypeScript strict + ESLint + Prettier + Vitest (installed, M0-T1), CI with secret/dependency scanning (installed, M0-T2 — see the badge above), committed lockfiles, `.env.example` templates.
 - Contributor workflow, commit conventions, local setup, and the branch-protection checklist: [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Current next step
 
-M0-T1 (scaffolding) is done. Next: decide the repo remote/hosting (and the OneDrive question in [STATUS.md](STATUS.md)) to unblock **M0-T2 (CI)**, and ratify **D-002 (MVP scope)** / **D-003 (inventory ledger)** in [DECISIONS.md](DECISIONS.md) to unblock **M1**.
+**Milestone 0 is complete** (scaffolding + CI). The inventory ledger model is DECIDED (D-003/ADR-008) and foundation-first build order is approved (D-016) — **Milestone 1 (domain core + inventory ledger) is underway**, starting with M1-T1. Still open for the product owner: **D-002 (MVP scope)** ratification, needed before M3 (UI). Live state: [STATUS.md](STATUS.md).
