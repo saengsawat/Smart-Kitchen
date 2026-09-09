@@ -28,7 +28,8 @@
  * is unknown and where.
  *
  * Household verdict = worst member verdict; member verdict = worst restriction
- * verdict (domain-model.md §4 invariant 7).
+ * verdict (SR-1 / INV-ALRG-1; the aggregation rule itself is new semantics
+ * introduced by M1-T4, proposed for `domain-model.md` §4 at acceptance).
  *
  * ## Why `ALLOWED` is reachable at all
  *
@@ -189,32 +190,60 @@ function parseAssertions(inputs: readonly AllergenAssertionInput[] | undefined):
   return { parsed, uninterpreted };
 }
 
+/**
+ * Coerces a field that should be free text. `screenSubject` is documented as a
+ * total function, and its callers include adapters over third-party data, so a
+ * numeric or object `name` must degrade to "no text" rather than throw when it
+ * reaches `String.prototype.normalize` (review finding F4).
+ */
+function asText(value: unknown): string {
+  return typeof value === "string" ? value : "";
+}
+
+/**
+ * Coerces a field that should be a list of assertions. Notably a *string* here
+ * would otherwise be iterated character by character by `for...of` — silently
+ * screening nothing at all rather than failing loudly (review finding F4).
+ */
+function asAssertionList(value: unknown): readonly AllergenAssertionInput[] {
+  return Array.isArray(value) ? (value as readonly AllergenAssertionInput[]) : [];
+}
+
+/** Coerces a declaration field: anything that is not an object is no declaration at all. */
+function asDeclaration(value: unknown): AllergenDeclaration | undefined {
+  if (typeof value !== "object" || value === null) return undefined;
+  return value as AllergenDeclaration;
+}
+
 function buildLoci(subject: ScreeningSubjectInput): readonly Locus[] {
   if (subject.kind === "PRODUCT") {
     const product: ProductSubjectInput = subject;
-    const { parsed, uninterpreted } = parseAssertions(product.allergens);
+    const { parsed, uninterpreted } = parseAssertions(asAssertionList(product.allergens));
+    const nameText = asText(product.name);
+    const declaration = asDeclaration(product.declaration);
     return [
       {
-        locus: { part: "PRODUCT", ref: product.name ?? product.subjectId },
+        locus: { part: "PRODUCT", ref: nameText.trim() === "" ? product.subjectId : nameText },
         parsed,
         uninterpreted,
-        nameText: product.name ?? "",
-        ingredientsText: product.ingredientsText ?? "",
-        ...(product.declaration === undefined ? {} : { declaration: product.declaration }),
+        nameText,
+        ingredientsText: asText(product.ingredientsText),
+        ...(declaration === undefined ? {} : { declaration }),
       },
     ];
   }
 
   const recipe: RecipeSubjectInput = subject;
   return recipe.ingredients.map((ingredient, index): Locus => {
-    const { parsed, uninterpreted } = parseAssertions(ingredient.allergens);
+    const { parsed, uninterpreted } = parseAssertions(asAssertionList(ingredient.allergens));
+    const declaration = asDeclaration(ingredient.declaration);
     return {
       locus: { part: "RECIPE_INGREDIENT", ref: ingredient.ref, ingredientIndex: index },
       parsed,
       uninterpreted,
       nameText: ingredient.ref,
-      ingredientsText: ingredient.ingredientsText ?? "",
-      ...(ingredient.declaration === undefined ? {} : { declaration: ingredient.declaration }),
+      ingredientsText: asText(ingredient.ingredientsText),
+      ...(declaration === undefined ? {} : { declaration }),
     };
   });
 }
@@ -287,7 +316,7 @@ function buildUnknown(
 function unknownReasonFor(
   restriction: AllergyRestriction,
   locus: Locus,
-  hasText: boolean,
+  hasIngredientsText: boolean,
 ): { reason: UnknownReason; detail: string } {
   const firstUninterpreted = locus.uninterpreted[0];
   if (firstUninterpreted !== undefined) {
@@ -299,10 +328,10 @@ function unknownReasonFor(
           : `assertion kind not understood: ${firstUninterpreted.rawKind}`,
     };
   }
-  if (restriction.kind === "USER_DEFINED" && !hasText) {
+  if (restriction.kind === "USER_DEFINED" && !hasIngredientsText) {
     return {
       reason: "NO_INGREDIENT_TEXT",
-      detail: `no ingredient statement to scan for user-defined term "${restriction.term}"`,
+      detail: `no ingredient statement to scan for user-defined term "${restriction.term}" (a name alone is not an ingredient statement)`,
     };
   }
   const declaration = locus.declaration;
@@ -325,22 +354,47 @@ function unknownReasonFor(
           : `declaration does not claim a complete ingredient statement (ingredientStatement=${declaration.ingredientStatement})`,
     };
   }
+  if (declaration.tier !== "KNOWN_FACT") {
+    return {
+      reason: "UNVERIFIED_DECLARATION_TIER",
+      detail: `completeness claimed at tier ${String(declaration.tier)}; only KNOWN_FACT can license a no-known-match conclusion`,
+    };
+  }
   return {
-    reason: "UNVERIFIED_DECLARATION_TIER",
-    detail: `completeness claimed at tier ${String(declaration.tier)} from ${declaration.source}; only KNOWN_FACT can license a no-known-match conclusion`,
+    reason: "UNSOURCED_DECLARATION",
+    detail:
+      "completeness is claimed but the declaration names no source; an unattributable completeness claim cannot license a no-known-match conclusion",
   };
 }
 
-/** True when this locus's declaration licenses concluding absence for this restriction. */
-function licensesAbsence(restriction: AllergyRestriction, locus: Locus, hasText: boolean): boolean {
+/**
+ * True when this locus's declaration licenses concluding absence for this
+ * restriction. Every condition here is a reason to *refuse* the permissive
+ * verdict; the function fails closed on anything it does not recognise.
+ *
+ * `hasIngredientsText` is specifically about the ingredient statement, not
+ * about "any text at all". An earlier version accepted the *name* as scannable
+ * text, which made the condition unconditionally true for recipe loci (a
+ * recipe ingredient's `ref` is mandatory) and let a user-defined allergy reach
+ * `ALLOWED` with zero ingredient statement ever scanned (review finding F2).
+ */
+function licensesAbsence(
+  restriction: AllergyRestriction,
+  locus: Locus,
+  hasIngredientsText: boolean,
+): boolean {
   if (locus.uninterpreted.length > 0) return false;
   const declaration = locus.declaration;
   if (declaration === undefined) return false;
   if (declaration.tier !== "KNOWN_FACT") return false;
+  // The declaration is the trust root of the whole permissive verdict, so an
+  // unattributable one is worthless: who claimed completeness must be on
+  // record (review addition P5).
+  if (typeof declaration.source !== "string" || declaration.source.trim() === "") return false;
   if (restriction.kind === "MAJOR") {
     return declaration.majorAllergens === "COMPLETE_FOR_MAJOR_ALLERGENS";
   }
-  return declaration.ingredientStatement === "COMPLETE" && hasText;
+  return declaration.ingredientStatement === "COMPLETE" && hasIngredientsText;
 }
 
 interface LocusFinding {
@@ -467,11 +521,13 @@ function evaluateLocus(
     return { outcome: "POSSIBLE_MATCH", evidence, unknowns: [] };
   }
 
-  const hasText = locus.nameText.trim() !== "" || locus.ingredientsText.trim() !== "";
-  if (licensesAbsence(restriction, locus, hasText)) {
+  // Deliberately the ingredient statement only — a name is not an ingredient
+  // statement, and treating it as one was review finding F2.
+  const hasIngredientsText = locus.ingredientsText.trim() !== "";
+  if (licensesAbsence(restriction, locus, hasIngredientsText)) {
     return { outcome: "NO_KNOWN_MATCH", evidence: [], unknowns: [] };
   }
-  const { reason, detail } = unknownReasonFor(restriction, locus, hasText);
+  const { reason, detail } = unknownReasonFor(restriction, locus, hasIngredientsText);
   return {
     outcome: "UNKNOWN",
     evidence: [],

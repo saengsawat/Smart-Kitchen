@@ -45,6 +45,39 @@ describe("normalizeText", () => {
     expect(tokenize("!!! ---")).toEqual([]);
   });
 
+  it("deletes zero-width and format characters instead of splitting on them (review finding F3)", () => {
+    // These are invisible, so a human reads "pea<ZWSP>nut" as one word. Letting
+    // the non-alphanumeric step turn them into a separator split the token and
+    // made the term miss — which produced ALLOWED under a declaration.
+    const invisibles: readonly (readonly [string, number])[] = [
+      ["soft hyphen U+00AD", 0x00ad],
+      ["zero-width space U+200B", 0x200b],
+      ["zero-width non-joiner U+200C", 0x200c],
+      ["zero-width joiner U+200D", 0x200d],
+      ["left-to-right mark U+200E", 0x200e],
+      ["right-to-left mark U+200F", 0x200f],
+      ["word joiner U+2060", 0x2060],
+      ["zero-width no-break space / BOM U+FEFF", 0xfeff],
+    ];
+
+    for (const [label, codePoint] of invisibles) {
+      const char = String.fromCodePoint(codePoint);
+      expect(normalizeText(`pea${char}nut`), label).toBe("peanut");
+      expect(tokenize(`pea${char}nut`), label).toEqual(["peanut"]);
+      // Also at the edges and doubled up.
+      expect(normalizeText(`${char}peanut${char}`), label).toBe("peanut");
+      expect(normalizeText(`pea${char}${char}nut`), label).toBe("peanut");
+    }
+  });
+
+  it("still finds the term when a recipe hides an invisible inside it", () => {
+    const peanutTerm = compileTerms(["peanut"]);
+    for (const codePoint of [0x00ad, 0x200b, 0x200c, 0x200d, 0x200e, 0x200f, 0x2060, 0xfeff]) {
+      const sneaky = `roasted pea${String.fromCodePoint(codePoint)}nuts`;
+      expect(findTermMatches(sneaky, peanutTerm).length, `U+${codePoint.toString(16)}`).toBe(1);
+    }
+  });
+
   it("is idempotent", () => {
     const once = normalizeText("Crème-Fraîche, 2% MILK!");
     expect(normalizeText(once)).toBe(once);

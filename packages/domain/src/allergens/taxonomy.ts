@@ -115,11 +115,20 @@ export function isMajorAllergenCode(value: unknown): value is MajorAllergenCode 
  * Folds a free-form allergen code from an external source onto our taxonomy.
  * Returns `undefined` when the code is not recognized — callers must treat
  * that as *unknown data*, never as "no allergen" (SR-2).
+ *
+ * The alias lookup goes through {@link Object.hasOwn} rather than a bare index
+ * read. A plain object inherits from `Object.prototype`, so `aliases["constructor"]`
+ * resolves to the `Object` constructor function and a `constructor`-coded
+ * assertion would be treated as *recognized* — silently clearing the
+ * unrecognized-data warnings and, under a completeness declaration, upgrading
+ * the verdict to `ALLOWED`. Own-property-only lookup closes that (review
+ * finding F1).
  */
 export function normalizeAllergenCode(raw: string): MajorAllergenCode | undefined {
   const folded = normalizeText(raw).replace(/ /g, "_");
   if (folded === "") return undefined;
   if (isMajorAllergenCode(folded)) return folded;
+  if (!Object.hasOwn(ALLERGEN_CODE_ALIASES, folded)) return undefined;
   return ALLERGEN_CODE_ALIASES[folded];
 }
 
@@ -415,6 +424,8 @@ const RAW_ALLERGEN_EXCLUSIONS: Readonly<Record<MajorAllergenCode, readonly strin
       "shea butter",
       "apple butter",
       "cream of tartar",
+      // "curd" is a milk term; bean curd is tofu (review finding F9).
+      "bean curd",
       "coconut milk",
       "coconut cream",
       "almond milk",

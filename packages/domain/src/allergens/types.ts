@@ -235,7 +235,16 @@ export type UnknownReason =
   | "INCOMPLETE_DECLARATION"
   /** A declaration claims completeness but at a tier below `KNOWN_FACT`. */
   | "UNVERIFIED_DECLARATION_TIER"
-  /** A user-defined term needs an ingredient statement and none is on file. */
+  /**
+   * A declaration claims completeness at `KNOWN_FACT` but names no source.
+   * The declaration is the trust root of the permissive verdict, so an
+   * unattributable one is refused rather than honoured.
+   */
+  | "UNSOURCED_DECLARATION"
+  /**
+   * A user-defined term needs an *ingredient statement* and none is on file.
+   * A product or ingredient name alone does not count — see `screen.ts`.
+   */
   | "NO_INGREDIENT_TEXT"
   /** The locus carries an allergen code we cannot fold onto the taxonomy. */
   | "UNRECOGNIZED_ASSERTION_CODE"
@@ -306,7 +315,8 @@ export interface MemberScreeningResult {
 /**
  * The screening result. `verdict` is the **household** verdict: the worst of
  * all member verdicts, because a recommendation shown to a household is eaten
- * in that household (domain-model.md §4 invariant 7 / INV-ALRG-1).
+ * in that household (SR-1 / INV-ALRG-1; household verdict = worst member is
+ * new semantics introduced by M1-T4, not yet in `domain-model.md` §4).
  */
 export interface ScreeningResult {
   readonly subjectKind: "RECIPE" | "PRODUCT";

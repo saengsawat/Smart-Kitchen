@@ -82,6 +82,29 @@ describe("normalizeAllergenCode", () => {
     expect(normalizeAllergenCode("???")).toBeUndefined();
   });
 
+  it("does not resolve inherited Object.prototype keys (review finding F1)", () => {
+    // A bare `aliases[folded]` read resolves prototype properties, so a
+    // `constructor`-coded assertion came back "recognized" (as the Object
+    // function), which cleared the unrecognized-data warnings and could
+    // upgrade a verdict to ALLOWED. Own-property lookup only.
+    for (const key of [
+      "constructor",
+      "Constructor",
+      "constructor!",
+      "  constructor  ",
+      "__proto__",
+      "prototype",
+      "toString",
+      "valueOf",
+      "hasOwnProperty",
+      "isPrototypeOf",
+      "propertyIsEnumerable",
+      "toLocaleString",
+    ]) {
+      expect(normalizeAllergenCode(key), `${key} must not resolve`).toBeUndefined();
+    }
+  });
+
   it("deliberately does not equate gluten with wheat", () => {
     // Gluten is also in barley and rye, so the claims are not the same claim.
     // Unrecognized => unknown + warning, which is the conservative outcome.
@@ -140,6 +163,8 @@ describe("curated term data", () => {
       ["nutritional yeast", "tree_nut"],
       ["eggplant parmesan", "egg"],
       ["shellfish free broth", "shellfish"],
+      // "curd" is a milk term; bean curd is tofu (review finding F9).
+      ["bean curd, water, salt", "milk"],
     ];
     for (const [text, code] of nonMatches) {
       expect(

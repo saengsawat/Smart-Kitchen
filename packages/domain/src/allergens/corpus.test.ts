@@ -568,7 +568,7 @@ const CASES: readonly ScreeningCase[] = [
     category: "valid",
     title: "Three members, three outcomes -> household verdict is the worst of them",
     notes:
-      "Household verdict = worst member verdict (domain-model.md invariant 7). An ALLOWED member never lifts another member's block.",
+      "Household verdict = worst member verdict (SR-1/INV-ALRG-1; the aggregation rule is introduced by M1-T4). An ALLOWED member never lifts another member's block.",
     input: {
       subject: {
         kind: "PRODUCT",

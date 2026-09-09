@@ -73,13 +73,23 @@ export interface CompiledTerm {
 }
 
 const COMBINING_MARKS = /[\u0300-\u036f]/g;
+/**
+ * Zero-width and bidi/format characters: soft hyphen, ZWSP/ZWNJ/ZWJ, LRM/RLM,
+ * word joiner, and BOM/ZWNBSP. They are **deleted**, not turned into spaces \u2014
+ * they are invisible, so a human reading `pea<ZWSP>nut` sees one word, and
+ * letting the non-alphanumeric step turn them into a separator would split the
+ * token and make the term miss (review finding F3: that produced `ALLOWED`
+ * under a completeness declaration). Must run before {@link NON_ALNUM}.
+ */
+const ZERO_WIDTH_AND_FORMAT = /[\u00ad\u200b-\u200f\u2060\ufeff]/g;
 const NON_ALNUM = /[^a-z0-9]+/g;
 
-/** Applies the four normalization steps documented above. */
+/** Applies the normalization steps documented above. */
 export function normalizeText(raw: string): string {
   return raw
     .normalize("NFKD")
     .replace(COMBINING_MARKS, "")
+    .replace(ZERO_WIDTH_AND_FORMAT, "")
     .toLowerCase()
     .replace(NON_ALNUM, " ")
     .trim();

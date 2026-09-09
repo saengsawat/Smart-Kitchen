@@ -9,22 +9,22 @@
  * Modules:
  * - `inventory` — the append-only inventory ledger (M1-T1, ADR-008).
  * - `units` — unit kinds/conversion, standalone beside the ledger (M1-T3).
- * - `allergens` — deterministic allergen screening (M1-T4, SR-1/SR-2).
- *   Re-exported explicitly for the same reason as `units`: it too defines its
- *   own `ok`/`err`/`Outcome` helpers, which stay module-local. Its verdict is
- *   three-state and `ALLOWED` means *no known match*, never "safe".
- *   Re-exported explicitly (not `export *`) below because both modules
- *   define their own `ok`/`err`/`Outcome` result helpers under those exact
- *   names by design (each module is meant to be self-contained) — an
- *   `export *` from both would make those specific names ambiguous at this
- *   barrel. Beyond that unavoidable rename, this barrel deliberately re-exports
- *   only the units module's *domain-facing* API (unit strings in, converted
+ *   Re-exported explicitly (not `export *`) below because it defines its own
+ *   `ok`/`err`/`Outcome` result helpers under those exact names by design
+ *   (each module is meant to be self-contained) — an `export *` from more than
+ *   one such module would make those specific names ambiguous at this barrel.
+ *   Beyond that unavoidable omission, this barrel deliberately re-exports only
+ *   the units module's *domain-facing* API (unit strings in, converted
  *   quantities/errors out) — its internal `Rational` (exact-fraction)
  *   arithmetic primitives are implementation detail nothing outside
  *   `units/**` needs yet, and stay available only via
  *   `packages/domain/src/units/index.ts` (architect-endorsed review fix,
  *   M1-T3 PASS WITH FIXES: narrower root surface now, since nothing depends
  *   on the raw Rational helpers).
+ * - `allergens` — deterministic allergen screening (M1-T4, SR-1/SR-2).
+ *   Re-exported explicitly for the same reason as `units`: it too defines its
+ *   own `ok`/`err`/`Outcome` helpers, which stay module-local. Its verdict is
+ *   three-state and `ALLOWED` means *no known match*, never "safe".
  */
 
 export const DOMAIN_PACKAGE_NAME = "@smart-kitchen/domain";
