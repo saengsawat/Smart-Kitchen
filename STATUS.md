@@ -9,8 +9,8 @@ _Last updated: 2026-09-14_
 | Ticket | Title | Models (impl/review) | State |
 |---|---|---|---|
 | M1-T6 | Allergen malformed-container fail-closed fix (pre-M4 gate a) | Opus / Opus | ✅ **DONE 2026-09-14** — review PASS (no fixes), squash `1fa171c`, +136 tests (525 w/o DB); pre-M4 gate (a) closed |
-| M1-T7 | Correction-rate telemetry view + read function | Sonnet / Opus | dispatching |
-| M1-T8 | FEFO/FIFO lot-selection planner | Opus / Opus | queued |
+| M1-T7 | Correction-rate telemetry view + read function | Sonnet / Opus | ✅ **DONE 2026-09-14** — review PASS (no fixes), squash `cf301c6`; 625 tests with DB / 527 without; KPI definition recorded in ARCHITECTURE §8 |
+| M1-T8 | FEFO/FIFO lot-selection planner | Opus / Opus | dispatching |
 | M1-T9 | Ledger write retry helper (`40001` + sequence-key `23505`) | Sonnet / Opus | queued |
 | M1-T10 | Maintenance bundle (11 accepted follow-ups) | Sonnet / Sonnet | queued |
 
@@ -44,7 +44,7 @@ _Last updated: 2026-09-14_
 ## Next 3 actions
 1. **Engineering (architect):** run M1-E3 to acceptance, one ticket at a time; update this file only at each acceptance (rule 27); stop after M1-T10.
 2. **Dean ratifies D-002** (MVP scope) and answers Q1/Q3 — gates M3; M2 (API) awaits a PO go-ahead (cost gates: auth vendor, hosting — or a PO yes to a stubbed-auth M2 core).
-3. **Owner:** apply the **branch-protection checklist** (CONTRIBUTING.md); answer the UX plan's open items (OQ-D1, Q8, OQ-D4/D5/D6); housekeeping — move the clone out of OneDrive; keep-or-delete ruling on the untracked `docs/architecture/workflow-diagrams.{md,html}`; optionally install Docker for local DB tests.
+3. **Owner:** apply the **branch-protection checklist** (CONTRIBUTING.md); answer the UX plan's open items (OQ-D1, Q8, OQ-D4/D5/D6); housekeeping — move the clone out of OneDrive; keep-or-delete ruling on the untracked user files `docs/architecture/workflow-diagrams.{md,html}` and `docs/design/mockups/smart-kitchen-prototype-v2.html` (appeared 2026-09-14; not architect-authored, untouched); optionally install Docker for local DB tests.
 
 ## Major risks (top 3 now)
 1. Inventory-accuracy hypothesis fails (users won't maintain even low-friction inventory) — mitigated by correction-rate telemetry from M3 and receipt fast-follow.
