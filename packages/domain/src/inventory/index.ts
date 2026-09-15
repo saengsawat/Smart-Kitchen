@@ -26,6 +26,13 @@ export {
 } from "./ledger.js";
 
 export {
+  consumptionInputsFromPlan,
+  planLotConsumption,
+  LOT_SELECTION_POLICIES,
+  PLAN_KEY_INFIX,
+} from "./lot-selection.js";
+
+export {
   deriveItemQuantity,
   deriveLotQuantity,
   reconcile,
@@ -51,6 +58,15 @@ export { err, isLedgerError, ledgerError, ok } from "./errors.js";
 export { transactionDirection, TRANSACTION_DIRECTIONS, TRANSACTION_TYPES } from "./types.js";
 
 export type { LedgerError, LedgerErrorCode, Outcome } from "./errors.js";
+export type {
+  ConsumptionInputBase,
+  ConsumptionPlan,
+  ConsumptionRequest,
+  LotAllocation,
+  LotSelectionPolicy,
+  SkippedLot,
+  SkippedLotReason,
+} from "./lot-selection.js";
 export type { Quantity, Unit } from "./quantity.js";
 export type {
   Actor,
