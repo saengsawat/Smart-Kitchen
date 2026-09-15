@@ -8,8 +8,8 @@ _Last updated: 2026-09-14_
 ## In progress (M1-E3, architect-dispatched, one ticket at a time)
 | Ticket | Title | Models (impl/review) | State |
 |---|---|---|---|
-| M1-T6 | Allergen malformed-container fail-closed fix (pre-M4 gate a) | Opus / Opus | dispatching |
-| M1-T7 | Correction-rate telemetry view + read function | Sonnet / Opus | queued |
+| M1-T6 | Allergen malformed-container fail-closed fix (pre-M4 gate a) | Opus / Opus | ✅ **DONE 2026-09-14** — review PASS (no fixes), squash `1fa171c`, +136 tests (525 w/o DB); pre-M4 gate (a) closed |
+| M1-T7 | Correction-rate telemetry view + read function | Sonnet / Opus | dispatching |
 | M1-T8 | FEFO/FIFO lot-selection planner | Opus / Opus | queued |
 | M1-T9 | Ledger write retry helper (`40001` + sequence-key `23505`) | Sonnet / Opus | queued |
 | M1-T10 | Maintenance bundle (11 accepted follow-ups) | Sonnet / Sonnet | queued |

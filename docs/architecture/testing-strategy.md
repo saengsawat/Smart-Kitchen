@@ -53,10 +53,13 @@ tests/fixtures/
                    recommendation/gap-math scenarios (incl. near-expiry sets)
   recommendations/ generation contexts + recorded LLM outputs (valid, malformed,
                    adversarial/allergen-violating, prompt-injection attempts).
-                   15 screening-*.json cases exist (M1-T4; schema in that dir's README).
+                   16 screening-*.json cases exist (M1-T4 + M1-T6; schema in that dir's README).
+                   Cases may encode structurally INVALID input on purpose (e.g. screening-016):
+                   the corpus records what the engine must decide about bad data, not only
+                   good data, so such a case's `input` deliberately violates the TS input types.
                    NOTE: packages/domain has no Node fs types by design (zero-I/O boundary),
                    so its corpus tests mirror these JSONs as in-file constants — keep the two
-                   in sync (a consistency check from packages/adapters is backlogged)
+                   in sync (a consistency check from outside domain lands in M1-T10 item (i))
   nutrition/       source profiles + expected computed totals
 ```
 
