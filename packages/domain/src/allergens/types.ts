@@ -249,7 +249,18 @@ export type UnknownReason =
   /** The locus carries an allergen code we cannot fold onto the taxonomy. */
   | "UNRECOGNIZED_ASSERTION_CODE"
   /** The locus carries an assertion whose kind we do not understand. */
-  | "UNRECOGNIZED_ASSERTION_KIND";
+  | "UNRECOGNIZED_ASSERTION_KIND"
+  /**
+   * The locus's `allergens` field is structurally unreadable (M1-T6): present
+   * but not an array (`"peanut"`, `5`, `{}`, `null`), or an array holding a
+   * non-object entry (`["peanut"]`, `[null]`). Data was recorded and we cannot
+   * interpret it, which is not the same as no data — so it can never license a
+   * no-known-match conclusion. `detail` names the offending shape and position.
+   *
+   * A missing `allergens` field and an empty `[]` are *not* malformed: they
+   * claim nothing, and are covered by the declaration reasons above.
+   */
+  | "MALFORMED_ALLERGEN_DATA";
 
 /**
  * One thing the engine does not know — the structured payload INV-ALRG-2

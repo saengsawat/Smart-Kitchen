@@ -130,7 +130,10 @@ interface ParsedAssertion {
 interface UninterpretedAssertion {
   readonly rawCode: string;
   readonly rawKind: string;
-  readonly reason: "UNRECOGNIZED_ASSERTION_CODE" | "UNRECOGNIZED_ASSERTION_KIND";
+  readonly reason:
+    "UNRECOGNIZED_ASSERTION_CODE" | "UNRECOGNIZED_ASSERTION_KIND" | "MALFORMED_ALLERGEN_DATA";
+  /** Machine-readable explanation, surfaced verbatim as `ScreeningUnknown.detail`. */
+  readonly detail: string;
   /** Present when the kind parsed but the code did not. */
   readonly kind?: "CONTAINS" | "MAY_CONTAIN";
 }
@@ -147,14 +150,57 @@ interface Locus {
   readonly declaration?: AllergenDeclaration;
 }
 
-function parseAssertions(inputs: readonly AllergenAssertionInput[] | undefined): {
+/**
+ * Parses the `allergens` field of one locus.
+ *
+ * Three shapes are distinguished deliberately (M1-T6), because conflating them
+ * is a fail-open path to `ALLOWED`:
+ *
+ * - **absent** (`undefined`) and **empty** (`[]`) — honest "no assertions".
+ *   Nothing was claimed, and the locus stands or falls on its declaration.
+ * - **malformed container** — present but not an array (`"peanut"`, `5`,
+ *   `true`, `{}`, `null`). Something *was* recorded and we cannot read it.
+ * - **malformed element** — a non-object entry inside the array (`"peanut"`,
+ *   `null`, `5`, a nested array).
+ *
+ * The two malformed shapes are recorded as {@link UninterpretedAssertion}s, so
+ * they refuse the absence licence in {@link licensesAbsence} and raise
+ * `UNRECOGNIZED_ALLERGEN_DATA`, exactly as an uninterpretable code or kind
+ * does. Before M1-T6 both were coerced to "no assertions", so a product whose
+ * allergen list arrived as `["peanut"]` screened `ALLOWED` under a valid
+ * declaration — the review follow-up in `docs/handoff/M1-T4.review.md`.
+ * Well-formed entries beside a malformed one are still parsed and can still
+ * block: malformed data only ever adds unknowns (CLAUDE.md rule 9).
+ */
+function parseAssertions(value: unknown): {
   parsed: ParsedAssertion[];
   uninterpreted: UninterpretedAssertion[];
 } {
   const parsed: ParsedAssertion[] = [];
   const uninterpreted: UninterpretedAssertion[] = [];
-  for (const input of inputs ?? []) {
-    if (typeof input !== "object" || input === null) continue;
+  const container = asAssertionList(value);
+  if (container.kind === "MALFORMED") {
+    uninterpreted.push({
+      rawCode: "",
+      rawKind: "",
+      reason: "MALFORMED_ALLERGEN_DATA",
+      detail: container.detail,
+    });
+    return { parsed, uninterpreted };
+  }
+
+  for (let index = 0; index < container.entries.length; index++) {
+    const entry: unknown = container.entries[index];
+    if (typeof entry !== "object" || entry === null || Array.isArray(entry)) {
+      uninterpreted.push({
+        rawCode: "",
+        rawKind: "",
+        reason: "MALFORMED_ALLERGEN_DATA",
+        detail: `allergens[${String(index)}] is ${describeShape(entry)}, expected an assertion object`,
+      });
+      continue;
+    }
+    const input = entry as AllergenAssertionInput;
     const rawCode = typeof input.allergenCode === "string" ? input.allergenCode : "";
     const rawKind = typeof input.assertion === "string" ? input.assertion : "";
 
@@ -163,6 +209,7 @@ function parseAssertions(inputs: readonly AllergenAssertionInput[] | undefined):
         rawCode,
         rawKind,
         reason: "UNRECOGNIZED_ASSERTION_KIND",
+        detail: `assertion kind not understood: ${rawKind}`,
       });
       continue;
     }
@@ -172,6 +219,7 @@ function parseAssertions(inputs: readonly AllergenAssertionInput[] | undefined):
         rawCode,
         rawKind,
         reason: "UNRECOGNIZED_ASSERTION_CODE",
+        detail: `allergen code not in taxonomy: ${rawCode}`,
         kind: rawKind,
       });
       continue;
@@ -200,13 +248,53 @@ function asText(value: unknown): string {
   return typeof value === "string" ? value : "";
 }
 
+/** What a structurally malformed `allergens` field turned out to be. */
+function describeShape(value: unknown): string {
+  if (value === null) return "null";
+  if (Array.isArray(value)) return "an array";
+  switch (typeof value) {
+    case "string":
+      return "a string";
+    case "number":
+      return "a number";
+    case "boolean":
+      return "a boolean";
+    case "bigint":
+      return "a bigint";
+    case "symbol":
+      return "a symbol";
+    case "function":
+      return "a function";
+    case "undefined":
+      return "undefined";
+    default:
+      return "an object";
+  }
+}
+
+/** The outcome of reading a locus's `allergens` field as a container. */
+type AssertionContainer =
+  | { readonly kind: "LIST"; readonly entries: readonly unknown[] }
+  | { readonly kind: "MALFORMED"; readonly detail: string };
+
 /**
- * Coerces a field that should be a list of assertions. Notably a *string* here
- * would otherwise be iterated character by character by `for...of` — silently
- * screening nothing at all rather than failing loudly (review finding F4).
+ * Reads a field that should be a list of assertions.
+ *
+ * A *string* here would otherwise be iterated character by character by
+ * `for...of` — silently screening nothing at all rather than failing loudly
+ * (review finding F4). Since M1-T6 anything present that is not an array is
+ * reported as malformed rather than coerced to an empty list: an unreadable
+ * container is data we hold and cannot interpret, not an absence of data.
+ * `undefined` alone means the field was never supplied, which is honest and
+ * stays an empty list.
  */
-function asAssertionList(value: unknown): readonly AllergenAssertionInput[] {
-  return Array.isArray(value) ? (value as readonly AllergenAssertionInput[]) : [];
+function asAssertionList(value: unknown): AssertionContainer {
+  if (value === undefined) return { kind: "LIST", entries: [] };
+  if (Array.isArray(value)) return { kind: "LIST", entries: value as readonly unknown[] };
+  return {
+    kind: "MALFORMED",
+    detail: `allergens is ${describeShape(value)}, expected an array`,
+  };
 }
 
 /** Coerces a declaration field: anything that is not an object is no declaration at all. */
@@ -218,7 +306,7 @@ function asDeclaration(value: unknown): AllergenDeclaration | undefined {
 function buildLoci(subject: ScreeningSubjectInput): readonly Locus[] {
   if (subject.kind === "PRODUCT") {
     const product: ProductSubjectInput = subject;
-    const { parsed, uninterpreted } = parseAssertions(asAssertionList(product.allergens));
+    const { parsed, uninterpreted } = parseAssertions(product.allergens);
     const nameText = asText(product.name);
     const declaration = asDeclaration(product.declaration);
     return [
@@ -235,7 +323,7 @@ function buildLoci(subject: ScreeningSubjectInput): readonly Locus[] {
 
   const recipe: RecipeSubjectInput = subject;
   return recipe.ingredients.map((ingredient, index): Locus => {
-    const { parsed, uninterpreted } = parseAssertions(asAssertionList(ingredient.allergens));
+    const { parsed, uninterpreted } = parseAssertions(ingredient.allergens);
     const declaration = asDeclaration(ingredient.declaration);
     return {
       locus: { part: "RECIPE_INGREDIENT", ref: ingredient.ref, ingredientIndex: index },
@@ -320,13 +408,7 @@ function unknownReasonFor(
 ): { reason: UnknownReason; detail: string } {
   const firstUninterpreted = locus.uninterpreted[0];
   if (firstUninterpreted !== undefined) {
-    return {
-      reason: firstUninterpreted.reason,
-      detail:
-        firstUninterpreted.reason === "UNRECOGNIZED_ASSERTION_CODE"
-          ? `allergen code not in taxonomy: ${firstUninterpreted.rawCode}`
-          : `assertion kind not understood: ${firstUninterpreted.rawKind}`,
-    };
+    return { reason: firstUninterpreted.reason, detail: firstUninterpreted.detail };
   }
   if (restriction.kind === "USER_DEFINED" && !hasIngredientsText) {
     return {

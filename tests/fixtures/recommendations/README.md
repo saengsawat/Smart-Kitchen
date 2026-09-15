@@ -53,6 +53,15 @@ behavior: two entries — `screening-006`/`screening-007` — encode the **PROPO
 cross-contact policy, and will need updating if the architect ratifies the
 alternative. Both say so in their `notes`.
 
+## Index of cases added after M1-T4
+
+- `screening-016-malformed-allergens-not-allowed.json` (M1-T6) — the `allergens`
+  field is present but structurally unreadable (`["peanut"]`, a bare string
+  where an assertion object belongs). Unreadable data is **not** absence of
+  data: it invalidates the completeness declaration at that locus, so the
+  verdict is `ALLOWED_WITH_UNKNOWNS` with reason `MALFORMED_ALLERGEN_DATA`,
+  never `ALLOWED`. A missing field or `[]` remains honest "no assertions".
+
 ## Rules (from testing-strategy §3)
 
 - Synthetic or rights-cleared only. No real user data, no scraped content.

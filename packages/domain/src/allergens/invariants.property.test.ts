@@ -228,6 +228,117 @@ describe("property: screening is deterministic", () => {
   });
 });
 
+describe("property: malformed allergen data can never reach ALLOWED (M1-T6)", () => {
+  /** Anything present that is not an array, plus arrays holding a non-assertion. */
+  const malformedAllergens = fc.oneof(
+    fc.string(),
+    fc.integer(),
+    fc.boolean(),
+    fc.constant(null),
+    fc.object(),
+    fc.array(fc.oneof(fc.string(), fc.integer(), fc.boolean(), fc.constant(null)), {
+      minLength: 1,
+      maxLength: 4,
+    }),
+  );
+
+  /** Every member carries at least one restriction, so none can be vacuously ALLOWED. */
+  const membersWithRestrictions = fc
+    .array(fc.array(fc.tuple(allergenCode, severity), { minLength: 1, maxLength: 3 }), {
+      minLength: 1,
+      maxLength: 3,
+    })
+    .map((specs) =>
+      specs.map((restrictions, memberIndex) =>
+        memberWith(
+          `m${String(memberIndex)}`,
+          ...restrictions.map(([code, sev], index) =>
+            majorRestrictionOf(`r${String(index)}`, code, sev),
+          ),
+        ),
+      ),
+    );
+
+  it("never returns ALLOWED for any subject carrying a malformed allergens field", () => {
+    fc.assert(
+      fc.property(
+        malformedAllergens,
+        membersWithRestrictions,
+        fc.boolean(),
+        (allergens, members, asProduct) => {
+          // The declaration and the ingredient statement are impeccable: the
+          // malformed container is the only thing standing between this subject
+          // and ALLOWED, which is exactly the fail-open path M1-T6 closed.
+          const subject = asProduct
+            ? {
+                kind: "PRODUCT",
+                subjectId: "prop-product",
+                name: "Bottled Spring Water",
+                ingredientsText: "water, mineral salts",
+                allergens,
+                declaration: fullDeclaration(),
+              }
+            : {
+                kind: "RECIPE",
+                subjectId: "prop-recipe",
+                ingredients: [
+                  {
+                    ref: "bottled spring water",
+                    ingredientsText: "water, mineral salts",
+                    allergens,
+                    declaration: fullDeclaration(),
+                  },
+                ],
+              };
+
+          const result = expectScreened(screenSubject({ subject: subject as never, members }));
+          if (result.verdict === "ALLOWED") return false;
+          if (result.members.some((m) => m.verdict === "ALLOWED")) return false;
+          return result.unknowns.every((u) => u.reason === "MALFORMED_ALLERGEN_DATA");
+        },
+      ),
+      { numRuns: 300 },
+    );
+  });
+
+  it("still returns ALLOWED when the same subject omits the field or supplies an empty list", () => {
+    // The mirror image: the fix must not turn honest absence into a malformation.
+    fc.assert(
+      fc.property(
+        membersWithRestrictions,
+        fc.boolean(),
+        fc.option(fc.constant([]), { nil: undefined }),
+        (members, asProduct, allergens) => {
+          const subject = asProduct
+            ? {
+                kind: "PRODUCT",
+                subjectId: "prop-product",
+                name: "Bottled Spring Water",
+                ingredientsText: "water, mineral salts",
+                allergens,
+                declaration: fullDeclaration(),
+              }
+            : {
+                kind: "RECIPE",
+                subjectId: "prop-recipe",
+                ingredients: [
+                  {
+                    ref: "bottled spring water",
+                    ingredientsText: "water, mineral salts",
+                    allergens,
+                    declaration: fullDeclaration(),
+                  },
+                ],
+              };
+          const result = expectScreened(screenSubject({ subject: subject as never, members }));
+          return result.verdict === "ALLOWED" && result.unknowns.length === 0;
+        },
+      ),
+      { numRuns: 200 },
+    );
+  });
+});
+
 describe("property: term matching is token equality, never substring containment", () => {
   it("never matches a term glued inside a longer token", () => {
     fc.assert(

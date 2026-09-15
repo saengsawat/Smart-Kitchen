@@ -240,6 +240,12 @@ describe("F4: screenSubject is total on malformed subject data", () => {
   it("does not iterate a string allergens field character by character", () => {
     // `for...of "peanut"` yields 6 single characters; the old code skipped them
     // silently, so the field looked empty and clean rather than malformed.
+    //
+    // M1-T6 strengthened the second assertion: F4 stopped the throw and the
+    // character iteration but still reported the locus as having *no* allergen
+    // data, which is the fail-open reading of a field that is plainly present.
+    // The reason is now `MALFORMED_ALLERGEN_DATA` (see
+    // `malformed-allergens.test.ts`); the verdict is unchanged.
     const result = expectScreened(
       screenSubject({
         subject: { kind: "PRODUCT", subjectId: "p1", name: "Thing", allergens: "peanut" } as never,
@@ -247,7 +253,8 @@ describe("F4: screenSubject is total on malformed subject data", () => {
       }),
     );
     expect(result.verdict).toBe("ALLOWED_WITH_UNKNOWNS");
-    expect(result.unknowns[0]?.reason).toBe("NO_ALLERGEN_DATA");
+    expect(result.unknowns.length).toBe(1);
+    expect(result.unknowns[0]?.reason).toBe("MALFORMED_ALLERGEN_DATA");
   });
 
   it("falls back to the subject id when the name is not usable text", () => {

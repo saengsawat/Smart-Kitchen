@@ -48,6 +48,7 @@ export const CASE_FILES: readonly string[] = [
   "screening-013-forged-free-from-assertion.json",
   "screening-014-ai-tier-declaration-cannot-clear.json",
   "screening-015-ai-tier-contains-still-blocks.json",
+  "screening-016-malformed-allergens-not-allowed.json",
 ];
 
 interface ScreeningCase {
@@ -960,6 +961,54 @@ const CASES: readonly ScreeningCase[] = [
       evidenceKinds: ["ASSERTION_CONTAINS"],
       unknownReasons: [],
       warningCodes: ["NO_SAFETY_GUARANTEE"],
+    },
+  },
+  {
+    caseId: "screening-016-malformed-allergens-not-allowed",
+    category: "missing-data",
+    title: "Structurally malformed allergen list -> uninterpreted data, never ALLOWED",
+    notes:
+      "M1-T6. The allergens field is present but holds a bare string instead of an assertion object, so nothing in it can be read. Unreadable data is not absence of data: it invalidates the completeness declaration at that locus and the restriction goes unknown. The literal word peanut inside the malformed entry is deliberately not treated as evidence either - an unreadable field neither clears nor establishes anything.",
+    input: {
+      subject: {
+        kind: "PRODUCT",
+        subjectId: "snack-mix-01",
+        name: "Orchard Trail Snack Mix",
+        ingredientsText: "rolled oats, raisins, sunflower seeds",
+        allergens: ["peanut"],
+        declaration: {
+          majorAllergens: "COMPLETE_FOR_MAJOR_ALLERGENS",
+          ingredientStatement: "COMPLETE",
+          tier: "KNOWN_FACT",
+          source: "manufacturer-label",
+          observedAt: "2026-08-15T00:00:00.000Z",
+        },
+      },
+      members: [
+        {
+          memberId: "m-jamie",
+          restrictions: [
+            {
+              kind: "MAJOR",
+              restrictionId: "r1",
+              allergen: "peanut",
+              severity: "standard",
+            },
+          ],
+        },
+      ],
+    },
+    expect: {
+      verdict: "ALLOWED_WITH_UNKNOWNS",
+      memberVerdicts: {
+        "m-jamie": "ALLOWED_WITH_UNKNOWNS",
+      },
+      outcomes: {
+        r1: "UNKNOWN",
+      },
+      evidenceKinds: [],
+      unknownReasons: ["MALFORMED_ALLERGEN_DATA"],
+      warningCodes: ["NO_SAFETY_GUARANTEE", "UNRECOGNIZED_ALLERGEN_DATA"],
     },
   },
 ];
