@@ -1,0 +1,534 @@
+<title>Smart Kitchen Blueprint</title>
+<style>
+  :root {
+    --ink: #17231d;
+    --ink-soft: #46564c;
+    --paper: #f2f5ee;
+    --paper-raised: #fbfcf9;
+    --herb: #2b6e4e;
+    --herb-strong: #1f5a3f;
+    --marigold: #b8842c;
+    --clay: #a8503f;
+    --slate: #5b6b63;
+    --border: rgba(23, 35, 29, 0.14);
+    --border-strong: rgba(23, 35, 29, 0.30);
+    --shadow: rgba(23, 35, 29, 0.10);
+    --focus: #2b6e4e;
+
+    --font-display: "Fraunces", "Iowan Old Style", Georgia, serif;
+    --font-body: "Public Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ink: #e7eee7;
+      --ink-soft: #b7c4bb;
+      --paper: #121a15;
+      --paper-raised: #1a251d;
+      --herb: #5aa77e;
+      --herb-strong: #79c298;
+      --marigold: #d9a24b;
+      --clay: #c97564;
+      --slate: #93a69b;
+      --border: rgba(231, 238, 231, 0.14);
+      --border-strong: rgba(231, 238, 231, 0.28);
+      --shadow: rgba(0, 0, 0, 0.45);
+      --focus: #79c298;
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --ink: #e7eee7;
+    --ink-soft: #b7c4bb;
+    --paper: #121a15;
+    --paper-raised: #1a251d;
+    --herb: #5aa77e;
+    --herb-strong: #79c298;
+    --marigold: #d9a24b;
+    --clay: #c97564;
+    --slate: #93a69b;
+    --border: rgba(231, 238, 231, 0.14);
+    --border-strong: rgba(231, 238, 231, 0.28);
+    --shadow: rgba(0, 0, 0, 0.45);
+    --focus: #79c298;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--font-body);
+    font-size: 16px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  a { color: var(--herb-strong); text-decoration-thickness: 1.5px; text-underline-offset: 2px; }
+  a:hover { color: var(--herb); }
+  a:focus-visible, button:focus-visible, .jump a:focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 3px;
+    border-radius: 3px;
+  }
+
+  h1, h2, h3 { font-family: var(--font-display); font-weight: 600; text-wrap: balance; margin: 0; color: var(--ink); }
+
+  .page { max-width: 860px; margin: 0 auto; padding: 0 24px 96px; }
+
+  /* ---- top nav ---- */
+  .topbar {
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 14px 24px;
+    margin: 0 -24px 0;
+    background: color-mix(in srgb, var(--paper) 88%, transparent);
+    backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--border);
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+  }
+  .topbar .mark { color: var(--herb-strong); font-weight: 600; letter-spacing: 0.02em; white-space: nowrap; }
+  .jump { display: flex; gap: 4px; flex-wrap: wrap; }
+  .jump a {
+    color: var(--ink-soft);
+    text-decoration: none;
+    padding: 5px 10px;
+    border-radius: 999px;
+    border: 1px solid transparent;
+    white-space: nowrap;
+  }
+  .jump a:hover { border-color: var(--border-strong); color: var(--ink); }
+
+  /* ---- masthead ---- */
+  .masthead { padding: 56px 0 40px; }
+  .eyebrow {
+    display: block;
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--herb-strong);
+    margin-bottom: 14px;
+  }
+  h1 { font-size: clamp(2rem, 1.6rem + 1.8vw, 2.9rem); line-height: 1.08; max-width: 15ch; }
+  .subhead {
+    max-width: 58ch;
+    margin: 18px 0 0;
+    font-size: 1.1rem;
+    color: var(--ink-soft);
+  }
+  .statusline {
+    font-family: var(--font-mono);
+    font-size: 0.82rem;
+    color: var(--slate);
+    margin: 22px 0 0;
+    padding-top: 18px;
+    border-top: 1px solid var(--border);
+    max-width: 62ch;
+  }
+  .statusline b { color: var(--ink); font-weight: 600; }
+
+  .stamp {
+    display: inline-block;
+    margin: 28px 0 4px;
+    padding: 10px 18px;
+    font-family: var(--font-mono);
+    font-size: 0.74rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--herb-strong);
+    border: 1.5px solid var(--herb-strong);
+    border-radius: 3px;
+  }
+  .stamp span { display: block; color: var(--slate); text-transform: none; letter-spacing: 0.01em; font-size: 0.76rem; margin-top: 4px; }
+
+  .legend { list-style: none; margin: 32px 0 0; padding: 0; display: flex; gap: 22px; flex-wrap: wrap; }
+  .legend li { display: flex; gap: 9px; align-items: flex-start; max-width: 24ch; }
+  .legend .dot { width: 10px; height: 10px; border-radius: 50%; margin-top: 5px; flex: none; }
+  .legend .decided .dot { background: var(--herb); }
+  .legend .proposed .dot { background: var(--marigold); }
+  .legend .open .dot { background: var(--clay); }
+  .legend b { font-family: var(--font-mono); font-size: 0.76rem; letter-spacing: 0.05em; text-transform: uppercase; display: block; color: var(--ink); }
+  .legend p { margin: 2px 0 0; font-size: 0.84rem; color: var(--slate); }
+
+  /* ---- entries ---- */
+  .entry { padding: 52px 0; border-top: 1px solid var(--border); scroll-margin-top: 70px; }
+  .entry:first-of-type { border-top: 1px solid var(--border); }
+
+  .entry-head { display: flex; gap: 20px; align-items: baseline; margin-bottom: 20px; }
+  .entry-num {
+    font-family: var(--font-display);
+    font-optical-sizing: auto;
+    font-weight: 500;
+    font-size: 2.6rem;
+    color: var(--border-strong);
+    flex: none;
+    line-height: 1;
+  }
+  .entry-head h2 { font-size: 1.55rem; margin-bottom: 8px; }
+  .entry-head .blurb { margin: 0; max-width: 62ch; color: var(--ink-soft); font-size: 1rem; }
+
+  .diagram-card {
+    background: var(--paper-raised);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    box-shadow: 0 1px 2px var(--shadow);
+    padding: 22px;
+  }
+  .diagram-scroll { overflow-x: auto; padding-bottom: 4px; }
+  pre.mermaid { margin: 0; font-family: var(--font-body); min-width: 560px; }
+
+  .caption {
+    margin: 18px 0 0;
+    padding-top: 16px;
+    border-top: 1px dashed var(--border-strong);
+    font-style: italic;
+    color: var(--ink-soft);
+    font-size: 0.94rem;
+    max-width: 68ch;
+  }
+  .caption b { font-style: normal; color: var(--ink); }
+
+  /* ---- ledger table ---- */
+  .ledger-wrap { margin-top: 24px; overflow-x: auto; }
+  table.ledger { width: 100%; border-collapse: collapse; font-size: 0.88rem; min-width: 640px; }
+  table.ledger caption { text-align: left; font-family: var(--font-mono); font-size: 0.74rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--slate); margin-bottom: 10px; }
+  table.ledger th {
+    text-align: left;
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: var(--slate);
+    font-weight: 500;
+    padding: 0 12px 10px 0;
+    border-bottom: 1px solid var(--border-strong);
+  }
+  table.ledger td { padding: 12px 12px 12px 0; border-bottom: 1px solid var(--border); vertical-align: top; }
+  table.ledger tr:last-child td { border-bottom: none; }
+  table.ledger .tid { font-family: var(--font-mono); font-weight: 600; color: var(--ink); white-space: nowrap; }
+  table.ledger .verdict { color: var(--herb-strong); font-weight: 600; white-space: nowrap; }
+  table.ledger .verdict + span { display: none; }
+  table.ledger td.what { color: var(--ink-soft); }
+  table.ledger td.models { font-family: var(--font-mono); font-size: 0.82rem; white-space: nowrap; color: var(--slate); }
+
+  /* ---- footer ---- */
+  footer { margin-top: 40px; padding-top: 28px; border-top: 1px solid var(--border); }
+  footer p { margin: 0 0 10px; color: var(--slate); font-size: 0.88rem; }
+  .footer-links { display: flex; gap: 14px; flex-wrap: wrap; font-family: var(--font-mono); font-size: 0.8rem; }
+
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+
+  @media (max-width: 640px) {
+    .entry-head { flex-direction: column; gap: 6px; }
+    .entry-num { font-size: 1.6rem; }
+    .jump { display: none; }
+  }
+</style>
+
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,500;9..144,600;9..144,700&family=Public+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+
+<div class="page">
+
+  <div class="topbar">
+    <span class="mark">SMART KITCHEN / BLUEPRINT</span>
+    <nav class="jump">
+      <a href="#shape">01 Shape</a>
+      <a href="#flow">02 Flow</a>
+      <a href="#loop">03 Loop</a>
+      <a href="#process">04 Process</a>
+    </nav>
+  </div>
+
+  <header class="masthead">
+    <span class="eyebrow">Smart Kitchen &middot; Engineering Notes</span>
+    <h1>How Smart Kitchen Gets Built</h1>
+    <p class="subhead">Four diagrams: the system&rsquo;s shape, one request end to end, the code loop, and how a ticket earns &ldquo;done.&rdquo; Prepared for Dean.</p>
+
+    <p class="statusline">As of <b>15 Sep 2026</b> &mdash; Milestones 0&ndash;1 <b>complete</b>, foundation follow-ups (M1-E3) underway &middot; <b>562+</b> automated tests green &middot; <b>8</b> tickets shipped worker&nbsp;&rarr;&nbsp;review&nbsp;&rarr;&nbsp;accept &middot; engineering stops again after M1-T10 to await your sign-off on M2 / M3.</p>
+
+    <div class="stamp">Explanatory reference only<span>No decisions live on this page &mdash; source of truth stays ARCHITECTURE.md, the ADRs, and CLAUDE.md.</span></div>
+
+    <ul class="legend">
+      <li class="decided"><span class="dot"></span><div><b>Decided</b><p>Ratified, in force today.</p></div></li>
+      <li class="proposed"><span class="dot"></span><div><b>Proposed</b><p>Recommended, awaiting your sign-off.</p></div></li>
+      <li class="open"><span class="dot"></span><div><b>Open</b><p>Unresolved &mdash; needs research or an owner decision.</p></div></li>
+    </ul>
+  </header>
+
+  <main>
+
+    <section class="entry" id="shape">
+      <div class="entry-head">
+        <span class="entry-num">01</span>
+        <div>
+          <h2>Three tiers, one direction of trust</h2>
+          <p class="blurb">The phone app, the backend, and the database &mdash; and everything the backend is allowed to talk to on the outside.</p>
+        </div>
+      </div>
+      <div class="diagram-card">
+        <div class="diagram-scroll">
+<pre class="mermaid">
+flowchart TB
+    subgraph Tier1["Tier 1 &mdash; Presentation (runs on the phone)"]
+        APP["Mobile app
+Expo / React Native
+ADR-001 &middot; PROPOSED"]
+    end
+
+    subgraph Tier2["Tier 2 &mdash; Application logic (runs on the server)"]
+        API["Backend API
+Node.js + TypeScript + Fastify
+ADR-002 &middot; DECIDED"]
+        CORE["Deterministic core
+ledger, allergen rules, gap math, ranking"]
+        EDGE["Probabilistic edge
+AI parsing, recipe generation"]
+    end
+
+    subgraph Tier3["Tier 3 &mdash; Data"]
+        DB[("PostgreSQL
+ADR-003 &middot; DECIDED, with RLS")]
+    end
+
+    subgraph External["External providers &mdash; behind ports, never imported by domain code"]
+        AUTH["Auth provider
+ADR-004 &middot; PROPOSED"]
+        FOOD["Food data APIs
+ADR-006 &middot; PROPOSED"]
+        LLM["LLM provider
+ADR-005 &middot; PROPOSED"]
+    end
+
+    APP -- "HTTPS / JSON" --&gt; API
+    API --&gt; CORE
+    CORE &lt;--&gt; DB
+    CORE -. "proposals only, never final say" .-&gt; EDGE
+    API --&gt; AUTH
+    EDGE --&gt; FOOD
+    EDGE --&gt; LLM
+</pre>
+        </div>
+        <p class="caption">The phone never touches the database or an external API directly &mdash; every path routes through the backend. Only the <b>backend framework</b> and the <b>database</b> are decided; client platform, auth vendor, and the AI / food-data providers are recommendations still awaiting your sign-off.</p>
+      </div>
+    </section>
+
+    <section class="entry" id="flow">
+      <div class="entry-head">
+        <span class="entry-num">02</span>
+        <div>
+          <h2>One request, start to finish</h2>
+          <p class="blurb">What actually happens, in order, when a household member scans a barcode.</p>
+        </div>
+      </div>
+      <div class="diagram-card">
+        <div class="diagram-scroll">
+<pre class="mermaid">
+sequenceDiagram
+    actor U as Household member
+    participant App as Mobile app
+    participant API as Backend API (Fastify)
+    participant Core as Deterministic core
+    participant DB as PostgreSQL
+    participant Food as Food data API (external)
+
+    U-&gt;&gt;App: Point camera at barcode
+    App-&gt;&gt;API: POST /inventory/scan { upc }
+    API-&gt;&gt;API: Check auth token + household membership
+    API-&gt;&gt;Core: resolve(upc)
+    alt Product already known
+        Core-&gt;&gt;DB: SELECT product by upc
+    else Product unknown
+        Core-&gt;&gt;Food: lookup(upc)
+        Food--&gt;&gt;Core: product data (untrusted, validated + provenance-tagged)
+        Core-&gt;&gt;DB: INSERT product
+    end
+    Core-&gt;&gt;DB: INSERT ledger transaction (append-only, never UPDATE)
+    DB--&gt;&gt;Core: ok
+    Core--&gt;&gt;API: result
+    API--&gt;&gt;App: 200 { item added }
+    App--&gt;&gt;U: "Milk added to inventory"
+</pre>
+        </div>
+        <p class="caption">The inventory change is always an <b>append</b> to a transaction log, never an in-place edit (ADR-008, decided). This used to be illustrative &mdash; the Postgres schema that actually enforces it merged on 10 Sep as part of Milestone 1.</p>
+      </div>
+    </section>
+
+    <section class="entry" id="loop">
+      <div class="entry-head">
+        <span class="entry-num">03</span>
+        <div>
+          <h2>Write, compile, test, run &mdash; the loop every ticket repeats</h2>
+          <p class="blurb">What happens to the code between someone typing it and it answering a real request.</p>
+        </div>
+      </div>
+      <div class="diagram-card">
+        <div class="diagram-scroll">
+<pre class="mermaid">
+flowchart LR
+    A["Write TypeScript
+apps/api/src/*.ts"] --&gt; B["Compile
+tsc -b"]
+    B --&gt; C["dist/*.js
+plain JavaScript"]
+    A --&gt; D["Test
+vitest run"]
+    D --&gt;|fail| A
+    D --&gt;|pass| F["Run
+node dist/server.js"]
+    F --&gt; G["Server listens
+on a port"]
+    G --&gt; H["Call it
+curl, or the mobile app, over HTTP"]
+    H --&gt; G
+    G --&gt; I["Stop the process"]
+</pre>
+        </div>
+        <p class="caption">No longer hypothetical: this exact loop is what shipped all eight Milestone-1 tickets below &mdash; 562+ tests green and climbing.</p>
+      </div>
+    </section>
+
+    <section class="entry" id="process">
+      <div class="entry-head">
+        <span class="entry-num">04</span>
+        <div>
+          <h2>How a ticket earns &ldquo;done&rdquo;</h2>
+          <p class="blurb">Code being written is not the finish line &mdash; a second, separate reviewer has to sign off first.</p>
+        </div>
+      </div>
+      <div class="diagram-card">
+        <div class="diagram-scroll">
+<pre class="mermaid">
+flowchart TD
+    A["Architect writes a scoped ticket
+BACKLOG.md + Sonnet/Opus recommendation"] --&gt; B["Implementation worker
+one ticket only, tests written alongside code"]
+    B --&gt; C{"Conflicts with an
+ADR or invariant?"}
+    C -- yes --&gt; X["STOP &mdash; report
+ARCHITECTURE CONFLICT
+escalate to architect"]
+    C -- no --&gt; D["Reviewer
+separate session from the worker"]
+    D --&gt; E{"Verdict"}
+    E -- FAIL --&gt; B
+    E -- "PASS WITH FIXES" --&gt; Fx["Worker applies fixes"]
+    Fx --&gt; D
+    E -- PASS --&gt; G["Architect accepts"]
+    G --&gt; H["STATUS.md updated
+ticket marked DONE"]
+</pre>
+        </div>
+        <p class="caption">Every ticket in Milestone 1 went through this exact loop. The reviewer step isn&rsquo;t ceremony &mdash; on three of the eight, it caught real issues before they shipped:</p>
+
+        <div class="ledger-wrap">
+          <table class="ledger">
+            <caption>Milestone 1 &mdash; tickets shipped, in order</caption>
+            <thead>
+              <tr><th>Ticket</th><th>What shipped</th><th>Impl &rarr; Review</th><th>Verdict</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="tid">M1-T1</td>
+                <td class="what">Inventory ledger core &mdash; exact bigint arithmetic, idempotent replay</td>
+                <td class="models">Opus &rarr; Opus</td>
+                <td class="verdict">PASS <span>after one fix round</span></td>
+              </tr>
+              <tr>
+                <td class="tid">M1-T3</td>
+                <td class="what">Units &amp; quantity model &mdash; exact rational conversions</td>
+                <td class="models">Sonnet &rarr; Opus</td>
+                <td class="verdict">PASS <span>after one fix round</span></td>
+              </tr>
+              <tr>
+                <td class="tid">M1-T5</td>
+                <td class="what">Product-lookup ports + 101-item fixture corpus + coverage research</td>
+                <td class="models">Sonnet &rarr; Sonnet</td>
+                <td class="verdict">PASS <span>doc-only fixes</span></td>
+              </tr>
+              <tr>
+                <td class="tid">M1-T4</td>
+                <td class="what">Deterministic allergen rule engine &mdash; no &ldquo;safe&rdquo; state</td>
+                <td class="models">Opus &rarr; Opus</td>
+                <td class="verdict">PASS <span>review closed 3 fail-open paths</span></td>
+              </tr>
+              <tr>
+                <td class="tid">M1-T2</td>
+                <td class="what">Postgres schema &mdash; RLS, append-only, snapshot-by-trigger</td>
+                <td class="models">Opus &rarr; Opus</td>
+                <td class="verdict">PASS <span>review closed a ledger fail-open + a tenant-inference oracle</span></td>
+              </tr>
+              <tr>
+                <td class="tid">M1-T6</td>
+                <td class="what">Allergen malformed-container fail-closed fix &mdash; closes pre-M4 safety gate (a)</td>
+                <td class="models">Opus &rarr; Opus</td>
+                <td class="verdict">PASS <span>no fixes needed</span></td>
+              </tr>
+              <tr>
+                <td class="tid">M1-T7</td>
+                <td class="what">Correction-rate telemetry view &mdash; powers the product&rsquo;s primary success metric</td>
+                <td class="models">Sonnet &rarr; Opus</td>
+                <td class="verdict">PASS <span>no fixes needed</span></td>
+              </tr>
+              <tr>
+                <td class="tid">M1-T8</td>
+                <td class="what">FEFO/FIFO lot-selection planner for shelf-life-aware inventory picks</td>
+                <td class="models">Opus &rarr; Opus</td>
+                <td class="verdict">PASS <span>review flagged 3 hand-built-input gaps, hardened</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <footer>
+    <p>Adapted from the team&rsquo;s internal architecture notes (<code>docs/architecture/workflow-diagrams.md</code>, current statuses refreshed against STATUS.md as of 15 Sep 2026) &mdash; not a new decision, just a clearer view of the existing one.</p>
+    <div class="footer-links">
+      <a href="https://github.com/saengsawat/Smart-Kitchen/blob/main/ARCHITECTURE.md">ARCHITECTURE.md</a>
+      <a href="https://github.com/saengsawat/Smart-Kitchen/blob/main/STATUS.md">STATUS.md</a>
+      <a href="https://github.com/saengsawat/Smart-Kitchen/blob/main/docs/architecture/system-context.md">system-context.md</a>
+      <a href="https://github.com/saengsawat/Smart-Kitchen/blob/main/CLAUDE.md">CLAUDE.md</a>
+    </div>
+  </footer>
+
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mermaid/10.9.1/mermaid.min.js"></script>
+<script>
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: "base",
+    themeVariables: {
+      background: "#fbfcf9",
+      primaryColor: "#eef2e8",
+      primaryTextColor: "#17231d",
+      primaryBorderColor: "#2b6e4e",
+      lineColor: "#5b6b63",
+      secondaryColor: "#f6ead4",
+      tertiaryColor: "#f2f5ee",
+      fontFamily: "Public Sans, sans-serif",
+      actorBkg: "#eef2e8",
+      actorBorder: "#2b6e4e",
+      actorTextColor: "#17231d",
+      signalColor: "#46564c",
+      signalTextColor: "#17231d",
+      labelBoxBkgColor: "#eef2e8",
+      labelBoxBorderColor: "#2b6e4e",
+      labelTextColor: "#17231d",
+      loopTextColor: "#46564c",
+      noteBkgColor: "#f6ead4",
+      noteBorderColor: "#b8842c"
+    }
+  });
+</script>
