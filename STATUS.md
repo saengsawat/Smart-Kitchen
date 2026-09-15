@@ -11,8 +11,9 @@ _Last updated: 2026-09-15_
 | M1-T6 | Allergen malformed-container fail-closed fix (pre-M4 gate a) | Opus / Opus | ✅ **DONE 2026-09-14** — review PASS (no fixes), squash `1fa171c`, +136 tests (525 w/o DB); pre-M4 gate (a) closed |
 | M1-T7 | Correction-rate telemetry view + read function | Sonnet / Opus | ✅ **DONE 2026-09-14** — review PASS (no fixes), squash `cf301c6`; 625 tests with DB / 527 without; KPI definition recorded in ARCHITECTURE §8 |
 | M1-T8 | FEFO/FIFO lot-selection planner | Opus / Opus | ✅ **DONE 2026-09-15** — review PASS WITH FIXES (3 hand-built-input hardenings) → re-review PASS, squash `244e97b`; 562 tests without DB; FEFO = PROPOSED default (OQ-1) |
-| M1-T9 | Ledger write retry helper (`40001` + sequence-key `23505`) | Sonnet / Opus | dispatching |
-| M1-T10 | Maintenance bundle (11 accepted follow-ups) | Sonnet / Sonnet | queued |
+| M1-T9 | Ledger write retry helper (`40001` + sequence-key `23505`) | Sonnet / Opus | ✅ **DONE 2026-09-15** — review PASS WITH FIXES (pin `assumeRole` across retries) → re-review PASS, squash `12641b4`; 697 tests with DB / 594 without |
+| M1-T10 | Maintenance bundle (13 accepted follow-ups, a–m) | Sonnet / Sonnet | **not started — next to dispatch** |
+| M1-T11 | *(new, found by M1-T9 review)* aborted-transaction COMMIT silently discards ledger work | Opus / Opus | **ticketed, NOT dispatched — outside the D-018 five; awaits PO go** |
 
 ## What exists
 - Original product brief preserved in [docs/source/](docs/source/) (DOCX + extracted text).

@@ -224,6 +224,20 @@ Model routing rules (default Sonnet; Opus for the high-risk domain list; separat
 - **Out of scope:** SHA-pinning the GitHub actions themselves (M9); the `SECURITY DEFINER` owner role (needs the hosting decision); `fl-oz` guard (conditional, not needed); anything in `docs/**` other than the handoff report.
 - **DoD:** rule 26; worker report's item table complete; any item reverted is listed with the reason.
 
+#### M1-T11 — Ledger write path: aborted-transaction COMMIT silently discards work (pre-existing defect; NOT dispatched — awaits PO go)
+*Found by the M1-T9 reviewer (F4) while hunting double-applies; independently reproduced on Postgres 17.10. Not introduced by any M1-E3 ticket. Not reachable in production today (the repository has no production callers yet), but it is silent data loss in the ledger write path and must land before M2 wires HTTP handlers.*
+- **Implementation model:** **Opus** — ledger write-path transaction semantics (rule-23 list: inventory ledger, idempotency).
+- **Review model:** **Opus** — must prove no committed-but-reported-rejected or rejected-but-reported-appended outcome remains; adversarial on savepoint/abort states.
+- **Objective:** `appendTransactionToDb` catches the idempotency-key `23505` **without a `SAVEPOINT`** and returns `ok({ status: "rejected" })`. Postgres is then in ABORTED state; `withHouseholdTransaction` issues `COMMIT`, which Postgres answers with the `ROLLBACK` command tag **and no error**, so the caller receives success while every earlier write in that transaction is discarded. Repro: one `fn`, a clean append, then a second append reusing a burnt key ⇒ returns `{ good: "appended", bad: "rejected" }` and the item's ledger has 0 rows. Fix both layers: (1) `repository.ts` — wrap the insert block in `SAVEPOINT`/`ROLLBACK TO SAVEPOINT` so the typed rejection leaves the transaction usable; (2) `session.ts` — inspect the `COMMIT` result's command tag and **throw** if it is `ROLLBACK` (fail loud, never report success for a rolled-back transaction).
+- **Context:** [M1-T9 review F4/P9](docs/handoff/M1-T9.review.md); ADR-008 durability; data-model.md §6 idempotency; INV-LEDGER-3.
+- **Dependencies:** M1-T9 (done). Should precede M2's first HTTP write handler.
+- **Invariants:** a transaction reported `appended` is durable after `withHouseholdTransaction` returns; a typed `rejected` never rolls back sibling writes; no double-apply introduced; RLS/role behaviour unchanged.
+- **Acceptance criteria:** the repro above returns `appended` + `rejected` AND the good row is durable (1 row); a deliberately aborted transaction (`SELECT 1/0` inside `fn`, error swallowed) makes `withHouseholdTransaction` throw rather than return; existing `23505` idempotency mapping and the M1-T9 retry helper behave unchanged (retry suites green); reviewer reproduces both before/after on a real cluster.
+- **Tests required:** DB-gated tests for both repros (reviewer runs the reverted versions to prove they fail before the fix); a savepoint-release test (no lingering savepoint after success); full gate with `DATABASE_URL`.
+- **File scope:** `apps/api/src/db/inventory/repository.ts`, `apps/api/src/db/session.ts`, their tests (`apps/api/src/db/inventory/*.test.ts`, new `apps/api/src/db/session.test.ts`), `docs/handoff/M1-T11.worker.md`.
+- **Out of scope:** HTTP layer; retry-helper changes; schema changes.
+- **DoD:** rule 26; data-model.md §6 note on savepoint-scoped idempotency rejection (architect applies).
+
 ---
 
 ## Milestones 2–9 (epic level only — ticketed when reached)
