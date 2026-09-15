@@ -1,6 +1,6 @@
 # STATUS.md
 
-_Last updated: 2026-09-14_
+_Last updated: 2026-09-15_
 
 ## Current phase
 **Milestones 0 and 1 COMPLETE; foundation follow-ups (epic M1-E3) UNDERWAY per D-018 (2026-09-14).** The deterministic foundation exists, reviewed and merged: inventory ledger, units engine, allergen rule engine, product-lookup ports + fixtures + R-1 research, and the Postgres schema with RLS/append-only enforcement — 475 tests (with DB), CI green. UI/UX planning package delivered 2026-09-10 (docs only). PO directive 2026-09-14: build only what needs **no spend and no PO/originator decision** — tickets M1-T6 → T7 → T8 → T9 → T10 — then **stop for PO review**. M2 (API) and M3 (client) remain gated (see D-018).
@@ -10,8 +10,8 @@ _Last updated: 2026-09-14_
 |---|---|---|---|
 | M1-T6 | Allergen malformed-container fail-closed fix (pre-M4 gate a) | Opus / Opus | ✅ **DONE 2026-09-14** — review PASS (no fixes), squash `1fa171c`, +136 tests (525 w/o DB); pre-M4 gate (a) closed |
 | M1-T7 | Correction-rate telemetry view + read function | Sonnet / Opus | ✅ **DONE 2026-09-14** — review PASS (no fixes), squash `cf301c6`; 625 tests with DB / 527 without; KPI definition recorded in ARCHITECTURE §8 |
-| M1-T8 | FEFO/FIFO lot-selection planner | Opus / Opus | dispatching |
-| M1-T9 | Ledger write retry helper (`40001` + sequence-key `23505`) | Sonnet / Opus | queued |
+| M1-T8 | FEFO/FIFO lot-selection planner | Opus / Opus | ✅ **DONE 2026-09-15** — review PASS WITH FIXES (3 hand-built-input hardenings) → re-review PASS, squash `244e97b`; 562 tests without DB; FEFO = PROPOSED default (OQ-1) |
+| M1-T9 | Ledger write retry helper (`40001` + sequence-key `23505`) | Sonnet / Opus | dispatching |
 | M1-T10 | Maintenance bundle (11 accepted follow-ups) | Sonnet / Sonnet | queued |
 
 ## What exists

@@ -57,6 +57,11 @@ tests/fixtures/
                    Cases may encode structurally INVALID input on purpose (e.g. screening-016):
                    the corpus records what the engine must decide about bad data, not only
                    good data, so such a case's `input` deliberately violates the TS input types.
+                   RULE (adopted 2026-09-15 after the same defect class appeared in three
+                   domain modules — M1-T6 review F1, M1-T8 review F2/F4): domain code reads each
+                   untrusted property EXACTLY ONCE into a local before validating it; a getter
+                   that changes value or type between reads must not be able to slip past a
+                   typeof guard. Reviews probe this with type-shifting getters.
                    NOTE: packages/domain has no Node fs types by design (zero-I/O boundary),
                    so its corpus tests mirror these JSONs as in-file constants — keep the two
                    in sync (a consistency check from outside domain lands in M1-T10 item (i))
