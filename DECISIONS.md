@@ -82,6 +82,12 @@ Owners: `PO` = product owner (Dean), `ENG` = engineering.
 - **P5 (partial):** a declaration with an empty/missing `source` never licenses absence (implemented). **OPEN:** who may mint a `KNOWN_FACT` `AllergenDeclaration` — the trust root of the permissive verdict; must be decided before M4 wires adapter/catalog data in (same family as the M1-T1 "who may claim a system actor" question).
 - **Accepted residual risk (recorded):** homoglyph (Cyrillic а) and genuine-hyphen (`pea-nut`) text evasion is not caught by matching; invisible-character evasion IS caught (stripped). Mitigation path: M6 suspicious-character detector that *warns and refuses to license absence* — adds warnings, never matches. Evidence: [docs/handoff/M1-T4.review.md](docs/handoff/M1-T4.review.md).
 
+## D-018 — Foundation follow-ups approved for build; UI and cost-gated work still held
+- **Date:** 2026-09-14 · **Status:** DECIDED · **Owner:** PO (directive: "keep building what we can build now with no cost and no PO decision from either I or Dean … then STOP")
+- **Decision:** Five already-accepted follow-ups are ticketed and built under architect dispatch, in order: **M1-T6** allergen malformed-container fail-closed fix (pre-M4 gate a), **M1-T7** correction-rate telemetry view/query, **M1-T8** FEFO/FIFO lot-selection planner, **M1-T9** ledger write retry helper, **M1-T10** maintenance bundle (epic M1-E3 in [BACKLOG.md](BACKLOG.md)). Selection rule: zero spend, zero external resources, and no product decision consumed — every item is prerequisite work M2/M4/M8 would otherwise stall on.
+- **Consequences:** Engineering stops after M1-T10 is accepted (PO review checkpoint). Still held: M3 build (double-gated on M3-E0 sign-off + D-002), M2 API (auth vendor + hosting cost gates need PO approval; a stubbed-auth M2 core remains possible on a further PO yes), D-017's declaration-minting policy (pre-M4 gate b), anything touching member profiles/allergy tables (Q3). PO answer recorded 2026-09-14 on cost: building UI before design/UX sign-off was assessed as expensive mainly through rework (20–40 % of screens), so it stays gated.
+- **Alternatives:** stop entirely until D-002 (rejected by PO — idle time with prerequisite work available); start M2 core with stubbed auth (deferred — needs an explicit PO yes on the two deferrals).
+
 ---
 
 ## Open product-owner questions (not yet decisions)

@@ -1,9 +1,18 @@
 # STATUS.md
 
-_Last updated: 2026-09-10_
+_Last updated: 2026-09-14_
 
 ## Current phase
-**Milestones 0 and 1 COMPLETE.** The deterministic foundation exists, reviewed and merged: inventory ledger, units engine, allergen rule engine, product-lookup ports + fixtures + R-1 research, and the Postgres schema with RLS/append-only enforcement — 475 tests (with DB), CI green. Per PO directive (2026-09-10): next is **UI/UX planning only** (delivered — see below); **no further building** until the PO green-lights M2 (API) and/or M3-E0 → M3 (client).
+**Milestones 0 and 1 COMPLETE; foundation follow-ups (epic M1-E3) UNDERWAY per D-018 (2026-09-14).** The deterministic foundation exists, reviewed and merged: inventory ledger, units engine, allergen rule engine, product-lookup ports + fixtures + R-1 research, and the Postgres schema with RLS/append-only enforcement — 475 tests (with DB), CI green. UI/UX planning package delivered 2026-09-10 (docs only). PO directive 2026-09-14: build only what needs **no spend and no PO/originator decision** — tickets M1-T6 → T7 → T8 → T9 → T10 — then **stop for PO review**. M2 (API) and M3 (client) remain gated (see D-018).
+
+## In progress (M1-E3, architect-dispatched, one ticket at a time)
+| Ticket | Title | Models (impl/review) | State |
+|---|---|---|---|
+| M1-T6 | Allergen malformed-container fail-closed fix (pre-M4 gate a) | Opus / Opus | dispatching |
+| M1-T7 | Correction-rate telemetry view + read function | Sonnet / Opus | queued |
+| M1-T8 | FEFO/FIFO lot-selection planner | Opus / Opus | queued |
+| M1-T9 | Ledger write retry helper (`40001` + sequence-key `23505`) | Sonnet / Opus | queued |
+| M1-T10 | Maintenance bundle (11 accepted follow-ups) | Sonnet / Sonnet | queued |
 
 ## What exists
 - Original product brief preserved in [docs/source/](docs/source/) (DOCX + extracted text).
@@ -11,8 +20,8 @@ _Last updated: 2026-09-10_
 - **M0-T1 DONE (2026-09-03):** pnpm workspace (`apps/api` Fastify skeleton + `packages/domain|contracts|adapters` placeholders), TypeScript strict, ESLint/Prettier/Vitest, domain dependency-boundary lint. Sonnet impl, Sonnet review (PASS WITH FIXES, applied & re-verified), merged.
 - **M0-T2 DONE (2026-09-08) — Milestone 0 complete:** GitHub Actions CI (`quality` + `secret-scan` jobs: frozen-lockfile install, lint, typecheck, test, format check, `pnpm audit`, gitleaks), CONTRIBUTING.md (conventions, setup, Windows long-path caveat, branch-protection checklist), README badge. Sonnet impl, Sonnet review (PASS, no fixes; all five verification runs re-confirmed via live Actions API), merged. Reviewer→architect handoff ran via direct cross-session message — no human relay.
 
-## In progress
-- **M1 queue running under architect dispatch (CLAUDE.md rules 28–30), PO-approved order: T1 → T3 → T5 → T4 → T2, one at a time. PO has asked for a stop after the queue completes.**
+## Milestone 1 record (complete)
+- M1 queue ran under architect dispatch (CLAUDE.md rules 28–30), PO-approved order T1 → T3 → T5 → T4 → T2.
 - ✅ **M1-T1 DONE (2026-09-08):** inventory ledger core merged (squash) — exact bigint micro-unit arithmetic, per-lot clamp with unforgeable system flag, idempotent replay + conflict rejection, rehydration as corruption detector; 75 tests incl. INV-LEDGER-1..4. Opus/Opus, PASS after one fix round. Handoff: docs/handoff/M1-T1.{worker,review}.md.
 - ✅ **M1-T3 DONE (2026-09-09):** units & quantity model merged (squash) — exact rational conversions (US customary + metric), ground-truth-pinned factors, bridges-only cross-kind, INV-SHOP-1 gap math; 150 tests. Sonnet/Opus, PASS after one fix round. Handoff: docs/handoff/M1-T3.{worker,review}.md.
 - ✅ **M1-T5 DONE (2026-09-09):** product lookup ports + 101-item synthetic fixture corpus + R-1 coverage research merged (squash); 216 tests. ADR-006 promoted OPEN → PROPOSED on measured evidence (OFF ~85% genuine branded match; PLU-as-barcode dangerous → curated table settled; FDC unvalidated 0/27 rate-limited, honestly reported; FDC has no allergen field → M4 unknown+warning rule). Sonnet/Sonnet, PASS after doc-only fixes. Handoff: docs/handoff/M1-T5.{worker,review}.md.
@@ -32,10 +41,10 @@ _Last updated: 2026-09-10_
 ## Operational note — repo location
 **Remote decided (2026-09-03):** `https://github.com/saengsawat/Smart-Kitchen` (branch `main`) is the repo's home and sharing mechanism — this unblocks M0-T2 (CI). The working clone still lives inside a OneDrive-synced folder; recommendation stands to move it out (or exclude from sync) now that GitHub is the sync mechanism — especially since `node_modules/` exists and OneDrive syncs it.
 
-## Next 3 actions (all with the product owner — engineering is paused by directive)
-1. **Dean ratifies D-002** (MVP scope) and answers Q1/Q3 — gates M3; M2 (API) also awaits a PO go-ahead (its own cost gates: auth vendor, hosting).
-2. Owner applies the **branch-protection checklist** (CONTRIBUTING.md); review the UX plan's open items (OQ-D1 accent, Q8 name, OQ-D4/D5/D6).
-3. Housekeeping when convenient: move this clone out of OneDrive; decide keep-vs-delete for the untracked `docs/architecture/workflow-diagrams.md`; optionally install Docker for local DB tests.
+## Next 3 actions
+1. **Engineering (architect):** run M1-E3 to acceptance, one ticket at a time; update this file only at each acceptance (rule 27); stop after M1-T10.
+2. **Dean ratifies D-002** (MVP scope) and answers Q1/Q3 — gates M3; M2 (API) awaits a PO go-ahead (cost gates: auth vendor, hosting — or a PO yes to a stubbed-auth M2 core).
+3. **Owner:** apply the **branch-protection checklist** (CONTRIBUTING.md); answer the UX plan's open items (OQ-D1, Q8, OQ-D4/D5/D6); housekeeping — move the clone out of OneDrive; keep-or-delete ruling on the untracked `docs/architecture/workflow-diagrams.{md,html}`; optionally install Docker for local DB tests.
 
 ## Major risks (top 3 now)
 1. Inventory-accuracy hypothesis fails (users won't maintain even low-friction inventory) — mitigated by correction-rate telemetry from M3 and receipt fast-follow.

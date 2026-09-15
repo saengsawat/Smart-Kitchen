@@ -68,4 +68,4 @@ This repo is the project's durable memory. These rules bind every session (human
 
 ## Current phase note
 
-Milestone 0 (scaffolding + CI) is complete. D-003/ADR-008 (inventory ledger) is DECIDED; D-016 approved foundation-first build order — **Milestone 1 (domain core) is underway**. D-002 (MVP scope cut) remains PROPOSED and gates M3 (UI) and M5+ sequencing ([DECISIONS.md](DECISIONS.md)).
+Milestones 0 (scaffolding + CI) and 1 (domain core + schema) are complete. ADR-002/003/008 are DECIDED. Per **D-018** (2026-09-14) the foundation follow-up epic **M1-E3 (tickets M1-T6 → T10) is underway** under architect dispatch; engineering stops for PO review after M1-T10. D-002 (MVP scope cut) remains PROPOSED and gates M3 (UI); M2 (API) awaits PO go-ahead on its cost gates. The UI/UX plan exists as docs only (`docs/design/`) — nothing client-side is built. Live truth: [STATUS.md](STATUS.md) · [DECISIONS.md](DECISIONS.md).
