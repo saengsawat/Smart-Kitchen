@@ -15,8 +15,8 @@ _Last updated: 2026-09-16_
 | M1-T10 | Maintenance bundle (13 accepted follow-ups, a–m) | Sonnet / Sonnet | ✅ **DONE 2026-09-15** — review PASS (no fixes), squash `605aae2`; all 13 items landed; 769 tests with DB / 665 without |
 | M1-T11 | *(found by M1-T9 review)* aborted-transaction COMMIT silently discards ledger work | Opus / Opus | ✅ **DONE 2026-09-16** — review PASS WITH FIXES (pin the fn-thrown-error rollback path) → re-review PASS, squash `13a631b`; 786 tests with DB / 668 without |
 | M3-E0-T2 | Safety and provenance copy deck (docs only) | Sonnet / Opus | ✅ **DONE 2026-09-16** — review PASS WITH FIXES (5 safety-wording defects + 9 smaller) → re-review PASS, squash `b4e4c4f`; 63/63 codes covered; binding for M3 |
-| M3-E0-T1 | Prototype completion: missing screens + non-happy states (docs only) | Sonnet / Opus | review PASS WITH FIXES (skippable allergy gate; S5 ledger not reconciling + clamp sign; correct-in-place; caveat/evidence on BLOCKED; scarcity) → fixes at `6d9c6c4`, **re-review in progress** |
-| M3-E0-T3 | Token sheet: contrast + scarcity audit (docs only) | Sonnet / Sonnet | queued after T1 |
+| M3-E0-T1 | Prototype completion: missing screens + non-happy states (docs only) | Sonnet / Opus | ✅ **DONE 2026-09-16** — review PASS WITH FIXES (9 findings, all fixed) → re-review PASS, squash `05181fb`; 14 screens, three flows complete |
+| M3-E0-T3 | Token sheet: contrast + scarcity audit (docs only) | Sonnet / Sonnet | **dispatching** — last ticket before the PO/Dean checkpoint |
 
 ## What exists
 - Original product brief preserved in [docs/source/](docs/source/) (DOCX + extracted text).
