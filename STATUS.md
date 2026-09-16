@@ -3,7 +3,7 @@
 _Last updated: 2026-09-15_
 
 ## Current phase
-**Milestones 0 and 1 COMPLETE; foundation follow-ups (epic M1-E3) UNDERWAY per D-018 (2026-09-14).** The deterministic foundation exists, reviewed and merged: inventory ledger, units engine, allergen rule engine, product-lookup ports + fixtures + R-1 research, and the Postgres schema with RLS/append-only enforcement — 475 tests (with DB), CI green. UI/UX planning package delivered 2026-09-10 (docs only). PO directive 2026-09-14: build only what needs **no spend and no PO/originator decision** — tickets M1-T6 → T7 → T8 → T9 → T10 — then **stop for PO review**. M2 (API) and M3 (client) remain gated (see D-018).
+**Milestones 0 and 1 COMPLETE; the D-018 foundation follow-up batch (M1-T6 → T10) is COMPLETE as of 2026-09-15 — engineering is STOPPED for PO review.** 769 tests with DB / 665 without; CI green on main. Next engineering moves need a PO word: "go M1-T11" (aborted-COMMIT data-loss fix, ticketed), "go M3-E0" (three design tickets written, docs-only), or the decisions in [docs/po/decision-brief-2026-09.md](docs/po/decision-brief-2026-09.md) (D-002, auth, hosting, stubbed-auth M2). The deterministic foundation exists, reviewed and merged: inventory ledger, units engine, allergen rule engine, product-lookup ports + fixtures + R-1 research, and the Postgres schema with RLS/append-only enforcement — 475 tests (with DB), CI green. UI/UX planning package delivered 2026-09-10 (docs only). PO directive 2026-09-14: build only what needs **no spend and no PO/originator decision** — tickets M1-T6 → T7 → T8 → T9 → T10 — then **stop for PO review**. M2 (API) and M3 (client) remain gated (see D-018).
 
 ## In progress (M1-E3, architect-dispatched, one ticket at a time)
 | Ticket | Title | Models (impl/review) | State |
@@ -12,8 +12,9 @@ _Last updated: 2026-09-15_
 | M1-T7 | Correction-rate telemetry view + read function | Sonnet / Opus | ✅ **DONE 2026-09-14** — review PASS (no fixes), squash `cf301c6`; 625 tests with DB / 527 without; KPI definition recorded in ARCHITECTURE §8 |
 | M1-T8 | FEFO/FIFO lot-selection planner | Opus / Opus | ✅ **DONE 2026-09-15** — review PASS WITH FIXES (3 hand-built-input hardenings) → re-review PASS, squash `244e97b`; 562 tests without DB; FEFO = PROPOSED default (OQ-1) |
 | M1-T9 | Ledger write retry helper (`40001` + sequence-key `23505`) | Sonnet / Opus | ✅ **DONE 2026-09-15** — review PASS WITH FIXES (pin `assumeRole` across retries) → re-review PASS, squash `12641b4`; 697 tests with DB / 594 without |
-| M1-T10 | Maintenance bundle (13 accepted follow-ups, a–m) | Sonnet / Sonnet | **not started — next to dispatch** |
-| M1-T11 | *(new, found by M1-T9 review)* aborted-transaction COMMIT silently discards ledger work | Opus / Opus | **ticketed, NOT dispatched — outside the D-018 five; awaits PO go** |
+| M1-T10 | Maintenance bundle (13 accepted follow-ups, a–m) | Sonnet / Sonnet | ✅ **DONE 2026-09-15** — review PASS (no fixes), squash `605aae2`; all 13 items landed; 769 tests with DB / 665 without |
+| M1-T11 | *(new, found by M1-T9 review)* aborted-transaction COMMIT silently discards ledger work | Opus / Opus | **ticketed, NOT dispatched — awaits PO go** |
+| M3-E0-T1..T3 | Prototype completion · safety copy deck · token sheet (design, docs only) | Sonnet / Opus·Opus·Sonnet | **ticketed 2026-09-15, NOT dispatched — awaits PO go** |
 
 ## What exists
 - Original product brief preserved in [docs/source/](docs/source/) (DOCX + extracted text).
