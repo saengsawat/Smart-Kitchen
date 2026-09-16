@@ -61,19 +61,21 @@ Rationale: the scan button is the product's front door (P1) and owns the center;
 
 | Screen | v3 status | Gap to close in M3-E0 |
 |---|---|---|
-| S1 account + household | **missing** (avatar button only) | create/join household, members, sign-out |
-| S2 allergies & preferences | **missing** | per-member allergy + severity, user-defined allergen, explicit "none"; the source of every "4 members" verdict |
-| S3 Home dashboard | done (dark hero, tiles, tonight card, use-it-soon rail, confirmation tray) | first-run empty state; terracotta scarcity |
-| S4 Inventory list | done (location tabs, provenance chips, freshness ring, tray) | sort/filter (expiry, needs-confirmation); stale-offline state |
-| S5 Item detail / history | **missing** (rows go nowhere) | ledger view ("why does the app think…"), one-tap correct with undo, consume/discard with reason chips |
-| S6 Add hub | done (phase labels) | — |
-| S7 Barcode scan | done (hit path) | permission-denied state |
-| S8 Scan confirm | done; Known Fact scoped to identity at adoption | per-field tier for label data (OQ-D7) |
-| S9 Manual add / completion | **missing** | the barcode-miss path (~15 % branded, all produce per R-1); code retained for enrichment |
-| S10 Recipes | done; BLOCKED + ALLOWED_WITH_UNKNOWNS cards added at adoption | recipe detail (ingredient on-hand status, verdict block with evidence, cook → USE_IN_MEAL confirm via the FEFO planner); zero-candidates / all-blocked states |
-| S11 Shopping | done (gap math, groups, loop prompt, already-have) | offline-queue indicator; who-checked-off initials |
-| S12 Profile & household | **missing** | members, allergy edit (S2 patterns), sign-out |
-| Shared | provenance chips, verdict lines, freshness ring, toast | provenance **legend** (one-time), undo on every correction/check-off, who-did-what markers |
+| S1 account + household | **done (M3-E0-T1)** | sign-in gesture, create/join by code, reached from Home avatar when the "New user" dev switch is on |
+| S2 allergies & preferences | **done (M3-E0-T1)** | FDA nine + user-defined term, severity, explicit "none" gate on Continue, skippable preferences; reached from onboarding and from S12 |
+| S3 Home dashboard | done (dark hero, tiles, tonight card, use-it-soon rail, confirmation tray); **first-run empty state done (M3-E0-T1)** | terracotta scarcity **done (M3-E0-T1)** |
+| S4 Inventory list | done (location tabs, provenance chips, freshness ring, tray); **sort/filter + first-run empty state done (M3-E0-T1)** | — |
+| S5 Item detail / history | **done (M3-E0-T1)** | ledger view with plain-language "why" line, one-tap correct with undo, consume/discard/expire/donate reason chips, lot breakdown, clamp row shown as a system row |
+| S6 Add hub | done (phase labels); **Type it in wired to S9 (M3-E0-T1)** | — |
+| S7 Barcode scan | done (hit path); **permission-denied state done (M3-E0-T1)** | — |
+| S8 Scan confirm | done; Known Fact scoped to identity at adoption | per-field tier for label data (OQ-D7, unchanged by this ticket) |
+| S9 Manual add / completion | **done (M3-E0-T1)** | barcode-miss "no match" state with code retained, unit-kind picker (mass/volume/count), location chips, manual = Known Fact |
+| S10 Recipes | done; BLOCKED + ALLOWED_WITH_UNKNOWNS cards added at adoption; **zero-candidates / all-blocked states done (M3-E0-T1)** | recipe detail **done (M3-E0-T1)**: ingredient on-hand status (have/short/missing), verdict block with evidence, Cook this → FEFO deduction confirm, record-and-flag shortfall |
+| S11 Shopping | done (gap math, groups, loop prompt, already-have); **offline-queue indicator + who-checked-off initials done (M3-E0-T1)** | — |
+| S12 Profile & household | **done (M3-E0-T1)** | members with initials, allergy edit entry (S2 patterns), sign-out, reached from Home avatar in the steady state |
+| Shared | provenance chips, verdict lines, freshness ring, toast; **provenance legend, undo toast on every correction/check-off, who-did-what initials done (M3-E0-T1)** | — |
+
+Remaining for a later ticket (not this one): OQ-D7 per-field label-data tier, contrast-ratio measurement, the safety-copy deck (M3-E0-T2), the token sheet (M3-E0-T3), Dean's on-device review and the hallway test.
 
 Deliberately **not** added: meal-planner tab, nutrition dashboard, assistant in the nav, receipt/photo flows beyond stubs (D-002 as proposed). Five-tab nav confirmed.
 
