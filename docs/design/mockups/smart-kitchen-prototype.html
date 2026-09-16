@@ -3,16 +3,16 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>KitchenSmart — Prototype v3</title>
+<title>KitchenSmart · Prototype v3</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&display=swap">
 <style>
-  /* ============ TOKENS — a real point of view, not Claude's stylesheet ============ */
+  /* ============ TOKENS · a real point of view, not Claude's stylesheet ============ */
   :root {
-    --sand:     #efe5d5;   /* page canvas — warm bone/sand, NOT ivory-parchment */
+    --sand:     #efe5d5;   /* page canvas · warm bone/sand, NOT ivory-parchment */
     --sand-2:   #e4d7c2;   /* pressed / segmented track */
-    --paper:    #fffbf4;   /* cards — near-white so they actually lift off the sand */
+    --paper:    #fffbf4;   /* cards · near-white so they actually lift off the sand */
     --line:     #dfd1ba;   /* hairlines */
     --ink:      #1e1813;   /* espresso text */
     --ink-2:    #5b5045;
@@ -20,18 +20,18 @@
     --espresso: #2a1f18;   /* dark warm hero surface (Copilot's warm-dark, not black) */
     --espresso-2:#3b2d23;
     --cream:    #f7efe2;   /* text on espresso */
-    --brand:    #d9673b;   /* terracotta, richer — used with confidence */
+    --brand:    #d9673b;   /* terracotta, richer · used with confidence */
     --brand-deep:#b64f28;
     --brand-tint:#f9dece;
     --green:    #2f7d51;   /* Known Fact / fresh */
     --green-bg: #dfeee3;
     --amber:    #b4700c;   /* Estimated / expiring */
     --amber-bg: #f6e6c8;
-    --rose:     #c75f66;   /* use today — never allergen red */
+    --rose:     #c75f66;   /* use today · never allergen red */
     --rose-bg:  #f7dcdc;
     --danger:   #b12a2a;   /* ALLERGEN ONLY */
     --danger-bg:#f9d9d9;
-    --ai:       #7b4cb5;   /* AI Interpretation — purple appears nowhere else */
+    --ai:       #7b4cb5;   /* AI Interpretation · purple appears nowhere else */
     --ai-bg:    #eadff7;
     --r-sm: 12px; --r-md: 18px; --r-lg: 24px;
   }
@@ -106,7 +106,7 @@
   .have { display: flex; flex-wrap: wrap; gap: 6px; }
   .have span { padding: 4px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; background: var(--green-bg); color: var(--green); }
   .have span.miss { background: var(--amber-bg); color: var(--amber); }
-  /* allergen VERDICT lines — never green, never a check-as-clearance, never the word "safe" (SR-2, design-principles P5).
+  /* allergen VERDICT lines · never green, never a check-as-clearance, never the word "safe" (SR-2, design-principles P5).
      ALLOWED renders as "no known allergen match" in neutral ink; ALLOWED_WITH_UNKNOWNS in amber naming WHAT is unknown;
      BLOCKED uses the .allergen red bar and is never offered as a choice. Every verdict carries the standing caveat. */
   .verdict { display: flex; flex-direction: column; gap: 3px; }
@@ -143,7 +143,7 @@
   .fr-soon .f { stroke: var(--amber); } .fr-soon .d { color: var(--amber); }
   .fr-fresh .f { stroke: var(--green); } .fr-fresh .d { color: var(--green); }
 
-  /* provenance chips — shape + icon + label, never color alone */
+  /* provenance chips · shape + icon + label, never color alone */
   .prov { display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; border-radius: 7px; font-size: 11px; font-weight: 700; letter-spacing: .1px; white-space: nowrap; flex-shrink: 0; }
   .prov.fact { background: var(--green-bg); color: var(--green); }
   .prov.est  { background: transparent; color: var(--amber); border: 1.5px dashed var(--amber); }
@@ -233,7 +233,7 @@
   .loc { padding: 8px 14px; border-radius: 999px; border: 1.5px solid var(--line); background: var(--paper); font-family: inherit; font-size: 13px; font-weight: 600; color: var(--ink-2); cursor: pointer; }
   .loc.on { border-color: var(--brand); background: var(--brand-tint); color: var(--brand-deep); }
 
-  /* allergen — the only saturated red, always icon + text */
+  /* allergen · the only saturated red, always icon + text */
   .allergen { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-radius: 14px; background: var(--danger-bg); border: 1.5px solid var(--danger); color: var(--danger); font-weight: 700; font-size: 13px; }
   .allergen .sh { width: 30px; height: 30px; border-radius: 9px; background: var(--danger); color: #fff; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
 
@@ -276,7 +276,7 @@
   .inbar input { flex: 1; min-width: 0; height: 48px; padding: 0 16px; border-radius: 999px; border: 1px solid var(--line); background: var(--paper); font-family: inherit; font-size: 14px; }
   .send { width: 48px; height: 48px; border-radius: 50%; background: var(--brand); border: none; display: flex; align-items: center; justify-content: center; cursor: pointer; }
 
-  /* ============ NAV — floating pill + espresso FAB ============ */
+  /* ============ NAV · floating pill + espresso FAB ============ */
   .nav { position: absolute; left: 16px; right: 16px; bottom: 18px; height: 66px; background: var(--paper); border: 1px solid var(--line); border-radius: 999px; display: flex; align-items: center; box-shadow: 0 12px 30px -12px rgba(30,24,19,.45); z-index: 10; }
   .nav button { flex: 1; height: 100%; background: none; border: none; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; color: var(--ink-3); font-family: inherit; font-size: 10.5px; font-weight: 600; }
   .nav button.on { color: var(--brand-deep); }
@@ -300,7 +300,7 @@
 </style>
 </head>
 <body>
-<div class="hint">KitchenSmart prototype v3 — bottom pill nav navigates, the dark button opens Add, hero stats jump to screens, rails scroll sideways, "Why this?" expands, shopping items check off. Sample data for the Chen household; photos are swappable placeholders.</div>
+<div class="hint">KitchenSmart prototype v3 · bottom pill nav navigates, the dark button opens Add, hero stats jump to screens, rails scroll sideways, "Why this?" expands, shopping items check off. Sample data for the Chen household; photos are swappable placeholders.</div>
 
 <div class="phone">
 
@@ -312,7 +312,7 @@
         <div class="eyebrow">Monday evening · Chen household</div>
         <div style="display:flex;gap:8px;">
           <button class="hbtn" onclick="go('scr-assistant')" aria-label="Assistant"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4l1.6 4.2L17 9.8l-4.4 1.6L11 16l-1.6-4.6L5 9.8l4.4-1.6z"/><path d="M18 14l.8 2.1 2.1.8-2.1.8-.8 2.1-.8-2.1-2.1-.8 2.1-.8z"/></svg></button>
-          <button class="hbtn" onclick="toast('Profile — not in this mockup')">DC</button>
+          <button class="hbtn" onclick="toast('Profile · not in this mockup')">DC</button>
         </div>
       </div>
       <h1 class="serif">What's cooking<br><em>tonight?</em></h1>
@@ -346,9 +346,9 @@
         </div>
         <div class="rbody">
           <div class="have"><span>✓ chicken</span><span>✓ spinach</span><span>✓ mushrooms</span><span>✓ rice</span></div>
-          <div class="verdict"><div class="line"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v5c0 4.6-3 7.8-7 9-4-1.2-7-4.4-7-9V6z"/></svg>No known allergen match · 4 members · label data</div><div class="caveat">Known matches only — not a guarantee this food is safe.</div></div>
-          <div class="why" id="whyHome"><b style="color:var(--ink)">Why this?</b> Ranked <span class="num">92%</span> (a coverage score: <span class="num">4/4</span> ingredients on hand, weighted by expiry — not a confidence): uses <b>3 expiring items</b> (chicken · 2d, spinach + mushrooms · 3d), needs <b>0 purchases</b>, fits a <span class="num">25 min</span> window, matches the high-protein preference. Score is computed from inventory — not generated text.</div>
-          <div class="btns"><button class="btn sec" onclick="toggleWhy('whyHome')">Why this?</button><button class="btn pri" onclick="toast('Recipe detail — not in this mockup')">Cook this</button></div>
+          <div class="verdict"><div class="line"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v5c0 4.6-3 7.8-7 9-4-1.2-7-4.4-7-9V6z"/></svg>No known allergen match · 4 members · label data</div><div class="caveat">Known matches only · not a guarantee this food is safe.</div></div>
+          <div class="why" id="whyHome"><b style="color:var(--ink)">Why this?</b> Ranked <span class="num">92%</span> (a coverage score: <span class="num">4/4</span> ingredients on hand, weighted by expiry · not a confidence): uses <b>3 expiring items</b> (chicken · 2d, spinach + mushrooms · 3d), needs <b>0 purchases</b>, fits a <span class="num">25 min</span> window, matches the high-protein preference. Score is computed from inventory · not generated text.</div>
+          <div class="btns"><button class="btn sec" onclick="toggleWhy('whyHome')">Why this?</button><button class="btn pri" onclick="toast('Recipe detail · not in this mockup')">Cook this</button></div>
         </div>
       </div>
     </div>
@@ -399,7 +399,7 @@
   <div class="scroll">
     <div class="lhead">
       <div><h1 class="serif">Inventory</h1><div class="sub"><b class="num" style="color:var(--ink)">42</b> items · <span class="num">94%</span> verified</div></div>
-      <div class="iconb" onclick="toast('Search — not in this mockup')"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M16.5 16.5L21 21"/></svg></div>
+      <div class="iconb" onclick="toast('Search · not in this mockup')"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M16.5 16.5L21 21"/></svg></div>
     </div>
     <div class="seg" id="seg">
       <button class="on" data-loc="all" onclick="filterLoc(this)">All</button>
@@ -411,7 +411,7 @@
     <div style="height:10px"></div>
     <div class="tray" style="margin-bottom:4px">
       <div class="h"><b><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4l1.6 4.2L17 9.8l-4.4 1.6L11 16l-1.6-4.6L5 9.8l4.4-1.6z"/></svg>Needs your confirmation</b><span>2</span></div>
-      <div class="titem"><div class="ph fruit"><span class="mono">B</span></div><div class="m"><b>Bananas · 3 lb?</b><i>receipt read "ORG BNNA 3LB"</i></div><button class="okbtn" onclick="toast('Confirmed')">Confirm</button><button class="okbtn ghost" onclick="toast('Edit — not in mockup')">Edit</button></div>
+      <div class="titem"><div class="ph fruit"><span class="mono">B</span></div><div class="m"><b>Bananas · 3 lb?</b><i>receipt read "ORG BNNA 3LB"</i></div><button class="okbtn" onclick="toast('Confirmed')">Confirm</button><button class="okbtn ghost" onclick="toast('Edit · not in mockup')">Edit</button></div>
     </div>
 
     <div class="grp" id="invList-start"><b>Fridge</b><span class="num">6 items</span></div>
@@ -481,23 +481,23 @@
 <section class="screen" id="scr-add">
   <div class="scroll">
     <div class="back"><div class="iconb" onclick="goBack()"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></div><h1 class="serif">Add food</h1></div>
-    <div class="pad" style="padding-bottom:12px;color:var(--ink-2);font-size:14px;line-height:1.45">Every path except manual is a proposal — nothing becomes a Known Fact until you confirm it.</div>
+    <div class="pad" style="padding-bottom:12px;color:var(--ink-2);font-size:14px;line-height:1.45">Every path except manual is a proposal · nothing becomes a Known Fact until you confirm it.</div>
     <div class="grid2">
       <button class="mode bar" onclick="go('scr-scan')">
         <div class="ic"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><path d="M4 8V6a2 2 0 0 1 2-2h2"/><path d="M16 4h2a2 2 0 0 1 2 2v2"/><path d="M20 16v2a2 2 0 0 1-2 2h-2"/><path d="M8 20H6a2 2 0 0 1-2-2v-2"/><path d="M4 12h16"/></svg></div>
         <div><b>Scan barcode</b><i>Product facts fill in from the label database</i></div>
       </button>
-      <button class="mode rec" onclick="toast('Receipt scan — fast-follow phase')">
+      <button class="mode rec" onclick="toast('Receipt scan · fast-follow phase')">
         <span class="phase">fast-follow</span>
         <div class="ic"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12v18l-2-1.4L14 21l-2-1.4L10 21l-2-1.4L6 21z"/><path d="M9 8h6"/><path d="M9 12h6"/></svg></div>
         <div><b>Scan receipt</b><i>One photo adds the whole grocery run</i></div>
       </button>
-      <button class="mode cam" onclick="toast('Shelf photo — future phase')">
+      <button class="mode cam" onclick="toast('Shelf photo · future phase')">
         <span class="phase" style="background:#fff;color:var(--ai)">future</span>
         <div class="ic"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8a2 2 0 0 1 2-2h1.5l1.5-2h6l1.5 2H18a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/><circle cx="12" cy="13" r="3.5"/></svg></div>
         <div><b>Photograph a shelf</b><i>AI proposes what it sees</i></div>
       </button>
-      <button class="mode man" onclick="toast('Manual entry — not in this mockup')">
+      <button class="mode man" onclick="toast('Manual entry · not in this mockup')">
         <div class="ic"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20l4-1L20 7l-3-3L5 16z"/><path d="M14 6l3 3"/></svg></div>
         <div><b>Type it in</b><i>Always available, never blocked</i></div>
       </button>
@@ -548,25 +548,25 @@
         </div>
         <div class="rbody">
           <div class="have"><span>✓ chicken</span><span>✓ spinach</span><span>✓ mushrooms</span><span>✓ rice</span></div>
-          <div class="verdict"><div class="line"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v5c0 4.6-3 7.8-7 9-4-1.2-7-4.4-7-9V6z"/></svg>No known allergen match · 4 members · label data</div><div class="caveat">Known matches only — not a guarantee this food is safe.</div></div>
-          <div class="btns"><button class="btn sec" onclick="toggleWhy('whyR')">Why this?</button><button class="btn pri" onclick="toast('Recipe detail — not in this mockup')">Cook this</button></div>
-          <div class="why" id="whyR">Ranked <span class="num">92%</span>: 3 expiring items, 0 purchases, ≤ 30 min, high-protein. Computed from inventory — not generated text.</div>
+          <div class="verdict"><div class="line"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v5c0 4.6-3 7.8-7 9-4-1.2-7-4.4-7-9V6z"/></svg>No known allergen match · 4 members · label data</div><div class="caveat">Known matches only · not a guarantee this food is safe.</div></div>
+          <div class="btns"><button class="btn sec" onclick="toggleWhy('whyR')">Why this?</button><button class="btn pri" onclick="toast('Recipe detail · not in this mockup')">Cook this</button></div>
+          <div class="why" id="whyR">Ranked <span class="num">92%</span>: 3 expiring items, 0 purchases, ≤ 30 min, high-protein. Computed from inventory · not generated text.</div>
         </div>
       </div>
     </div>
 
-    <div class="rrow" onclick="toast('Recipe detail — not in this mockup')">
+    <div class="rrow" onclick="toast('Recipe detail · not in this mockup')">
       <div class="ph fruit"><span class="mono">P</span><img src="https://images.unsplash.com/photo-1490645935967-10de6ba17061?auto=format&fit=crop&w=300&q=70" alt="" onerror="this.remove()"></div>
       <div class="b"><div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px"><h4 class="serif">Yogurt berry parfait</h4><span class="match num">84%</span></div><div class="meta"><span class="num">10 min</span>·<span class="num">320 cal</span>·breakfast</div><div class="have"><span>✓ yogurt</span><span>✓ strawberries</span><span class="miss">+ granola</span></div></div>
     </div>
-    <div class="rrow" onclick="toast('Recipe detail — not in this mockup')">
+    <div class="rrow" onclick="toast('Recipe detail · not in this mockup')">
       <div class="ph frozen"><span class="mono">S</span><img src="https://images.unsplash.com/photo-1467003909585-2f8a72700288?auto=format&fit=crop&w=300&q=70" alt="" onerror="this.remove()"></div>
       <div class="b"><div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px"><h4 class="serif">Miso-glazed salmon</h4><span class="match num">78%</span></div><div class="meta"><span class="num">30 min</span>·<span class="num">610 cal</span>·thaw first</div><div class="have"><span>✓ salmon</span><span>✓ rice</span><span class="miss">+ miso</span><span class="miss">+ broccoli</span></div>
-        <div class="verdict unk"><div class="line"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 3.5L21.5 20h-19z"/><path d="M12 10v4.5"/><circle cx="12" cy="17.4" r=".6" fill="currentColor"/></svg>Allergen data unknown for Maya (severe: sesame) — miso has no ingredient statement on file</div><div class="caveat">Not blocked, not cleared. Check the package before cooking.</div></div></div>
+        <div class="verdict unk"><div class="line"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 3.5L21.5 20h-19z"/><path d="M12 10v4.5"/><circle cx="12" cy="17.4" r=".6" fill="currentColor"/></svg>Allergen data unknown for Maya (severe: sesame) · miso has no ingredient statement on file</div><div class="caveat">Not blocked, not cleared. Check the package before cooking.</div></div></div>
     </div>
     <div class="rrow" style="opacity:.92">
       <div class="ph grain" style="filter:grayscale(.6)"><span class="mono">T</span><img src="https://images.unsplash.com/photo-1555949258-eb67b1ef0ceb?auto=format&fit=crop&w=300&q=70" alt="" onerror="this.remove()"></div>
-      <div class="b"><h4 class="serif" style="color:var(--ink-2)">Thai peanut noodles</h4><div class="allergen" style="padding:8px 10px;font-size:12px"><span class="sh" style="width:24px;height:24px"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round"><path d="M12 3.5L21.5 20h-19z"/><path d="M12 10v4.5"/><circle cx="12" cy="17.4" r=".6" fill="#fff"/></svg></span>Contains peanuts — blocked for Maya</div><div style="font-size:11.5px;color:var(--ink-3);line-height:1.4">Matched “peanuts” in the ingredient statement (label data). Blocked recipes are shown for transparency and can’t be cooked or planned.</div></div>
+      <div class="b"><h4 class="serif" style="color:var(--ink-2)">Thai peanut noodles</h4><div class="allergen" style="padding:8px 10px;font-size:12px"><span class="sh" style="width:24px;height:24px"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round"><path d="M12 3.5L21.5 20h-19z"/><path d="M12 10v4.5"/><circle cx="12" cy="17.4" r=".6" fill="#fff"/></svg></span>Contains peanuts · blocked for Maya</div><div style="font-size:11.5px;color:var(--ink-3);line-height:1.4">Matched “peanuts” in the ingredient statement (label data). Blocked recipes are shown for transparency and can’t be cooked or planned.</div></div>
     </div>
   </div>
   <div class="nav">
@@ -584,7 +584,7 @@
   <div class="scroll">
     <div class="lhead"><div><h1 class="serif">Shopping</h1><div class="sub">shared · <b class="num" id="buyCount" style="color:var(--ink)">3</b> to buy · gaps computed from planned meals</div></div>
       <div style="display:flex"><div class="iconb" style="width:32px;height:32px;font-size:11px;font-weight:700">DC</div><div class="iconb" style="width:32px;height:32px;font-size:11px;font-weight:700;margin-left:-8px">MC</div></div></div>
-    <div class="loop"><b>Olive oil checked off — add it to the pantry?</b><button onclick="toast('Olive oil → Pantry · inventory updated')">Add</button></div>
+    <div class="loop"><b>Olive oil checked off · add it to the pantry?</b><button onclick="toast('Olive oil → Pantry · inventory updated')">Add</button></div>
     <div class="grp"><b>Meat &amp; seafood</b></div>
     <div class="srow"><button class="chk" onclick="toggleCheck(this)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l4.5 4.5L19 7"/></svg></button><div style="flex:1"><div class="n">Chicken breast</div><div class="s num">need 2 lb · have 1.25 lb</div></div><div class="amt num">0.75 lb</div></div>
     <div class="grp"><b>Produce</b></div>
@@ -592,7 +592,7 @@
     <div class="grp"><b>Pantry</b></div>
     <div class="srow"><button class="chk" onclick="toggleCheck(this)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l4.5 4.5L19 7"/></svg></button><div style="flex:1"><div class="n">Granola</div><div class="s">for yogurt parfait</div></div><div class="amt num">1</div></div>
     <div class="srow done"><button class="chk done" onclick="toggleCheck(this)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l4.5 4.5L19 7"/></svg></button><div style="flex:1"><div class="n">Olive oil</div></div><div class="amt num" style="color:var(--ink-3)">1</div></div>
-    <div class="grp"><b>Already have — skipped</b></div>
+    <div class="grp"><b>Already have · skipped</b></div>
     <div class="srow" style="background:transparent;border-style:dashed"><span style="color:var(--green)">✓</span><div style="flex:1;color:var(--ink-2)">Rice</div><div class="s num">~4 cups <span class="prov est">≈ Est.</span></div></div>
     <div class="srow" style="background:transparent;border-style:dashed"><span style="color:var(--green)">✓</span><div style="flex:1;color:var(--ink-2)">Soy sauce</div><div class="s">sufficient</div></div>
   </div>
@@ -612,11 +612,11 @@
   <div class="qchips"><button class="chip">What can I make tonight?</button><button class="chip">What's expiring?</button><button class="chip">Plan this week</button></div>
   <div class="scroll" style="padding:6px 18px 20px;display:flex;flex-direction:column;gap:12px">
     <div class="bub me">What can I make for dinner in under 30 minutes?</div>
-    <div class="bub ai"><div>Best match is <b>chicken &amp; spinach stir-fry</b> — <span class="num">25 min</span>, uses the chicken, spinach and mushrooms expiring in the next 2–3 days. You have everything.</div>
+    <div class="bub ai"><div>Best match is <b>chicken &amp; spinach stir-fry</b> · <span class="num">25 min</span>, uses the chicken, spinach and mushrooms expiring in the next 2–3 days. You have everything.</div>
       <button class="btn sec" style="height:38px;font-size:13px;align-self:flex-start;padding:0 14px;flex:0" onclick="go('scr-recipes')">See recipe</button>
       <div class="evid"><span class="prov fact">✓ Fact</span>inventory · <span class="prov est">≈ Est.</span>expiry dates</div></div>
     <div class="bub me">Can Maya have the granola bars I bought today?</div>
-    <div class="bub ai"><div class="allergen"><span class="sh"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round"><path d="M12 3.5L21.5 20h-19z"/><path d="M12 10v4.5"/><circle cx="12" cy="17.4" r=".6" fill="#fff"/></svg></span>Label lists tree nuts (almonds) — blocked by Maya's profile</div>
+    <div class="bub ai"><div class="allergen"><span class="sh"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round"><path d="M12 3.5L21.5 20h-19z"/><path d="M12 10v4.5"/><circle cx="12" cy="17.4" r=".6" fill="#fff"/></svg></span>Label lists tree nuts (almonds) · blocked by Maya's profile</div>
       <div>I can't mark any food as safe. Please check the package yourself for serious allergies.</div>
       <div class="evid"><span class="prov fact">✓ Fact</span>verified label data + household rules · never generated text</div></div>
   </div>

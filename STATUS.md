@@ -32,6 +32,7 @@ _Last updated: 2026-09-15_
 - **UI/UX planning package delivered (PO directive, docs only):** [design-principles.md](docs/design/design-principles.md) (10 binding behavior principles) + [ux-plan.md](docs/design/ux-plan.md) (IA, 12-screen inventory, three make-or-break flows, design→build pipeline) + **M3-E0 gate epic** in BACKLOG.md. Nothing built; M3 build double-gated on M3-E0 sign-off + D-002.
 
 ## Awaiting owner action
+- **Andy + Dean decision session (this week):** agenda, recommendations and cost map in [docs/po/decision-brief-2026-09.md](docs/po/decision-brief-2026-09.md) — D-002, Q1/Q3, auth (open-source-first), hosting (phased), ADR-001, stubbed-auth M2 go/no-go, D-017 gate b, shortfall policy, UX opens incl. product name.
 - **Apply branch protection on `main`** per the checklist in [CONTRIBUTING.md](CONTRIBUTING.md) (require PR; required checks exactly `quality` and `secret-scan`; block force pushes). Architect verifies the branch's `protected` flag afterwards.
 
 ## Blocked decisions (need product owner)

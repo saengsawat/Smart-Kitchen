@@ -29,5 +29,8 @@ Every screen designs its empty, loading, error, and offline states before its ha
 ## P9 — Accessibility is baseline, not polish
 WCAG 2.2 AA targets: contrast per the documented token ratios, touch targets ≥44pt, dynamic type without truncating safety copy, screen-reader labels for every badge/verdict (a color-only allergen signal is forbidden — color+icon+text, per SR-2 practice), reduced-motion respected.
 
+## P11 — Copy sounds like a person in a kitchen, not a machine (PO rule, 2026-09-15)
+**No em dashes anywhere in UI copy.** They read as generated text and make the app feel robotic (PO). Use a full stop, a comma, or the app's middle-dot separator (`·`) instead. Same spirit: short plain sentences; no colon-as-label constructions in running text; no exclamation marks in safety copy; numbers formatted by the unit registry, never hand-typed. The prototype and the copy deck are checked against this rule like code (a grep for `—` in `docs/design/mockups/*.html` and the client's string tables must return zero).
+
 ## P10 — Scope honesty in the UI itself
 Post-MVP capabilities visible in the product (receipt scan, shelf photo, assistant) wear their phase plainly, as the prototype does ("fast-follow", "future", "post-MVP preview") — the UI never advertises what the build can't do yet without saying so.
