@@ -51,11 +51,31 @@ Rationale: the scan button is the product's front door (P1) and owns the center;
 
 | ID | Question | Default if unanswered |
 |---|---|---|
-| OQ-D1 | Brand accent: terracotta (current) vs fresh-green | Terracotta stands |
+| ~~OQ-D1~~ | Brand accent — **resolved 2026-09-15 (D-019): terracotta `#d9673b`** | — |
 | Q8 | Product name/brand (affects app title, icon, stores) | Placeholder "Smart Kitchen" persists |
 | OQ-D4 | Home = dashboard (current) vs inventory-first | Dashboard stands (prototype-validated) |
 | OQ-D5 | Onboarding allergy step: per-member at signup vs household-owner-enters-all | Owner-enters-all at signup, members confirm on join (conservative; pending Q3) |
 | OQ-D6 | Dark mode at MVP launch or fast-follow | Tokens support it (design-direction); ship light-first, dark fast-follow |
+
+## 7. Prototype v3 coverage (PO revamp, adopted 2026-09-15 — D-019)
+
+| Screen | v3 status | Gap to close in M3-E0 |
+|---|---|---|
+| S1 account + household | **missing** (avatar button only) | create/join household, members, sign-out |
+| S2 allergies & preferences | **missing** | per-member allergy + severity, user-defined allergen, explicit "none"; the source of every "4 members" verdict |
+| S3 Home dashboard | done (dark hero, tiles, tonight card, use-it-soon rail, confirmation tray) | first-run empty state; terracotta scarcity |
+| S4 Inventory list | done (location tabs, provenance chips, freshness ring, tray) | sort/filter (expiry, needs-confirmation); stale-offline state |
+| S5 Item detail / history | **missing** (rows go nowhere) | ledger view ("why does the app think…"), one-tap correct with undo, consume/discard with reason chips |
+| S6 Add hub | done (phase labels) | — |
+| S7 Barcode scan | done (hit path) | permission-denied state |
+| S8 Scan confirm | done; Known Fact scoped to identity at adoption | per-field tier for label data (OQ-D7) |
+| S9 Manual add / completion | **missing** | the barcode-miss path (~15 % branded, all produce per R-1); code retained for enrichment |
+| S10 Recipes | done; BLOCKED + ALLOWED_WITH_UNKNOWNS cards added at adoption | recipe detail (ingredient on-hand status, verdict block with evidence, cook → USE_IN_MEAL confirm via the FEFO planner); zero-candidates / all-blocked states |
+| S11 Shopping | done (gap math, groups, loop prompt, already-have) | offline-queue indicator; who-checked-off initials |
+| S12 Profile & household | **missing** | members, allergy edit (S2 patterns), sign-out |
+| Shared | provenance chips, verdict lines, freshness ring, toast | provenance **legend** (one-time), undo on every correction/check-off, who-did-what markers |
+
+Deliberately **not** added: meal-planner tab, nutrition dashboard, assistant in the nav, receipt/photo flows beyond stubs (D-002 as proposed). Five-tab nav confirmed.
 
 ## 6. Explicitly out of this plan
 Assistant/chat UI (post-MVP; preview pattern already in prototype), receipt & shelf-photo capture UIs beyond their phase-labeled stubs (fast-follow/future — designed when their pipelines land), meal planning, nutrition dashboard, tablet/web layouts, i18n.

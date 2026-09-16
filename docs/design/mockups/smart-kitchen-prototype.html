@@ -106,7 +106,13 @@
   .have { display: flex; flex-wrap: wrap; gap: 6px; }
   .have span { padding: 4px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; background: var(--green-bg); color: var(--green); }
   .have span.miss { background: var(--amber-bg); color: var(--amber); }
-  .safe { display: flex; align-items: center; gap: 7px; font-size: 12.5px; font-weight: 600; color: var(--green); }
+  /* allergen VERDICT lines — never green, never a check-as-clearance, never the word "safe" (SR-2, design-principles P5).
+     ALLOWED renders as "no known allergen match" in neutral ink; ALLOWED_WITH_UNKNOWNS in amber naming WHAT is unknown;
+     BLOCKED uses the .allergen red bar and is never offered as a choice. Every verdict carries the standing caveat. */
+  .verdict { display: flex; flex-direction: column; gap: 3px; }
+  .verdict .line { display: flex; align-items: center; gap: 7px; font-size: 12.5px; font-weight: 600; color: var(--ink-2); }
+  .verdict.unk .line { color: var(--amber); }
+  .verdict .caveat { font-size: 11px; color: var(--ink-3); padding-left: 22px; }
   .why { display: none; padding: 11px 13px; border-radius: 12px; background: var(--sand); font-size: 12.5px; line-height: 1.5; color: var(--ink-2); }
   .why.open { display: block; }
   .btns { display: flex; gap: 10px; }
@@ -317,7 +323,7 @@
       </div>
       <div class="ask" onclick="go('scr-assistant')">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#f4b48f" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4l1.6 4.2L17 9.8l-4.4 1.6L11 16l-1.6-4.6L5 9.8l4.4-1.6z"/><path d="M18 14l.8 2.1 2.1.8-2.1.8-.8 2.1-.8-2.1-2.1-.8 2.1-.8z"/></svg>
-        <span>Ask your kitchen… what can I make tonight?</span>
+        <span>Ask your kitchen… what can I make tonight? <i style="font-style:normal;font-size:10.5px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:#c9b9a4;margin-left:4px">post-MVP preview</i></span>
         <div class="go"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg></div>
       </div>
     </div>
@@ -340,8 +346,8 @@
         </div>
         <div class="rbody">
           <div class="have"><span>✓ chicken</span><span>✓ spinach</span><span>✓ mushrooms</span><span>✓ rice</span></div>
-          <div class="safe"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v5c0 4.6-3 7.8-7 9-4-1.2-7-4.4-7-9V6z"/><path d="M9 11.5l2 2 4-4"/></svg>Allergen screen passed · all 4 members</div>
-          <div class="why" id="whyHome"><b style="color:var(--ink)">Why this?</b> Ranked <span class="num">92%</span>: uses <b>3 expiring items</b> (chicken · 2d, spinach + mushrooms · 3d), needs <b>0 purchases</b>, fits a <span class="num">25 min</span> window, matches the high-protein preference. Score is computed from inventory — not generated text.</div>
+          <div class="verdict"><div class="line"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v5c0 4.6-3 7.8-7 9-4-1.2-7-4.4-7-9V6z"/></svg>No known allergen match · 4 members · label data</div><div class="caveat">Known matches only — not a guarantee this food is safe.</div></div>
+          <div class="why" id="whyHome"><b style="color:var(--ink)">Why this?</b> Ranked <span class="num">92%</span> (a coverage score: <span class="num">4/4</span> ingredients on hand, weighted by expiry — not a confidence): uses <b>3 expiring items</b> (chicken · 2d, spinach + mushrooms · 3d), needs <b>0 purchases</b>, fits a <span class="num">25 min</span> window, matches the high-protein preference. Score is computed from inventory — not generated text.</div>
           <div class="btns"><button class="btn sec" onclick="toggleWhy('whyHome')">Why this?</button><button class="btn pri" onclick="toast('Recipe detail — not in this mockup')">Cook this</button></div>
         </div>
       </div>
@@ -371,7 +377,7 @@
       </div>
     </div>
 
-    <div class="sec"><h2 class="serif">Needs your confirmation</h2><span style="font-size:12px;color:var(--ai);font-weight:700">2 items</span></div>
+    <div class="sec"><h2 class="serif">Needs your confirmation</h2><span style="font-size:12px;color:var(--ai);font-weight:700">2 items · <span style="font-size:10.5px;letter-spacing:.4px;text-transform:uppercase">fast-follow</span></span></div>
     <div class="tray">
       <div class="titem"><div class="ph fruit"><span class="mono">B</span></div><div class="m"><b>"ORG BNNA 3LB" → Bananas?</b><i>from Costco receipt · low confidence</i></div><button class="okbtn" onclick="toast('Bananas confirmed → Known Fact')">Confirm</button></div>
       <div class="titem"><div class="ph produce"><span class="mono">M</span></div><div class="m"><b>Mushrooms · 8 oz</b><i>from shelf photo · qty is a guess</i></div><button class="okbtn" onclick="toast('Mushrooms confirmed → Known Fact')">Confirm</button></div>
@@ -511,13 +517,14 @@
     <div class="camhint">Matched · Open Food Facts · GTIN 0689544081128</div>
   </div>
   <div class="sheet">
-    <div style="display:flex;align-items:center;gap:8px"><span class="prov fact">✓ Known fact</span><span style="font-size:12px;color:var(--ink-3)">barcode verified · label data</span></div>
+    <div style="display:flex;align-items:center;gap:8px"><span class="prov fact">✓ Known fact</span><span style="font-size:12px;color:var(--ink-3)">product identity · barcode match</span></div>
     <div style="display:flex;gap:12px;align-items:center">
       <div class="ph dairy" style="width:64px;height:64px;border-radius:14px;flex-shrink:0"><span class="mono" style="font-size:26px">Y</span><img src="https://images.unsplash.com/photo-1488477181946-6428a0291777?auto=format&fit=crop&w=200&q=70" alt="" onerror="this.remove()"></div>
       <div><div class="serif" style="font-size:19px;line-height:1.15">Fage Total 2% Greek Yogurt</div><div style="font-size:13px;color:var(--ink-2);margin-top:3px">Fage · <span class="num">16 oz</span> cup</div></div>
     </div>
     <div class="macros"><div><b class="num">140</b><i>cal</i></div><div><b class="num">20 g</b><i>protein</i></div><div><b class="num">5 g</b><i>carbs</i></div><div><b class="num">4 g</b><i>fat</i></div></div>
-    <div class="kv"><span class="k">Allergens</span><span class="v"><span style="padding:3px 10px;border-radius:999px;background:var(--sand);font-size:12px">Milk</span><span style="font-size:12px;color:var(--green)">✓ no household match</span></span></div>
+    <div style="font-size:11px;color:var(--ink-3);margin-top:-6px">Nutrition &amp; allergens: label data via Open Food Facts · tier shown per field (who may mark label data as Known Fact is an open decision, D-017)</div>
+    <div class="kv"><span class="k">Allergens</span><span class="v" style="flex-direction:column;align-items:flex-end;gap:2px"><span><span style="padding:3px 10px;border-radius:999px;background:var(--sand);font-size:12px">Milk</span> <span style="font-size:12px;color:var(--ink-2);font-weight:600">no known household match</span></span><span style="font-size:10.5px;color:var(--ink-3)">label declaration · not a safety guarantee</span></span></div>
     <div class="kv"><span class="k">Best by</span><span class="v"><span class="num">Sep 28</span><span class="prov est">≈ Est.</span></span></div>
     <div class="kv" style="border-bottom:1px solid var(--line)"><span class="k">Quantity</span><div class="step"><button onclick="stepQty(-1)">−</button><b class="num" id="qtyVal">2</b><button onclick="stepQty(1)">+</button></div></div>
     <div class="locs" id="locChips"><button class="loc on" onclick="pickLoc(this)">Fridge</button><button class="loc" onclick="pickLoc(this)">Freezer</button><button class="loc" onclick="pickLoc(this)">Pantry</button></div>
@@ -541,7 +548,7 @@
         </div>
         <div class="rbody">
           <div class="have"><span>✓ chicken</span><span>✓ spinach</span><span>✓ mushrooms</span><span>✓ rice</span></div>
-          <div class="safe"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v5c0 4.6-3 7.8-7 9-4-1.2-7-4.4-7-9V6z"/><path d="M9 11.5l2 2 4-4"/></svg>Allergen screen passed · all 4 members</div>
+          <div class="verdict"><div class="line"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v5c0 4.6-3 7.8-7 9-4-1.2-7-4.4-7-9V6z"/></svg>No known allergen match · 4 members · label data</div><div class="caveat">Known matches only — not a guarantee this food is safe.</div></div>
           <div class="btns"><button class="btn sec" onclick="toggleWhy('whyR')">Why this?</button><button class="btn pri" onclick="toast('Recipe detail — not in this mockup')">Cook this</button></div>
           <div class="why" id="whyR">Ranked <span class="num">92%</span>: 3 expiring items, 0 purchases, ≤ 30 min, high-protein. Computed from inventory — not generated text.</div>
         </div>
@@ -554,11 +561,12 @@
     </div>
     <div class="rrow" onclick="toast('Recipe detail — not in this mockup')">
       <div class="ph frozen"><span class="mono">S</span><img src="https://images.unsplash.com/photo-1467003909585-2f8a72700288?auto=format&fit=crop&w=300&q=70" alt="" onerror="this.remove()"></div>
-      <div class="b"><div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px"><h4 class="serif">Miso-glazed salmon</h4><span class="match num">78%</span></div><div class="meta"><span class="num">30 min</span>·<span class="num">610 cal</span>·thaw first</div><div class="have"><span>✓ salmon</span><span>✓ rice</span><span class="miss">+ miso</span><span class="miss">+ broccoli</span></div></div>
+      <div class="b"><div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px"><h4 class="serif">Miso-glazed salmon</h4><span class="match num">78%</span></div><div class="meta"><span class="num">30 min</span>·<span class="num">610 cal</span>·thaw first</div><div class="have"><span>✓ salmon</span><span>✓ rice</span><span class="miss">+ miso</span><span class="miss">+ broccoli</span></div>
+        <div class="verdict unk"><div class="line"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 3.5L21.5 20h-19z"/><path d="M12 10v4.5"/><circle cx="12" cy="17.4" r=".6" fill="currentColor"/></svg>Allergen data unknown for Maya (severe: sesame) — miso has no ingredient statement on file</div><div class="caveat">Not blocked, not cleared. Check the package before cooking.</div></div></div>
     </div>
     <div class="rrow" style="opacity:.92">
       <div class="ph grain" style="filter:grayscale(.6)"><span class="mono">T</span><img src="https://images.unsplash.com/photo-1555949258-eb67b1ef0ceb?auto=format&fit=crop&w=300&q=70" alt="" onerror="this.remove()"></div>
-      <div class="b"><h4 class="serif" style="color:var(--ink-2)">Thai peanut noodles</h4><div class="allergen" style="padding:8px 10px;font-size:12px"><span class="sh" style="width:24px;height:24px"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round"><path d="M12 3.5L21.5 20h-19z"/><path d="M12 10v4.5"/><circle cx="12" cy="17.4" r=".6" fill="#fff"/></svg></span>Contains peanuts — blocked for Maya</div></div>
+      <div class="b"><h4 class="serif" style="color:var(--ink-2)">Thai peanut noodles</h4><div class="allergen" style="padding:8px 10px;font-size:12px"><span class="sh" style="width:24px;height:24px"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round"><path d="M12 3.5L21.5 20h-19z"/><path d="M12 10v4.5"/><circle cx="12" cy="17.4" r=".6" fill="#fff"/></svg></span>Contains peanuts — blocked for Maya</div><div style="font-size:11.5px;color:var(--ink-3);line-height:1.4">Matched “peanuts” in the ingredient statement (label data). Blocked recipes are shown for transparency and can’t be cooked or planned.</div></div>
     </div>
   </div>
   <div class="nav">

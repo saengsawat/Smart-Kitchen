@@ -1,6 +1,32 @@
-# Design Direction — mix-and-match synthesis
+# Design Direction — v2 (2026-09-15), reconciled to the PO's revamped prototype
 
-**Status:** PROPOSED (awaiting product-owner reaction; final ratification alongside M3 UX work)
+**Status:** ADOPTED as the visual direction by PO decision (2026-09-15, D-019) — tokens below are the **v2 values used by [mockups/smart-kitchen-prototype.html](mockups/smart-kitchen-prototype.html)**; final token file is produced in M3-E0 with contrast ratios documented. Sections 1–5 below are the v1 synthesis (2026-09-03) kept as rationale; **where v1 and the v2 table in §0 disagree, §0 wins.** Competitor research and the "point of view" argument live in [KitchenSmart UIUX Design Plan_09-14-2026.md](KitchenSmart%20UIUX%20Design%20Plan_09-14-2026.md) (PO's design agent); architect assessment of that plan is §7.
+
+## 0. v2 token sheet (authoritative)
+
+| Token | v2 value | v1 value | Note |
+|---|---|---|---|
+| `bg.page` | `#efe5d5` sand | `#f5f4ed` | warmer, more saturated "pantry paper" |
+| `bg.page.alt` | `#e4d7c2` sand-2 | — | photo-tile fallback |
+| `bg.card` | `#fffbf4` paper | `#faf9f5` | |
+| `bg.hero` | `#2a1f18` espresso (+ `#3b2d23`) | — | **new:** dark warm header on Home only; the one large dark surface allowed |
+| `text.onHero` | `#f7efe2` cream | — | |
+| `border` | `#dfd1ba` | `#d1cfc5` | |
+| `text.primary` | `#1e1813` | `#141413` | |
+| `text.secondary` | `#5b5045` | `#5e5d59` | |
+| `text.tertiary` | `#8f8274` | `#87867f` | |
+| `accent.brand` | `#d9673b` terracotta (deep `#b64f28`, tint `#f9dece`) | `#c96442` | **OQ-D1 resolved: terracotta.** Scarcity rule still binds — see §7 finding 2 |
+| `sentiment.positive` | `#2f7d51` (bg `#dfeee3`) | `#1f7a4d` | Known Fact chip, on-hand chips, fresh |
+| `sentiment.warning` | `#b4700c` (bg `#f6e6c8`) | `#ab6400` | Estimated chip, expiring soon, **allergen-unknown lines** |
+| `urgency.today` | `#c75f66` rose (bg `#f7dcdc`) | `#c4666b` | "use today" — explicitly *not* allergen red |
+| `sentiment.danger` | `#b12a2a` (bg `#f9d9d9`) | `#b53333` | **ALLERGEN ONLY**, unchanged rule |
+| `ai` | `#7b4cb5` (bg `#eadff7`) | `#8145b5` | AI Interpretation chip only |
+| Display face | **Fraunces 600** (headings, recipe titles, hero) | optional | **OQ-D2 resolved: adopted** |
+| UI/data face | Inter, `tnum`/`lnum` on all numbers | Inter | unchanged |
+| Radius | 12 / 18 / 24 px, pills 9999, FAB circle | 8 / 12 / 16 | rounder, friendlier |
+| Depth | borders + two-tone surfaces; warm shadow on the phone frame/sheets only | same | unchanged |
+
+Freshness ring (NoWaste-style, from the plan) is adopted as a shared component: colour = time-to-expiry on the ladder positive → warning → rose, **never danger red**.
 **Method:** all 53 brand design systems in the owner's template library (`999_Design Templates\...\design-md\`) were reviewed and scored against this app's needs: warm consumer feel (food/home/family), safety-critical clarity (allergens), data legibility (quantities/macros/expiry), provenance badges (§14 Known Fact / Estimated / AI Interpretation), light-first with dark support, React Native implementability.
 
 **Verdict:** no single system fits whole. The recommendation is a composite of six, with one rule inherited from each.
@@ -96,6 +122,29 @@ Explicitly **rejected** from that mockup: cool blue-gray neutrals and gradients 
 **Assistant (added later at PO request, 2026-09-03):** included in the prototype as an explicitly labeled **post-MVP preview** — entered from a Home header button, deliberately *not* in the primary nav (nav reflects MVP scope). The preview demonstrates the safe pattern: every answer carries a provenance caption; the allergen exchange shows the answer coming from verified label data + household rules with the standard red alert bar, and never claims a food is safe. D-002 scope is unchanged — the assistant remains deferred for implementation.
 
 ## 6. Open items
-- OQ-D1: brand accent final call — terracotta (recommended) vs fresh-green (alternative) — cheap to flip until M3 mockups; ties to product name/brand (Q8).
-- OQ-D2: optional serif display face — decide with branding.
-- OQ-D3: validate the palette in real mockups — first pass done: clickable prototype at [mockups/smart-kitchen-prototype.html](mockups/smart-kitchen-prototype.html) (open in any browser); awaiting PO reaction.
+- ~~OQ-D1~~ **resolved 2026-09-15 (D-019): terracotta** — the PO adopted the v3 prototype, which uses it; fresh-green alternative retired.
+- ~~OQ-D2~~ **resolved 2026-09-15: Fraunces** adopted as the display face (headings, recipe titles, hero).
+- ~~OQ-D3~~ **done:** three prototype iterations; v3 is the PO's revamp (v1/v2 and the GPT reference kept in `mockups/Archives/`).
+- **OQ-D7 (new):** provenance tier for Open Food Facts–sourced nutrition and allergen *label data* — the prototype shows the product identity as Known Fact but leaves nutrition/allergen rows tier-labelled per field; who may mint a KNOWN_FACT declaration from label data is D-017's open item (pre-M4 gate b). Decide before M4.
+- **OQ-D8 (new):** photo licensing — the prototype hotlinks Unsplash; product imagery must come from the catalog source or licensed assets (add to R-4 legal list).
+
+## 7. Architect assessment of the PO's revamp (2026-09-15) — what was adopted, fixed, or rejected
+
+**Adopted from the plan and v3 prototype:** warm pantry-paper base and Fraunces/Inter pairing; dark espresso hero on Home; three-tier provenance chips as icon+text with the AI tier rendered as a `Confirm` action and a pinned "Needs your confirmation" tray; freshness ring; phase labels on Add Food; visible gap math and the check-off → "add to pantry?" loop on Shopping; "Why this?" expander; assistant as a labelled post-MVP preview entered from the Home header, not the nav.
+
+**Fixed in the prototype at adoption (design-principles P5 / SR-2 violations):**
+1. "Allergen screen passed · all 4 members" with a green check-shield (CSS class `safe`) on the Home and Recipes hero cards → now a neutral-ink `verdict` line "No known allergen match · 4 members · label data" plus the standing caveat "Known matches only — not a guarantee this food is safe." Class renamed; `.safe` no longer exists.
+2. Only the happy allergen state was designed → added an **ALLOWED_WITH_UNKNOWNS** card (amber, names *what* is unknown and for *whom*: "Allergen data unknown for Maya (severe: sesame) — miso has no ingredient statement on file · Not blocked, not cleared") and gave the existing **BLOCKED** row its evidence line ("Matched 'peanuts' in the ingredient statement") with the statement that blocked recipes are shown for transparency and cannot be cooked or planned.
+3. Scan confirm claimed "Known fact · barcode verified · label data" for the whole sheet → Known Fact now scoped to *product identity (barcode match)*; nutrition/allergen rows carry a per-field source note and the allergen row reads "no known household match · label declaration · not a safety guarantee" in neutral ink (OQ-D7).
+4. The Home "Ask your kitchen…" entry and the Inventory confirmation tray lacked phase labels (P10) → "post-MVP preview" and "fast-follow" added.
+5. "92% match" could read as a confidence (the plan itself bans fake percentages) → the Why-this text now states it is a coverage score (4/4 on hand, expiry-weighted), not a confidence.
+
+**Still to fix (design debt, M3-E0):** terracotta scarcity — v3 uses the brand hue on match badges, hero italic, buttons, active tab, scan tile and the loop banner; reduce to primary CTA, active nav indicator and the hero accent. Contrast ratios for `#c9b9a4`-on-espresso eyebrow text and cream-on-photo scrims must be measured (P9).
+
+**Rejected from the plan (conflicts with recorded decisions):**
+- "Known Fact: optionally no chip at all" — P2 requires every fallible fact to wear its tier; a quiet chip is fine, an absent chip is ambiguous with "no data".
+- "Blocking confirmation if a user tries to plan a conflicting meal" — D-017/P5: BLOCKED is never offered as a choice; there is no confirm dialog.
+- Stage-4 fallback to two confidence states — brief §14 and the ledger keep Estimated as a distinct tier; the *legend* may simplify, the model may not.
+- Expo stack picks (NativeWind, React Native Reusables/gluestack v3, Reanimated, Moti, Skia) — recorded as **PROPOSED input to ADR-001** and M3 ticketing under rule 11, not adopted here.
+
+**Screens the v3 prototype still lacks (ux-plan §7):** onboarding allergies (S2), item detail/history with one-tap correct (S5), barcode-miss → manual completion (S9), account/household (S1/S12), consume/discard from a row, recipe detail with the cook → USE_IN_MEAL confirm, empty/offline/permission states, provenance legend, undo, who-did-what, inventory sort/filter.
