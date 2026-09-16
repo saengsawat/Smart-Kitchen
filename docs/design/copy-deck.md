@@ -103,7 +103,7 @@ One line per affected `(member, restriction)`. `severity` comes from the restric
 
 | `WarningCode` | `WarningSeverity` | String | Where it appears |
 |---|---|---|---|
-| `NO_SAFETY_GUARANTEE` | `info` (always present, not a rendering hint to omit) | "Known matches only · not a guarantee this food is safe." | Directly under every verdict line, on every surface, with no exception. This is the exact form adopted in the prototype; the architect will align design-direction §7's wording to it at acceptance (that source currently uses a full stop where this deck uses `·`). |
+| `NO_SAFETY_GUARANTEE` | `info` (always present, not a rendering hint to omit) | "Known matches only · not a guarantee this food is safe." | Directly under every verdict line, on every surface, with no exception. This is the exact form adopted in the prototype; design-direction §7 was aligned to it at acceptance (it had quoted the caveat with an em dash). |
 | `SEVERE_ALLERGY_UNKNOWN_DATA` | `critical` | Rendered through the severe-severity unknown line above, not as a separate sentence; the *prominence* is the requirement (rule 4), delivered by placement/icon, not by inventing extra copy. | Wherever a severe-severity unknown line appears. |
 | `CROSS_CONTACT` | `high` | "This item may have cross-contact with {allergen} (the manufacturer says 'may contain'). Not blocked, because {member}'s allergy is standard severity." | Attached to an `ALLOWED_WITH_UNKNOWNS` result for a standard-severity restriction (D-017 P1). |
 | `CROSS_CONTACT_SEVERE` | `critical` | Rendered through the `ASSERTION_MAY_CONTAIN` evidence line above (it also blocks); no separate sentence needed. | Wherever that evidence line appears. |
@@ -123,7 +123,7 @@ The card is a summary; every card is tappable through to §3.1 for the full evid
 
 ### §3.3 Scan sheet (barcode confirm)
 
-Per design-direction §7 fix #3: **Known Fact** on this surface is scoped to *product identity* (the barcode matched a catalog row). The allergen row is its own, separately tiered line, because the catalog's allergen *data* may be a lower tier than the identity match. The standing caveat renders on this surface too, directly under whichever verdict line is showing; here it keeps design-direction §7's adopted inline form ("· not a safety guarantee") rather than a separate repeated line, since the two rows below already fold the caveat into the verdict line itself.
+Per design-direction §7 fix #3: **Known Fact** on this surface is scoped to *product identity* (the barcode matched a catalog row). The allergen row is its own, separately tiered line, because the catalog's allergen *data* may be a lower tier than the identity match. The standing caveat renders on this surface too, directly under whichever verdict line is showing; here it keeps design-direction §7's adopted inline form ("· not a safety guarantee") rather than a separate repeated line: the `ALLOWED` row folds it into the verdict line, and the other two rows append the same `· not a safety guarantee` clause.
 
 | Code | String | Tone note |
 |---|---|---|
@@ -367,7 +367,7 @@ Grep gate: `safe`, `passed`, `allergen-free`, `guaranteed`, `verified safe`, a c
 | `safe` | Implies a guarantee the engine cannot make (SR-1/SR-2); `ALLOWED` means "no known match", not "safe". | Two, both deliberate negations, not claims: (1) the standing caveat itself, "Known matches only · not a guarantee this food is safe." (§3.1, §2), the exact form adopted in the prototype; (2) the assistant preview's "I can't mark any food as safe" (§3.4), repeated at the end of every assistant reply. Both places it appears are negations, never a claim. |
 | `passed` | Reads as a test result ("allergen screen passed"), the exact language design-direction §7 fix #1 removed. | None. |
 | `allergen-free` | A positive absence claim the engine never licenses. | None. |
-| `guaranteed` / `guarantee` (as a claim) | Same failure mode as `safe`. | The one place "guarantee" appears is inside the negation "not a guarantee this food is safe" (same string as the `safe` exception above). Both places it appears are negations (§3.1's caveat and §3.3's scan-sheet line), never a claim. |
+| `guaranteed` / `guarantee` (as a claim) | Same failure mode as `safe`. | Both places it appears are negations (§3.1's caveat and §3.3's scan-sheet line), never a claim. |
 | `verified safe` | Compounds two forbidden claims at once. | None. |
 | `✓` used as clearance | A checkmark reads as "cleared" regardless of the words next to it (P9: never colour/icon-only, and never an icon that *is* the safety claim). | A checkmark may still appear as a plain UI affordance (e.g. "select" or "confirmed as entered") wherever it does not sit next to a `ScreeningVerdict`. |
 | Em dash character (U+2014) | P11: reads as generated text. | None. This file must contain zero em dashes, full stop. |
