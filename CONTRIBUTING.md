@@ -44,7 +44,7 @@ Node.js):
 
 ```bash
 corepack enable
-corepack prepare pnpm@12.3.1 --activate
+corepack prepare pnpm@12.3.4 --activate
 ```
 
 If `corepack enable` fails with a permissions error (seen on some Windows installs),
@@ -59,6 +59,59 @@ pnpm typecheck
 pnpm test
 pnpm format:check
 ```
+
+## Running the database suites locally (M1-T10-k)
+
+`apps/api/src/db/**`'s test files (schema constraints, append-only enforcement,
+tenancy/RLS, idempotency, the ledger round-trip, telemetry, retry helper) are
+gated on the `DATABASE_URL` environment variable:
+
+- **Unset (the default):** every database suite **skips loudly** — one line on
+  stderr per suite via `noteDbSuiteSkipped` (`apps/api/src/db/test-support/
+  harness.ts`), plus a named `SKIP NOTICE — <suite> did not run` test in each
+  file, so a green `pnpm test` run can never be mistaken for one that actually
+  exercised the schema. **In CI this is not an option** — `noteDbSuiteSkipped`
+  throws instead of skipping whenever `CI`/`GITHUB_ACTIONS` is set, so a
+  database suite that fails to run fails the build, by name.
+- **Set, pointing at a reachable Postgres 17:** every suite runs for real. Each
+  test *file* creates its own throwaway database (from `template0`), migrates
+  it, and drops it afterwards — safe to point at a shared server, since nothing
+  here touches an existing database by name.
+
+Any reachable Postgres 17 works; two ways to get one:
+
+**Docker**, if you have it:
+
+```bash
+docker run --rm -d --name sk-dev-pg -p 5432:5432 \
+  -e POSTGRES_HOST_AUTH_METHOD=trust postgres:17-alpine
+DATABASE_URL=postgres://postgres@localhost:5432/postgres pnpm test
+docker stop sk-dev-pg
+```
+
+**A native throwaway cluster**, if you already have the PostgreSQL 17
+binaries installed (no Docker required — this is what CI's own container
+image and every local run of these suites during M1-T2/M1-T10 used, since
+Docker is not installed on this project's primary development machine):
+
+```bash
+# Adjust PGBIN to wherever `initdb`/`pg_ctl` live (e.g. on Windows,
+# "C:\Program Files\PostgreSQL\17\bin"); SCRATCH to any writable, throwaway
+# directory — a temp/scratch dir, never a directory you care about, since
+# initdb populates it and pg_ctl writes a log into it.
+initdb -D "$SCRATCH/pgdata" -U postgres --auth=trust -E UTF8
+pg_ctl -D "$SCRATCH/pgdata" -o "-p 55432" -l "$SCRATCH/pg.log" start
+
+DATABASE_URL=postgres://postgres@localhost:55432/postgres pnpm test
+
+pg_ctl -D "$SCRATCH/pgdata" stop
+rm -rf "$SCRATCH/pgdata"
+```
+
+This does **not** touch any installed PostgreSQL service or its data
+directory — it is an independent, disposable cluster on its own port, gone
+with the scratch directory. Pick a port that is not already in use if `55432`
+is taken locally.
 
 ## Windows: long paths
 

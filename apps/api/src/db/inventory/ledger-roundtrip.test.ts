@@ -41,6 +41,7 @@ import {
   type SeededHousehold,
   type TestDatabase,
 } from "../test-support/harness.js";
+import { canonicalizeInstant } from "./mapping.js";
 import {
   appendTransactionToDb,
   insertInventoryItem,
@@ -63,6 +64,25 @@ const BASE_EPOCH_MS = Date.UTC(2026, 2, 6, 18, 0, 0);
 /** Canonical UTC instant `step` seconds after the base epoch. */
 function instantAt(step: number): string {
   return new Date(BASE_EPOCH_MS + step * 1000).toISOString();
+}
+
+/**
+ * The same instant as {@link instantAt}, written non-canonically — an
+ * explicit (possibly non-zero) offset instead of `Z`, and no milliseconds
+ * component — so it denotes the identical instant while never being
+ * byte-identical to what `canonicalizeInstant`/`toISOString` would produce.
+ * Used to prove lot instants are canonicalised on write (M1-T2 F9 / M1-T10-e):
+ * `canonicalizeInstant(nonCanonicalInstantAt(step, h))` must equal
+ * `instantAt(step)` for every offset this generates.
+ */
+function nonCanonicalInstantAt(step: number, offsetHours: number): string {
+  const ms = BASE_EPOCH_MS + step * 1000;
+  const shifted = new Date(ms + offsetHours * 3_600_000).toISOString();
+  const sign = offsetHours >= 0 ? "+" : "-";
+  const magnitude = Math.abs(offsetHours).toString().padStart(2, "0");
+  // Drop toISOString()'s ".000Z" tail (positions 19+) and replace it with an
+  // explicit, non-UTC-looking offset that still names the same instant.
+  return `${shifted.slice(0, 19)}${sign}${magnitude}:00`;
 }
 
 const INCREASING: readonly TransactionType[] = ["INITIAL_STOCK", "PURCHASE"];
@@ -566,6 +586,31 @@ describe.skipIf(!dbTestsEnabled)(SUITE, () => {
       }
     });
 
+    it("refuses a next_sequence that drifted from its ledger (M1-T10-g)", async () => {
+      // Distinct from "a ledger with a gap in its sequence" above: that test
+      // corrupts the *rows* (a transaction row skips a sequence number) with
+      // the trigger disabled entirely. This one leaves every row honest and
+      // tampers only the item's stored `next_sequence` snapshot column — the
+      // same class of drift F4 already covers for `current_qty_micros`,
+      // extended to the other snapshot column `loadInventoryItem` trusts.
+      const { itemId } = await seededItem();
+      const outcome = await inRolledBackTransaction(
+        [`ALTER TABLE inventory_items DISABLE TRIGGER inventory_items_guard`],
+        async (client) => {
+          await client.query(`UPDATE inventory_items SET next_sequence = 99 WHERE id = $1`, [
+            itemId,
+          ]);
+          return loadInventoryItem(client, household.householdId, itemId);
+        },
+      );
+
+      expect(outcome.ok).toBe(false);
+      if (!outcome.ok) {
+        expect(outcome.error.code).toBe("CORRUPT_LEDGER");
+        expect(outcome.error.message).toMatch(/stored next_sequence 99 does not follow/);
+      }
+    });
+
     it("refuses a lot snapshot that drifted from its ledger", async () => {
       const { itemId, lotId } = await seededItem();
       const outcome = await inRolledBackTransaction(
@@ -601,9 +646,19 @@ describe.skipIf(!dbTestsEnabled)(SUITE, () => {
     it("round-trip exactly and reconcile in SQL and in the domain", async () => {
       const magnitudeMicros = fc.integer({ min: 1, max: 4_000_000 });
 
+      const lotInstantVariant = fc.record({
+        hasAcquired: fc.boolean(),
+        hasExpires: fc.boolean(),
+        offsetHours: fc.integer({ min: -9, max: 9 }),
+      });
+
       const arbitrary = fc
         .record({
           lotCount: fc.integer({ min: 1, max: 3 }),
+          // One variant per possible lot (max lotCount, 3) — non-canonical
+          // acquiredAt/expiresAt offsets/precisions (M1-T10-e), sliced to the
+          // generated lotCount below.
+          lotInstants: fc.array(lotInstantVariant, { minLength: 3, maxLength: 3 }),
           steps: fc.array(
             fc.record({
               lotIndex: fc.nat({ max: 2 }),
@@ -622,8 +677,29 @@ describe.skipIf(!dbTestsEnabled)(SUITE, () => {
             { minLength: 1, maxLength: 10 },
           ),
         })
-        .map(({ lotCount, steps }) => {
+        .map(({ lotCount, lotInstants, steps }) => {
           const lotIds = Array.from({ length: lotCount }, () => randomUUID());
+          const lots = lotIds.map((lotId, index) => {
+            const variant = lotInstants[index] ?? {
+              hasAcquired: false,
+              hasExpires: false,
+              offsetHours: 0,
+            };
+            return {
+              lotId,
+              ...(variant.hasAcquired
+                ? { acquiredAt: nonCanonicalInstantAt(-3600 * (index + 1), variant.offsetHours) }
+                : {}),
+              ...(variant.hasExpires
+                ? {
+                    expiresAt: nonCanonicalInstantAt(
+                      86_400 * 30 * (index + 1),
+                      variant.offsetHours,
+                    ),
+                  }
+                : {}),
+            };
+          });
           // Idempotency keys are unique per (household, key) by index — every
           // run shares one household, so a fixed `gen-0` would be rejected as a
           // conflict by the second run rather than appended.
@@ -671,18 +747,18 @@ describe.skipIf(!dbTestsEnabled)(SUITE, () => {
                 : {}),
             };
           });
-          return { lotIds, inputs };
+          return { lots, inputs };
         });
 
       await fc.assert(
-        fc.asyncProperty(arbitrary, async ({ lotIds, inputs }) => {
+        fc.asyncProperty(arbitrary, async ({ lots, inputs }) => {
           const itemId = randomUUID();
           const shell: CreateInventoryItemInput = {
             itemId,
             householdId: household.householdId,
             unit: UNIT,
             storageLocation: "PANTRY",
-            lots: lotIds.map((lotId) => ({ lotId })),
+            lots,
           };
 
           await persist(shell, inputs);
@@ -698,6 +774,27 @@ describe.skipIf(!dbTestsEnabled)(SUITE, () => {
           expect(stored.currentQty.micros).toBe(expected.currentQty.micros);
           expect(sortedByLot(stored)).toStrictEqual(sortedByLot(expected));
           expect(stored.nextSequence).toBe(expected.nextSequence);
+
+          // 2b. (M1-T10-e) Lot instants were canonicalised on write:
+          // `shell.lots` supplied non-canonical offsets/precisions, but the
+          // read-back lot carries exactly `canonicalizeInstant` of what was
+          // given — never the original, non-canonical string.
+          for (const lot of shell.lots ?? []) {
+            const storedLot = stored.lots.find((candidate) => candidate.lotId === lot.lotId);
+            expect(storedLot, `lot ${lot.lotId} missing from read-back`).toBeDefined();
+            if (lot.acquiredAt === undefined) {
+              expect(storedLot?.acquiredAt).toBeUndefined();
+            } else {
+              expect(storedLot?.acquiredAt).not.toBe(lot.acquiredAt);
+              expect(storedLot?.acquiredAt).toBe(canonicalizeInstant(lot.acquiredAt));
+            }
+            if (lot.expiresAt === undefined) {
+              expect(storedLot?.expiresAt).toBeUndefined();
+            } else {
+              expect(storedLot?.expiresAt).not.toBe(lot.expiresAt);
+              expect(storedLot?.expiresAt).toBe(canonicalizeInstant(lot.expiresAt));
+            }
+          }
 
           // 3. The domain's own reconciliation passes on what came back.
           const report = reconcile(stored);

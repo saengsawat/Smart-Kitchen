@@ -45,6 +45,22 @@ export default tseslint.config(
       globals: { ...globals.node },
     },
   },
+  // scripts/**/*.mjs (M1-T5 follow-up, M1-T10-d): outside apps/**/packages/**
+  // and not matched by the root-file-only "*.ts"/"*.js" block above, so
+  // without this it fell back to ESLint's own default (ecmaVersion 2018,
+  // sourceType script, no globals) — forcing scripts/food-data-coverage-
+  // research.mjs into ES2018-safe syntax and a manual `/* global */` comment
+  // just to lint clean. Plain (non-type-checked) parsing, same as the "*.ts"/
+  // "*.js" block: these are standalone Node scripts, not part of any
+  // package's tsconfig "include".
+  {
+    files: ["scripts/**/*.mjs"],
+    languageOptions: {
+      ecmaVersion: "latest",
+      sourceType: "module",
+      globals: { ...globals.node },
+    },
+  },
   {
     settings: {
       // TS-aware resolution: understands NodeNext's "./foo.js" -> "./foo.ts"
@@ -63,11 +79,20 @@ export default tseslint.config(
   // packages/domain is the deterministic core (ARCHITECTURE.md §2,
   // CLAUDE.md rule 7): zero runtime dependencies, zero I/O, no imports from
   // adapters or contracts. Scoped to domain's production source only (its
-  // *.test.ts files legitimately depend on the shared vitest devDependency,
-  // which is not a boundary concern). Enforced three ways:
+  // *.test.ts files legitimately depend on the shared vitest/fast-check
+  // devDependencies, which are not a boundary concern). Enforced three ways:
   //  1. no-extraneous-dependencies — domain/package.json declares zero
   //     dependencies, so ANY bare-specifier import (an npm package, or a
   //     sibling workspace package like @smart-kitchen/adapters) is flagged.
+  //     `devDependencies: false` (M1-T10-c) is required for this to bite on
+  //     production source: the rule's own default is `devDependencies: true`
+  //     (permit them), which let a `fast-check` import into a *production*
+  //     domain file lint clean — devDependencies are visible to production
+  //     code only in the eyes of this rule, never at runtime, so that default
+  //     was silently overclaiming the boundary it exists to guard (M1-T3
+  //     review follow-up). With it `false`, only dependencies listed in
+  //     domain's zero-entry "dependencies" are permitted here, which is
+  //     none.
   //  2. no-restricted-paths — belt-and-suspenders guard against a relative
   //     path reaching into adapters/contracts source directly.
   //  3. no-nodejs-modules — blocks Node built-ins (fs, net, …), which are
@@ -76,7 +101,10 @@ export default tseslint.config(
     files: ["packages/domain/src/**/*.ts"],
     ignores: ["packages/domain/src/**/*.test.ts"],
     rules: {
-      "import-x/no-extraneous-dependencies": ["error", { packageDir: domainDir }],
+      "import-x/no-extraneous-dependencies": [
+        "error",
+        { packageDir: domainDir, devDependencies: false },
+      ],
       "import-x/no-nodejs-modules": "error",
       "import-x/no-restricted-paths": [
         "error",

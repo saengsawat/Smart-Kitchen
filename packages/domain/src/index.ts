@@ -122,3 +122,17 @@ export type {
   WarningCode,
   WarningSeverity,
 } from "./allergens/index.js";
+
+// M1-T10-i: the recommendations-corpus mirror, re-exported by name (not
+// bundled with the screening-engine API above) solely so a consistency check
+// living outside packages/domain — which stays I/O-free and cannot read
+// tests/fixtures/recommendations/**/*.json itself — can import the exact same
+// data `packages/domain/src/allergens/corpus.test.ts` asserts against, rather
+// than risk a second, independently-typed transcription drifting from either
+// copy. This is corpus *data* (recorded screening test cases), not part of
+// the screening engine's own surface.
+export {
+  RECOMMENDATIONS_CORPUS_CASE_FILES,
+  RECOMMENDATIONS_CORPUS_CASES,
+  type ScreeningCase as RecommendationsCorpusCase,
+} from "./allergens/test-support.js";

@@ -5,6 +5,7 @@ on:
   pull_request:
     branches:
       - main
+  workflow_dispatch:
 
 # Cancel superseded runs on the same branch so demo/short-lived branches
 # don't queue up stacked runs.
@@ -28,9 +29,23 @@ jobs:
     # secret (and nothing that looks like one) enters the repo — CLAUDE.md
     # rule 12. The container is destroyed with the job; no cloud resource is
     # created (rule 17).
+    #
+    # Pinned by digest (M1-T10-b) rather than the floating `17-alpine` tag, so
+    # a tag repoint upstream cannot silently change what CI tests against. To
+    # bump: obtain a fresh digest read-only from the registry (no Docker
+    # needed) —
+    #   TOKEN=$(curl -s \
+    #     "https://auth.docker.io/token?service=registry.docker.io&scope=repository:library/postgres:pull" \
+    #     | node -e "let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>console.log(JSON.parse(d).token))")
+    #   curl -s -D - -o /dev/null "https://registry-1.docker.io/v2/library/postgres/manifests/17-alpine" \
+    #     -H "Authorization: Bearer $TOKEN" \
+    #     -H "Accept: application/vnd.docker.distribution.manifest.list.v2+json, application/vnd.oci.image.index.v1+json"
+    # and copy the `docker-content-digest` response header into the `image:`
+    # line below (keep the `postgres:17-alpine@` prefix for a human-readable
+    # tag alongside the digest that actually pins it).
     services:
       postgres:
-        image: postgres:17-alpine
+        image: postgres:17-alpine@sha256:18cfe3ef5e6815560c98237d6216d1e5119702fb0f3894c8785dd58b8bbe5d73
         env:
           POSTGRES_HOST_AUTH_METHOD: trust
           POSTGRES_DB: smart_kitchen_ci
@@ -50,7 +65,7 @@ jobs:
         uses: pnpm/action-setup@v6.1.0
         # No `version` input: pnpm/action-setup errors if it's given alongside
         # package.json's "packageManager" field (even a satisfying prefix like
-        # "12"), so this reads pnpm@12.3.1 from packageManager instead — the
+        # "12"), so this reads pnpm@12.3.4 from packageManager instead — the
         # exact version, sourced from the one place it's declared.
 
       - name: Setup Node.js

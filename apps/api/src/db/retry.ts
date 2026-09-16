@@ -95,7 +95,13 @@ export class LedgerRetryExhaustedError extends Error {
 export interface RetryOptions extends HouseholdSessionOptions {
   /** Total attempts before giving up (default 3). Must be at least 1. */
   readonly maxAttempts?: number;
-  /** Milliseconds to wait before the given (1-based) retry attempt. */
+  /**
+   * Milliseconds to wait before the given (1-based) retry attempt. Its
+   * return value is validated (finite, non-negative) before use — a
+   * misbehaving custom `delay` fails loudly via the same path as a rejecting
+   * `sleep` (see below), rather than reaching `sleep` with a value like
+   * `NaN` or a negative number.
+   */
   readonly delay?: (attempt: number) => number;
   /**
    * Performs the wait. Injectable so tests never sleep on real time. If this
@@ -164,14 +170,37 @@ export async function withRetriedHouseholdTransaction<T>(
       lastError = error;
       if (attempt >= maxAttempts) break;
       try {
-        await sleep(delay(attempt));
+        // `delay(attempt)` is caller-owned (a custom `RetryOptions.delay` is
+        // an injectable option, same as `sleep`): validated here rather than
+        // trusted, so a caller's bug (a negative/NaN/non-finite backoff)
+        // fails loudly at the call site instead of quietly reaching
+        // `setTimeout`/an injected `sleep`, which either coerces it (`NaN` ->
+        // near-immediate) or is free to do anything at all with it.
+        const ms = delay(attempt);
+        if (!Number.isFinite(ms) || ms < 0) {
+          throw new Error(
+            `retry delay(attempt) must return a finite, non-negative number of milliseconds, got ${String(ms)}`,
+          );
+        }
+        await sleep(ms);
       } catch (sleepError) {
         // The ledger error that triggered this wait must not vanish silently
         // if the (injected, test-controlled in practice) sleep itself
         // rejects — attach it as `cause` when the rejection doesn't already
-        // carry one.
+        // carry one. That assignment can itself throw (F8, M1-T9 re-review):
+        // a frozen or otherwise non-extensible rejection value raises
+        // `TypeError: Cannot add property cause` on the plain `=`, which
+        // would replace `sleepError` with an unrelated error and lose both
+        // the sleep failure and the ledger error it was meant to carry. The
+        // `try/catch` makes that assignment best-effort: on success
+        // `sleepError` carries `cause`; on failure it is thrown exactly as
+        // received, cause-less but not replaced.
         if (sleepError instanceof Error && sleepError.cause === undefined) {
-          sleepError.cause = error;
+          try {
+            sleepError.cause = error;
+          } catch {
+            // Best-effort only — see the comment above.
+          }
         }
         throw sleepError;
       }

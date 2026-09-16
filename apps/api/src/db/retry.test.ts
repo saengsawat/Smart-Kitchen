@@ -274,6 +274,117 @@ describe("withRetriedHouseholdTransaction — control flow (fake pool, no DB)", 
     ).rejects.toThrow(/maxAttempts/);
     expect(invoked).toBe(false);
   });
+
+  // --- M1-T10-m (review F3/F8/F9 nits) --------------------------------------
+
+  it("propagates a rejecting sleep with the ledger error attached as cause, after exactly one attempt", async () => {
+    // Regression for F9 (M1-T9 re-review): the sleep-rejection path had no
+    // test at all — mutation M12 (delete `throw sleepError`, which would let
+    // the loop fall through and keep retrying instead of propagating the
+    // sleep failure) killed 0/38 existing tests. This test fails under that
+    // mutation: `attempts` would reach 3 (exhausting maxAttempts) rather than
+    // stopping at 1, and `thrown` would be a LedgerRetryExhaustedError rather
+    // than `sleepError` itself.
+    const ledgerError = pgError("40001");
+    const sleepError = new Error("sleep itself rejected");
+    let attempts = 0;
+    let thrown: unknown;
+    try {
+      await withRetriedHouseholdTransaction(
+        fakePool(),
+        "household-1",
+        () => {
+          attempts += 1;
+          return Promise.reject(ledgerError);
+        },
+        { sleep: () => Promise.reject(sleepError) },
+      );
+    } catch (error) {
+      thrown = error;
+    }
+    expect(attempts).toBe(1);
+    expect(thrown).toBe(sleepError);
+    expect((thrown as Error).cause).toBe(ledgerError);
+  });
+
+  it("does not clobber a sleep rejection's own pre-existing cause", async () => {
+    const ledgerError = pgError("40001");
+    const originalCause = new Error("original cause");
+    const sleepError = new Error("sleep itself rejected", { cause: originalCause });
+    let thrown: unknown;
+    try {
+      await withRetriedHouseholdTransaction(
+        fakePool(),
+        "household-1",
+        () => Promise.reject(ledgerError),
+        { sleep: () => Promise.reject(sleepError) },
+      );
+    } catch (error) {
+      thrown = error;
+    }
+    expect(thrown).toBe(sleepError);
+    expect((thrown as Error).cause).toBe(originalCause);
+  });
+
+  it("F8: a frozen sleep-rejection that cannot carry a cause still propagates, unmodified", async () => {
+    // Object.freeze makes the rejection non-extensible, so the plain
+    // `sleepError.cause = error` assignment this module used to do would
+    // throw `TypeError: Cannot add property cause` in strict mode — losing
+    // both the sleep error and the ledger error it was meant to carry, and
+    // replacing them with an unrelated TypeError. The try/catch around that
+    // assignment makes it best-effort instead.
+    const ledgerError = pgError("40001");
+    const frozenSleepError = Object.freeze(new Error("frozen rejection"));
+    let thrown: unknown;
+    try {
+      await withRetriedHouseholdTransaction(
+        fakePool(),
+        "household-1",
+        () => Promise.reject(ledgerError),
+        { sleep: () => Promise.reject(frozenSleepError) },
+      );
+    } catch (error) {
+      thrown = error;
+    }
+    expect(thrown).toBe(frozenSleepError);
+    // The assignment silently failed (frozen), so no cause was ever attached
+    // — the object's own frozen shape is unchanged.
+    expect((thrown as Error).cause).toBeUndefined();
+  });
+
+  it("F3: rejects a delay() that returns a non-finite or negative number, with the ledger error as cause", async () => {
+    const ledgerError = pgError("40001");
+    let thrown: unknown;
+    try {
+      await withRetriedHouseholdTransaction(
+        fakePool(),
+        "household-1",
+        () => Promise.reject(ledgerError),
+        { delay: () => Number.NaN },
+      );
+    } catch (error) {
+      thrown = error;
+    }
+    expect(thrown).toBeInstanceOf(Error);
+    expect((thrown as Error).message).toMatch(/delay\(attempt\) must return a finite/);
+    expect((thrown as Error).cause).toBe(ledgerError);
+  });
+
+  it("F3: rejects a negative delay() the same way", async () => {
+    const ledgerError = pgError("40001");
+    let thrown: unknown;
+    try {
+      await withRetriedHouseholdTransaction(
+        fakePool(),
+        "household-1",
+        () => Promise.reject(ledgerError),
+        { delay: () => -1 },
+      );
+    } catch (error) {
+      thrown = error;
+    }
+    expect((thrown as Error).message).toMatch(/delay\(attempt\) must return a finite/);
+  });
 });
 
 // ---------------------------------------------------------------------------

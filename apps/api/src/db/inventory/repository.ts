@@ -162,6 +162,13 @@ export async function insertInventoryLot(
   itemId: string,
   lot: LotInput,
 ): Promise<void> {
+  // Canonicalised on write for the same reason `canonicalizeTransactionInput`
+  // does it above (M1-T2 F9 backlog item): `timestamptz` has no memory of the
+  // offset or sub-millisecond precision it was written with, so an instant
+  // stored as-given and read back through `toInstant` would not equal what
+  // the caller supplied. Normalising here, before the row exists, keeps a
+  // lot's stored instant byte-identical to the value `loadInventoryItem`
+  // returns for it on reload.
   await client.query(
     `INSERT INTO inventory_lots
        (id, household_id, item_id, acquired_at, expires_at, expiry_tier, label)
@@ -170,8 +177,8 @@ export async function insertInventoryLot(
       lot.lotId,
       householdId,
       itemId,
-      lot.acquiredAt ?? null,
-      lot.expiresAt ?? null,
+      lot.acquiredAt === undefined ? null : canonicalizeInstant(lot.acquiredAt),
+      lot.expiresAt === undefined ? null : canonicalizeInstant(lot.expiresAt),
       lot.expiryTier ?? null,
       lot.label ?? null,
     ],

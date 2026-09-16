@@ -12,11 +12,18 @@ prefix, which leaves room for `generation-*.json` beside these.
 ## Why these files exist
 
 They are the durable, language-neutral statement of what the deterministic
-allergen engine must decide. `packages/domain/src/allergens/fixtures.test.ts`
-reads every file in this directory and asserts the engine reproduces
-`expect` exactly, so a case added here is automatically enforced. The same
-corpus is intended to drive the M6 eval tests (INV-ALRG-1 end-to-end), which is
-why the expectations are expressed as data rather than as assertions in code.
+allergen engine must decide. `packages/domain` is the zero-I/O core and
+cannot read this directory itself, so `packages/domain/src/allergens/
+corpus.test.ts` asserts the engine against an in-file mirror of these cases
+(`RECOMMENDATIONS_CORPUS_CASES`/`RECOMMENDATIONS_CORPUS_CASE_FILES`, defined in
+`packages/domain/src/allergens/test-support.ts`) instead of reading the JSON
+directly, so a case added here is enforced only once that mirror is updated
+to match. `packages/adapters/src/product-lookup/recommendations-corpus-
+consistency.test.ts` is what keeps the two from silently drifting apart: it
+*can* do I/O, and asserts, file by file, that the mirror is byte-for-byte
+identical to what is checked in here (M1-T10-i). The same corpus is intended
+to drive the M6 eval tests (INV-ALRG-1 end-to-end), which is why the
+expectations are expressed as data rather than as assertions in code.
 
 ## Case schema
 
@@ -48,8 +55,12 @@ suite rather than passing unnoticed.
 ## Adding a case
 
 Reproduce the situation as a new file (bug ⇒ fixture first, per testing-strategy
-§3), then run `pnpm test`. Note that `expect` records *current, intended*
-behavior: two entries — `screening-006`/`screening-007` — encode the **PROPOSED**
+§3), add the matching entry to `RECOMMENDATIONS_CORPUS_CASES`/
+`RECOMMENDATIONS_CORPUS_CASE_FILES` in
+`packages/domain/src/allergens/test-support.ts`, then run `pnpm test` —
+`recommendations-corpus-consistency.test.ts` fails loudly if the two are not
+identical. Note that `expect` records *current, intended* behavior: two
+entries — `screening-006`/`screening-007` — encode the **PROPOSED**
 cross-contact policy, and will need updating if the architect ratifies the
 alternative. Both say so in their `notes`.
 

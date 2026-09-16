@@ -130,8 +130,23 @@ describe.skipIf(!dbTestsEnabled)(SUITE, () => {
     });
 
     it("household Beta sees only its own row", async () => {
-      const ids = await itemIdsAs(beta.householdId);
-      expect(ids).toHaveLength(1);
+      // M1-T10-l (review F3): Alpha's test above asserts household_id
+      // identity, not just row count — this one previously checked count
+      // only, which a mutation smuggling in a foreign row of the right
+      // *count* but wrong household would not have caught.
+      const rows = await withHouseholdTransaction(
+        db.pool,
+        beta.householdId,
+        async (client) => {
+          const result = await client.query<{ household_id: string }>(
+            `SELECT household_id FROM inventory_correction_telemetry`,
+          );
+          return result.rows;
+        },
+        { assumeRole: APP_ROLE },
+      );
+      expect(rows.every((row) => row.household_id === beta.householdId)).toBe(true);
+      expect(rows).toHaveLength(1);
     });
 
     it("no household context sees no rows", async () => {

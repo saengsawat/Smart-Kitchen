@@ -23,3 +23,9 @@ export const REPO_ROOT = path.resolve(moduleDir, "..", "..", "..", "..");
 export const PRODUCTS_FIXTURES_DIR = path.join(REPO_ROOT, "tests", "fixtures", "products");
 export const BARCODES_FIXTURES_DIR = path.join(REPO_ROOT, "tests", "fixtures", "barcodes");
 export const BARCODES_MANIFEST_PATH = path.join(BARCODES_FIXTURES_DIR, "manifest.json");
+export const RECOMMENDATIONS_FIXTURES_DIR = path.join(
+  REPO_ROOT,
+  "tests",
+  "fixtures",
+  "recommendations",
+);

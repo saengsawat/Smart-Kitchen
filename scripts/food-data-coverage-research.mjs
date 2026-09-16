@@ -1,8 +1,9 @@
 #!/usr/bin/env node
-/* global fetch, process, console, setTimeout */
-// The above declares this file's Node/web globals for ESLint: this repo's
-// eslint.config.js only wires `globals.node` into apps/**/packages/** — a
-// root-config change out of scope here (M1-T5's file scope is scripts/**).
+// M1-T10-d: eslint.config.js now wires a modern ecmaVersion/sourceType and
+// `globals.node` into scripts/**/*.mjs directly, so the `/* global */`
+// comment this file used to need (M1-T5, when scripts/** fell back to
+// ESLint's much older ecmaVersion-2018/no-globals default) would now
+// conflict with those built-ins (no-redeclare) rather than declare them.
 /**
  * M1-T5 R-1 research spike: measures real-world hit-rate + field completeness
  * of Open Food Facts (OFF) and USDA FoodData Central (FDC) against a
@@ -53,13 +54,12 @@
 import { writeFileSync } from "node:fs";
 import path from "node:path";
 
-// `process.argv[1]` (not `import.meta.url`) — this repo's eslint.config.js
-// resolves an ecmaVersion too old for `import.meta` on files outside
-// apps/**/packages/** (scripts/ isn't a linted "project" there), and fixing
-// that is a root-config change out of this ticket's file scope. `argv[1]`
-// works identically here since this file is always run directly as the
-// entry script (`node scripts/food-data-coverage-research.mjs`), never
-// imported as a module.
+// `process.argv[1]` (not `import.meta.url`) — unaffected by M1-T10-d's
+// eslint.config.js update (which now parses scripts/**/*.mjs with a modern
+// ecmaVersion, so `import.meta` would lint fine too): `argv[1]` works
+// identically here since this file is always run directly as the entry
+// script (`node scripts/food-data-coverage-research.mjs`), never imported as
+// a module, so there is no behaviour to change either way.
 const REPO_ROOT = path.resolve(path.dirname(process.argv[1]), "..");
 const OUT_PATH = path.join(REPO_ROOT, "docs", "research", "food-data-coverage.raw.json");
 
@@ -757,8 +757,9 @@ async function fetchJson(url, headers) {
     body = await response.json();
   } catch (parseError) {
     // Optional-catch-binding (`catch {}`) is ES2019+; this file stays
-    // ES2018-safe for the same reason noted above `orElse`/`prop`. The
-    // parse failure itself isn't actionable here (body just stays null).
+    // ES2018-safe for the same reason noted above `orElse`/`prop` (a code-style
+    // choice now, not a lint requirement — see that comment). The parse
+    // failure itself isn't actionable here (body just stays null).
     void parseError;
     body = null;
   }
@@ -792,14 +793,15 @@ function isFiniteNum(value) {
 
 /**
  * Small "not null/undefined" fallback and safe-property helpers — used
- * instead of `??`/`?.` throughout this file. This repo's eslint.config.js
- * only configures a modern parser (ecmaVersion) for `apps/**` and
- * `packages/**` TypeScript sources; files elsewhere (like this script) fall
- * back to an older default that predates optional chaining/nullish
- * coalescing (ES2020). Fixing that is a root-config change out of this
- * ticket's file scope (M1-T5), so this script is written in plain,
- * ES2018-safe JS instead. Node itself runs modern syntax fine either way —
- * this is purely to keep `pnpm lint` (which lints the whole repo) green.
+ * instead of `??`/`?.` throughout this file. Originally required because
+ * this repo's eslint.config.js only configured a modern parser (ecmaVersion)
+ * for `apps/**`/`packages/**` TypeScript sources, so `scripts/**` fell back to
+ * an older default that predates optional chaining/nullish coalescing
+ * (ES2020). M1-T10-d wired a modern ecmaVersion into scripts/**\/*.mjs
+ * directly, so `??`/`?.` would lint clean here now too — this file simply
+ * has not been rewritten to use them, not because it still cannot. Node runs
+ * modern syntax fine either way; this was always purely a `pnpm lint`
+ * concern, never a runtime one.
  */
 function orElse(value, fallback) {
   return value === undefined || value === null ? fallback : value;

@@ -661,6 +661,12 @@
     "productId": "condiment-101"
   },
   {
+    "code": "060000100810",
+    "codeType": "UPC_A",
+    "expect": "hit",
+    "productId": "condiment-102"
+  },
+  {
     "code": "070000100819",
     "codeType": "UPC_A",
     "expect": "not-found",

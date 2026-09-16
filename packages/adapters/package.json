@@ -14,6 +14,7 @@
   },
   "dependencies": {},
   "devDependencies": {
+    "@smart-kitchen/domain": "workspace:*",
     "@types/node": "^26.4.1"
   }
 }

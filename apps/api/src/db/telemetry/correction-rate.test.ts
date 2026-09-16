@@ -378,6 +378,27 @@ describe.skipIf(!dbTestsEnabled)(SUITE, () => {
       expect(asNoContext.household.correctionRate).toBeNull();
       expect(asNoContext.household.firstRecordedAt).toBeNull();
       expect(asNoContext.household.lastRecordedAt).toBeNull();
+
+      // M1-T10-l (review F1): a *mismatched* id, not merely a missing
+      // context. Session context is Alpha's (RLS applies and would already
+      // restrict every row to Alpha's own), but the `householdId` parameter
+      // names Beta — exercising correction-rate.ts's own defence-in-depth
+      // `WHERE household_id = $1`, independently of RLS. Alpha's session
+      // cannot see Beta's rows regardless, so the intersection is empty; a
+      // mutation that dropped the parameter's `WHERE` clause entirely would
+      // instead return Alpha's own statement (statementCount 1n, not 0n),
+      // which is what makes this test able to fail (review F1's mutation
+      // M9, "neutralising it with arity preserved", previously survived all
+      // 14 tests in this file).
+      const asAlphaAskingForBeta = await withHouseholdTransaction(
+        db.pool,
+        alpha.householdId,
+        (client) => readCorrectionTelemetry(client, beta.householdId, {}),
+        { assumeRole: APP_ROLE },
+      );
+      expect(asAlphaAskingForBeta.items).toEqual([]);
+      expect(asAlphaAskingForBeta.household.statementCount).toBe(0n);
+      expect(asAlphaAskingForBeta.household.correctionRate).toBeNull();
     });
   });
 
