@@ -7,7 +7,7 @@
 **Binding rules this deck must satisfy (read together):**
 
 - The nine allergen copy rules, [M1-T4 worker report §6](../handoff/M1-T4.worker.md), quoted verbatim in §1 below except that this deck's own zero-em-dash rule (next bullet) has been applied to the two rules that contained one; the substance is unchanged.
-- [design-principles.md](design-principles.md) P2 (provenance always visible), P3 (correction is teaching, not apology), P5 (the nine rules are binding), P8 (every screen designs its non-happy states), P10 (phase honesty), **P11 (no em dashes anywhere, sentence case, no colon-as-label, no exclamation marks in safety copy)**.
+- [design-principles.md](design-principles.md) P2 (provenance always visible), P3 (correction is teaching, not apology), P5 (the nine rules are binding), P8 (every screen designs its non-happy states), P9 (colour is never the sole signal), P10 (phase honesty), **P11 (no em dashes anywhere, sentence case, no colon-as-label, no exclamation marks in safety copy)**.
 - [DECISIONS.md](../../DECISIONS.md) **D-017**, the ratified allergen policies (P1 cross-contact, P2 molluscs, P3 coconut, P4 severe+unknown stays unknown, P5 sourced declarations only). This deck's copy must never contradict them (e.g. must never suggest a `MAY_CONTAIN` standard-severity result is "cleared").
 - [M1-T6 review F7](../handoff/M1-T6.review.md). `ALLOWED` can co-occur with the `UNRECOGNIZED_ALLERGEN_DATA` warning. The warning renders regardless of verdict; it is never suppressed because the verdict looks permissive.
 - [design-direction.md §7](design-direction.md). The neutral verdict line and standing caveat were fixed at adoption. This deck reuses that wording (§3.1).
@@ -47,6 +47,7 @@ Source: [M1-T4 worker report §6](../handoff/M1-T4.worker.md). Two of the nine (
 - **The standing caveat** (`NO_SAFETY_GUARANTEE`, §3.1) appears under **every** verdict line on **every** surface, with no exception. It is the one line every table below assumes is present even when a row does not repeat it.
 - **Colour is never the sole signal (P9).** Every string in this deck must stand on its own without a colour cue: no "the amber one", no "shown in red". Tier chips and verdict rows pair colour with an icon and this text.
 - **No string states or implies certainty about absence.** Every ALLOWED-adjacent string says "no known match" or "no known match found", never "safe", "clear", "free of", or "none".
+- **Accessibility labels.** Each verdict's accessibility label is the full verdict line followed by the standing caveat, read together as one announcement. Each provenance chip's accessibility label is "{tier}. {legend line}." Icons are decorative to the screen reader; they never carry information the text label does not also carry.
 
 ---
 
@@ -60,10 +61,18 @@ Each subsection is one surface. All four render the same three-state `ScreeningV
 
 | Code | String | Tone note | Forbidden alternatives |
 |---|---|---|---|
-| `ALLOWED` | "No known allergen match · {n} members" | Neutral ink, not green. Always paired with the standing caveat (`NO_SAFETY_GUARANTEE` row below). | "Safe for your household", "Allergen-free", a green check used as clearance. |
-| `ALLOWED` **+** `UNRECOGNIZED_ALLERGEN_DATA` | Verdict line unchanged, **plus** "Some of this item's allergen data couldn't be read. It didn't change this result, but check the label yourself." | M1-T6 F7: this warning renders even though the verdict is `ALLOWED`. Never suppressed because the headline looks permissive. `high` severity, so it sits directly under the verdict line, not buried in an expander. | Hiding the warning because the verdict is permissive; downgrading it to `info`. |
-| `ALLOWED_WITH_UNKNOWNS` | "Allergen data incomplete · {n} members affected" (headline), each affected member/restriction gets its own unknown line, §"Unknown lines" table below | Never collapsed into `ALLOWED` (rule 3). Amber-adjacent ink is fine as a *pairing*, never the only signal. | "Probably fine", "Unclear, proceed with caution", "Likely safe". |
-| `BLOCKED` | "Blocked · {n} members affected", each match gets its own evidence line, §"Evidence lines" table below | Never offered as a choice (rule 6): the card is visibly non-actionable (no "Cook this" button; see §3.5). | Any wording that reads as "tap to override", "block anyway", or a confirm dialog that would let a user proceed. |
+| `ALLOWED` | "No known allergen match · {n} members" (see the headline-variants table below for the exact 1/2/3+ forms) | Neutral ink, not green. Always paired with the standing caveat (`NO_SAFETY_GUARANTEE` row below). The verdict line itself never carries an evidence-basis segment (no "· label data"); that goes on this surface's separate evidence/provenance line, keeping the headline itself uniform across data sources. | "Safe for your household", "Allergen-free", a green check used as clearance. |
+| `ALLOWED` **+** `UNRECOGNIZED_ALLERGEN_DATA` | Verdict line unchanged, **plus** "Some of this item's allergen data couldn't be read. It doesn't touch anyone's restrictions in your household, but check the label yourself." | M1-T6 F7: this warning renders even though the verdict is `ALLOWED`, precisely because the unreadable data does not touch any member's restriction (see §3.1's `MALFORMED_ALLERGEN_DATA` tone note below for why an unknown line, and therefore this exact wording, can never co-occur with `ALLOWED` itself). `high` severity, so it sits directly under the verdict line, not buried in an expander. | Hiding the warning because the verdict is permissive; downgrading it to `info`. |
+| `ALLOWED_WITH_UNKNOWNS` | Headline per the variants table below, each affected member/restriction additionally gets its own unknown line, §"Unknown lines" table below | Never collapsed into `ALLOWED` (rule 3). Amber-adjacent ink is fine as a *pairing*, never the only signal. | "Probably fine", "Unclear, proceed with caution", "Likely safe". |
+| `BLOCKED` | Headline per the variants table below, each match additionally gets its own evidence line, §"Evidence lines" table below | Never offered as a choice (rule 6): the card is visibly non-actionable (no "Cook this" button; see §3.5). | Any wording that reads as "tap to override", "block anyway", or a confirm dialog that would let a user proceed. |
+
+**Headline variants by member count (§3.5's 1 / 2 / 3+ join rule, applied to every verdict headline)**
+
+| Verdict | 1 member | 2 members | 3+ members |
+| --- | --- | --- | --- |
+| `ALLOWED` | "No known allergen match · 1 member" | "No known allergen match · 2 members" | "No known allergen match · {n} members" |
+| `ALLOWED_WITH_UNKNOWNS` | "Allergen data incomplete for Maya" | "Allergen data incomplete for Maya and Théo" | "Allergen data incomplete · 3 members affected (Maya, Théo, Sam)" |
+| `BLOCKED` | "Blocked for Maya" | "Blocked for Maya and Théo" | "Blocked · 3 members affected (Maya, Théo, Sam)" |
 
 **Unknown lines (`ALLOWED_WITH_UNKNOWNS` × `UnknownReason`, standard vs severe)**
 
@@ -73,12 +82,12 @@ One line per affected `(member, restriction)`. `severity` comes from the restric
 |---|---|---|---|
 | `NO_ALLERGEN_DATA` | "We don't have allergen information for this item, so {member}'s {allergen} allergy is unresolved." | "We don't have allergen information for this item. This matters for {member}'s severe {allergen} allergy." | Never "no allergens listed" (rule 9). |
 | `INCOMPLETE_DECLARATION` | "The label on file doesn't say whether it covers {member}'s {allergen} allergy." | "The label on file doesn't say whether it covers {member}'s severe {allergen} allergy." | Names what the declaration *does* claim only if the client has that data to show; otherwise this line stands alone. |
-| `UNVERIFIED_DECLARATION_TIER` | "This item's completeness claim hasn't been confirmed yet, so we can't clear {allergen} for {member}." | "This item's completeness claim hasn't been confirmed yet. It can't clear {member}'s severe {allergen} allergy." | Ties to the provenance tier system (§4): the declaration exists but is `ESTIMATED`/`AI_INTERPRETATION`, not `KNOWN_FACT`. |
-| `UNSOURCED_DECLARATION` | "This item's completeness claim doesn't name a source we can check, so {allergen} is unresolved for {member}." | "This item's completeness claim doesn't name a source we can check. {member}'s severe {allergen} allergy stays unresolved." | D-017 P5: an unattributable declaration never licenses "no known match". |
+| `UNVERIFIED_DECLARATION_TIER` | "The label's claim to list every allergen hasn't been confirmed yet, so we can't clear {allergen} for {member}." | "The label's claim to list every allergen hasn't been confirmed yet. It can't clear {member}'s severe {allergen} allergy." | Ties to the provenance tier system (§4): the declaration exists but is `ESTIMATED`/`AI_INTERPRETATION`, not `KNOWN_FACT`. |
+| `UNSOURCED_DECLARATION` | "The label's claim to list every allergen doesn't name a source we can check, so {allergen} is unresolved for {member}." | "The label's claim to list every allergen doesn't name a source we can check. {member}'s severe {allergen} allergy stays unresolved." | D-017 P5: an unattributable declaration never licenses "no known match". |
 | `NO_INGREDIENT_TEXT` | "There's no ingredient list on file to check for {member}'s {allergen} allergy." | "There's no ingredient list on file to check for {member}'s severe {allergen} allergy." | A product/recipe name alone never counts as an ingredient statement. |
 | `UNRECOGNIZED_ASSERTION_CODE` | "This item lists an allergen code we don't recognize, so we can't clear {allergen} for {member}." | "This item lists an allergen code we don't recognize. It can't clear {member}'s severe {allergen} allergy." | The code is a data quality issue, not evidence either way. |
 | `UNRECOGNIZED_ASSERTION_KIND` | "This item's allergen data uses a claim type we don't recognize, so {allergen} stays unresolved for {member}." | "This item's allergen data uses a claim type we don't recognize. {member}'s severe {allergen} allergy stays unresolved." | Covers any non-`CONTAINS`/`MAY_CONTAIN` claim, including an invented "free from" style claim (D-017: never clears). |
-| `MALFORMED_ALLERGEN_DATA` | "This item's allergen data is in a format we can't read, so {allergen} stays unresolved for {member}." | "This item's allergen data is in a format we can't read. {member}'s severe {allergen} allergy stays unresolved." | Distinct from `NO_ALLERGEN_DATA`: data is present but unreadable, not absent. Can co-occur with `ALLOWED` when it affects a *different* member/restriction than the one that resolved (M1-T6 F7 family). Always shown regardless of the household verdict. |
+| `MALFORMED_ALLERGEN_DATA` | "This item's allergen data is in a format we can't read, so {allergen} stays unresolved for {member}." | "This item's allergen data is in a format we can't read. {member}'s severe {allergen} allergy stays unresolved." | Distinct from `NO_ALLERGEN_DATA`: data is present but unreadable, not absent. An unknown line never co-occurs with a household `ALLOWED` verdict: any unknown makes that member, and therefore the household, `ALLOWED_WITH_UNKNOWNS`. What co-occurs with `ALLOWED` is the `UNRECOGNIZED_ALLERGEN_DATA` warning, when the unreadable data touches no member's restriction (M1-T6 F7). |
 
 **Evidence lines (`BLOCKED` × `EvidenceKind`)**
 
@@ -94,25 +103,27 @@ One line per affected `(member, restriction)`. `severity` comes from the restric
 
 | `WarningCode` | `WarningSeverity` | String | Where it appears |
 |---|---|---|---|
-| `NO_SAFETY_GUARANTEE` | `info` (always present, not a rendering hint to omit) | "Known matches only. Not a guarantee this food is safe." | Directly under every verdict line, on every surface, with no exception. |
+| `NO_SAFETY_GUARANTEE` | `info` (always present, not a rendering hint to omit) | "Known matches only · not a guarantee this food is safe." | Directly under every verdict line, on every surface, with no exception. This is the exact form adopted in the prototype; the architect will align design-direction §7's wording to it at acceptance (that source currently uses a full stop where this deck uses `·`). |
 | `SEVERE_ALLERGY_UNKNOWN_DATA` | `critical` | Rendered through the severe-severity unknown line above, not as a separate sentence; the *prominence* is the requirement (rule 4), delivered by placement/icon, not by inventing extra copy. | Wherever a severe-severity unknown line appears. |
 | `CROSS_CONTACT` | `high` | "This item may have cross-contact with {allergen} (the manufacturer says 'may contain'). Not blocked, because {member}'s allergy is standard severity." | Attached to an `ALLOWED_WITH_UNKNOWNS` result for a standard-severity restriction (D-017 P1). |
 | `CROSS_CONTACT_SEVERE` | `critical` | Rendered through the `ASSERTION_MAY_CONTAIN` evidence line above (it also blocks); no separate sentence needed. | Wherever that evidence line appears. |
-| `UNRECOGNIZED_ALLERGEN_DATA` | `high` | "Some of this item's allergen data couldn't be read. It didn't change this result, but check the label yourself." | Rendered regardless of verdict (M1-T6 F7), including on `ALLOWED`. |
+| `UNRECOGNIZED_ALLERGEN_DATA` | `high` | "Some of this item's allergen data couldn't be read, so we couldn't check that part. Check the label yourself." (verdict-neutral: true whether the result is `ALLOWED` or `ALLOWED_WITH_UNKNOWNS`) | Rendered regardless of verdict (M1-T6 F7). When it co-occurs with `ALLOWED` specifically (nothing else unresolved), use the row above instead, which says the data does not touch this household's restrictions. |
 
 ### §3.2 Recipe card (compact)
 
-The card is a summary; every card is tappable through to §3.1 for the full evidence/unknown detail.
+The card is a summary; every card is tappable through to §3.1 for the full evidence/unknown detail. The standing caveat still renders under the verdict line on the card itself (nine-rule 2, §2): it is never deferred to the tap-through, on any of the three rows below.
 
 | Code | Compact string | Delta from §3.1 |
 |---|---|---|
-| `ALLOWED` | "No known match · {n} members" | Caveat is not repeated on the card itself; it appears once, in the tap-through detail, and in the one-time provenance/allergen legend (§4). |
-| `ALLOWED_WITH_UNKNOWNS` | "Allergen data incomplete for {n} members" | No per-reason detail on the card; tapping opens §3.1's unknown lines. Never rendered with the same visual weight as `ALLOWED` (rule 3). |
-| `BLOCKED` | "Blocked for {n} members" | Card is visibly non-actionable: greyed treatment, no primary action, per rule 6. Tapping opens the evidence lines; there is no "cook anyway" affordance anywhere in the tap-through. |
+| `ALLOWED` | Same 1/2/3+ headline variants as §3.1's headline-variants table | Caveat renders under this line here too, exactly as everywhere else. Nothing else differs from §3.1. |
+| `ALLOWED_WITH_UNKNOWNS` | Same 1/2/3+ headline variants as §3.1; when a severe restriction is among the unknowns, use the severe form instead: "Allergen data incomplete for {member}, severe {allergen} allergy" (1 member) or "Allergen data incomplete, including a severe allergy · {n} members" (2+) | Caveat renders here too. No per-reason detail on the card; tapping opens §3.1's unknown lines. Never rendered with the same visual weight as `ALLOWED` (rule 3). |
+| `BLOCKED` | Same 1/2/3+ headline variants as §3.1 | Caveat renders here too, even though the item is already blocked (rule 2 says "always", with no verdict exception). Card is visibly non-actionable: greyed treatment, no primary action, per rule 6. Tapping opens the evidence lines; there is no "cook anyway" affordance anywhere in the tap-through. |
+
+`UNRECOGNIZED_ALLERGEN_DATA` and `CROSS_CONTACT` render on this surface too, using §3.1's strings unchanged. `high` and `critical` warnings are never deferred to the tap-through, per rule 4.
 
 ### §3.3 Scan sheet (barcode confirm)
 
-Per design-direction §7 fix #3: **Known Fact** on this surface is scoped to *product identity* (the barcode matched a catalog row). The allergen row is its own, separately tiered line, because the catalog's allergen *data* may be a lower tier than the identity match.
+Per design-direction §7 fix #3: **Known Fact** on this surface is scoped to *product identity* (the barcode matched a catalog row). The allergen row is its own, separately tiered line, because the catalog's allergen *data* may be a lower tier than the identity match. The standing caveat renders on this surface too, directly under whichever verdict line is showing; here it keeps design-direction §7's adopted inline form ("· not a safety guarantee") rather than a separate repeated line, since the two rows below already fold the caveat into the verdict line itself.
 
 | Code | String | Tone note |
 |---|---|---|
@@ -120,15 +131,17 @@ Per design-direction §7 fix #3: **Known Fact** on this surface is scoped to *pr
 | `ALLOWED_WITH_UNKNOWNS` | "Allergen data unknown for {member}, severe {allergen} allergy · {product} has no ingredient statement on file · not blocked, not cleared" | The design-direction §7 worked example (Maya/sesame/miso), generalized and adjusted to drop the source wording's parenthetical colon ("severe: sesame"), a colon-as-label shape P11 forbids in live copy. "Not blocked, not cleared" is this surface's compact restatement of rule 3 and belongs only here, where card space is tightest. |
 | `BLOCKED` | "Matched '{matchedText}' in the ingredient statement · blocked for {member}" | Same evidence requirement as §3.1, condensed to one line because the scan sheet already shows the product name in its header. |
 
+`UNRECOGNIZED_ALLERGEN_DATA` and `CROSS_CONTACT` render on this surface too, using §3.1's strings; `high` and `critical` warnings are never deferred off this sheet.
+
 ### §3.4 Assistant preview (post-MVP preview, labelled per P10)
 
-This is the one surface allowed to state the negative "can't mark ... safe" directly (see §10, exception 2), because it is the assistant explaining its own limits, not asserting a result.
+This is the one surface allowed to state the negative "can't mark ... safe" directly (see §10, exception 2), because it is the assistant explaining its own limits, not asserting a result. The standing caveat renders on this surface too, in the assistant's own voice: every reply below ends with the same disclaiming clause ("I still can't mark any food as safe" or, on the `ALLOWED` row, its slightly longer first-person form), never deferred and never dropped because the reply sounds conversational.
 
 | Code | String | Tone note |
 |---|---|---|
 | `ALLOWED` | "No known allergen match for your household. I can't mark any food as safe. Always check a new product's own label." | Conversational register; still no em dash, no exclamation mark (safety copy rule holds even in the assistant's voice). |
-| `ALLOWED_WITH_UNKNOWNS` | "I don't have enough allergen data to clear this for {member}'s {allergen} allergy. I'm not saying it's a problem, just that I can't confirm it either way." | Keeps the "unknown ≠ absent, unknown ≠ present" framing in plain conversational language. |
-| `BLOCKED` | "I'd skip this one. It's blocked for {member}'s {allergen} allergy, so I won't suggest it." | Still no offered override; the assistant does not present a "suggest anyway" option (rule 6 applies to every surface, including chat). |
+| `ALLOWED_WITH_UNKNOWNS` | "I don't have enough allergen data to clear this for {member}'s {allergen} allergy. I'm not saying it's a problem, just that I can't confirm it either way. I still can't mark any food as safe." | Keeps the "unknown ≠ absent, unknown ≠ present" framing in plain conversational language; closes with the same disclaiming clause as every other row. |
+| `BLOCKED` | "This one is blocked for {member}'s {allergen} allergy, so I won't suggest it. I still can't mark any food as safe." | Still no offered override; the assistant does not present a "suggest anyway" option (rule 6 applies to every surface, including chat). The trailing clause matters here too: a block on one known allergen is not a certificate that nothing else is wrong with the dish. |
 
 ### §3.5 Per-member roll-up and card non-actionability
 
@@ -181,7 +194,7 @@ Brief §7 lists six reasons (Used, Consumed, Discarded, Expired, Donated, Manual
 
 Verbatim system row, visibly distinct from a user's own entry (system `Actor`, never attributed to a person):
 
-> "You used 0.75 lb more than we had on record. Inventory corrected."
+> "Our record was {qty} {unit} short of what you used. Inventory corrected to match."
 
 Tone note: this row must be visually distinguishable as system-authored (an "auto" tag or a system icon, not colour alone, per P9). It is not something any household member typed.
 
@@ -215,11 +228,11 @@ Examples: "Purchased · +2 lb · Sep 12 · scanned receipt", "Cooked · −0.5 l
 
 ## §7. Empty / offline / error / permission states
 
-Per P8 (every screen designs its non-happy states first). Format: headline, one sentence, the action (if any).
+Per P8 (every screen designs its non-happy states first). Format: headline, one sentence, the action (if any). This section covers the five MVP surfaces with designed states today (S3, S4, S7, S10, S11). S5, S6, S8, S9 and S12 states are owed by M3-E0-T1 / M3 screen tickets and will be added here as they are designed, not invented ahead of that work.
 
 ### S3 · Home dashboard
 
-- **First-run empty:** "Your kitchen is empty, for now." / "Scan a barcode and most people are stocked in under a minute." / action **Scan a barcode**.
+- **First-run empty:** "Your kitchen is empty, for now." / "Scan a barcode to get your first items in, in about a minute." / action **Scan a barcode**.
 - **No recommendations:** "Nothing to recommend yet." / "Add a few items and we'll suggest what to cook." / action **Add food**.
 
 ### S4 · Inventory list
@@ -261,8 +274,9 @@ Every value of `LedgerErrorCode` (`packages/domain/src/inventory/errors.ts`), cl
 | `PRECISION_EXCEEDED` | Yes | "Enter the amount with fewer decimal places." | Reachable by typing more precision than the unit supports. |
 | `INVALID_TIMESTAMP` | Yes | "That date doesn't look right. Check it and try again." | Reachable via manual date entry on a correction. |
 | `TIMESTAMP_ORDER` | Yes | "That date is in the future. Enter when it actually happened." | Reachable when a backdated correction's "when it happened" is later than "when it was recorded" (now). |
-| `UNKNOWN_LOT` | Yes | "This lot isn't available anymore. Refresh and try again." | Reachable in a shared household: another member closed or consumed the lot first. |
+| `UNKNOWN_LOT` | Yes | "This batch isn't available anymore. Refresh and try again." | Reachable in a shared household: another member closed or consumed the lot (a batch of the item, in kitchen language) first. |
 | `MIXED_UNITS` | No (internal-only) | generic fallback | The client should never offer a unit that differs from the item's declared unit (M1-T1: one unit per item); reaching this means a client bug. |
+| `NOT_FINITE` | No (internal-only) | generic fallback | A non-finite quantity (`NaN`/`Infinity`) cannot come from a validated numeric form field; reaching this is a client bug, not a user mistake. |
 | `DUPLICATE_LOT` | No (internal-only) | generic fallback | Opening a lot with a colliding id is a client-side id-generation bug. |
 | `INVALID_IDEMPOTENCY_KEY` | No (internal-only) | generic fallback | Purely client/sync plumbing; never user-meaningful. |
 | `IDEMPOTENCY_KEY_CONFLICT` | No (internal-only) | generic fallback | A retried write with a changed payload under the same key; a client bug, not a user action. |
@@ -331,7 +345,7 @@ One row per machine-code union member covered by this deck, mapped to the sectio
 | `LedgerErrorCode` | `DUPLICATE_LOT` | §8 |
 | `LedgerErrorCode` | `ZERO_DELTA` | §8 |
 | `LedgerErrorCode` | `WRONG_SIGN` | §8 |
-| `LedgerErrorCode` | `NOT_FINITE` | §8 (folds into the generic fallback family; a non-finite quantity cannot come from a numeric form field the client validates, so no distinct string is offered beyond the fallback) |
+| `LedgerErrorCode` | `NOT_FINITE` | §8 |
 | `LedgerErrorCode` | `PRECISION_EXCEEDED` | §8 |
 | `LedgerErrorCode` | `QUANTITY_OUT_OF_RANGE` | §8 |
 | `LedgerErrorCode` | `INVALID_TIMESTAMP` | §8 |
@@ -342,8 +356,6 @@ One row per machine-code union member covered by this deck, mapped to the sectio
 | `LedgerErrorCode` | `ITEM_MISMATCH` | §8 |
 | `LedgerErrorCode` | `CORRUPT_LEDGER` | §8 |
 
-`NOT_FINITE` is listed once more here for clarity even though it was folded into the generic-fallback family rather than given its own row in §8's table; the coverage table still names it explicitly so no union member is silently missing.
-
 ---
 
 ## §10. Forbidden words
@@ -352,10 +364,10 @@ Grep gate: `safe`, `passed`, `allergen-free`, `guaranteed`, `verified safe`, a c
 
 | Forbidden term | Why | Exception |
 |---|---|---|
-| `safe` | Implies a guarantee the engine cannot make (SR-1/SR-2); `ALLOWED` means "no known match", not "safe". | Two, both deliberate negations, not claims: (1) the standing caveat itself, "Known matches only. Not a guarantee this food is safe." (§3.1, §2), reused verbatim per design-direction §7's adopted wording; (2) the assistant preview's "I can't mark any food as safe" (§3.4). Both state the *absence* of a safety claim, never the presence of one. |
+| `safe` | Implies a guarantee the engine cannot make (SR-1/SR-2); `ALLOWED` means "no known match", not "safe". | Two, both deliberate negations, not claims: (1) the standing caveat itself, "Known matches only · not a guarantee this food is safe." (§3.1, §2), the exact form adopted in the prototype; (2) the assistant preview's "I can't mark any food as safe" (§3.4), repeated at the end of every assistant reply. Both places it appears are negations, never a claim. |
 | `passed` | Reads as a test result ("allergen screen passed"), the exact language design-direction §7 fix #1 removed. | None. |
 | `allergen-free` | A positive absence claim the engine never licenses. | None. |
-| `guaranteed` / `guarantee` (as a claim) | Same failure mode as `safe`. | The one place "guarantee" appears is inside the negation "Not a guarantee this food is safe" (same string as the `safe` exception above). It is disclaiming a guarantee, not making one. |
+| `guaranteed` / `guarantee` (as a claim) | Same failure mode as `safe`. | The one place "guarantee" appears is inside the negation "not a guarantee this food is safe" (same string as the `safe` exception above). Both places it appears are negations (§3.1's caveat and §3.3's scan-sheet line), never a claim. |
 | `verified safe` | Compounds two forbidden claims at once. | None. |
 | `✓` used as clearance | A checkmark reads as "cleared" regardless of the words next to it (P9: never colour/icon-only, and never an icon that *is* the safety claim). | A checkmark may still appear as a plain UI affordance (e.g. "select" or "confirmed as entered") wherever it does not sit next to a `ScreeningVerdict`. |
 | Em dash character (U+2014) | P11: reads as generated text. | None. This file must contain zero em dashes, full stop. |
