@@ -3,7 +3,7 @@
 _Last updated: 2026-09-16_
 
 ## Current phase
-**Milestones 0 and 1 COMPLETE; D-018 batch (M1-T6 → T10) COMPLETE 2026-09-15. Per D-018a the queue resumed: M1-T11 → M3-E0-T1 ∥ T2 → T3, then stop for the PO/Dean session** ([decision brief](docs/po/decision-brief-2026-09.md)). 769 tests with DB / 665 without; CI green on main. The deterministic foundation exists, reviewed and merged: inventory ledger, units engine, allergen rule engine, product-lookup ports + fixtures + R-1 research, and the Postgres schema with RLS/append-only enforcement — 475 tests (with DB), CI green. UI/UX planning package delivered 2026-09-10 (docs only). PO directive 2026-09-14: build only what needs **no spend and no PO/originator decision** — tickets M1-T6 → T7 → T8 → T9 → T10 — then **stop for PO review**. M2 (API) and M3 (client) remain gated (see D-018).
+**Milestones 0 and 1 COMPLETE; D-018 batch (M1-T6 → T10) and D-018a queue (M1-T11, M3-E0-T1/T2/T3) ALL COMPLETE as of 2026-09-16 — engineering is STOPPED for the PO/Dean decision session** ([decision brief](docs/po/decision-brief-2026-09.md)). 786 tests with DB / 668 without; CI green on main. Design gate M3-E0: engineering deliverables done (14-screen prototype, binding copy deck, token sheet); PO-run steps remain (Dean on-device review, hallway test, token-darkening call, sign-off + D-002). The deterministic foundation exists, reviewed and merged: inventory ledger, units engine, allergen rule engine, product-lookup ports + fixtures + R-1 research, and the Postgres schema with RLS/append-only enforcement — 475 tests (with DB), CI green. UI/UX planning package delivered 2026-09-10 (docs only). PO directive 2026-09-14: build only what needs **no spend and no PO/originator decision** — tickets M1-T6 → T7 → T8 → T9 → T10 — then **stop for PO review**. M2 (API) and M3 (client) remain gated (see D-018).
 
 ## In progress (M1-E3, architect-dispatched, one ticket at a time)
 | Ticket | Title | Models (impl/review) | State |
@@ -16,7 +16,9 @@ _Last updated: 2026-09-16_
 | M1-T11 | *(found by M1-T9 review)* aborted-transaction COMMIT silently discards ledger work | Opus / Opus | ✅ **DONE 2026-09-16** — review PASS WITH FIXES (pin the fn-thrown-error rollback path) → re-review PASS, squash `13a631b`; 786 tests with DB / 668 without |
 | M3-E0-T2 | Safety and provenance copy deck (docs only) | Sonnet / Opus | ✅ **DONE 2026-09-16** — review PASS WITH FIXES (5 safety-wording defects + 9 smaller) → re-review PASS, squash `b4e4c4f`; 63/63 codes covered; binding for M3 |
 | M3-E0-T1 | Prototype completion: missing screens + non-happy states (docs only) | Sonnet / Opus | ✅ **DONE 2026-09-16** — review PASS WITH FIXES (9 findings, all fixed) → re-review PASS, squash `05181fb`; 14 screens, three flows complete |
-| M3-E0-T3 | Token sheet: contrast + scarcity audit (docs only) | Sonnet / Sonnet | **dispatching** — last ticket before the PO/Dean checkpoint |
+| M3-E0-T3 | Token sheet: contrast + scarcity audit (docs only) | Sonnet / Sonnet | ✅ **DONE 2026-09-16** — review PASS WITH FIXES (5 uncovered pairs) → re-review PASS, squash `804881e`; 40 pairs, 16 FAILs with PROPOSED fixes (PO call) |
+
+**Queue complete. Nothing is dispatched. Next engineering move requires a PO word (see decision brief Part A/D).**
 
 ## What exists
 - Original product brief preserved in [docs/source/](docs/source/) (DOCX + extracted text).
@@ -48,7 +50,7 @@ _Last updated: 2026-09-16_
 **Remote decided (2026-09-03):** `https://github.com/saengsawat/Smart-Kitchen` (branch `main`) is the repo's home and sharing mechanism — this unblocks M0-T2 (CI). The working clone still lives inside a OneDrive-synced folder; recommendation stands to move it out (or exclude from sync) now that GitHub is the sync mechanism — especially since `node_modules/` exists and OneDrive syncs it.
 
 ## Next 3 actions
-1. **Engineering (architect):** run M1-E3 to acceptance, one ticket at a time; update this file only at each acceptance (rule 27); stop after M1-T10.
+1. **Andy + Dean session** (agenda in the [decision brief](docs/po/decision-brief-2026-09.md)): D-002, Q1/Q3, open-source-first auth + phased hosting, stubbed-auth M2 go/no-go, ADR-001, D-017 gate b, shortfall policy, UX opens incl. product name; plus the new **token-darkening call** (tokens.md §2) and Dean's on-device review of the completed prototype.
 2. **Dean ratifies D-002** (MVP scope) and answers Q1/Q3 — gates M3; M2 (API) awaits a PO go-ahead (cost gates: auth vendor, hosting — or a PO yes to a stubbed-auth M2 core).
 3. **Owner:** apply the **branch-protection checklist** (CONTRIBUTING.md); answer the UX plan's open items (OQ-D1, Q8, OQ-D4/D5/D6); housekeeping — move the clone out of OneDrive; keep-or-delete ruling on the untracked user files `docs/architecture/workflow-diagrams.{md,html}` and `docs/design/mockups/smart-kitchen-prototype-v2.html` (appeared 2026-09-14; not architect-authored, untouched); optionally install Docker for local DB tests.
 

@@ -92,6 +92,7 @@ Owners: `PO` = product owner (Dean), `ENG` = engineering.
 - **Status:** DECIDED · **Owner:** PO (directive: "Go M1-T11, then M3-E0-T1 and T2 in parallel, then T3")
 - **Decision:** the same selection rule as D-018 (zero spend, no PO/originator decision consumed) admits four more tickets: **M1-T11** (ledger write-path aborted-COMMIT fix, Opus/Opus) first; then **M3-E0-T1** (prototype completion) and **M3-E0-T2** (safety copy deck) in parallel; then **M3-E0-T3** (token sheet). All docs-only except M1-T11. Confirmed independent of the M2 auth/hosting decisions (design does not see them); D-002 remains the only design risk and the five missing screens are in every plausible cut.
 - **Consequences:** engineering resumes; stops again after M3-E0-T3 is accepted (next PO checkpoint: Dean session per [docs/po/decision-brief-2026-09.md](docs/po/decision-brief-2026-09.md)). M3 build tickets are still gated on M3-E0 sign-off + D-002.
+- **Outcome (2026-09-16):** all four accepted and merged (M1-T11 `13a631b`, M3-E0-T2 `b4e4c4f`, M3-E0-T1 `05181fb`, M3-E0-T3 `804881e`); engineering stopped as directed. New PO item surfaced by M3-E0-T3: adopt or reject seven PROPOSED token darkenings (tokens.md §2) — added to the decision brief agenda.
 
 ## D-019 — Visual design direction v2 adopted (PO revamp); OQ-D1/OQ-D2 resolved
 - **Date:** 2026-09-15 · **Status:** DECIDED · **Owner:** PO (Andy) — visual direction is a PO call; architect reconciled it to the safety and scope rules
