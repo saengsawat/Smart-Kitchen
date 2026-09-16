@@ -28,3 +28,6 @@ desktop.ini
 # Logs
 *.log
 logs/
+
+# Claude Code agent worktrees (harness-created, never committed; also keeps them out of prettier --check)
+.claude/worktrees/
