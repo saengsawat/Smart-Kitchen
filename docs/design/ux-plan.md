@@ -64,7 +64,7 @@ Rationale: the scan button is the product's front door (P1) and owns the center;
 | S1 account + household | **done (M3-E0-T1)** | sign-in gesture, create/join by code, reached from Home avatar when the "New user" dev switch is on |
 | S2 allergies & preferences | **done (M3-E0-T1)** | FDA nine + user-defined term, severity, explicit "none" gate on Continue, skippable preferences; reached from onboarding and from S12 |
 | S3 Home dashboard | done (dark hero, tiles, tonight card, use-it-soon rail, confirmation tray); **first-run empty state done (M3-E0-T1)** | terracotta scarcity **done (M3-E0-T1)** |
-| S4 Inventory list | done (location tabs, provenance chips, freshness ring, tray); **sort/filter + first-run empty state done (M3-E0-T1)** | — |
+| S4 Inventory list | done (location tabs, provenance chips, freshness ring, tray); **sort/filter + first-run empty state done (M3-E0-T1)** | stale-offline state still not designed (open gap, not done) |
 | S5 Item detail / history | **done (M3-E0-T1)** | ledger view with plain-language "why" line, one-tap correct with undo, consume/discard/expire/donate reason chips, lot breakdown, clamp row shown as a system row |
 | S6 Add hub | done (phase labels); **Type it in wired to S9 (M3-E0-T1)** | — |
 | S7 Barcode scan | done (hit path); **permission-denied state done (M3-E0-T1)** | — |

@@ -74,12 +74,12 @@
   .ask { margin-top: 12px; height: 48px; border-radius: 999px; background: rgba(247,239,226,.10); border: 1px solid rgba(247,239,226,.22); display: flex; align-items: center; gap: 10px; padding: 0 6px 0 16px; cursor: pointer; color: #d8c9b3; font-size: 14px; }
   .ask:active { background: rgba(247,239,226,.18); }
   .ask span { flex: 1; }
-  .ask .go { width: 36px; height: 36px; border-radius: 50%; background: var(--brand); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .ask .go { width: 36px; height: 36px; border-radius: 50%; background: rgba(247,239,226,.12); border: 1px solid rgba(247,239,226,.18); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
 
   /* ============ SECTION HEADERS ============ */
   .sec { display: flex; align-items: baseline; justify-content: space-between; padding: 22px 18px 10px; }
   .sec h2 { margin: 0; font-size: 21px; }
-  .sec a { font-size: 13px; font-weight: 600; color: var(--brand-deep); cursor: pointer; }
+  .sec a { font-size: 13px; font-weight: 600; color: var(--ink-2); cursor: pointer; }
 
   /* ============ CARDS ============ */
   .card { background: var(--paper); border-radius: var(--r-md); border: 1px solid var(--line); overflow: hidden; }
@@ -101,7 +101,6 @@
   .rhero .over .meta { font-size: 12.5px; color: #e9dcc9; display: flex; gap: 8px; align-items: center; }
   .tag { display: inline-flex; align-items: center; gap: 5px; padding: 5px 10px; border-radius: 999px; font-size: 11.5px; font-weight: 700; letter-spacing: .1px; }
   .tag.glass { background: rgba(30,24,19,.55); color: #fff; backdrop-filter: blur(4px); border: 1px solid rgba(255,255,255,.18); }
-  .tag.brand { background: var(--brand); color: #fff; }
   .rbody { padding: 14px 16px 16px; display: flex; flex-direction: column; gap: 10px; }
   .have { display: flex; flex-wrap: wrap; gap: 6px; }
   .have span { padding: 4px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; background: var(--green-bg); color: var(--green); }
@@ -231,7 +230,7 @@
   .step b { font-size: 22px; min-width: 32px; text-align: center; }
   .locs { display: flex; gap: 8px; flex-wrap: wrap; }
   .loc { padding: 8px 14px; border-radius: 999px; border: 1.5px solid var(--line); background: var(--paper); font-family: inherit; font-size: 13px; font-weight: 600; color: var(--ink-2); cursor: pointer; }
-  .loc.on { border-color: var(--brand); background: var(--brand-tint); color: var(--brand-deep); }
+  .loc.on { border-color: var(--espresso); background: var(--espresso); color: var(--cream); }
 
   /* allergen · the only saturated red, always icon + text */
   .allergen { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-radius: 14px; background: var(--danger-bg); border: 1.5px solid var(--danger); color: var(--danger); font-weight: 700; font-size: 13px; }
@@ -274,7 +273,7 @@
   .qchips::-webkit-scrollbar { display: none; }
   .inbar { display: flex; gap: 8px; padding: 10px 18px 24px; }
   .inbar input { flex: 1; min-width: 0; height: 48px; padding: 0 16px; border-radius: 999px; border: 1px solid var(--line); background: var(--paper); font-family: inherit; font-size: 14px; }
-  .send { width: 48px; height: 48px; border-radius: 50%; background: var(--brand); border: none; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+  .send { width: 48px; height: 48px; border-radius: 50%; background: var(--espresso); border: none; display: flex; align-items: center; justify-content: center; cursor: pointer; }
 
   /* ============ NAV · floating pill + espresso FAB ============ */
   .nav { position: absolute; left: 16px; right: 16px; bottom: 18px; height: 66px; background: var(--paper); border: 1px solid var(--line); border-radius: 999px; display: flex; align-items: center; box-shadow: 0 12px 30px -12px rgba(30,24,19,.45); z-index: 10; }
@@ -342,9 +341,6 @@
   #scr-scan .miss-panel { display: none; }
   #scr-scan.no-match .match-panel { display: none; }
   #scr-scan.no-match .miss-panel { display: flex; }
-  .scanmode { display: flex; gap: 8px; position: absolute; top: 60px; left: 18px; right: 18px; z-index: 2; justify-content: center; }
-  .scanmode button { padding: 6px 12px; border-radius: 999px; font-size: 11px; font-weight: 700; border: 1px solid rgba(255,255,255,.3); background: rgba(0,0,0,.35); color: #fff; font-family: inherit; cursor: pointer; }
-  .scanmode button.on { background: var(--brand); border-color: var(--brand); }
 
   /* item detail / ledger */
   .qtybig { display: flex; align-items: baseline; gap: 8px; padding: 4px 18px 2px; }
@@ -370,7 +366,7 @@
   /* legend */
   .legrow { margin: 0 18px 10px; padding: 12px 14px; border-radius: 12px; background: var(--paper); border: 1px solid var(--line); display: flex; gap: 12px; align-items: flex-start; }
   .legrow p { margin: 4px 0 0; font-size: 12.5px; color: var(--ink-2); line-height: 1.5; }
-  .leglink { font-size: 12px; font-weight: 600; color: var(--brand-deep); cursor: pointer; }
+  .leglink { font-size: 12px; font-weight: 600; color: var(--ink); text-decoration: underline; cursor: pointer; }
 
   /* allergy setup (S2) */
   .allergychip { padding: 9px 14px; border-radius: 999px; border: 1.5px solid var(--line); background: var(--paper); font-family: inherit; font-size: 13px; font-weight: 600; color: var(--ink-2); cursor: pointer; }
@@ -396,7 +392,8 @@
   .verdictblock.blocked { background: var(--danger-bg); border: 1.5px solid var(--danger); }
   .cooksheet { display: none; margin: 0 18px 18px; padding: 14px 16px; border-radius: var(--r-md); background: var(--paper); border: 1px solid var(--line); box-shadow: 0 -8px 24px rgba(30,24,19,.12); flex-direction: column; gap: 10px; }
   .cooksheet.open { display: flex; }
-  .allocrow { display: flex; align-items: center; justify-content: space-between; padding: 8px 0; border-top: 1px solid var(--line); font-size: 13px; }
+  .allocrow { display: flex; align-items: center; gap: 8px; padding: 8px 0; border-top: 1px solid var(--line); font-size: 13px; }
+  .allocrow > span:first-child { flex: 1; min-width: 0; }
   .allocrow:first-of-type { border-top: none; }
   .allocrow .amt { font-weight: 800; }
   .shortnote { padding: 10px 12px; border-radius: 10px; background: var(--amber-bg); color: var(--amber); font-size: 12.5px; font-weight: 600; }
@@ -419,6 +416,7 @@
   <button class="dsw" id="dswCam" onclick="toggleDev('camDenied')">Camera denied</button>
   <button class="dsw" id="dswOff" onclick="toggleDev('offline')">Offline</button>
   <button class="dsw" id="dswRec" onclick="cycleRecipeMode()">Recipes: normal</button>
+  <button class="dsw" id="dswScan" onclick="toggleScanMatch()">Scan: match</button>
 </div>
 
 <div class="phone">
@@ -438,7 +436,7 @@
       <div class="pills">
         <div class="pill" onclick="go('scr-inventory')"><div class="v num">94%</div><div class="l">inventory accuracy</div></div>
         <div class="pill" onclick="go('scr-inventory')"><div class="v num"><span class="dot" style="background:var(--amber)"></span>4</div><div class="l">use this week</div></div>
-        <div class="pill" onclick="go('scr-shopping')"><div class="v num"><span class="dot" style="background:var(--brand)"></span>3</div><div class="l">shopping gaps</div></div>
+        <div class="pill" onclick="go('scr-shopping')"><div class="v num"><span class="dot" style="background:var(--ink-3)"></span>3</div><div class="l">shopping gaps</div></div>
       </div>
       <div class="ask" onclick="go('scr-assistant')">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#f4b48f" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4l1.6 4.2L17 9.8l-4.4 1.6L11 16l-1.6-4.6L5 9.8l4.4-1.6z"/><path d="M18 14l.8 2.1 2.1.8-2.1.8-.8 2.1-.8-2.1-2.1-.8 2.1-.8z"/></svg>
@@ -657,7 +655,6 @@
   <div class="cam cam-live">
     <img src="https://images.unsplash.com/photo-1584473457406-6240486418e9?auto=format&fit=crop&w=800&q=60" alt="" onerror="this.remove()">
     <div class="camtop"><div class="hbtn" onclick="goBack()"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M15 5l-7 7 7 7"/></svg></div><span style="font-weight:700;font-size:15px">Scan barcode</span><span style="width:40px"></span></div>
-    <div class="scanmode"><button class="on" id="modeMatch" onclick="setScanMode(true)">Simulate: match</button><button id="modeMiss" onclick="setScanMode(false)">Simulate: no match</button></div>
     <div class="frame"><i></i><i></i><i></i><i></i><div class="laser"></div></div>
     <div class="camhint" id="camHint">Matched · Open Food Facts · GTIN 0689544081128</div>
   </div>
@@ -718,7 +715,7 @@
 
     <div class="rrow" onclick="toast('Recipe detail reuses the chicken stir-fry example in this prototype · Miso salmon and Thai noodles below show the other two verdict states')">
       <div class="ph fruit"><span class="mono">P</span><img src="https://images.unsplash.com/photo-1490645935967-10de6ba17061?auto=format&fit=crop&w=300&q=70" alt="" onerror="this.remove()"></div>
-      <div class="b"><div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px"><h4 class="serif">Yogurt berry parfait</h4><span class="match num">84%</span></div><div class="meta"><span class="num">10 min</span>·<span class="num">320 cal</span>·breakfast</div><div class="have"><span>✓ yogurt</span><span>✓ strawberries</span><span class="miss">+ granola</span></div></div>
+      <div class="b"><div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px"><h4 class="serif">Yogurt berry parfait</h4><span class="match num">84%</span></div><div class="meta"><span class="num">10 min</span>·<span class="num">320 cal</span>·breakfast</div><div class="have"><span>✓ yogurt</span><span>✓ strawberries</span><span class="miss">+ granola</span></div><div class="verdict"><div class="line"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v5c0 4.6-3 7.8-7 9-4-1.2-7-4.4-7-9V6z"/></svg>No known allergen match · 4 members · label data</div><div class="caveat">Known matches only · not a guarantee this food is safe.</div></div></div>
     </div>
     <div class="rrow" onclick="openRecipe('unk')">
       <div class="ph frozen"><span class="mono">S</span><img src="https://images.unsplash.com/photo-1467003909585-2f8a72700288?auto=format&fit=crop&w=300&q=70" alt="" onerror="this.remove()"></div>
@@ -742,18 +739,19 @@
 
     <div class="rec-allblocked">
       <div class="pad" style="padding-top:6px">
-        <div class="allergen" style="margin-bottom:12px">
+        <div class="allergen" style="margin-bottom:4px">
           <span class="sh"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round"><path d="M12 3.5L21.5 20h-19z"/><path d="M12 10v4.5"/><circle cx="12" cy="17.4" r=".6" fill="#fff"/></svg></span>
           Every candidate tonight is blocked for at least one member
         </div>
+        <div style="font-size:11px;color:var(--ink-3);padding:6px 2px 8px;line-height:1.4">Known matches only · not a guarantee this food is safe.</div>
       </div>
       <div class="rrow" style="opacity:.92" onclick="openRecipe('blocked')">
         <div class="ph grain" style="filter:grayscale(.6)"><span class="mono">T</span></div>
-        <div class="b"><h4 class="serif" style="color:var(--ink-2)">Thai peanut noodles</h4><div class="allergen" style="padding:8px 10px;font-size:12px"><span class="sh" style="width:24px;height:24px"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round"><path d="M12 3.5L21.5 20h-19z"/><path d="M12 10v4.5"/><circle cx="12" cy="17.4" r=".6" fill="#fff"/></svg></span>Contains peanuts · blocked for Maya</div></div>
+        <div class="b"><h4 class="serif" style="color:var(--ink-2)">Thai peanut noodles</h4><div class="allergen" style="padding:8px 10px;font-size:12px"><span class="sh" style="width:24px;height:24px"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round"><path d="M12 3.5L21.5 20h-19z"/><path d="M12 10v4.5"/><circle cx="12" cy="17.4" r=".6" fill="#fff"/></svg></span>Contains peanuts · blocked for Maya</div><div style="font-size:11px;color:var(--ink-3);line-height:1.4;margin-top:6px">Matched "peanuts" in the ingredient statement (label data).</div></div>
       </div>
-      <div class="rrow" style="opacity:.92" onclick="openRecipe('blocked')">
+      <div class="rrow" style="opacity:.92" onclick="toast('Recipe detail reuses the Thai peanut noodles example in this prototype for the BLOCKED state')">
         <div class="ph dairy" style="filter:grayscale(.6)"><span class="mono">C</span></div>
-        <div class="b"><h4 class="serif" style="color:var(--ink-2)">Creamy cashew curry</h4><div class="allergen" style="padding:8px 10px;font-size:12px"><span class="sh" style="width:24px;height:24px"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round"><path d="M12 3.5L21.5 20h-19z"/><path d="M12 10v4.5"/><circle cx="12" cy="17.4" r=".6" fill="#fff"/></svg></span>Contains tree nuts · blocked for Maya</div></div>
+        <div class="b"><h4 class="serif" style="color:var(--ink-2)">Creamy cashew curry</h4><div class="allergen" style="padding:8px 10px;font-size:12px"><span class="sh" style="width:24px;height:24px"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round"><path d="M12 3.5L21.5 20h-19z"/><path d="M12 10v4.5"/><circle cx="12" cy="17.4" r=".6" fill="#fff"/></svg></span>Contains cashews · blocked for Maya</div><div style="font-size:11px;color:var(--ink-3);line-height:1.4;margin-top:6px">Matched "cashews" in the ingredient statement (label data).</div></div>
       </div>
       <div class="pad" style="padding-top:4px;font-size:12px;color:var(--ink-3);line-height:1.5">Blocked recipes are shown for transparency only. Add more inventory or adjust who is eating to see other matches.</div>
     </div>
@@ -874,8 +872,8 @@
       No known allergies for Maya
     </button>
 
-    <div class="sec" style="padding:10px 0 0"><h2 class="serif" style="font-size:18px">Preferences</h2><a onclick="go(dev.newUser?'scr-home':'scr-profile')">Skip</a></div>
-    <div class="chips" style="padding:0;flex-wrap:wrap;overflow:visible">
+    <div class="sec" style="padding:10px 0 0"><h2 class="serif" style="font-size:18px">Preferences</h2><a onclick="skipPreferences()">Skip preferences</a></div>
+    <div class="chips" style="padding:0;flex-wrap:wrap;overflow:visible" id="prefChips">
       <button class="chip" onclick="this.classList.toggle('on')">Vegetarian</button>
       <button class="chip on" onclick="this.classList.toggle('on')">High protein</button>
       <button class="chip" onclick="this.classList.toggle('on')">Kid-friendly</button>
@@ -946,7 +944,7 @@
   <div class="back"><div class="iconb" onclick="goBack()"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></div><h1 class="serif" style="flex:1">Chicken breast</h1><span class="prov fact">✓ Fact</span></div>
   <div class="scroll">
     <div class="qtybig"><b class="num serif" id="itemQtyDisplay">1.25 lb</b><span style="font-size:13px;color:var(--ink-3)">on hand · Fridge</span></div>
-    <div class="whyplain"><b style="color:var(--ink)">Why 1.25 lb?</b> Bought <span class="num">2.0 lb</span> Wednesday. Then <span class="num">0.75 lb</span> was used for Chicken &amp; spinach stir-fry on Friday. 2.0 minus 0.75 equals 1.25 lb. <span class="leglink" onclick="go('scr-legend')">What do these badges mean?</span></div>
+    <div class="whyplain" id="whyPlainText"><b style="color:var(--ink)">Why 1.25 lb?</b> Bought <span class="num">2.0 lb</span> Wednesday. On Thursday, <span class="num">2.25 lb</span> was recorded used for Chicken &amp; spinach stir-fry, more than was on hand, so <span class="num">0.25 lb</span> was added back to correct the count. Bought another <span class="num">1.25 lb</span> Saturday. 2.0 − 2.25 + 0.25 + 1.25 = 1.25 lb. <span class="leglink" onclick="go('scr-legend')">What do these badges mean?</span></div>
 
     <div class="sec" style="padding-top:2px"><h2 class="serif" style="font-size:17px">Correct this</h2></div>
     <div class="pad" style="padding-bottom:6px">
@@ -979,20 +977,28 @@
     </div>
 
     <div class="sec"><h2 class="serif" style="font-size:17px">History</h2></div>
-    <div class="ledgerrow">
+    <div id="historyList">
+    <div class="ledgerrow" id="ledgerRowPurchase1">
       <div class="ic"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg></div>
       <div class="m"><b>Purchased</b><i><span class="mchip">DC</span>barcode scan <span class="prov fact">✓ Fact</span> Wed 6:04 pm</i></div>
       <div class="amt pos num">+2.0 lb</div>
     </div>
-    <div class="ledgerrow">
+    <div class="ledgerrow" id="ledgerRowStirfry">
       <div class="ic"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg></div>
-      <div class="m"><b>Used in Chicken &amp; spinach stir-fry</b><i><span class="mchip">DC</span>cook confirm, FEFO plan Fri 7:20 pm</i></div>
-      <div class="amt neg num">−0.75 lb</div>
+      <div class="m"><b>Used in Chicken &amp; spinach stir-fry</b><i><span class="mchip">DC</span>cook confirm, FEFO plan <span class="prov fact">✓ Fact</span> Thu 7:20 pm</i></div>
+      <div class="amt neg num">−2.25 lb</div>
     </div>
     <div class="ledgerrow sys">
       <div class="ic"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3.5L21.5 20h-19z"/><path d="M12 10v4.5"/><circle cx="12" cy="17.4" r=".6" fill="currentColor"/></svg></div>
-      <div class="m"><b>System correction</b><i>Recorded 0.75 lb more than we had on hand. Inventory was corrected to match reality. This line was not entered by a person.</i></div>
-      <div class="amt neg num">−0.75 lb</div>
+      <div class="m"><b>Adjustment · corrects the 7:20 pm entry</b><i><span class="prov est">≈ Est.</span>You recorded 2.25 lb but our record showed 2.0 lb. We added back the 0.25 lb difference so the count matches reality. Not entered by a person. Thu 7:21 pm</i></div>
+      <div class="amt pos num">+0.25 lb</div>
+    </div>
+    <div class="ledgerrow" id="ledgerRowPurchase2">
+      <div class="ic"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg></div>
+      <div class="m"><b>Purchased</b><i><span class="mchip">DC</span>barcode scan <span class="prov fact">✓ Fact</span> Sat 5:40 pm</i></div>
+      <div class="amt pos num">+1.25 lb</div>
+    </div>
+    <div id="ledgerAppendPoint"></div>
     </div>
   </div>
 </section>
@@ -1016,10 +1022,11 @@
       <div class="cooksheet" id="cookSheetOk">
         <b style="font-size:14px">Cook this · confirm deductions</b>
         <div class="shortnote">This recipe needs 2 lb of chicken breast. Only 1.25 lb is on hand. Record what we have and flag the shortfall, or cancel and shop first.</div>
-        <div class="allocrow"><span>Chicken breast, all of lot bought Sat, expires 2d</span><span class="amt num">1.25 lb</span></div>
-        <div class="allocrow"><span>Spinach, lot bought Fri, expires 3d</span><span class="amt num">5 oz</span></div>
-        <div class="allocrow"><span>Mushrooms, lot bought Fri, expires 3d</span><span class="amt num">8 oz</span></div>
-        <div class="allocrow"><span>Rice, pantry lot</span><span class="amt num">~2 cups</span></div>
+        <div style="font-size:11px;color:var(--ink-3)">How shortfalls are handled is still being decided (OQ-1). This screen shows the proposed policy.</div>
+        <div class="allocrow"><span>Chicken breast, all of lot bought Sat, expires 2d</span><span class="prov fact">✓ Fact</span><span class="amt num">1.25 lb</span></div>
+        <div class="allocrow"><span>Spinach, lot bought Fri, expires 3d</span><span class="prov fact">✓ Fact</span><span class="amt num">5 oz</span></div>
+        <div class="allocrow"><span>Mushrooms, lot bought Fri, expires 3d</span><span class="prov ai soft">AI</span><span class="amt num">8 oz</span></div>
+        <div class="allocrow"><span>Rice, pantry lot</span><span class="prov est">≈ Est.</span><span class="amt num">~2 cups</span></div>
         <div class="btns"><button class="btn sec" onclick="document.getElementById('cookSheetOk').classList.remove('open')">Cancel</button><button class="btn pri" onclick="confirmCook('ok')">Record &amp; flag, log meal</button></div>
       </div>
     </div>
@@ -1029,8 +1036,8 @@
       <div class="sec"><h2 class="serif" style="font-size:17px">Ingredients</h2></div>
       <div class="ingredrow"><div class="m"><b>Salmon fillets</b><span style="font-size:11.5px;color:var(--ink-3)">need 12 oz · have <span class="num">12 oz</span></span></div><span class="prov fact">✓ Fact</span><span class="stat have">have</span></div>
       <div class="ingredrow"><div class="m"><b>Rice</b><span style="font-size:11.5px;color:var(--ink-3)">need ~2 cups · have <span class="num">~4 cups</span></span></div><span class="prov est">≈ Est.</span><span class="stat have">have</span></div>
-      <div class="ingredrow"><div class="m"><b>Miso paste</b><span style="font-size:11.5px;color:var(--ink-3)">need 2 tbsp · have none on hand</span></div><span class="stat miss">missing</span></div>
-      <div class="ingredrow"><div class="m"><b>Broccoli</b><span style="font-size:11.5px;color:var(--ink-3)">need 2 lb · have none on hand</span></div><span class="stat miss">missing</span></div>
+      <div class="ingredrow"><div class="m"><b>Miso paste</b><span style="font-size:11.5px;color:var(--ink-3)">need 2 tbsp · have none on hand</span></div><span class="prov fact">✓ Fact</span><span class="stat miss">missing</span></div>
+      <div class="ingredrow"><div class="m"><b>Broccoli</b><span style="font-size:11.5px;color:var(--ink-3)">need 2 lb · have none on hand</span></div><span class="prov fact">✓ Fact</span><span class="stat miss">missing</span></div>
       <div class="ingredrow"><div class="m"><b>Soy sauce</b><span style="font-size:11.5px;color:var(--ink-3)">need 2 tbsp · have <span class="num">~1 tbsp</span></span></div><span class="prov est">≈ Est.</span><span class="stat short">short by 1 tbsp</span></div>
       <div class="verdictblock unk"><div class="verdict unk"><div class="line"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 3.5L21.5 20h-19z"/><path d="M12 10v4.5"/><circle cx="12" cy="17.4" r=".6" fill="currentColor"/></svg>Allergen data unknown for Maya (severe: sesame) · miso has no ingredient statement on file</div><div class="caveat">Not blocked, not cleared. Check the package before cooking.</div></div></div>
       <div class="btns pad"><button class="btn sec" onclick="toggleWhy('whyDetailUnk')">Why this?</button><button class="btn pri" onclick="openCook('unk')">Cook this</button></div>
@@ -1038,9 +1045,10 @@
 
       <div class="cooksheet" id="cookSheetUnk">
         <b style="font-size:14px">Cook this · confirm deductions</b>
-        <div class="allocrow"><span>Salmon, lot bought Jul, expires 2 months</span><span class="amt num">12 oz</span></div>
-        <div class="allocrow"><span>Rice, pantry lot</span><span class="amt num">~2 cups</span></div>
+        <div class="allocrow"><span>Salmon, lot bought Jul, expires 2 months</span><span class="prov fact">✓ Fact</span><span class="amt num">12 oz</span></div>
+        <div class="allocrow"><span>Rice, pantry lot</span><span class="prov est">≈ Est.</span><span class="amt num">~2 cups</span></div>
         <div class="shortnote">Soy sauce: only ~1 tbsp of the 2 tbsp needed. Record what we have and flag the shortfall?</div>
+        <div style="font-size:11px;color:var(--ink-3)">How shortfalls are handled is still being decided (OQ-1). This screen shows the proposed policy.</div>
         <div class="btns"><button class="btn sec" onclick="document.getElementById('cookSheetUnk').classList.remove('open')">Cancel</button><button class="btn pri" onclick="confirmCook('unk')">Record &amp; flag, log meal</button></div>
       </div>
     </div>
@@ -1053,6 +1061,7 @@
       <div class="verdictblock blocked">
         <div class="allergen"><span class="sh"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round"><path d="M12 3.5L21.5 20h-19z"/><path d="M12 10v4.5"/><circle cx="12" cy="17.4" r=".6" fill="#fff"/></svg></span>Contains peanuts · blocked for Maya</div>
         <div style="font-size:11.5px;color:var(--ink-3);line-height:1.5;margin-top:8px">Matched "peanuts" in the ingredient statement (label data). Blocked recipes are shown for transparency only.</div>
+        <div style="font-size:11px;color:var(--ink-3);line-height:1.5;margin-top:6px">Known matches only · not a guarantee this food is safe.</div>
       </div>
       <div class="pad" style="font-size:12.5px;color:var(--ink-2);line-height:1.5">This recipe cannot be cooked or planned while it is blocked for a household member. There is no cook action for a blocked recipe.</div>
     </div>
@@ -1102,7 +1111,7 @@
   }
 
   /* ============ dev switches (simulate non-happy states; not product UI) ============ */
-  var dev = { newUser:false, camDenied:false, offline:false, recipeMode:'normal' };
+  var dev = { newUser:false, camDenied:false, offline:false, recipeMode:'normal', scanMatch:true };
   function toggleDev(k){
     dev[k] = !dev[k];
     if(k==='newUser'){ if(dev.newUser) go('scr-account'); else { navStack=[]; show('scr-home'); } }
@@ -1112,29 +1121,26 @@
     dev.recipeMode = dev.recipeMode==='normal' ? 'none' : (dev.recipeMode==='none' ? 'blocked' : 'normal');
     applyDev();
   }
+  function toggleScanMatch(){ dev.scanMatch = !dev.scanMatch; applyDev(); }
   function applyDev(){
     document.getElementById('dswNew').classList.toggle('on', dev.newUser);
     document.getElementById('dswCam').classList.toggle('on', dev.camDenied);
     document.getElementById('dswOff').classList.toggle('on', dev.offline);
     document.getElementById('dswRec').textContent = 'Recipes: ' + dev.recipeMode;
     document.getElementById('dswRec').classList.toggle('on', dev.recipeMode!=='normal');
+    document.getElementById('dswScan').textContent = 'Scan: ' + (dev.scanMatch ? 'match' : 'no match');
+    document.getElementById('dswScan').classList.toggle('on', !dev.scanMatch);
     document.getElementById('scr-home').classList.toggle('firstrun', dev.newUser);
     document.getElementById('scr-inventory').classList.toggle('firstrun', dev.newUser);
     document.getElementById('scr-scan').classList.toggle('cam-denied', dev.camDenied);
+    document.getElementById('scr-scan').classList.toggle('no-match', !dev.scanMatch);
+    document.getElementById('camHint').textContent = dev.scanMatch ? 'Matched · Open Food Facts · GTIN 0689544081128' : 'No match · code kept for later enrichment';
     document.getElementById('scr-shopping').classList.toggle('is-offline', dev.offline);
     var rec = document.getElementById('scr-recipes');
     rec.classList.toggle('none-mode', dev.recipeMode==='none');
     rec.classList.toggle('blocked-mode', dev.recipeMode==='blocked');
   }
   function avatarTap(){ go(dev.newUser ? 'scr-account' : 'scr-profile'); }
-
-  /* ============ scan: match / no-match simulate ============ */
-  function setScanMode(matched){
-    document.getElementById('modeMatch').classList.toggle('on', matched);
-    document.getElementById('modeMiss').classList.toggle('on', !matched);
-    document.getElementById('scr-scan').classList.toggle('no-match', !matched);
-    document.getElementById('camHint').textContent = matched ? 'Matched · Open Food Facts · GTIN 0689544081128' : 'No match · code kept for later enrichment';
-  }
   function resetManualFromScratch(){ document.getElementById('manualCodeNote').style.display = 'none'; }
   function goManualFromMiss(){
     document.getElementById('manualCodeVal').textContent = '0 40000 51907 3';
@@ -1204,6 +1210,10 @@
     toast('Allergy profile saved for Maya Chen');
     go(dev.newUser ? 'scr-home' : 'scr-profile');
   }
+  function skipPreferences(){
+    document.querySelectorAll('#prefChips .chip').forEach(function(c){ c.classList.remove('on'); });
+    continueAllergies();
+  }
   renderSeverityList();
 
   /* ============ S9 · manual add ============ */
@@ -1234,13 +1244,43 @@
   }
 
   /* ============ S5 · item detail ============ */
-  var itemQty = 1.25, pendingAction = null;
+  var itemQty = 1.25, itemBaseline = 1.25, pendingAction = null;
   function stepItemQty(d){
     itemQty = Math.max(0, +(itemQty+d).toFixed(2));
     document.getElementById('itemQtyVal').textContent = itemQty.toFixed(2);
   }
+  function ledgerRowHtml(title, metaHtml, amtText, positive){
+    return '<div class="ic"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg></div>'+
+      '<div class="m"><b>'+title+'</b><i>'+metaHtml+'</i></div>'+
+      '<div class="amt '+(positive?'pos':'neg')+' num">'+amtText+'</div>';
+  }
+  function prependHistoryRow(title, metaHtml, amtText, positive){
+    var list = document.getElementById('historyList');
+    var row = document.createElement('div');
+    row.className = 'ledgerrow';
+    row.innerHTML = ledgerRowHtml(title, metaHtml, amtText, positive);
+    list.insertBefore(row, list.firstChild);
+  }
+  function appendHistoryRow(title, metaHtml, amtText, positive){
+    var anchor = document.getElementById('ledgerAppendPoint');
+    var row = document.createElement('div');
+    row.className = 'ledgerrow';
+    row.innerHTML = ledgerRowHtml(title, metaHtml, amtText, positive);
+    anchor.parentNode.insertBefore(row, anchor);
+  }
+  function updateWhyPlain(){
+    document.getElementById('whyPlainText').innerHTML =
+      '<b style="color:var(--ink)">Why '+itemQty.toFixed(2)+' lb?</b> Includes a one-tap correction made just now. '+
+      'See History below for the full ledger. <span class="leglink" onclick="go(\'scr-legend\')">What do these badges mean?</span>';
+  }
   function correctQty(){
+    var delta = +(itemQty - itemBaseline).toFixed(2);
+    if(delta === 0){ toast('No change to record'); return; }
+    var mag = Math.abs(delta).toFixed(2);
+    prependHistoryRow('Adjustment', '<span class="mchip">DC</span>one-tap correction <span class="prov fact">✓ Fact</span> just now', (delta>0?'+':'−')+mag+' lb', delta>0);
+    itemBaseline = itemQty;
     document.getElementById('itemQtyDisplay').textContent = itemQty.toFixed(2)+' lb';
+    updateWhyPlain();
     toast('Corrected to '+itemQty.toFixed(2)+' lb · Undo', true);
   }
   function pickReason(btn, action){
@@ -1251,7 +1291,12 @@
   }
   function applyReason(btn){
     var reason = btn.textContent.trim();
-    toast((pendingAction||'Updated')+' · reason: '+reason.toLowerCase()+' · Undo', true);
+    var label = pendingAction || 'Updated';
+    var amt = itemBaseline.toFixed(2);
+    appendHistoryRow(label, '<span class="mchip">DC</span>reason: '+reason.toLowerCase()+' <span class="prov fact">✓ Fact</span> just now', '−'+amt+' lb', false);
+    itemBaseline = 0; itemQty = 0;
+    document.getElementById('itemQtyDisplay').textContent = '0.00 lb';
+    toast(label+' · reason: '+reason.toLowerCase()+' · Undo', true);
     document.getElementById('reasonChips').style.display = 'none';
     go('scr-inventory');
   }
