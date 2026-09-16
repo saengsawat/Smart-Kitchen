@@ -57,6 +57,15 @@ import {
  */
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+/**
+ * Savepoint that scopes the ledger insert in {@link appendTransactionToDb}.
+ *
+ * A compile-time constant, never derived from caller data: savepoint names are
+ * identifiers and cannot be parameterised, so the only safe name is one no
+ * request can influence.
+ */
+const LEDGER_APPEND_SAVEPOINT = "ledger_append";
+
 const TRANSACTION_COLUMNS = `
   household_id, item_id, lot_id, sequence, type, qty_delta, qty_delta_micros, unit, reason,
   actor_kind, actor_user_id, actor_component, actor_model_ref,
@@ -381,7 +390,10 @@ function driftCheck(
  * and persists whatever the domain accepted.
  *
  * Must be called inside a transaction (`withHouseholdTransaction`) — the lock
- * and the inserts are only atomic together.
+ * and the inserts are only atomic together, and the insert block's savepoint
+ * (see {@link LEDGER_APPEND_SAVEPOINT}) is a syntax error outside a
+ * transaction block (`25P01`), which is the failure this requirement now
+ * announces loudly rather than corrupting a balance quietly.
  *
  * The two result layers are distinct on purpose. The outer `Outcome` answers
  * "could this aggregate be addressed at all" (does the item exist in this
@@ -413,6 +425,16 @@ export async function appendTransactionToDb(
   const result = appendToDomainLedger(loaded.value, canonicalizeTransactionInput(input));
   if (result.status !== "appended") return ok(result);
 
+  // The savepoint is what makes the typed rejection below *survivable*
+  // (M1-T11). Catching a Postgres error does not un-abort the transaction it
+  // aborted: without a savepoint, returning a `rejected` outcome leaves the
+  // caller holding an aborted transaction whose subsequent `COMMIT` silently
+  // discards every earlier write and reports success (`session.ts`'s
+  // `TransactionAbortedAtCommitError` is the second half of that fix).
+  // `ROLLBACK TO SAVEPOINT` rewinds exactly the failed insert and nothing
+  // else, so a rejected append costs the caller its sibling writes no more
+  // than a domain-level rejection does.
+  await client.query(`SAVEPOINT ${LEDGER_APPEND_SAVEPOINT}`);
   try {
     await insertRecordedTransaction(client, householdId, result.transaction);
     if (result.clampAdjustment !== undefined) {
@@ -428,6 +450,8 @@ export async function appendTransactionToDb(
       pgErrorCode(error) === "23505" &&
       pgConstraint(error) === "inventory_transactions_idempotency_key"
     ) {
+      await client.query(`ROLLBACK TO SAVEPOINT ${LEDGER_APPEND_SAVEPOINT}`);
+      await client.query(`RELEASE SAVEPOINT ${LEDGER_APPEND_SAVEPOINT}`);
       return ok({
         status: "rejected",
         item: loaded.value,
@@ -438,8 +462,24 @@ export async function appendTransactionToDb(
         },
       });
     }
+    // Every other failure — the sequence-key `23505` the retry helper looks
+    // for, a trigger's `40001`, a policy's `42501` — propagates untouched,
+    // with the transaction left aborted. That is deliberate: this module is
+    // not entitled to decide that the caller's *other* work should survive an
+    // error it does not understand. `withHouseholdTransaction` rolls the whole
+    // transaction back, and `withRetriedHouseholdTransaction` re-runs it.
+    // The savepoint is intentionally left open on this branch: the transaction
+    // is aborted, so `RELEASE SAVEPOINT` would itself fail with `25P02`, and
+    // the whole-transaction rollback discards it along with everything else.
     throw error;
   }
+  // Released on the success path too, so a completed append leaves no
+  // savepoint behind for a caller (or a later append in the same transaction)
+  // to trip over. Savepoints nest, so this is safe inside a caller's own
+  // savepoint: `SAVEPOINT ledger_append` opens a new one each time, and the
+  // fixed name shadows any outer savepoint of the same name only until it is
+  // released here.
+  await client.query(`RELEASE SAVEPOINT ${LEDGER_APPEND_SAVEPOINT}`);
 
   return ok(result);
 }

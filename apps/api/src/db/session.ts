@@ -23,6 +23,36 @@ import type { Pool, PoolClient } from "pg";
 /** Postgres identifiers we are willing to `SET ROLE` to. */
 const SAFE_IDENTIFIER = /^[a-z_][a-z0-9_]{0,62}$/;
 
+/**
+ * Thrown when `COMMIT` was issued on a transaction Postgres had already put
+ * into the ABORTED state (M1-T11, from the M1-T9 review's finding F4).
+ *
+ * Postgres does not report this as an error. `COMMIT` on an aborted
+ * transaction succeeds at the protocol level and answers with the **`ROLLBACK`
+ * command tag** — observed on Postgres 17.10 through node-postgres 8.23:
+ * `QueryResult.command === "ROLLBACK"`, `rowCount === null`, no notice, no
+ * exception. Everything the transaction did is discarded.
+ *
+ * Any code that swallows a database error and then returns normally lands
+ * here: the swallowed error aborted the transaction, and without this check
+ * the caller would be handed `fn`'s return value as if the writes behind it
+ * were durable. Silent data loss is the one outcome a ledger write path may
+ * never produce (ADR-008), so the session fails loudly instead.
+ *
+ * Nothing was committed when this is thrown — the name is literal.
+ */
+export class TransactionAbortedAtCommitError extends Error {
+  constructor(message?: string) {
+    super(
+      message ??
+        "the transaction was in an aborted state at COMMIT, so Postgres rolled it back " +
+          "(COMMIT answered with the ROLLBACK command tag): nothing was committed. " +
+          "Some earlier statement failed and its error was swallowed instead of propagating.",
+    );
+    this.name = "TransactionAbortedAtCommitError";
+  }
+}
+
 export interface HouseholdSessionOptions {
   /**
    * Role to assume for the duration of the transaction (`SET LOCAL ROLE`).
@@ -39,6 +69,11 @@ export interface HouseholdSessionOptions {
  * Passing `null` for `householdId` establishes **no** household context — used
  * by the tenancy suite to prove that a code path which forgets to set it sees
  * nothing rather than everything.
+ *
+ * Returning normally means the work committed. If `fn` returns after leaving
+ * the transaction in an aborted state — it swallowed a database error — this
+ * throws {@link TransactionAbortedAtCommitError} rather than handing back a
+ * result for work Postgres discarded.
  */
 export async function withHouseholdTransaction<T>(
   pool: Pool,
@@ -53,6 +88,7 @@ export async function withHouseholdTransaction<T>(
 
   const client = await pool.connect();
   let poisoned = false;
+  let abortedAtCommit = false;
   try {
     await client.query("BEGIN");
     if (role !== undefined) {
@@ -62,9 +98,27 @@ export async function withHouseholdTransaction<T>(
       await client.query("SELECT set_config('app.household_id', $1, true)", [householdId]);
     }
     const result = await fn(client);
-    await client.query("COMMIT");
+    // `COMMIT` is not the same thing as "committed". See
+    // {@link TransactionAbortedAtCommitError}: on an aborted transaction
+    // Postgres answers COMMIT with the ROLLBACK command tag and no error, so
+    // the tag — not the absence of a throw — is what says the work is durable.
+    const commit = await client.query("COMMIT");
+    if (commit.command === "ROLLBACK") {
+      abortedAtCommit = true;
+      throw new TransactionAbortedAtCommitError();
+    }
     return result;
   } catch (error) {
+    // The flag, rather than `instanceof`, so that an error of this type thrown
+    // by `fn` itself is still rolled back like any other.
+    if (abortedAtCommit) {
+      // Postgres has already ended the transaction — that is precisely what
+      // it just told us. The connection is clean and immediately reusable
+      // (verified against the driver: a `SELECT` on it succeeds), and issuing
+      // a ROLLBACK here would only draw a "there is no transaction in
+      // progress" warning. Release it unpoisoned.
+      throw error;
+    }
     poisoned = true;
     try {
       await client.query("ROLLBACK");
