@@ -128,3 +128,125 @@ function composite(fgHex,alpha,bgHex){const [fr,fg,fb]=hexToRgb(fgHex),[br,bg,bb
 
 **Summary:** 35 pairs measured, 12 FAILs, 12 proposed fixes (11 direct token darkenings/lightenings using only values derived from existing tokens, 1 reroute to an existing token). Two of the fixes (`--ink-3`, `--danger`) each resolve four and two rows respectively with a single token change.
 
+---
+
+## 3. Terracotta scarcity table
+
+Every `--brand` / `--brand-deep` / `--brand-tint` / `#f4b48f` use remaining after M3-E0-T1's reduction (its review counted **nine**; this audit finds **ten** CSS rules, which reconcile to the review's nine if the active-nav text color and active-nav icon stroke below are counted as one combined "active nav indicator" instead of two declarations). All ten are **KEEP**, re-verified against the scarcity rule (design-direction §2: "brand accent appears only on the primary CTA, active nav indicator, and focus states").
+
+| Element (selector) | Screen(s) | Terracotta value | Keep/Remove | Reason |
+|---|---|---|---|---|
+| `.hero::after` (decorative orb) | Home | `--brand` at 18% opacity | KEEP | Hero accent, explicitly on the scarcity list ("hero accent"). |
+| `.hero h1 em` (italic "tonight?") | Home | `#f4b48f` | KEEP | Hero accent (typographic emphasis inside the one permitted dark hero surface). |
+| Sparkle icon beside the hero headline | Home | `#f4b48f` | KEEP | Hero accent, same surface as the two rows above. |
+| `.btn.pri` (primary CTA, resting) | 16 call sites across Home, Add, Recipes, Recipe detail, cook-confirm sheets, Manual entry, Household, Allergies, Item detail | `--brand` | KEEP | Primary CTA, the first item on the scarcity list. Subject to the contrast fix in §2 row 24. |
+| `.btn.pri:active` (primary CTA, pressed) | Same 16 sites | `--brand-deep` | KEEP | Press feedback on the same primary CTA. |
+| `.frame i` (viewfinder brackets, 4 corner marks) | Scan screen only | `--brand` | **KEEP, documented camera-chrome exception** | Not on the scarcity list's three named categories, but retained by the M3-E0-T1 review as camera-chrome convention (a viewfinder is universally drawn in an accent color in every scanning UI; treating it as decoration inside a full-bleed camera view, not as a competing brand surface). |
+| `.laser` (scan-line sweep) | Scan screen only | `--brand` (fill + glow) | **KEEP, documented camera-chrome exception** | Same reasoning as `.frame i`; the two are the paired camera-chrome exception the review named explicitly. |
+| `.loop b` (shopping "close the loop" banner text) | Shopping | `--brand-deep` | KEEP | Not literally "primary CTA" but the loop banner is the screen's one call-to-action-adjacent prompt; kept per T1's review disposition. Flagged in §2 row 25 for a contrast fix that may recolor this specific text to `--ink` while leaving the rest of the scarcity list untouched. |
+| `.nav button.on` (active tab label color) | Home, Inventory, Recipes, Shopping nav bars (4 sites) | `--brand-deep` | KEEP | Active nav indicator, the second item on the scarcity list. |
+| `.nav button.on svg` (active tab icon stroke) | Same 4 nav bars | `--brand` | KEEP | Active nav indicator (icon half of the same component as the row above). |
+
+**`--brand-tint` (`#f9dece`):** zero uses found. Not a scarcity violation (it cannot violate a rule it never invokes); recorded in §1 as an unused token and in §2 row 23 with a contrast fix ready if a future component adopts it.
+
+**Net effect since M3-E0-T1:** the review's own count went from 15 live uses (six unaudited, two new) down to nine; this audit independently re-derives the same post-fix set (ten CSS rules covering the same nine semantic roles) and finds nothing further to remove. No new terracotta uses were found outside this list.
+
+---
+
+## 4. Semantic-colour decisions (PROPOSED, PO decides)
+
+Per CLAUDE.md rule 4, these are recorded as PROPOSED for the product owner, not decided here.
+
+1. **`--danger` on `.allergychip.on` / `.sevbtn.on`** (declaring an allergy, and choosing its severity). PROPOSED: **keep**. This is data entry directly about an allergy, the narrowest possible allergen context, not a scarcity violation of the "allergen only" rule, it *is* the allergen rule applied to input controls rather than output verdicts. Audited in this ticket (see below): every other `--danger`/`--danger-bg` use in the file is also allergen-context; there is no crossover. Dependent on §2's proposed `--danger` darkening to clear the alert-category FAIL.
+2. **`.noneopt.on` green check beside allergy copy.** PROPOSED, PO to decide between: (a) **keep** the green check, on the reasoning that it marks a **user's declaration** ("I have no allergies") rather than a **system verdict** ("this food is safe"), a different semantic register from the banned ALLOWED-as-green-check pattern (P5, rule 9); pair with a copy-deck note (M3-E0-T2's deck) explicitly distinguishing "declaration checkmark" from "verdict clearance" so the distinction is documented, not just assumed; or (b) **swap** to a neutral ink checkmark to remove the visual ambiguity the M3-E0-T1 reviewer flagged ("one glance from the banned pattern"). This document does not choose between (a) and (b); both are viable and the choice is a PO call, not an engineering one.
+3. **`.chk.done` green** (shopping check-off). PROPOSED: **keep, no PO decision needed.** This is the general "positive/complete" sentiment use design-direction §0 already permits broadly (task done, item fresh, item verified), not the allergen-verdict-specific banned pattern; it sits outside any allergen surface entirely (Shopping screen, no allergen data present).
+4. **`--rose` vs `--danger` boundary.** Verified by direct grep of the prototype: every `--danger`/`--danger-bg` use (7 CSS rules: `.allergen`, `.allergen .sh`, `.allergychip.on`, `.sevbtn.on`, `.verdictblock.blocked`, plus the legend row's inline style) is allergen-context; every `--rose`/`--rose-bg` use (4 CSS rules: freshness-ring "now" stop, `.exp.now`, `.ingredrow .stat.miss`, plus one inline style on the same ring) is expiry/urgency-context. **Zero crossover found.** PROPOSED: record the boundary as CONFIRMED, not just designed, ready for the M3 typed module's lint rule (design-direction §4 mentions a typed token module; recommend a rule there forbidding `--danger` outside `allergen*`-named components).
+5. **AI purple exclusivity.** Verified by grep: every `--ai`/`--ai-bg` use (10 sites: `.prov.ai`, `.prov.ai.soft`, `.tray`, `.okbtn`, `.mode.cam`, `.chip.needsconf.on`, the "Needs your confirmation" section label, and the "future" phase label on one AI-adjacent scan-mode tile) is provenance/AI-tier or AI-adjacent phase-labeling. **Confirmed exclusive**, PROPOSED as CONFIRMED for the M3 module.
+6. **Freshness-ring ramp.** Verified by grep: `.fr-now` uses `--rose`, `.fr-soon` uses `--amber`, `.fr-fresh` uses `--green`; `--danger` never appears in the ramp. **Confirmed** it never touches allergen red, matching design-direction §0's explicit rule.
+
+---
+
+## 5. Tap-target table
+
+**Method:** height = (font-size x line-height) + top-padding + bottom-padding + top-border + bottom-border, for controls with no explicit CSS height/width. **Line-height assumption: 1.2x font-size** where no `line-height` is set (this is the value that reproduces the M3-E0-T1 review's own measured estimates exactly for `.leglink` (14.4 vs "~15"), `.toastUndo` (24.4 vs "~24"), `.chip` (33.6 vs "~34"), and `.loc` (34.6 vs "~35"), so it is used consistently here rather than assumed fresh). Where a rule sets an explicit `width`/`height`, that value is used directly (no line-height math needed); `box-sizing: border-box` is set globally so an explicit dimension already includes padding/border.
+
+| Selector | CSS basis | Computed height | Target | Result |
+|---|---|---|---|---|
+| `.chip` | 13px font x 1.2 + 2x8px padding + 2x1px border | 33.6px (~34px) | 44px | FAIL (-10px) |
+| `.loc` | 13px x 1.2 + 2x8px padding + 2x1.5px border | 34.6px (~35px) | 44px | FAIL (-9px) |
+| `.seg button` | explicit `height: 36px` | 36px | 44px | FAIL (-8px) |
+| `.chk` | explicit `width/height: 26px` | 26px | 44px | FAIL (-18px, worst case) |
+| `.okbtn` | explicit `height: 32px` | 32px | 44px | FAIL (-12px) |
+| `.sevbtn` | explicit `height: 34px` | 34px | 44px | FAIL (-10px) |
+| `.allergychip` | 13px x 1.2 + 2x9px padding + 2x1.5px border | 36.6px (~37px) | 44px | FAIL (-7px) |
+| `.leglink` | 12px x 1.2, no padding/border (plain underlined text) | 14.4px (~14px) | 44px | FAIL (-30px, worst case) |
+| `.toastUndo` | 12px x 1.2 + 2x5px padding | 24.4px (~24px) | 44px | FAIL (-20px) |
+| `.hbtn` | explicit `width/height: 40px` | 40px | 44px | FAIL (-4px) |
+| `.iconb` | explicit `width/height: 42px` | 42px | 44px | FAIL (-2px) |
+| `.step button` | explicit `width/height: 42px` | 42px | 44px | FAIL (-2px) |
+| `.btn` | explicit `height: 48px` | 48px | 44px | PASS |
+| `.fab` | explicit `width/height: 62px` | 62px | 44px | PASS |
+| `.nav button` | `height: 100%` of `.nav`'s explicit `height: 66px` | 66px | 44px | PASS |
+
+**12 of 15 controls fail.** Remediation without changing the look uses two techniques:
+
+**A. Grow the box (near-misses, <=4px short):** `.hbtn` 40 -> 44px, `.iconb` 42 -> 44px, `.step button` 42 -> 44px. A 2-4px larger circle/square is not visually distinguishable at a glance and needs no other layout change.
+
+**B. Invisible hit-slop, keep the visible pill exactly as drawn (far short, growing the box would blow the compact aesthetic):** add touch-area padding beyond the rendered control (React Native `hitSlop`, or on web a transparent `::before` sized to 44x44 and centered via `inset: calc((44px - width)/-2)`), computed as `ceil((44 - height)/2)` per side:
+
+| Selector | Per-side hit-slop needed |
+|---|---|
+| `.chk` | 9px |
+| `.leglink` | 15px |
+| `.toastUndo` | 10px |
+| `.okbtn` | 6px |
+| `.chip` | 5px |
+| `.sevbtn` | 5px |
+| `.loc` | 5px |
+| `.allergychip` | 4px |
+
+**C. Grow the strip, not hit-slop (adjacent flex items sharing one continuous track, so per-item hit-slop would overlap the neighbor):** `.seg button` and `.sevbtn` sit edge-to-edge (or 8px-gapped) inside a shared row (`.seg`, `.sevrow`) with only a few px of container padding around them; recommend raising the row's own height (36 -> 44 for `.seg`, 34 -> 44 for `.sevbtn`) rather than hit-slop, since hit-slop on one segment would extend into the next segment's rendered area. This is a real, if minor, visual change (a segmented control and a severity-picker row 8-10px taller); flagged as the one remediation in this table that is not purely invisible.
+
+---
+
+## 6. Motion table
+
+**No `prefers-reduced-motion` media query exists anywhere in the file** (grep confirmed: zero matches for `prefers-reduced-motion`). Design-principles P9 requires reduced motion to be respected; this is currently un-met everywhere below.
+
+| Rule | Motion | Duration | Trigger | Proposed `prefers-reduced-motion: reduce` treatment |
+|---|---|---|---|---|
+| `.screen.active { animation: in .28s ease both; }` | Slide-up + fade-in on every screen transition | 0.28s, once per navigation | Every `go()` screen change | Disable entirely (`animation: none`); screen appears instantly. This is the review's flagged "screen-in animation." |
+| `.laser { animation: sweep 1.8s ease-in-out infinite alternate; }` | Continuous vertical sweep | 1.8s, **infinite loop** | Always running while the scan screen is open | Disable (`animation: none`) and freeze at a static mid-frame position (`top: 74px`, the sweep's midpoint) so the viewfinder still reads as a scan indicator without motion. This is the review's flagged "laser sweep," and the highest-priority fix in this table since it is the only truly infinite, continuous animation in the file (a known vestibular/motion-sickness trigger class). |
+| `.card.tap { transition: transform .12s ease; }` + `:active { transform: scale(.985); }` | Press-scale feedback | 0.12s, on tap | Card tap | Drop `transition` (instant scale on press) or drop the rule entirely; the scale itself (1.5%) is small enough that removing only the *animated interpolation* (not the state change) satisfies "respected" while keeping tactile feedback. |
+| `.btn { transition: transform .1s; }` + `:active { transform: scale(.97); }` | Press-scale feedback | 0.1s | Button tap | Same treatment as `.card.tap`. |
+| `.item { transition: transform .1s; }` + `:active { transform: scale(.985); }` | Press-scale feedback | 0.1s | Inventory/list row tap | Same treatment. |
+| `.mode { transition: transform .1s; }` + `:active { transform: scale(.97); }` | Press-scale feedback | 0.1s | Add-food mode tile tap | Same treatment. |
+| `.fab { transition: transform .12s; }` + `:active { transform: translateX(-50%) scale(.93); }` | Press-scale feedback | 0.12s | FAB tap | Same treatment. |
+| `.chk svg { opacity: 0; transform: scale(.6); transition: .15s; }` | Check-mark fade/scale-in | 0.15s | Checkbox toggled | Keep the opacity fade (content appearing/disappearing is exempted by most reduced-motion guidance); drop the `scale(.6)` component so the glyph appears at full size instead of growing in. |
+| `.toast { transition: .18s; }` | Toast fade/slide-in | 0.18s | Any `toast()` call | Keep the opacity fade; drop the `translateY` component (currently baked into the same `transform` the rule animates via the `.show` class swap). |
+
+**Summary:** 9 animation/transition declarations, 0 currently guarded, 2 flagged by the M3-E0-T1 review (screen-in, laser sweep) as the priority fixes, 7 secondary (micro press-feedback and toast/check transitions) that should drop their transform component under reduced motion while most can keep opacity fades.
+
+---
+
+## 7. Dark-mode readiness (OQ-D6, still open)
+
+Design-direction §2's v1 foundation table is the only place a dark counterpart exists at all, and it predates the v2 token sheet in §0 that the prototype actually ships (§0 changed most of the light-side hex values; the dark side was never re-derived to match).
+
+**Have a documented dark counterpart (v1 table, §2), but the light side is now stale relative to §0/`:root`:**
+
+| Token | v1 light (documented, now superseded) | v2 light (`:root`, actually shipped) | Documented dark | Status |
+|---|---|---|---|---|
+| `bg.page` | `#f5f4ed` | `#efe5d5` | `#141413` | Dark value never re-checked against the new, warmer light value |
+| `bg.card` | `#faf9f5` | `#fffbf4` | `#30302e` | Same gap |
+| `bg.interactive` | `#e8e6dc` | `#e4d7c2` (closest v2 analog, `bg.page.alt`) | `#3d3d3a` | Same gap |
+| `border.subtle` / `border.strong` | `#f0eee6` / `#d1cfc5` | `#dfd1ba` (single `--line`, v2 collapsed subtle/strong to one token) | `#30302e` / `#4d4c48` | v2 merged two border tokens into one; the dark table still has two, needs reconciling |
+| `text.primary` | `#141413` | `#1e1813` | `#faf9f5` | Same gap |
+| `text.secondary` | `#5e5d59` | `#5b5045` | `#b0aea5` | Same gap |
+| `text.tertiary` | `#87867f` | `#8f8274` | `#87867f` (identical to its own light value, likely a placeholder, not a real dark derivation) | Needs a real dark value, and the light side needs the §2 fix from this document first |
+
+**No dark counterpart exists at all (v2-only tokens):**
+
+`--espresso` / `--espresso-2` (bg.hero), `--cream` (text.onHero), `--brand` / `--brand-deep` / `--brand-tint` (accent.brand triad), `--green` / `--green-bg`, `--amber` / `--amber-bg` (both updated hexes from v1), `--rose` / `--rose-bg` (urgency.today, new in v2), `--danger` / `--danger-bg` (updated hex from v1), `--ai` / `--ai-bg`, the freshness-ring ramp, and the Fraunces display face's dark-mode legibility (untested).
+
+**Recommendation for M3:** dark mode (OQ-D6) stays open; this section is the inventory of what a dark pass would need to produce (a re-derivation of the 7-row v1 table against the actual v2 light values, plus a from-scratch dark value for every v2-only token above), not a resolution of it.
