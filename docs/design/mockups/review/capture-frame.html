@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>KitchenSmart prototype capture frame</title>
+  <style>
+    * { box-sizing: border-box; }
+    html, body { width: 440px; height: 900px; margin: 0; overflow: hidden; }
+    body { display: grid; place-items: center; background: #cdbfa8; }
+    iframe { width: 414px; height: 868px; border: 0; background: transparent; }
+  </style>
+</head>
+<body>
+  <iframe id="prototype" src="../smart-kitchen-prototype.html" title="KitchenSmart prototype"></iframe>
+  <script>
+    // A fragment is used because Chromium can drop query strings from file://
+    // URLs when it reuses a headless browser process.
+    const params = new URLSearchParams(location.hash.slice(1) || location.search);
+    const frame = document.getElementById('prototype');
+
+    frame.addEventListener('load', () => {
+      const win = frame.contentWindow;
+      const doc = frame.contentDocument;
+      const screen = params.get('screen') || 'scr-home';
+      const state = params.get('state') || '';
+      const recipe = params.get('recipe') || '';
+      const action = params.get('action') || '';
+
+      doc.body.style.cssText = 'margin:0;padding:12px;display:block;background:transparent;overflow:hidden';
+      const phone = doc.querySelector('.phone');
+      if (phone) {
+        phone.style.animation = 'none';
+        phone.style.boxShadow = '0 0 0 8px #1e1813,0 0 0 10px #4a3c30,0 24px 52px -18px rgba(30,24,19,.58)';
+      }
+      const style = doc.createElement('style');
+      style.textContent = '*{animation:none!important;transition:none!important}.scroll{scrollbar-width:none}';
+      doc.head.appendChild(style);
+
+      if (state === 'new-user') win.dev.newUser = true;
+      if (state === 'camera-denied') win.dev.camDenied = true;
+      if (state === 'offline') win.dev.offline = true;
+      if (state === 'scan-miss') win.dev.scanMatch = false;
+      if (state === 'recipes-empty') win.dev.recipeMode = 'none';
+      if (state === 'recipes-blocked') win.dev.recipeMode = 'blocked';
+      win.applyDev();
+
+      doc.querySelector('.hint')?.remove();
+      doc.querySelector('.devbar')?.remove();
+
+      if (recipe) {
+        win.show('scr-recipe-detail');
+        const detail = doc.getElementById('scr-recipe-detail');
+        detail.className = `screen active v-${recipe}`;
+        doc.getElementById('recipeTitle').textContent = win.RECIPE_TITLES[recipe];
+        if (action === 'cook' && recipe !== 'blocked') win.openCook(recipe);
+      } else {
+        win.show(screen);
+      }
+
+      doc.querySelectorAll('.scroll').forEach(el => { el.scrollTop = 0; });
+      document.body.dataset.ready = 'true';
+    });
+  </script>
+</body>
+</html>

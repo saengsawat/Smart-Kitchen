@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>KitchenSmart · Prototype review with Dean</title>
+  <style>
+    :root { --sand:#efe5d5; --paper:#fffbf4; --ink:#1e1813; --muted:#665c52; --line:#d8c8ae; --brand:#a74925; --deep:#2a1f18; --green:#2c744b; --amber:#925b0a; --purple:#6d419f; }
+    * { box-sizing: border-box; }
+    html { background:#b8aa94; }
+    body { margin:0; color:var(--ink); font:15px/1.45 Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, sans-serif; }
+    .sheet { width:11in; height:8.5in; margin:24px auto; padding:.5in .55in; background:var(--paper); position:relative; overflow:hidden; box-shadow:0 18px 55px #493d2f55; page-break-after:always; }
+    .sheet:last-child { page-break-after:auto; }
+    .kicker { color:var(--brand); font-size:12px; font-weight:800; letter-spacing:.12em; text-transform:uppercase; }
+    h1,h2,h3,p { margin-top:0; }
+    h1,h2 { font-family:Georgia,serif; letter-spacing:-.025em; }
+    h1 { font-size:46px; line-height:1.02; max-width:720px; margin:18px 0; }
+    h2 { font-size:31px; margin:6px 0 8px; }
+    h3 { font-size:13px; letter-spacing:.08em; text-transform:uppercase; margin-bottom:8px; }
+    .sub { color:var(--muted); font-size:17px; max-width:710px; }
+    .cover { background:var(--deep); color:#f7efe2; display:flex; flex-direction:column; justify-content:center; padding:.8in; }
+    .cover .kicker { color:#f4b48f; }
+    .cover .sub { color:#d8c9b3; }
+    .cover:after { content:""; width:360px; height:360px; position:absolute; border-radius:50%; right:-100px; top:-90px; background:#d9673b33; }
+    .meta { display:flex; gap:12px; margin-top:28px; flex-wrap:wrap; }
+    .pill { border:1px solid currentColor; border-radius:999px; padding:7px 12px; font-size:12px; font-weight:700; }
+    .page-no { position:absolute; right:.45in; bottom:.28in; color:var(--muted); font-size:11px; }
+    .overview-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-top:20px; }
+    .overview-card { background:var(--sand); border:1px solid var(--line); border-radius:15px; padding:10px; min-height:252px; }
+    .overview-card img { display:block; height:205px; max-width:100%; margin:0 auto 7px; object-fit:contain; }
+    .overview-card b { display:block; font-size:12px; }
+    .overview-card span { color:var(--muted); font-size:10px; }
+    .detail { display:grid; grid-template-columns:360px 1fr; gap:38px; align-items:start; }
+    .phone-shot { display:block; width:338px; height:692px; object-fit:contain; margin-top:-4px; }
+    .stage { display:inline-flex; border-radius:999px; background:var(--sand); color:var(--muted); padding:6px 10px; font-size:11px; font-weight:800; margin:4px 0 16px; }
+    .note { border-top:1px solid var(--line); padding:14px 0 2px; }
+    .note p, .note li { color:var(--muted); font-size:14px; }
+    ul { padding-left:20px; margin:7px 0; }
+    li { margin:4px 0; }
+    .decision { background:#f9dece; border-left:5px solid var(--brand); padding:13px 15px; margin-top:15px; border-radius:0 12px 12px 0; }
+    .decision b { color:var(--brand); }
+    .flow { color:var(--muted); font-size:12px; font-weight:700; margin-top:14px; }
+    .appendix-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; margin-top:18px; }
+    .state { border:1px solid var(--line); border-radius:14px; padding:10px; background:var(--sand); }
+    .state img { width:100%; height:235px; object-fit:contain; display:block; }
+    .state b { font-size:12px; display:block; }
+    .state span { font-size:10px; color:var(--muted); }
+    .agenda { display:grid; grid-template-columns:repeat(2,1fr); gap:14px; margin-top:22px; }
+    .agenda div { border:1px solid var(--line); border-radius:14px; padding:15px; }
+    .agenda b { display:block; color:var(--brand); margin-bottom:5px; }
+    .agenda p { color:var(--muted); font-size:13px; margin:0; }
+    @page { size:letter landscape; margin:0; }
+    @media print { html,body { background:white; } .sheet { margin:0; box-shadow:none; } }
+    @media screen and (max-width:1100px) { .sheet { transform-origin:top left; } }
+  </style>
+</head>
+<body>
+  <section class="sheet cover">
+    <div class="kicker">Andy + Dean · Product review</div>
+    <h1>KitchenSmart<br>prototype walkthrough</h1>
+    <p class="sub">Every prototype page, in a practical meeting order. Review the product shape first; use the prompts to lock the decisions that unblock the next build phase.</p>
+    <div class="meta"><span class="pill">Prototype v3</span><span class="pill">16 core views</span><span class="pill">6 edge states</span><span class="pill">18 Sep 2026</span></div>
+    <span class="page-no">01</span>
+  </section>
+
+  <section class="sheet">
+    <div class="kicker">How to use this deck</div>
+    <h2>Start with the product story</h2>
+    <p class="sub">The screens are sequenced like a real household journey, not by implementation order.</p>
+    <div class="agenda">
+      <div><b>1 · Orient</b><p>Home → Inventory → Add Food. Confirm whether the dashboard is the right front door.</p></div>
+      <div><b>2 · Capture</b><p>Barcode match, no match, manual entry, and item corrections. Check whether provenance feels understandable.</p></div>
+      <div><b>3 · Decide safety</b><p>Allergies, profile visibility, recipe verdicts, and blocked states. These are policy decisions wearing UI clothes.</p></div>
+      <div><b>4 · Close the loop</b><p>Recipes → cook confirmation → shopping → assistant. Confirm what belongs in MVP versus later.</p></div>
+    </div>
+    <div class="decision"><b>Meeting rule:</b> react to the decision and user flow—not typography polish. “Would we ship this behavior?” is the useful question.</div>
+    <span class="page-no">02</span>
+  </section>
+
+  <div id="deck"></div>
+
+  <script>
+    const A = 'review/assets/';
+    const core = [
+      ['01-home-dashboard.png','Home dashboard','Daily starting point'],
+      ['02-inventory.png','Inventory','What is on hand'],
+      ['03-add-food.png','Add food','Choose capture method'],
+      ['04-barcode-match.png','Barcode match','Review catalog facts'],
+      ['11-manual-add.png','Manual add','Fallback capture'],
+      ['12-item-detail.png','Item detail','Quantity + ledger'],
+      ['05-recipes.png','Recipes','Ranked meal ideas'],
+      ['14-recipe-ready.png','Recipe · ready','Known match path'],
+      ['15-recipe-unknown.png','Recipe · unknown','Uncertainty path'],
+      ['16-recipe-blocked.png','Recipe · blocked','Allergen stop'],
+      ['06-shopping.png','Shopping','Shared gaps'],
+      ['07-assistant.png','Assistant','Ask the kitchen'],
+      ['08-account-household.png','Household setup','Create or join'],
+      ['09-allergies-preferences.png','Allergies','Safety onboarding'],
+      ['10-profile.png','Profile','Members + settings'],
+      ['13-badge-legend.png','Badge legend','Trust vocabulary'],
+    ];
+    const details = [
+      {i:0,s:'S3 · Existing household',d:'A1 · MVP scope / A10 · Home direction',q:'Is the dashboard the right front door, or should the app open directly to Inventory?',w:['Makes expiring food and a strong dinner suggestion immediately useful.','Provides fast routes to inventory, recipes, shopping, and the assistant.'],f:'Home → Inventory / Recipes / Add / Assistant'},
+      {i:1,s:'S4 · Core MVP',d:'A1 · MVP scope',q:'Does this list expose enough information to trust quantities and expiry without opening every item?',w:['Location tabs keep fridge, freezer, and pantry understandable.','Provenance and “needs confirmation” are visible before acting.'],f:'Home → Inventory → Item detail'},
+      {i:2,s:'S6 · Capture hub',d:'A1 · Scope / A11 · Imagery',q:'For the first release, are barcode scan and manual entry enough? Receipt and camera recognition are marked as later phases.',w:['Sets honest expectations instead of pretending every capture method ships now.','Keeps the primary action focused on getting food into inventory.'],f:'Add → Barcode / Manual / Later capture'},
+      {i:3,s:'S7 · Core MVP',d:'A8 · Label-data trust tier',q:'Should Open Food Facts label data appear as Estimated until the user confirms it?',w:['Shows source and GTIN, then asks the user to confirm quantity and location.','Avoids silently turning third-party catalog data into a known fact.'],f:'Scan → Review match → Add to inventory'},
+      {i:4,s:'S9 · Core fallback',d:'A1 · MVP scope',q:'Is the manual fallback fast enough for products with no barcode match and fresh produce?',w:['Unit type changes the available units.','A missed barcode can be kept for later enrichment.'],f:'Add → Manual → Inventory'},
+      {i:5,s:'S5 · Core MVP',d:'A9 · Shortfall / correction policy',q:'Does the ledger explanation make a corrected quantity feel trustworthy rather than mysterious?',w:['Quantity edits become append-only corrections, not silent overwrites.','Used up, discarded, and donated require a reason.'],f:'Inventory → Item → Correct / consume'},
+      {i:6,s:'S10 · Recommended scope',d:'A1 · MVP scope',q:'Are ranked recipe suggestions essential for MVP, or should the first slice stop at trustworthy inventory?',w:['Ranking explains expiry usage, purchase gaps, time, and preferences.','Safety verdicts are separate from the ranking score.'],f:'Home → Recipes → Recipe detail'},
+      {i:7,s:'S11 · Recipe detail',d:'A8 · Trust tier',q:'Is “no known allergen match” clear enough without sounding like a safety guarantee?',w:['Shows exact on-hand amounts and the evidence tier.','Cook action leads to explicit inventory deductions.'],f:'Recipes → Ready recipe → Cook'},
+      {i:8,s:'S11 · Uncertainty path',d:'A9 · Shortfall policy',q:'When inventory is short, should we record what exists, flag the gap, and still log the meal?',w:['Names the missing ingredient data instead of hiding uncertainty.','Separates shopping gaps from allergen unknowns.'],f:'Recipes → Unknown recipe → Record + flag'},
+      {i:9,s:'S11 · Safety stop',d:'A3 / A8 · Household safety policy',q:'Should blocked recipes remain visible for transparency, with no cook action?',w:['Allergen red is reserved for an actual known match.','The reason and affected household member are named.'],f:'Recipes → Blocked detail → No cook action'},
+      {i:10,s:'S13 · Shared utility',d:'A1 · MVP scope',q:'Does shared shopping belong in the reduced vertical slice, or can it follow inventory and recipes?',w:['Meal-plan gaps become a plain shared list.','Offline actions queue rather than disappear.'],f:'Recipes / Assistant → Shopping'},
+      {i:11,s:'S14 · AI surface',d:'A1 · MVP scope / B5 · LLM cost',q:'What is the one assistant job worth shipping first: meal ideas, expiry help, or list building?',w:['Prompt starters make the feature concrete.','The assistant should explain and act through deterministic app functions.'],f:'Home → Assistant → Recipe / Shopping action'},
+      {i:12,s:'S1 · New household',d:'A3 · Household permissions',q:'Who may create, join, invite, and manage a household in the first release?',w:['Supports create and join without assuming a single-person account.','This is where owner/member rules first become visible.'],f:'Sign in → Create or join → Allergies'},
+      {i:13,s:'S2 · Safety onboarding',d:'A2 / A3 / A10 · Market + permissions',q:'Confirm: US nine allergens, owner enters them for all members, and the household can see allergy flags.',w:['Severity is explicit per allergen.','Preferences are kept visually separate from safety constraints.'],f:'Household setup → Allergies → Home'},
+      {i:14,s:'S12 · Household profile',d:'A3 / A10 · Privacy + product name',q:'Which member details are household-visible, and is “KitchenSmart” only a placeholder?',w:['Central place for people, safety profiles, and household settings.','Name choice must happen before store/domain work.'],f:'Avatar → Household profile → Member allergy edit'},
+      {i:15,s:'System explanation',d:'A8 / A12 · Trust + contrast',q:'Do Known Fact, Estimated, and AI Interpretation feel distinct and understandable without relying on color alone?',w:['Shape, icon, label, and color all carry meaning.','Review these colors on a real phone before adopting the proposed contrast fixes.'],f:'Any provenance badge → Legend'},
+    ];
+    const states = [
+      ['17-new-user-home.png','New user / empty home','First-run value before inventory exists'],
+      ['18-camera-denied.png','Camera denied','Recovery path to settings or manual entry'],
+      ['19-barcode-no-match.png','No barcode match','Keep code and fall back to manual'],
+      ['20-recipes-empty.png','No recipe results','Explain why and offer a useful next move'],
+      ['21-recipes-blocked-list.png','Blocked recipe list','Transparent but clearly unavailable'],
+      ['22-shopping-offline.png','Shopping offline','Queue shared changes for sync'],
+    ];
+    const deck = document.getElementById('deck');
+    let page = 3;
+    function pageNo(){ return String(page++).padStart(2,'0'); }
+    for(let start=0; start<core.length; start+=8){
+      const section=document.createElement('section'); section.className='sheet';
+      section.innerHTML=`<div class="kicker">Screen map · ${start<8?'Capture and core use':'Safety, planning, and household'}</div><h2>${start<8?'From “what do I have?” to trustworthy inventory':'From meal choice to household safety'}</h2><div class="overview-grid">${core.slice(start,start+8).map(x=>`<div class="overview-card"><img src="${A+x[0]}"><b>${x[1]}</b><span>${x[2]}</span></div>`).join('')}</div><span class="page-no">${pageNo()}</span>`;
+      deck.appendChild(section);
+    }
+    details.forEach((x,n)=>{
+      const c=core[x.i], section=document.createElement('section'); section.className='sheet';
+      section.innerHTML=`<div class="detail"><img class="phone-shot" src="${A+c[0]}" alt="${c[1]} screen"><div><div class="kicker">Screen ${String(n+1).padStart(2,'0')} · ${c[1]}</div><h2>${c[2]}</h2><span class="stage">${x.s}</span><div class="note"><h3>What this page is doing</h3><ul>${x.w.map(v=>`<li>${v}</li>`).join('')}</ul></div><div class="decision"><b>Decision prompt · ${x.d}</b><p>${x.q}</p></div><div class="flow">FLOW · ${x.f}</div></div></div><span class="page-no">${pageNo()}</span>`;
+      deck.appendChild(section);
+    });
+    const appendix=document.createElement('section'); appendix.className='sheet';
+    appendix.innerHTML=`<div class="kicker">Edge-state check</div><h2>Don’t approve only the happy path</h2><p class="sub">These states usually reveal more product truth than the polished default screens.</p><div class="appendix-grid">${states.map(x=>`<div class="state"><img src="${A+x[0]}"><b>${x[1]}</b><span>${x[2]}</span></div>`).join('')}</div><span class="page-no">${pageNo()}</span>`;
+    deck.appendChild(appendix);
+    const close=document.createElement('section'); close.className='sheet';
+    close.innerHTML=`<div class="kicker">Close the meeting</div><h2>Decisions to leave with</h2><div class="agenda"><div><b>MVP shape</b><p>Ratify the reduced slice, or name the one or two additions that are truly non-negotiable.</p></div><div><b>Household safety</b><p>Confirm US-first allergens, owner/member rights, visibility, and label-data trust.</p></div><div><b>Product direction</b><p>Keep dashboard home? Light-first? Is KitchenSmart just a working name?</p></div><div><b>Build path</b><p>Expo client, Better Auth, stubbed-auth M2 now, and hosting only when shared testing needs it.</p></div></div><div class="decision"><b>Afterward:</b> record the answers in DECISIONS.md. Until then, every highlighted item here is a proposal, not a settled requirement.</div><span class="page-no">${pageNo()}</span>`;
+    deck.appendChild(close);
+  </script>
+</body>
+</html>
