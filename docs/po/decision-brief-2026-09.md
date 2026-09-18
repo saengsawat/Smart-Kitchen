@@ -1,5 +1,7 @@
 # PO decision brief — Andy + Dean working session (target: week of 2026-09-15)
 
+**New to the architecture?** Read [architecture-overview-decision-meeting-prep.md](architecture-overview-decision-meeting-prep.md) first (15 minutes, plain language).
+
 **Purpose:** every decision that currently blocks the next build phase, with the architect's recommendation and the cost of each path. Prepared by the architect; nothing here is decided until it is recorded in [DECISIONS.md](../../DECISIONS.md). Guiding preference from the PO (2026-09-15): **open source first, small but scalable, pay only when we hit a wall.** The recommendations below follow that preference and say where the wall is.
 
 **Cost figures are ESTIMATES from list prices known to the architect and must be verified on the vendor's pricing page before signup** (prices and free-tier limits change often). Any signup, key, or paid resource still needs explicit PO approval per CLAUDE.md rule 17.
