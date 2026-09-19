@@ -59,6 +59,11 @@
       }
 
       doc.querySelectorAll('.scroll').forEach(el => { el.scrollTop = 0; });
+      if (action === 'cook') {
+        const sheet = doc.querySelector('.cooksheet.open');
+        const scroller = sheet ? sheet.closest('.scroll') : null;
+        if (scroller) scroller.scrollTop = scroller.scrollHeight;
+      }
       document.body.dataset.ready = 'true';
     });
   </script>

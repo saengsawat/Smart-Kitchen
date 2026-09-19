@@ -30,6 +30,7 @@ const screens = [
   ['12-item-detail', { screen: 'scr-item' }],
   ['13-badge-legend', { screen: 'scr-legend' }],
   ['14-recipe-ready', { recipe: 'ok' }],
+  ['23-cook-confirm', { recipe: 'ok', action: 'cook' }],
   ['15-recipe-unknown', { recipe: 'unk' }],
   ['16-recipe-blocked', { recipe: 'blocked' }],
   ['17-new-user-home', { screen: 'scr-home', state: 'new-user' }],

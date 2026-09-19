@@ -121,7 +121,7 @@
   .btn.pri:active { background: var(--brand-deep); }
   .btn.sec { background: var(--sand); color: var(--ink); }
   .btn.dark { background: var(--espresso); color: var(--cream); }
-  .btn.full { width: 100%; }
+  .btn.full { width: 100%; flex: 0 0 auto; }
 
   /* horizontal rail */
   .rail { display: flex; gap: 12px; padding: 2px 18px 6px; overflow-x: auto; scroll-snap-type: x mandatory; }
@@ -338,6 +338,7 @@
   .permdenied p { margin: 0; font-size: 13px; color: #cbb9a4; line-height: 1.5; }
   #scr-scan.cam-denied .cam-live { display: none; }
   #scr-scan.cam-denied .permdenied { display: flex; }
+  #scr-scan.cam-denied .match-panel, #scr-scan.cam-denied .miss-panel { display: none; }
   #scr-scan .miss-panel { display: none; }
   #scr-scan.no-match .match-panel { display: none; }
   #scr-scan.no-match .miss-panel { display: flex; }
@@ -674,7 +675,7 @@
       <div><div class="serif" style="font-size:19px;line-height:1.15">Fage Total 2% Greek Yogurt</div><div style="font-size:13px;color:var(--ink-2);margin-top:3px">Fage · <span class="num">16 oz</span> cup</div></div>
     </div>
     <div class="macros"><div><b class="num">140</b><i>cal</i></div><div><b class="num">20 g</b><i>protein</i></div><div><b class="num">5 g</b><i>carbs</i></div><div><b class="num">4 g</b><i>fat</i></div></div>
-    <div style="font-size:11px;color:var(--ink-3);margin-top:-6px">Nutrition &amp; allergens: label data via Open Food Facts · tier shown per field (who may mark label data as Known Fact is an open decision, D-017)</div>
+    <div style="font-size:11px;color:var(--ink-3);margin-top:-6px">Nutrition &amp; allergens: label data via Open Food Facts · tier shown per field</div>
     <div class="kv"><span class="k">Allergens</span><span class="v" style="flex-direction:column;align-items:flex-end;gap:2px"><span><span style="padding:3px 10px;border-radius:999px;background:var(--sand);font-size:12px">Milk</span> <span style="font-size:12px;color:var(--ink-2);font-weight:600">no known household match</span></span><span style="font-size:10.5px;color:var(--ink-3)">label declaration · not a safety guarantee</span></span></div>
     <div class="kv"><span class="k">Best by</span><span class="v"><span class="num">Sep 28</span><span class="prov est">≈ Est.</span></span></div>
     <div class="kv" style="border-bottom:1px solid var(--line)"><span class="k">Quantity</span><div class="step"><button onclick="stepQty(-1)">−</button><b class="num" id="qtyVal">2</b><button onclick="stepQty(1)">+</button></div></div>
@@ -971,7 +972,7 @@
 
     <div class="sec"><h2 class="serif" style="font-size:17px">Lots</h2></div>
     <div class="lotrow">
-      <div class="ringbadge fr-soon" style="position:static;width:32px;height:32px;flex-shrink:0"><svg viewBox="0 0 34 34"><circle class="t" cx="17" cy="17" r="14"/><circle class="f" cx="17" cy="17" r="14" stroke-dashoffset="58"/></svg></div>
+      <div class="ringbadge fr-soon" style="position:relative;width:32px;height:32px;flex-shrink:0"><svg viewBox="0 0 34 34"><circle class="t" cx="17" cy="17" r="14"/><circle class="f" cx="17" cy="17" r="14" stroke-dashoffset="58"/></svg></div>
       <div class="m"><b class="num">1.25 lb</b><i>bought Sat · expires in 2 days</i></div>
       <span class="prov fact">✓ Fact</span>
     </div>
@@ -1022,7 +1023,6 @@
       <div class="cooksheet" id="cookSheetOk">
         <b style="font-size:14px">Cook this · confirm deductions</b>
         <div class="shortnote">This recipe needs 2 lb of chicken breast. Only 1.25 lb is on hand. Record what we have and flag the shortfall, or cancel and shop first.</div>
-        <div style="font-size:11px;color:var(--ink-3)">How shortfalls are handled is still being decided (OQ-1). This screen shows the proposed policy.</div>
         <div class="allocrow"><span>Chicken breast, all of lot bought Sat, expires 2d</span><span class="prov fact">✓ Fact</span><span class="amt num">1.25 lb</span></div>
         <div class="allocrow"><span>Spinach, lot bought Fri, expires 3d</span><span class="prov fact">✓ Fact</span><span class="amt num">5 oz</span></div>
         <div class="allocrow"><span>Mushrooms, lot bought Fri, expires 3d</span><span class="prov ai soft">AI</span><span class="amt num">8 oz</span></div>
@@ -1048,7 +1048,6 @@
         <div class="allocrow"><span>Salmon, lot bought Jul, expires 2 months</span><span class="prov fact">✓ Fact</span><span class="amt num">12 oz</span></div>
         <div class="allocrow"><span>Rice, pantry lot</span><span class="prov est">≈ Est.</span><span class="amt num">~2 cups</span></div>
         <div class="shortnote">Soy sauce: only ~1 tbsp of the 2 tbsp needed. Record what we have and flag the shortfall?</div>
-        <div style="font-size:11px;color:var(--ink-3)">How shortfalls are handled is still being decided (OQ-1). This screen shows the proposed policy.</div>
         <div class="btns"><button class="btn sec" onclick="document.getElementById('cookSheetUnk').classList.remove('open')">Cancel</button><button class="btn pri" onclick="confirmCook('unk')">Record &amp; flag, log meal</button></div>
       </div>
     </div>
