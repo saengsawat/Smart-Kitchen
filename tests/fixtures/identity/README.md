@@ -44,7 +44,7 @@ reach from a Chen session (INV-TENANT-1).
 | Side | Chen | Second household |
 | --- | --- | --- |
 | API (`sessions.json`, M2-T1) | `f1c70000-0000-4000-8000-000000000001` | `f1c70000-0000-4000-8000-000000000002` |
-| Mobile fixtures (`packages/adapters/src/inventory/fixture-inventory-items.ts`, M3-T1) | `hh-fixture-chen` | `hh-fixture-other` |
+| Mobile fixtures (`apps/mobile/src/inventory/fixture-household.ts (the earlier packages/adapters fixture module was removed in M3-T3)`, M3-T1) | `hh-fixture-chen` | `hh-fixture-other` |
 
 The API's ids have to be UUIDs: `households.id` is a `uuid` column (migration 0002) and the fixture
 users and households are inserted as real rows so the foreign keys and the row-level security

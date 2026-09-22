@@ -161,6 +161,7 @@ Three tiers (`ProvenanceTier`, shared by allergens and inventory). The AI chip i
 | `ESTIMATED` | "Estimated" | "A reasonable estimate, not a confirmed fact. Tap to correct it." | "Estimated · shelf-life for fresh chicken, 2 days" |
 | `AI_INTERPRETATION` | "AI" (rendered as the `Confirm` action, not a static chip) | "Read by AI from a photo or receipt. Confirm it before it's counted as fact." | "AI · read from your receipt, please confirm" |
 
+- **Compact row form (architect ruling at M3-T3 acceptance, 2026-09-22):** on list rows and ledger rows the chips render in prototype v4's compact form, "✓ Fact", "≈ Est." and "AI · confirm", with the full label above as the accessibility label ("Known Fact", "Estimated", "AI, needs confirmation"). The AI chip is tappable on rows too and performs the Confirm action. The legend expands the compact forms.
 - Every fallible fact wears one of these three (P2); there is no "no chip" state (design-direction §7 explicitly rejected an absent chip as ambiguous with "no data").
 - The one-time provenance legend (shown once, first encounter, per ux-plan's shared components) uses exactly the three legend lines above, in tier order, plus one closing line: "You can always tap a fact to see where it came from." No em dash, no exclamation mark.
 - A chip is never colour-only: each pairs an icon (identity icon, a ~ estimate glyph, a spark for AI) with its text label (P9).
@@ -241,6 +242,17 @@ Per P8 (every screen designs its non-happy states first). Format: headline, one 
 - **Empty (a location has nothing in it):** "No items here yet." / "Everything you add to this location will show up here." / action **Add an item**.
 - **Filtered-empty:** "No items match that filter." / "Try a different location or clear your search." / action **Clear filter**.
 - **Stale-cache offline:** banner, not a full-screen state: "Showing your last saved list. Changes from your household will appear when you're back online." No action button; informational.
+
+### S5 · Item detail (added at M3-T3 acceptance, 2026-09-22)
+
+- **Item not found (deep link to a removed or unknown item):** "This item is no longer available." / back navigation only.
+- **Correction at baseline:** no error copy; "Save correction" is disabled while the draft equals the current amount. The §8 `ZERO_DELTA` string is shown only if the write itself is refused.
+- **Write failed:** the §8 generic fallback, "Something went wrong saving that. Try again, and tell us if it keeps happening."
+- **Removal at zero balance:** the removal chips are disabled; no copy.
+- **Expired (past best-by):** not yet designed; "use today" currently covers it. Owed by M8 (expiry engine) or the next S5 pass.
+- **Removal rows:** action label ("Discarded", "Consumed", "Expired", "Donated") with a caption `reason: {reason}` in lower case, prototype wording. Ledger rows for a cooked meal read "Cooked in {recipe}" (§5 vocabulary; the prototype's "Used in" loses under §5).
+- **History order:** the S5 history list is newest first; the "Why {qty}?" narrative is chronological. Two widgets, each single-ordered (ruling at M3-T3 acceptance).
+- **Not built yet:** the S4 search icon is hidden until M4 (P10); the tray's Edit opens the item.
 
 ### S7 · Barcode scan (camera)
 
@@ -365,7 +377,7 @@ Grep gate: `safe`, `passed`, `allergen-free`, `guaranteed`, `verified safe`, a c
 
 | Forbidden term | Why | Exception |
 |---|---|---|
-| `safe` | Implies a guarantee the engine cannot make (SR-1/SR-2); `ALLOWED` means "no known match", not "safe". | Two, both deliberate negations, not claims: (1) the standing caveat itself, "Known matches only · not a guarantee this food is safe." (§3.1, §2), the exact form adopted in the prototype; (2) the assistant preview's "I can't mark any food as safe" (§3.4), repeated at the end of every assistant reply. Both places it appears are negations, never a claim. |
+| `safe` | Implies a guarantee the engine cannot make (SR-1/SR-2); `ALLOWED` means "no known match", not "safe". | Three, all deliberate negations, not claims: (1) the standing caveat itself, "Known matches only · not a guarantee this food is safe." (§3.1, §2), the exact form adopted in the prototype; (2) the assistant preview's "I can't mark any food as safe" (§3.4), repeated at the end of every assistant reply; (3) the provenance legend's intro (prototype v4, added at M3-T3 acceptance 2026-09-22): "A tag is our confidence in a fact. It is never a safety check by itself." Every place it appears is a negation, never a claim. |
 | `passed` | Reads as a test result ("allergen screen passed"), the exact language design-direction §7 fix #1 removed. | None. |
 | `allergen-free` | A positive absence claim the engine never licenses. | None. |
 | `guaranteed` / `guarantee` (as a claim) | Same failure mode as `safe`. | Both places it appears are negations (§3.1's caveat and §3.3's scan-sheet line), never a claim. |
