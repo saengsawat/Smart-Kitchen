@@ -11,6 +11,7 @@
 - [DECISIONS.md](../../DECISIONS.md) **D-017**, the ratified allergen policies (P1 cross-contact, P2 molluscs, P3 coconut, P4 severe+unknown stays unknown, P5 sourced declarations only). This deck's copy must never contradict them (e.g. must never suggest a `MAY_CONTAIN` standard-severity result is "cleared").
 - [M1-T6 review F7](../handoff/M1-T6.review.md). `ALLOWED` can co-occur with the `UNRECOGNIZED_ALLERGEN_DATA` warning. The warning renders regardless of verdict; it is never suppressed because the verdict looks permissive.
 - [design-direction.md §7](design-direction.md). The neutral verdict line and standing caveat were fixed at adoption. This deck reuses that wording (§3.1).
+- **Precedence when this deck and prototype v4 disagree (architect ruling at M3-T2 acceptance, 2026-09-22):** for allergen and provenance strings, the §2 voice rules and the §10 forbidden words, this deck wins. For every other string (screen headings, empty states, buttons, helper copy) prototype v4 wins, because it is the artifact the PO and Dean reviewed and D-023 signed off for build; when a build ticket finds such a conflict the deck row is corrected to the prototype at acceptance, not the other way round. Allergen names come from `MAJOR_ALLERGEN_LABELS` even where the prototype shortens them ("Crustacean shellfish", not "Shellfish").
 
 **How strings are keyed:** every row below is keyed by a **machine code** (`ScreeningVerdict`, `UnknownReason`, `WarningCode`, `EvidenceKind`, `TransactionType`, `LedgerErrorCode`, etc., from `packages/domain/src/allergens/types.ts` and `packages/domain/src/inventory/{types,errors}.ts`), never by the domain's `message`/`detail` strings, which are machine-facing and not localized (rule 5 of the nine). The client looks up copy by `code` (plus, where noted, `severity` or `evidenceKind`) and interpolates the named placeholders (`{member}`, `{allergen}`, `{n}`, `{qty}`, `{date}` …) from typed fields, never from free text.
 
@@ -232,7 +233,7 @@ Per P8 (every screen designs its non-happy states first). Format: headline, one 
 
 ### S3 · Home dashboard
 
-- **First-run empty:** "Your kitchen is empty, for now." / "Scan a barcode to get your first items in, in about a minute." / action **Scan a barcode**.
+- **First-run empty (corrected to prototype v4 at M3-T2 acceptance, 2026-09-22; the earlier deck wording lost under the precedence rule above):** "Your kitchen is empty" / "Scan a barcode and we will fill in the facts. No typing, and nothing becomes a Known Fact until you confirm it." / action **Scan your first item**.
 - **No recommendations:** "Nothing to recommend yet." / "Add a few items and we'll suggest what to cook." / action **Add food**.
 
 ### S4 · Inventory list
