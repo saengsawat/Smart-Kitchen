@@ -62,6 +62,22 @@ SK_IDENTITY=fixture pnpm --filter api start
 curl -H "Authorization: Bearer fixture.dean.chen" http://localhost:3000/v1/inventory/items
 ```
 
+## Household join code (M3-T2)
+
+S1's "Join with a code" form (`apps/mobile/app/onboarding/account.tsx`) goes through
+`FixtureApiClient.joinHousehold` (`apps/mobile/src/api/client.ts`), not this directory's
+`sessions.json` (there is no household-join endpoint yet; M2-T3 is the ticket that adds one behind
+the same client port). The mobile fixture accepts exactly one code:
+
+| Code | Result |
+| --- | --- |
+| `CHEN-482` | Joins the Chen household (Dean owner, Maya member) with its existing inventory. |
+| Anything else | Rejected with the exact copy "That code didn't match a household. Check it with whoever invited you." |
+
+Like the tokens above, `CHEN-482` is a literal, obviously fake fixture string, not a secret: it
+authenticates nothing outside an in-memory, session-only comparison in
+`apps/mobile/src/api/client.ts`, and no `.env*` file carries it (CLAUDE.md rules 12 and 18).
+
 ## Shape of `sessions.json`
 
 `households[]` carries `householdId` and `name`. `sessions[]` carries `token`, `userId`,

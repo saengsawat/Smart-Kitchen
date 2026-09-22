@@ -126,3 +126,19 @@ describe("D-021 contrast fixes (seven pairs, recomputed)", () => {
     expect(contrast(fg, bg)).toBeGreaterThanOrEqual(threshold);
   });
 });
+
+/**
+ * M3-T2 review (reviewer opinion): the S2 "No known allergies for {member}"
+ * declaration's confirmed state
+ * (apps/mobile/app/onboarding/allergies.tsx's `noneOptionOn`/
+ * `noneOptionTextOn`) uses this exact pair (`colors.green` text on
+ * `colors.greenBg`). Numerically identical to the generic D-021 "green on
+ * green-bg" case above, restated here so this specific, newly added UI usage
+ * has its own named, traceable assertion rather than relying on a reader to
+ * notice the pair matches.
+ */
+describe("M3-T2 S2 'none' declaration contrast (green on green-bg)", () => {
+  it("clears 4.5:1 body-text threshold", () => {
+    expect(contrast(colors.green, colors.greenBg)).toBeGreaterThanOrEqual(4.5);
+  });
+});

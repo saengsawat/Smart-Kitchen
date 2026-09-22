@@ -30,9 +30,23 @@ export interface TabDefinition {
   readonly placeholder: string;
 }
 
-/** The four bottom-bar slots, left to right, either side of the centre scan button. */
+/**
+ * The four bottom-bar slots, left to right, either side of the centre scan
+ * button. Home's `placeholder` no longer reads "Coming in M3-T2.": M3-T2 is
+ * the ticket that builds Home's first-run state (`app/index.tsx`,
+ * `src/screens/HomeScreen.tsx`), so that string went stale the moment this
+ * ticket landed (CLAUDE.md rule 15). The full S3 dashboard (states beyond
+ * first-run empty) stays held pending OQ-D9/Dean's list (D-023), matching the
+ * "held" phrasing already used for Menu below.
+ */
 export const TAB_ORDER: readonly TabDefinition[] = [
-  { key: "home", label: "Home", route: "/", icon: "home", placeholder: "Coming in M3-T2." },
+  {
+    key: "home",
+    label: "Home",
+    route: "/",
+    icon: "home",
+    placeholder: "Full dashboard held pending Dean's review (OQ-D9).",
+  },
   {
     key: "inventory",
     label: "Inventory",

@@ -224,5 +224,84 @@ export default tseslint.config(
       ],
     },
   },
+  // --- apps/mobile Node-global containment (M3-T2 review F3, extended F19) ---
+  // `apps/mobile/src/lint-rules/copy-scan.test.ts` needs `/// <reference
+  // types="node" />` to typecheck its real fs/path calls, but a triple-slash
+  // reference is not actually file-scoped for TypeScript's *ambient global*
+  // declarations (`process`, `Buffer`, `NodeJS.*`, `__dirname`, …): once any
+  // file in the program pulls @types/node in, those globals type-check from
+  // every other file too, which defeats the M3-T1 "Node's ambient globals
+  // never leak into React Native app code" invariant at the type level (the
+  // review proved `process.env.HOME`, `Buffer.from` and `NodeJS.Timeout`
+  // type-check clean in `src/onboarding/validation.ts`). tsconfig's `"types":
+  // []` cannot fix this — it only controls automatic inclusion, not what a
+  // reference directive pulls in — so containment moves here instead:
+  // referencing these five names as *globals* (not as locally declared
+  // variables — a file with its own `declare const process = …` shadows the
+  // global and is unaffected, e.g. `domain-boundary.test.ts`) is a lint error
+  // everywhere in this app except `src/lint-rules/**`, where real Node access
+  // is the point.
+  //
+  // Review F19: `no-restricted-globals` only catches the bare identifier
+  // (`process`), not a member access through `globalThis` (`globalThis.
+  // process`), which reaches the exact same ambient global by a different
+  // path. Closed with `no-restricted-properties` targeting `globalThis.<name>`
+  // for the same five names, rather than adding `"globalThis"` itself to
+  // `no-restricted-globals`: `apps/mobile/src/api/client.test.ts` legitimately
+  // mocks `globalThis.fetch` (a web standard, not a Node global), and
+  // restricting the bare `globalThis` identifier would have flagged that too.
+  // Targeting the five specific properties closes the bypass without that
+  // collateral restriction. (`NodeJS.*` *types*, e.g. `NodeJS.Timeout` used as
+  // a type annotation, remain visible everywhere by design — only runtime
+  // global *values* are restricted here; a type has no runtime access to
+  // anything.)
+  {
+    files: [
+      "apps/mobile/app/**/*.ts",
+      "apps/mobile/app/**/*.tsx",
+      "apps/mobile/src/**/*.ts",
+      "apps/mobile/src/**/*.tsx",
+    ],
+    ignores: ["apps/mobile/src/lint-rules/**"],
+    rules: {
+      "no-restricted-globals": [
+        "error",
+        {
+          name: "process",
+          message:
+            "Node global; apps/mobile keeps Node's ambient globals out of app code (M3-T1 invariant). See src/lint-rules/ for the one exception.",
+        },
+        {
+          name: "Buffer",
+          message:
+            "Node global; apps/mobile keeps Node's ambient globals out of app code (M3-T1 invariant). See src/lint-rules/ for the one exception.",
+        },
+        {
+          name: "__dirname",
+          message:
+            "Node global; apps/mobile keeps Node's ambient globals out of app code (M3-T1 invariant). See src/lint-rules/ for the one exception.",
+        },
+        {
+          name: "__filename",
+          message:
+            "Node global; apps/mobile keeps Node's ambient globals out of app code (M3-T1 invariant). See src/lint-rules/ for the one exception.",
+        },
+        {
+          name: "global",
+          message:
+            "Node global; apps/mobile keeps Node's ambient globals out of app code (M3-T1 invariant). See src/lint-rules/ for the one exception.",
+        },
+      ],
+      "no-restricted-properties": [
+        "error",
+        ...["process", "Buffer", "__dirname", "__filename", "global"].map((property) => ({
+          object: "globalThis",
+          property,
+          message:
+            "Node global reached through globalThis; apps/mobile keeps Node's ambient globals out of app code (M3-T1 invariant). See src/lint-rules/ for the one exception.",
+        })),
+      ],
+    },
+  },
   eslintConfigPrettier,
 );

@@ -27,3 +27,14 @@ export type {
   InventoryQuantitySummary,
   InventoryStorageLocation,
 } from "./inventory.js";
+export {
+  MAJOR_ALLERGEN_CODES_DTO,
+  MAJOR_ALLERGEN_LABELS_DTO,
+  type HouseholdDto,
+  type HouseholdRoleDto,
+  type MajorAllergenCodeDto,
+  type MemberDto,
+  type MemberRestrictionDto,
+  type OnboardingStateDto,
+  type RestrictionSeverityDto,
+} from "./household.js";

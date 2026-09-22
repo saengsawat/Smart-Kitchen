@@ -24,8 +24,10 @@ describe("TAB_ORDER (five-slot shell, M3-T1 acceptance criteria)", () => {
     }
   });
 
-  it("Home, Inventory and Shopping point at their M3-Tn ticket; Menu is held per D-020", () => {
-    expect(TAB_ORDER.find((t) => t.key === "home")?.placeholder).toBe("Coming in M3-T2.");
+  it("Inventory and Shopping point at their M3-Tn ticket; Home and Menu are held (OQ-D9/D-020)", () => {
+    expect(TAB_ORDER.find((t) => t.key === "home")?.placeholder).toBe(
+      "Full dashboard held pending Dean's review (OQ-D9).",
+    );
     expect(TAB_ORDER.find((t) => t.key === "inventory")?.placeholder).toBe("Coming in M3-T3.");
     expect(TAB_ORDER.find((t) => t.key === "shopping")?.placeholder).toBe("Coming in M3-T5.");
     expect(TAB_ORDER.find((t) => t.key === "menu")?.placeholder).toBe(

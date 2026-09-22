@@ -26,6 +26,7 @@
     "react-native-screens": "4.28.0"
   },
   "devDependencies": {
+    "@types/node": "^26.4.1",
     "@types/react": "~19.2.0"
   }
 }
