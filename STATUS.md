@@ -38,7 +38,8 @@ _Last updated: 2026-09-22_
 
 ## Build resumed 2026-09-22 (D-021, D-022, D-023, D-005)
 - **Decided 2026-09-21/22 by Andy:** Expo (D-005, ADR-001 DECIDED), the seven token darkenings (D-021), build against a stubbed identity port (D-022), M3 build opens on the locked screens with the hallway test deferred to pre-release (D-023). Prototype **v4** is the build reference (Menu tab, Home states, D-021 palette); v3 archived.
-- **Dispatched:** M3-T1 (Expo scaffold, tokens, shell; Sonnet worker in a worktree). **Dispatched in parallel:** M2-T1 (identity port + tenancy over HTTP; Opus worker in a worktree), then M3-T2 onward one at a time.
+- ✅ **M3-T1 DONE 2026-09-22:** Expo app scaffold merged (squash `11e79fb`): SDK 57, D-021 tokens pinned with live contrast recomputation, five-slot shell with Menu placeholder, fixture ApiClient, mobile boundary lint, CI export smoke check. Sonnet/Sonnet, PASS after one fix (relative-path boundary bypass). 731 tests without a DB. Handoff: docs/handoff/M3-T1.{worker,review}.md. **Dean can now run the shell in Expo Go over the LAN** (apps/mobile/README.md); no real screens yet.
+- **In review fixes:** M2-T1 (identity port + tenancy over HTTP; Opus worker). Independent Opus review returned PASS WITH FIXES: the compiled API did not start (workspace packages exported TypeScript source; architect extended scope to give them real builds), the production guard becomes an allowlist, error logging fixed. Re-review pending. Then M3-T2 onward one at a time.
 - **Held:** Menu page internals (D-020) and Home dashboard states (OQ-D9) until Dean's additional-function list is triaged and D-002 is ratified. Session notes: [docs/po/meeting-notes-2026-09-21.md](docs/po/meeting-notes-2026-09-21.md).
 
 ## Awaiting owner action
