@@ -1,47 +1,55 @@
 /**
- * `ApiClient` port + fixture implementation (M3-T1, extended M3-T2).
+ * `ApiClient` port + fixture/HTTP implementations (M3-T1, extended M3-T2, M3-T3).
  *
  * Only `@smart-kitchen/contracts` DTOs cross this boundary (M3-T1 invariant:
- * `apps/mobile` never imports `@smart-kitchen/domain`). No network call is
- * made anywhere in this file.
+ * `apps/mobile` never imports `@smart-kitchen/domain`). `packages/adapters`
+ * is no longer a dependency of this app either (M3-T3 cleanup: nothing here
+ * has imported it since M3-T2 moved the fixture inventory rows onto
+ * contracts-shaped literals; the dependency and its tsconfig project
+ * reference are removed in this ticket, discharging the M2-T1 review's
+ * `expo export` bundling blocker for good).
  *
- * ## Why this no longer imports `@smart-kitchen/adapters` (M3-T2 fix)
+ * ## Read vs write, fixture vs HTTP (M3-T3)
  *
- * M3-T1 sourced `getInventoryItems()`'s fixture rows from
- * `@smart-kitchen/adapters`' `FIXTURE_INVENTORY_ITEMS_CHEN`, built through the
- * real domain ledger functions. That was harmless while no screen imported
- * this file (M2-T1's review, triaged at acceptance: "importing
- * `FixtureApiClient` from any screen fails `expo export` because the
- * `@smart-kitchen/adapters` barrel drags `node:fs`/`node:url`
- * (`product-lookup/fixture-paths.ts`'s `fileURLToPath(import.meta.url)`,
- * evaluated at module load, which Metro cannot bundle for React Native) into
- * the bundle" — filed as an M3-T3 blocker because nothing exercised it yet).
- * M3-T2 is the first ticket that actually wires a screen to this client (S1,
- * S2, Home), which makes that latent failure real: `pnpm --filter mobile
- * export` (a required acceptance check here) would break the moment any
- * screen imported `FixtureApiClient`, and the compiled client bundle would
- * carry domain ledger code, defeating the "mobile never imports domain"
- * invariant at the bundle level even though no source file names it. The fix
- * applied here, entirely inside this file's existing scope: the fixture
- * inventory and household data below are plain `@smart-kitchen/contracts`-
- * shaped literals, not built through domain functions or read through
- * `@smart-kitchen/adapters`. This is the same fix direction the M3-T1 review
- * proposed for M3-T3 ("switch the mobile fixture ApiClient ... to
- * contracts-shaped JSON ... and drop @smart-kitchen/adapters from
- * apps/mobile"), applied early because M3-T2's acceptance criteria require a
- * green `expo export` from a screen that now actually imports this client.
- * `packages/adapters`' own barrel and `@smart-kitchen/adapters` dependency
- * entry are untouched (out of this ticket's file scope); removing the now-
- * unused package.json/tsconfig reference is left for M3-T3 to close out.
+ * `HttpApiClient` implements the port's inventory *list* read
+ * (`getInventoryItems`, `GET /v1/inventory/items`, M2-T1) over real `fetch`,
+ * used when `EXPO_PUBLIC_API_URL` is set (`src/config/env.ts`, the one file
+ * allowed to read it) and never otherwise (BACKLOG.md M3-T3 Objective (d)).
+ * Everything else on the port, including single-item detail/history,
+ * onboarding/household state, and every write method, has no corresponding
+ * endpoint yet (M2-T2 supplies the write endpoints; a read-detail-with-
+ * history endpoint and M2-T3's household endpoints are later tickets still).
+ * `HttpApiClient` therefore delegates those to an internal fixture client
+ * (`FixtureApiClient.returningUser()`) rather than leaving them unimplemented
+ * dead ends, and `getInventoryItem` degrades honestly: it returns the real
+ * list row wrapped with an *empty* history, never a fabricated one, until a
+ * real history endpoint exists. This composition, and its scope, is flagged
+ * for the reviewer in the worker report.
  */
 
 import type {
   HouseholdDto,
-  InventoryItemSummary,
+  InventoryItemDetailDto,
+  InventoryItemsResponseDto,
+  InventoryItemSummaryDto,
   MemberDto,
   MemberRestrictionDto,
   OnboardingStateDto,
+  TransactionActorDto,
 } from "@smart-kitchen/contracts";
+import { INVENTORY_ITEMS_PATH } from "@smart-kitchen/contracts";
+import { getApiBaseUrl } from "../config/env";
+import { buildChenInventory } from "../inventory/fixture-household";
+import type { RemovalAction } from "../inventory/transactions";
+import {
+  appendCorrection,
+  appendRemoval,
+  appendUndo,
+  toDetailDto,
+  toSummaryDto,
+  type MutableItemFixture,
+} from "../inventory/ledger";
+import { parseMicros } from "../inventory/quantity";
 
 /** The Dean-Chen fixture token (tests/fixtures/identity/README.md). Obviously fake, not a secret. */
 export const FIXTURE_IDENTITY_TOKEN = "fixture.dean.chen";
@@ -54,6 +62,9 @@ export const JOIN_CODE_ERROR_MESSAGE =
   "That code didn't match a household. Check it with whoever invited you.";
 
 const CHEN_HOUSEHOLD_ID = "hh-fixture-chen";
+
+/** The one household member this fixture ever writes ledger rows as (D-022: fixture identity throughout). */
+const DEAN_ACTOR: TransactionActorDto = { kind: "user", displayInitials: "DC" };
 
 function freshMember(memberId: string, displayName: string, role: "owner" | "member"): MemberDto {
   return {
@@ -86,53 +97,55 @@ function buildFixtureHousehold(name: string): HouseholdDto {
   };
 }
 
-/** Contracts-shaped inventory fixture (see the file doc comment for why this is not adapters data). */
-const FIXTURE_INVENTORY_ITEMS_CHEN: readonly InventoryItemSummary[] = [
-  {
-    itemId: "fixture-item-milk",
-    householdId: CHEN_HOUSEHOLD_ID,
-    name: "Whole milk",
-    currentQty: { amount: 2, unit: "count" },
-    storageLocation: "FRIDGE",
-    quantityProvenanceTier: "KNOWN_FACT",
-  },
-  {
-    itemId: "fixture-item-chicken",
-    householdId: CHEN_HOUSEHOLD_ID,
-    name: "Chicken breast",
-    currentQty: { amount: 1.5, unit: "lb" },
-    storageLocation: "FRIDGE",
-    quantityProvenanceTier: "KNOWN_FACT",
-  },
-  {
-    itemId: "fixture-item-rice",
-    householdId: CHEN_HOUSEHOLD_ID,
-    name: "Rice",
-    currentQty: { amount: 900, unit: "g" },
-    storageLocation: "PANTRY",
-    quantityProvenanceTier: "KNOWN_FACT",
-  },
-];
-
 function toError(value: unknown): Error {
   return value instanceof Error ? value : new Error(String(value));
+}
+
+/**
+ * Runtime shape check for `GET /v1/inventory/items`'s body (review F15): a
+ * `JSON.parse` result is `unknown`, not `InventoryItemsResponseDto`, no
+ * matter what a type assertion claims, and a network layer can hand back
+ * anything (an error page, a differently-shaped envelope, a proxy's HTML).
+ * Deliberately shallow: this checks `items` is an array, not that every
+ * element is a well-formed `InventoryItemSummaryDto` (out of this ticket's
+ * scope; a schema-validation layer is a separate concern).
+ */
+function isInventoryItemsResponse(body: unknown): body is InventoryItemsResponseDto {
+  return (
+    typeof body === "object" && body !== null && Array.isArray((body as { items?: unknown }).items)
+  );
 }
 
 export type JoinHouseholdResult =
   | { readonly ok: true; readonly household: HouseholdDto }
   | { readonly ok: false; readonly message: string };
 
+/** `removeQuantity`'s `action` (copy-deck.md §5), re-exported so a screen can import it from either module. */
+export type { RemovalAction };
+
+/** Re-exported so a screen can tell a zero-delta correction apart from any other rejection (review F3). */
+export { ZeroDeltaError } from "../inventory/ledger";
+
 /**
  * The seam between the mobile app and the API (M2-T1 onward). Everything the
  * client needs from the network goes through this port so a screen never
  * calls `fetch`/`axios` directly and swapping the fixture implementation for
- * a real HTTP client (once M2-T3's household endpoints exist) touches one
- * file.
+ * a real HTTP client touches one file.
  */
 export interface ApiClient {
   /** The bearer token this client authenticates with. */
   getIdentityToken(): string;
-  getInventoryItems(): Promise<readonly InventoryItemSummary[]>;
+  /** `GET /v1/inventory/items` (M2-T1) — S4's list. */
+  getInventoryItems(): Promise<readonly InventoryItemSummaryDto[]>;
+  /**
+   * `true` when the most recent {@link getInventoryItems} call could not
+   * reach the network and returned a cached result instead (S4's stale-offline
+   * banner, copy-deck.md §7 S4). The fixture client is never stale (no
+   * network, ever).
+   */
+  isInventoryStale(): boolean;
+  /** S5's payload for one item: summary plus ledger history. `null` if the item does not exist. */
+  getInventoryItem(itemId: string): Promise<InventoryItemDetailDto | null>;
   /** What `apps/mobile/app/index.tsx`'s route guard reads (see `src/onboarding/route.ts`). */
   getOnboardingState(): Promise<OnboardingStateDto>;
   /** S1 "Continue with email": signs in as the fixture identity (D-022). */
@@ -157,6 +170,34 @@ export interface ApiClient {
     options: { readonly noneConfirmed: boolean },
   ): Promise<void>;
   savePreferences(memberId: string, preferences: readonly string[]): Promise<void>;
+  /**
+   * S5 "Save correction": appends one `ADJUSTMENT` carrying the signed delta
+   * to reach `newAmountMicros` (an exact decimal-text micros value, never a
+   * `number`; the screen's stepper keeps its draft quantity in `bigint`
+   * micros throughout, see `app/inventory/[itemId].tsx`). Resolves with the
+   * appended row's id (review F3: the caller needs the *actual* new row to
+   * undo, never an assumption like "the last row in history", which could be
+   * a different, unrelated write that landed in between). Rejects with
+   * {@link ZeroDeltaError} when `newAmountMicros` equals the current amount.
+   * Fixture only (M2-T2 supplies the real write endpoint).
+   */
+  correctQuantity(
+    itemId: string,
+    newAmountMicros: string,
+  ): Promise<{ readonly transactionId: string }>;
+  /**
+   * S5 "Use or remove": removes the full on-hand amount under the reason
+   * chip's mapped `TransactionType` (copy-deck.md §5). `reasonLabel` is the
+   * secondary reason chip's text ("Spoiled", "Wrong item", …), recorded as
+   * the row's `correlationLabel` (see `src/inventory/transactions.ts`'s doc
+   * comment on why there is no separate `reason` field on the wire). Fixture
+   * only.
+   */
+  removeQuantity(itemId: string, action: RemovalAction, reasonLabel?: string): Promise<void>;
+  /** S5's undo toast: appends the exact compensating `ADJUSTMENT` for `transactionId`. Never deletes it. Fixture only. */
+  undo(transactionId: string): Promise<void>;
+  /** S4's "Confirm" action on an AI-tier row: promotes it to Known Fact. Fixture only. */
+  confirmAiProposal(itemId: string): Promise<void>;
 }
 
 /**
@@ -164,29 +205,27 @@ export interface ApiClient {
  * restarts (in-memory for the session only, per BACKLOG.md M3-T2 Objective
  * (d)). Starts as a brand-new user (`household: null`) unless constructed via
  * {@link FixtureApiClient.returningUser}, which seeds a household whose S2
- * gate is already satisfied — the fixture's way of representing "returning
- * user" without a real persistence layer (out of scope this ticket).
+ * gate is already satisfied and an inventory already stocked (M3-T3) — the
+ * fixture's way of representing "returning user" without a real persistence
+ * layer (out of scope this ticket).
  */
 export class FixtureApiClient implements ApiClient {
   private household: HouseholdDto | null;
-  /**
-   * Creating a household starts an empty kitchen (true first run: "Your
-   * kitchen is empty"). Joining CHEN-482 joins the Chen household Dean
-   * already uses, which already has stock — the fixture's two create/join
-   * paths deliberately land on Home's two different first-run states.
-   */
-  private inventoryPopulated: boolean;
+  private inventory: Map<string, MutableItemFixture>;
 
-  private constructor(initialHousehold: HouseholdDto | null, inventoryPopulated: boolean) {
+  private constructor(
+    initialHousehold: HouseholdDto | null,
+    inventory: Map<string, MutableItemFixture>,
+  ) {
     this.household = initialHousehold;
-    this.inventoryPopulated = inventoryPopulated;
+    this.inventory = inventory;
   }
 
   static newUser(): FixtureApiClient {
-    return new FixtureApiClient(null, false);
+    return new FixtureApiClient(null, new Map());
   }
 
-  /** A household whose S2 gate is already satisfied for every member (session-scoped, not persisted). */
+  /** A household whose S2 gate is already satisfied for every member, with the Chen fixture inventory stocked. */
   static returningUser(): FixtureApiClient {
     const household = buildFixtureHousehold("The Chens");
     const [owner, member] = household.members as [MemberDto, MemberDto];
@@ -203,7 +242,7 @@ export class FixtureApiClient implements ApiClient {
           },
         ],
       },
-      true,
+      buildChenInventory(),
     );
   }
 
@@ -211,10 +250,17 @@ export class FixtureApiClient implements ApiClient {
     return FIXTURE_IDENTITY_TOKEN;
   }
 
-  getInventoryItems(): Promise<readonly InventoryItemSummary[]> {
-    return Promise.resolve(
-      this.household && this.inventoryPopulated ? FIXTURE_INVENTORY_ITEMS_CHEN : [],
-    );
+  getInventoryItems(): Promise<readonly InventoryItemSummaryDto[]> {
+    return Promise.resolve([...this.inventory.values()].map(toSummaryDto));
+  }
+
+  isInventoryStale(): boolean {
+    return false;
+  }
+
+  getInventoryItem(itemId: string): Promise<InventoryItemDetailDto | null> {
+    const item = this.inventory.get(itemId);
+    return Promise.resolve(item ? toDetailDto(item) : null);
   }
 
   getOnboardingState(): Promise<OnboardingStateDto> {
@@ -227,7 +273,7 @@ export class FixtureApiClient implements ApiClient {
 
   createHousehold(name: string): Promise<HouseholdDto> {
     this.household = buildFixtureHousehold(name);
-    this.inventoryPopulated = false;
+    this.inventory = new Map();
     return Promise.resolve(this.household);
   }
 
@@ -236,7 +282,7 @@ export class FixtureApiClient implements ApiClient {
       return Promise.resolve({ ok: false, message: JOIN_CODE_ERROR_MESSAGE });
     }
     this.household = buildFixtureHousehold("The Chens");
-    this.inventoryPopulated = true;
+    this.inventory = buildChenInventory();
     return Promise.resolve({ ok: true, household: this.household });
   }
 
@@ -281,6 +327,67 @@ export class FixtureApiClient implements ApiClient {
     }
   }
 
+  correctQuantity(
+    itemId: string,
+    newAmountMicros: string,
+  ): Promise<{ readonly transactionId: string }> {
+    try {
+      const item = this.requireItem(itemId);
+      const row = appendCorrection(
+        item,
+        parseMicros(newAmountMicros),
+        new Date().toISOString(),
+        DEAN_ACTOR,
+      );
+      return Promise.resolve({ transactionId: row.transactionId });
+    } catch (error) {
+      return Promise.reject(toError(error));
+    }
+  }
+
+  removeQuantity(itemId: string, action: RemovalAction, reasonLabel?: string): Promise<void> {
+    try {
+      const item = this.requireItem(itemId);
+      appendRemoval(item, action, new Date().toISOString(), DEAN_ACTOR, reasonLabel);
+      return Promise.resolve();
+    } catch (error) {
+      return Promise.reject(toError(error));
+    }
+  }
+
+  undo(transactionId: string): Promise<void> {
+    try {
+      const item = [...this.inventory.values()].find((candidate) =>
+        candidate.history.some((tx) => tx.transactionId === transactionId),
+      );
+      if (!item) {
+        throw new Error(`FixtureApiClient: undo found no transaction ${transactionId}`);
+      }
+      appendUndo(item, transactionId, new Date().toISOString(), DEAN_ACTOR);
+      return Promise.resolve();
+    } catch (error) {
+      return Promise.reject(toError(error));
+    }
+  }
+
+  confirmAiProposal(itemId: string): Promise<void> {
+    try {
+      const item = this.requireItem(itemId);
+      item.confirmed = true;
+      return Promise.resolve();
+    } catch (error) {
+      return Promise.reject(toError(error));
+    }
+  }
+
+  private requireItem(itemId: string): MutableItemFixture {
+    const item = this.inventory.get(itemId);
+    if (!item) {
+      throw new Error(`FixtureApiClient: unknown itemId ${itemId}`);
+    }
+    return item;
+  }
+
   private updateMember(memberId: string, update: (member: MemberDto) => MemberDto): void {
     if (!this.household) {
       throw new Error(`FixtureApiClient: cannot update member ${memberId} with no household yet`);
@@ -297,12 +404,126 @@ export class FixtureApiClient implements ApiClient {
 }
 
 /**
+ * Real HTTP read for `GET /v1/inventory/items` (M2-T1), used when
+ * `EXPO_PUBLIC_API_URL` is set. Everything else on the port delegates to an
+ * internal fixture client — see this module's doc comment for why.
+ */
+export class HttpApiClient implements ApiClient {
+  private readonly baseUrl: string;
+  private readonly delegate: FixtureApiClient;
+  private cachedItems: readonly InventoryItemSummaryDto[] | null = null;
+  private stale = false;
+
+  constructor(baseUrl: string) {
+    this.baseUrl = baseUrl;
+    this.delegate = FixtureApiClient.returningUser();
+  }
+
+  getIdentityToken(): string {
+    return FIXTURE_IDENTITY_TOKEN;
+  }
+
+  async getInventoryItems(): Promise<readonly InventoryItemSummaryDto[]> {
+    try {
+      const response = await fetch(`${this.baseUrl}${INVENTORY_ITEMS_PATH}`, {
+        headers: { Authorization: `Bearer ${FIXTURE_IDENTITY_TOKEN}` },
+      });
+      if (!response.ok) {
+        throw new Error(`GET ${INVENTORY_ITEMS_PATH} failed with status ${response.status}`);
+      }
+      // Review F15: `response.json()` is `unknown` at runtime no matter what
+      // the type assertion below claims; a malformed or unexpectedly-shaped
+      // body (an error page, an envelope change, a proxy's HTML) must not be
+      // silently treated as a valid, empty-enough InventoryItemsResponseDto.
+      const body: unknown = await response.json();
+      if (!isInventoryItemsResponse(body)) {
+        throw new Error(`GET ${INVENTORY_ITEMS_PATH} returned an unexpected response body`);
+      }
+      this.cachedItems = body.items;
+      this.stale = false;
+      return body.items;
+    } catch (error) {
+      if (this.cachedItems) {
+        // copy-deck.md §7 S4 stale-cache offline: serve the last good read
+        // rather than fail the screen. No cache yet (first load failed) is a
+        // genuine error the caller must handle.
+        this.stale = true;
+        return this.cachedItems;
+      }
+      throw toError(error);
+    }
+  }
+
+  isInventoryStale(): boolean {
+    return this.stale;
+  }
+
+  getInventoryItem(itemId: string): Promise<InventoryItemDetailDto | null> {
+    // No per-item history-read endpoint exists yet (see module doc comment):
+    // this is the real list row, honestly wrapped with an empty history,
+    // never a fabricated one.
+    const found = this.cachedItems?.find((item) => item.itemId === itemId) ?? null;
+    return Promise.resolve(found ? { summary: found, history: [] } : null);
+  }
+
+  getOnboardingState(): Promise<OnboardingStateDto> {
+    return this.delegate.getOnboardingState();
+  }
+
+  signInWithEmail(): Promise<void> {
+    return this.delegate.signInWithEmail();
+  }
+
+  createHousehold(name: string): Promise<HouseholdDto> {
+    return this.delegate.createHousehold(name);
+  }
+
+  joinHousehold(code: string): Promise<JoinHouseholdResult> {
+    return this.delegate.joinHousehold(code);
+  }
+
+  saveMemberRestrictions(
+    memberId: string,
+    restrictions: readonly MemberRestrictionDto[],
+    options: { readonly noneConfirmed: boolean },
+  ): Promise<void> {
+    return this.delegate.saveMemberRestrictions(memberId, restrictions, options);
+  }
+
+  savePreferences(memberId: string, preferences: readonly string[]): Promise<void> {
+    return this.delegate.savePreferences(memberId, preferences);
+  }
+
+  correctQuantity(
+    itemId: string,
+    newAmountMicros: string,
+  ): Promise<{ readonly transactionId: string }> {
+    return this.delegate.correctQuantity(itemId, newAmountMicros);
+  }
+
+  removeQuantity(itemId: string, action: RemovalAction, reasonLabel?: string): Promise<void> {
+    return this.delegate.removeQuantity(itemId, action, reasonLabel);
+  }
+
+  undo(transactionId: string): Promise<void> {
+    return this.delegate.undo(transactionId);
+  }
+
+  confirmAiProposal(itemId: string): Promise<void> {
+    return this.delegate.confirmAiProposal(itemId);
+  }
+}
+
+/** Builds the client this app should use: `HttpApiClient` when a base URL is configured, the fixture client otherwise. */
+export function createApiClient(baseUrl: string | null): ApiClient {
+  return baseUrl ? new HttpApiClient(baseUrl) : FixtureApiClient.newUser();
+}
+
+/**
  * The module-level singleton every screen shares (M3-T2), so create/join in
  * S1 and the restrictions S2 saves are the same in-memory state the root
- * route reads back. Starts as a brand-new user; nothing in this app switches
- * it to `FixtureApiClient.returningUser()` today (there is no real sign-out /
- * relaunch to demonstrate it against without persistence), but it stays
- * exported for tests and for M3-T3 to swap for a real HTTP client behind the
- * same `apiClient` name.
+ * route reads back. `EXPO_PUBLIC_API_URL` is read exactly once, here, at
+ * module load (`src/config/env.ts`; Expo inlines it at build time, so a
+ * later change requires a rebuild, not a runtime reload).
  */
-export const apiClient: ApiClient = FixtureApiClient.newUser();
+export const apiClient: ApiClient = createApiClient(getApiBaseUrl());

@@ -21,9 +21,11 @@
  *    `null` means "this value has no recorded provenance", never "assume it is
  *    known".
  *
- * The bottom of this file also holds M3-T1's placeholder client types, which
- * these supersede. See the note there for what diverged and why they are still
- * exported.
+ * M3-T3 adds the two types the item-detail screen (S5) needs:
+ * {@link InventoryTransactionDto} (one ledger row) and
+ * {@link InventoryItemDetailDto} (a summary plus its history), and removes the
+ * M3-T1 placeholder client types these superseded (`InventoryItemSummary` and
+ * friends) now that a real screen consumes the `…Dto` shapes end to end.
  */
 
 /** Confidence tier of a stored value (domain `ProvenanceTier`, migration 0003). */
@@ -123,64 +125,71 @@ export interface InventoryItemsResponseDto {
 export const INVENTORY_ITEMS_PATH = "/v1/inventory/items";
 
 // ---------------------------------------------------------------------------
-// M3-T1's placeholder client types, superseded by the `…Dto` types above.
+// M3-T3: item detail (S5) contracts — one ledger row, and a summary plus its
+// history. `apps/mobile` never imports `@smart-kitchen/domain`, so these
+// mirror the domain's `RecordedTransaction` shape (domain-model.md §2) in
+// wire-safe form: micros as decimal text, actor reduced to the three kinds a
+// screen renders plus the initials it needs for the ledger row's `mchip`,
+// never a raw `userId`.
 // ---------------------------------------------------------------------------
-//
-// M3-T1 needed something for its fixture `ApiClient` and its inventory fixtures
-// to be typed against before this ticket landed, and said so: "a placeholder
-// for that response until M2-T1 lands ... the architect reconciles the two at
-// M2-T1 acceptance if they've diverged." They have diverged, in three ways that
-// matter, and the `…Dto` types are the ones the endpoint actually returns:
-//
-//   * `InventoryItemSummary.householdId` does not exist on the wire. The
-//     response never names a household and the request never asks for one: the
-//     household comes from the session and nowhere else (INV-TENANT-1). A
-//     `householdId` on a client type is a field somebody will eventually try to
-//     send.
-//   * `InventoryQuantitySummary.amount` is a `number`. Quantities are exact
-//     micro-unit integers (ADR-008) and JSON numbers are doubles, so the wire
-//     carries {@link QuantityDto}: micros as text plus the exact decimal.
-//   * `quantityProvenanceTier` is one non-optional tier per row.
-//     {@link InventoryItemProvenanceDto} carries a tier *per field*, nullable,
-//     because an item with no ledger rows has no recorded provenance and a
-//     screen must not read that absence as "known".
-//
-// The placeholder types stay exported, unchanged in shape, because
-// `apps/mobile/src/api/client.ts` and
-// `packages/adapters/src/inventory/fixture-inventory-items.ts` are built on
-// them and are another ticket's accepted work. Migrating the client onto the
-// `…Dto` types belongs to the M3 ticket that first calls the real endpoint
-// (M3-T3); it is proposed as a follow-up in the M2-T1 handoff, for the
-// architect to schedule. Until then this file holds both, and which one is
-// authoritative is stated here rather than left to be guessed.
-//
-// The two enumerations are genuinely identical, so they are aliases rather than
-// a second copy that can drift.
-
-/** @deprecated M3-T1 placeholder. Use {@link ProvenanceTierDto}. */
-export type InventoryProvenanceTier = ProvenanceTierDto;
-
-/** @deprecated M3-T1 placeholder. Use {@link StorageLocationDto}. */
-export type InventoryStorageLocation = StorageLocationDto;
 
 /**
- * @deprecated M3-T1 placeholder. Use {@link QuantityDto}, which does not put an
- * exact ledger quantity through a double.
+ * The eight ledger transaction types the wire can report. Mirrors the
+ * domain's `TRANSACTION_TYPES` (packages/domain/src/inventory/types.ts)
+ * exactly, in the same order; `packages/adapters/src/contracts-consistency/`
+ * carries the test that keeps the two lists equal (this package cannot import
+ * domain, so it cannot check itself).
  */
-export interface InventoryQuantitySummary {
-  readonly amount: number;
-  readonly unit: string;
+export const TRANSACTION_TYPES_DTO = [
+  "INITIAL_STOCK",
+  "PURCHASE",
+  "CONSUME",
+  "USE_IN_MEAL",
+  "DISCARD",
+  "EXPIRE",
+  "DONATE",
+  "ADJUSTMENT",
+] as const;
+
+export type TransactionTypeDto = (typeof TRANSACTION_TYPES_DTO)[number];
+
+/**
+ * Who caused the transaction, reduced from the domain's `Actor` union
+ * (`{kind, userId}` / `{kind, component}` / `{kind, userId, modelRef}`) to
+ * what a ledger row renders: the kind, and the two-letter initials chip for a
+ * `user`/`ai-confirmed` row (`displayInitials` is absent on a `system` row,
+ * which is never attributed to a person, copy-deck.md §5 "The clamp").
+ */
+export interface TransactionActorDto {
+  readonly kind: "user" | "system" | "ai-confirmed";
+  readonly displayInitials?: string;
 }
 
-/**
- * @deprecated M3-T1 placeholder. Use {@link InventoryItemSummaryDto}, which is
- * what `GET /v1/inventory/items` returns.
- */
-export interface InventoryItemSummary {
-  readonly itemId: string;
-  readonly householdId: string;
-  readonly name: string;
-  readonly currentQty: InventoryQuantitySummary;
-  readonly storageLocation?: InventoryStorageLocation;
-  readonly quantityProvenanceTier: InventoryProvenanceTier;
+/** One ledger row (domain `RecordedTransaction`, wire-safe). */
+export interface InventoryTransactionDto {
+  readonly transactionId: string;
+  readonly type: TransactionTypeDto;
+  /** Exact signed delta in micro-units as decimal text. Parse with `BigInt`, never `Number`. */
+  readonly deltaMicros: string;
+  /** Exact signed decimal text of {@link deltaMicros}, six-place fraction (see {@link QuantityDto.amount}). */
+  readonly amount: string;
+  readonly recordedAt: string;
+  readonly actor: TransactionActorDto;
+  readonly provenance: FieldProvenanceDto;
+  /**
+   * Present only on the ledger's own system-generated correction row (the
+   * clamp, domain-model.md §4 invariant 2). Unforgeable by a caller in the
+   * domain; on the wire it is just a flag a screen renders distinctly and
+   * never attributes to a person.
+   */
+  readonly systemFlag?: "OVER_CONSUMPTION";
+  /** Human-readable link back to what produced the row, e.g. a recipe name. */
+  readonly correlationLabel?: string;
+}
+
+/** S5's payload: the item summary plus its full ledger history, in sequence order. */
+export interface InventoryItemDetailDto {
+  readonly summary: InventoryItemSummaryDto;
+  /** Ledger rows oldest first (`sequence` ascending), the ledger's authoritative order. */
+  readonly history: readonly InventoryTransactionDto[];
 }

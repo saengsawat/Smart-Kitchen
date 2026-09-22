@@ -255,6 +255,11 @@ export default tseslint.config(
   // a type annotation, remain visible everywhere by design — only runtime
   // global *values* are restricted here; a type has no runtime access to
   // anything.)
+  //
+  // M3-T3 adds one more exempted file: `src/config/env.ts` is the single
+  // place `EXPO_PUBLIC_API_URL` is read (BACKLOG.md M3-T3 Objective (d)),
+  // which needs the real `process` global the same way `src/lint-rules/**`
+  // needs real Node access. Nothing else in this block changed.
   {
     files: [
       "apps/mobile/app/**/*.ts",
@@ -262,7 +267,7 @@ export default tseslint.config(
       "apps/mobile/src/**/*.ts",
       "apps/mobile/src/**/*.tsx",
     ],
-    ignores: ["apps/mobile/src/lint-rules/**"],
+    ignores: ["apps/mobile/src/lint-rules/**", "apps/mobile/src/config/env.ts"],
     rules: {
       "no-restricted-globals": [
         "error",

@@ -84,8 +84,30 @@ const FORBIDDEN_TERMS = [
   "verified safe",
 ] as const;
 
-/** The one named exception (copy-deck.md §10/§3.1): the standing NO_SAFETY_GUARANTEE caveat, verbatim. */
-const ALLOWED_SAFE_SENTENCE = "Known matches only · not a guarantee this food is safe.";
+/**
+ * The named exceptions (copy-deck.md §10/§3.1, review F17): sentences that
+ * contain "safe" only as part of a negation, never a claim, so they are
+ * allow-listed verbatim rather than reworded to dodge the gate.
+ *
+ * - The standing `NO_SAFETY_GUARANTEE` caveat.
+ * - The legend screen's intro paragraph (`app/legend.tsx`), prototype v4
+ *   verbatim: "It is never a safety check by itself." is the same negation
+ *   shape as the caveat above, restored per review F17's ruling after an
+ *   earlier draft reworded it instead.
+ *
+ * Compared with whitespace normalised (collapsed runs of whitespace,
+ * trimmed) rather than raw string equality: a multi-line JSX text node's
+ * exact line-wrapping is a Prettier formatting detail, not part of the copy
+ * itself, and must not make an otherwise-exact sentence fail this check.
+ */
+const ALLOWED_SAFE_SENTENCES = [
+  "Known matches only · not a guarantee this food is safe.",
+  "Every value in KitchenSmart wears a tag showing how sure we are. A tag is our confidence in a fact. It is never a safety check by itself.",
+] as const;
+
+function normalizeWhitespace(text: string): string {
+  return text.replace(/\s+/g, " ").trim();
+}
 
 interface Violation {
   readonly file: string;
@@ -109,7 +131,8 @@ function isExemptPosition(node: ts.Node): boolean {
 }
 
 function checkLiteralText(file: string, text: string, violations: Violation[]): void {
-  if (text === ALLOWED_SAFE_SENTENCE) {
+  const normalized = normalizeWhitespace(text);
+  if (ALLOWED_SAFE_SENTENCES.some((sentence) => normalizeWhitespace(sentence) === normalized)) {
     return;
   }
   const lower = text.toLowerCase();
@@ -193,14 +216,21 @@ describe("scanSourceForViolations (the rule itself, in-memory sources)", () => {
     expect(violations.some((v) => v.term.startsWith("em dash"))).toBe(true);
   });
 
-  it("allows the exact standing caveat sentence and nothing else containing 'safe'", () => {
-    const violations = scanSourceForViolations(`export const x = "${ALLOWED_SAFE_SENTENCE}";\n`);
+  it.each(ALLOWED_SAFE_SENTENCES)("allows the exact allow-listed sentence: %s", (sentence) => {
+    const violations = scanSourceForViolations(`export const x = "${sentence}";\n`);
     expect(violations).toEqual([]);
   });
 
-  it("still flags a near-miss of the caveat sentence (not an exact match)", () => {
+  it("still flags a near-miss of an allow-listed sentence (not an exact match)", () => {
     const violations = scanSourceForViolations('export const x = "This food is safe.";\n');
     expect(violations.some((v) => v.term === "safe")).toBe(true);
+  });
+
+  it("allows an allow-listed sentence whose whitespace differs (review F17: multi-line JSX text)", () => {
+    const violations = scanSourceForViolations(
+      "export function X() { return <Text>Every value in KitchenSmart wears a tag showing how sure we are. A tag is our\n          confidence in a fact. It is never a safety check by itself.</Text>; }\n",
+    );
+    expect(violations).toEqual([]);
   });
 
   it("does not flag an import module specifier containing 'safe'", () => {

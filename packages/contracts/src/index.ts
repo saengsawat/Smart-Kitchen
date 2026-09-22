@@ -9,23 +9,19 @@ export {
 } from "./errors.js";
 export {
   INVENTORY_ITEMS_PATH,
+  TRANSACTION_TYPES_DTO,
   type FieldProvenanceDto,
+  type InventoryItemDetailDto,
   type InventoryItemProvenanceDto,
   type InventoryItemSummaryDto,
   type InventoryItemsResponseDto,
   type InventoryLotDto,
+  type InventoryTransactionDto,
   type ProvenanceTierDto,
   type QuantityDto,
   type StorageLocationDto,
-} from "./inventory.js";
-// M3-T1's client-side placeholder types. Superseded by the `…Dto` types above;
-// still exported because `apps/mobile` and the adapters' inventory fixtures use
-// them. See the supersession note in inventory.ts.
-export type {
-  InventoryItemSummary,
-  InventoryProvenanceTier,
-  InventoryQuantitySummary,
-  InventoryStorageLocation,
+  type TransactionActorDto,
+  type TransactionTypeDto,
 } from "./inventory.js";
 export {
   MAJOR_ALLERGEN_CODES_DTO,

@@ -1,8 +1,13 @@
 # apps/mobile
 
-Expo (managed workflow) + Expo Router client (ADR-001, D-005). M3-T1 ships the
-app scaffold, design tokens, the tab shell and a fixture `ApiClient`. No real
-screens yet (S1-S12 land M3-T2 onward); no network calls; no real auth
+Expo (managed workflow) + Expo Router client (ADR-001, D-005). M3-T1 shipped
+the app scaffold, design tokens, the tab shell and a fixture `ApiClient`;
+M3-T2 added onboarding (S1 account + household, S2 allergies); M3-T3 added
+the inventory list (S4), item detail with ledger history (S5), the provenance
+legend, and an `HttpApiClient` that can read the real inventory list over the
+network (see "Pointing the app at a local API" below). Write actions
+(corrections, removals, undo, AI confirmation) and household/onboarding state
+stay fixture-only until M2-T2/M2-T3 add their endpoints; no real auth yet
 (D-022).
 
 ## Run it (Windows, Andy's machine)
@@ -49,6 +54,37 @@ nudges toward an account) which CLAUDE.md rule 17 says to avoid unless
 approved; plain LAN mode is enough for same-network testing and was decided
 against in D-023 planning ("no tunnel, no Expo account, no paid resource").
 
+## Pointing the app at a local API (M3-T3)
+
+By default the app talks to nothing: `src/api/client.ts`'s `apiClient`
+singleton is a `FixtureApiClient` (in-memory, no network, no persistence
+across restarts). Setting `EXPO_PUBLIC_API_URL` before starting the dev
+server switches inventory list reads (`GET /v1/inventory/items`) to a real
+`HttpApiClient` against that base URL, bearer-authenticated as the fixture
+identity (`fixture.dean.chen`, `tests/fixtures/identity/README.md`):
+
+```powershell
+$env:EXPO_PUBLIC_API_URL = "http://localhost:4000"
+pnpm --filter mobile start
+```
+
+Expo inlines `EXPO_PUBLIC_*` variables into the bundle at build/start time
+(its own convention, not something this app configures beyond reading it);
+changing the value needs a restart, not just a reload. `src/config/env.ts` is
+the one file in this app allowed to read `process.env` (eslint.config.js
+carries a matching single-file exemption). Nothing else in the app touches
+it directly.
+
+Everything else on the `ApiClient` port (single-item detail/history,
+onboarding/household state, and every write: corrections, removals, undo, AI
+confirmation) has no endpoint yet and stays fixture-backed even with
+`EXPO_PUBLIC_API_URL` set. `HttpApiClient` delegates those calls internally
+(see that class's doc comment in `src/api/client.ts`). A real API started
+this way returns an empty household today: **seeded rows arrive with M2-T2**
+(`pnpm --filter api db:seed:fixture`, BACKLOG.md), which also supplies the
+write endpoints this ticket's fixture-only methods stand in for. Unset the
+variable (or leave it unset) to go back to the fixture client.
+
 ## Typecheck / lint / test
 
 These run as part of the root `pnpm lint` / `pnpm typecheck` / `pnpm test`
@@ -63,13 +99,17 @@ pnpm --filter mobile export   # the same smoke check CI runs
 
 pnpm's default node-linker (`isolated`) still lays out each workspace
 package's own `node_modules` correctly, but Metro (Expo's bundler) also needs
-to watch and resolve the sibling workspace packages
-(`@smart-kitchen/contracts`, `@smart-kitchen/adapters`) that live outside
-`apps/mobile/`. `metro.config.js` points Metro at the workspace root for
-that, without changing anything about how the rest of the workspace installs
-its dependencies (no root `.npmrc` edit, no `node-linker=hoisted` switch).
-See the M3-T1 worker report for what was tried and why this was the least
-invasive option that worked.
+to watch and resolve sibling workspace packages that live outside
+`apps/mobile/`, today just `@smart-kitchen/contracts`
+(`@smart-kitchen/adapters` was a dependency through M3-T2; M3-T3 removed it,
+see that ticket's worker report). `metro.config.js` points Metro at the
+workspace root for that, without changing anything about how the rest of the
+workspace installs its dependencies (no root `.npmrc` edit, no
+`node-linker=hoisted` switch). See the M3-T1 worker report for what was
+tried and why this was the least invasive option that worked; the config
+file itself (`apps/mobile/metro.config.js`, outside this ticket's file
+scope) still names `@smart-kitchen/adapters` in its own comment as an
+example, now stale, flagged for a small follow-up rather than edited here.
 
 ## Fonts
 

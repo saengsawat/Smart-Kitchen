@@ -33,5 +33,5 @@
   },
   "include": ["app", "src"],
   "exclude": ["node_modules", "dist"],
-  "references": [{ "path": "../../packages/adapters" }, { "path": "../../packages/contracts" }]
+  "references": [{ "path": "../../packages/contracts" }]
 }
