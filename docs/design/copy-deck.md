@@ -375,4 +375,35 @@ Grep gate: `safe`, `passed`, `allergen-free`, `guaranteed`, `verified safe`, a c
 
 ---
 
+## §11. Onboarding strings (S1 account + household, S2 allergies + preferences), added at M3-T2 acceptance 2026-09-22
+
+Source of truth is prototype v4 unless marked *new*. The S2 gate and the "none" option are safety copy and follow §2 and §10 like every verdict string.
+
+### S1 · Welcome (account + household)
+
+- Heading "Welcome" · helper "Sign in to start your kitchen. This mockup skips real authentication." (fixture identity, D-022; replaced when the auth vendor lands)
+- Buttons "Continue with email" · "Continue with Google" (phase-labelled *new*: "Arrives with the auth vendor."; on tap *new*: "Not built yet. It arrives once we pick the auth vendor. Continue with email for now.", P10)
+- *new* confirmation "Signed in as Dean Chen." (fixture)
+- Section "Your household" · card "Create a new household" · placeholder "Household name, for example The Chens" · button "Create household"
+- card "Join with a code" · placeholder "Join code, for example CHEN-482" · button "Join household"
+- *new* validation "Enter a household name to continue." · "Household name must be 60 characters or fewer." · join-code error "That code didn't match a household. Check it with whoever invited you."
+
+### S2 · Allergies (per member; owner enters for all, OQ-D5 default)
+
+- Heading "Allergies" · helper "Required for every member before recipes can be screened. We can only warn about what you tell us, so an honest "none" is as useful as a real allergy. Preferences below are optional."
+- Member heading: the member's full display name. The nine chips use `MAJOR_ALLERGEN_LABELS` in sentence case ("Peanut", "Tree nut", "Milk", "Egg", "Fish", "Crustacean shellfish", "Wheat", "Soy", "Sesame"); order follows `MAJOR_ALLERGEN_CODES`.
+- Severity per selected allergen: "Standard" (default, shown as a choice) · "Severe" (with a warning icon; colour never the sole signal). USER_DEFINED labels render exactly as the member typed them.
+- Custom entry placeholder "Add another allergen or ingredient" · button "Add"
+- Explicit none: "No known allergies for {given name}". Rendered with a checkmark only once confirmed; the check is a select affordance (§10 exception), never a verdict. Mutually exclusive with any selection.
+- Gate refusal (inline, announced to assistive tech): "Select at least one allergen, or confirm none, to continue"
+- *new* save failure (P8): "Couldn't save that. Try again."
+- Section "Preferences" · link "Skip preferences" · chips "Vegetarian" · "High protein" · "Kid-friendly" (one shared block saved to every member for MVP; per-member in S12) · button "Continue"
+- Accessibility-only labels: "Back" · "{label}, selected" · "Standard severity for {label}" · "Severe severity for {label}" · "Add another allergen or ingredient for {name}" · "Add custom allergen for {name}" · "Household name" · "Join code"
+
+### S3 · Home first-run
+
+See §7 (corrected to the prototype at the same acceptance): "Your kitchen is empty" / "Scan a barcode and we will fill in the facts. No typing, and nothing becomes a Known Fact until you confirm it." / "Scan your first item". Tab placeholder while the dashboard is held: "Full dashboard held pending Dean's review (OQ-D9)."
+
+---
+
 *End of deck. Coverage: 3 `ScreeningVerdict` + 8 `UnknownReason` + 5 `WarningCode` + 3 `WarningSeverity` + 5 `EvidenceKind` + 4 `RestrictionOutcome` + 2 `RestrictionSeverity` + 8 `TransactionType` + 3 `ProvenanceTier` + 3 `Actor` kinds + 1 clamp concept + 1 shortfall concept + 2 `SkippedLotReason` + 15 `LedgerErrorCode` = 63 machine-code rows, every one resolved to a string or an explicit "no separate string, rendered through X" note.*
