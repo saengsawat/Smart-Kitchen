@@ -1,0 +1,42 @@
+{
+  "$comment": "Synthetic development identities (M2-T1, D-022). The tokens here are NOT secrets and grant nothing: they are literal strings matched by an in-process fixture adapter that only loads when SK_IDENTITY=fixture, which the API refuses to do when NODE_ENV=production. See README.md in this directory.",
+  "households": [
+    {
+      "householdId": "f1c70000-0000-4000-8000-000000000001",
+      "name": "Chen household"
+    },
+    {
+      "householdId": "f1c70000-0000-4000-8000-000000000002",
+      "name": "Okafor household"
+    }
+  ],
+  "sessions": [
+    {
+      "token": "fixture.dean.chen",
+      "userId": "f1c70001-0000-4000-8000-000000000001",
+      "householdId": "f1c70000-0000-4000-8000-000000000001",
+      "role": "owner",
+      "displayName": "Dean Chen",
+      "displayInitials": "DC",
+      "email": "dean.chen@fixture.invalid"
+    },
+    {
+      "token": "fixture.maya.chen",
+      "userId": "f1c70001-0000-4000-8000-000000000002",
+      "householdId": "f1c70000-0000-4000-8000-000000000001",
+      "role": "member",
+      "displayName": "Maya Chen",
+      "displayInitials": "MC",
+      "email": "maya.chen@fixture.invalid"
+    },
+    {
+      "token": "fixture.owner.other",
+      "userId": "f1c70001-0000-4000-8000-000000000003",
+      "householdId": "f1c70000-0000-4000-8000-000000000002",
+      "role": "owner",
+      "displayName": "Ada Okafor",
+      "displayInitials": "AO",
+      "email": "ada.okafor@fixture.invalid"
+    }
+  ]
+}

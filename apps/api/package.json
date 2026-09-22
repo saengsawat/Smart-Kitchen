@@ -13,6 +13,7 @@
     "db:migrate:down": "node-pg-migrate --migrations-dir db/migrations --migrations-table sk_migrations down"
   },
   "dependencies": {
+    "@smart-kitchen/contracts": "workspace:*",
     "@smart-kitchen/domain": "workspace:*",
     "fastify": "^5.12.1",
     "node-pg-migrate": "9.0.0",

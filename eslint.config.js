@@ -89,8 +89,33 @@ export default tseslint.config(
       // (see package.json) because it resolves via pure-JS `enhanced-resolve`
       // — 3.9+/4.x switch to a native (Rust/napi) resolver whose postinstall
       // proved unreliable across fresh clones in this environment.
+      //
+      // `conditionNames` puts the workspace packages' `"source"` export
+      // condition ahead of `"types"` (M2-T1 review fix F8). Those packages
+      // advertise `dist/` so that the compiled API can import them at runtime,
+      // and `dist/` is a build artefact: on a fresh checkout it does not exist
+      // yet, and CI runs `pnpm lint` *before* `pnpm typecheck`, which is what
+      // builds it. Resolving through `"types"` therefore failed with ten
+      // `import-x/no-unresolved` errors on any clean state, and passed only on
+      // a machine that happened to have built already. `"source"` points at
+      // `src/index.ts`, which is always there, so linting no longer depends on
+      // a build having happened first. The rest of the list is the resolver's
+      // own default set, restated because supplying `conditionNames` replaces
+      // it rather than extending it.
       "import-x/resolver": {
-        typescript: { alwaysTryTypes: true },
+        typescript: {
+          alwaysTryTypes: true,
+          conditionNames: [
+            "source",
+            "types",
+            "import",
+            "require",
+            "node",
+            "node-addons",
+            "browser",
+            "default",
+          ],
+        },
       },
     },
   },
