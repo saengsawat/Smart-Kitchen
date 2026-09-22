@@ -4,7 +4,7 @@
 
 ## 1. Information architecture
 
-Five-tab shell, validated by the prototype:
+Five-tab shell, validated by the prototype. **2026-09-21: the Recipes tab becomes a Menu page per D-020 (PROPOSED); this section updates at ratification.**
 
 ```
 Home (dashboard)  ·  Inventory  ·  [ Scan/Add — center FAB ]  ·  Recipes  ·  Shopping

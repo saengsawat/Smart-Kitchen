@@ -57,19 +57,19 @@ We track the "correction rate": how often a user or the system had to correct wh
 
 ## 4. What is decided, what is proposed, what is open
 
-| Area | Status | Where |
-|---|---|---|
-| Backend: Node/TypeScript + Fastify | DECIDED 2026-09-03 | [ADR-002](../adr/ADR-002-backend-runtime.md) |
-| Database: PostgreSQL with row-level security (each household can only see its own rows, enforced by the database itself) | DECIDED 2026-09-10 | [ADR-003](../adr/ADR-003-database.md) |
-| Inventory ledger model | DECIDED 2026-09-08 | [ADR-008](../adr/ADR-008-inventory-ledger.md) |
-| Allergen policies (deterministic, three-state, fail closed) | DECIDED (D-014, D-017) | [DECISIONS.md](../../DECISIONS.md) |
-| Visual design direction v2 (terracotta, Fraunces/Inter, provenance chips) | DECIDED 2026-09-15 (D-019) | [design-direction.md](../design/design-direction.md) |
-| Phone app: Expo / React Native | PROPOSED, needs Andy (A6) | [ADR-001](../adr/ADR-001-client-platform.md) |
-| Login: open-source library inside our backend (Better Auth), fallback Supabase Auth | PROPOSED, needs Andy (A4) | [ADR-004](../adr/ADR-004-authentication.md), brief B1 |
-| Hosting: nothing until Dean needs a shared backend, then one small VPS at about $5/month | PROPOSED, needs Andy (A5) | brief B2 |
-| Food data: Open Food Facts + USDA first, commercial only if coverage disappoints | PROPOSED on measured evidence | [ADR-006](../adr/ADR-006-food-data-sources.md) |
-| MVP scope (which features are in the first version) | PROPOSED, needs Dean (A1 = D-002) | [MVP_PRD.md §3](../prd/MVP_PRD.md) |
-| LLM vendor, OCR vendor, file storage, full offline mode | OPEN, not needed yet | ADR-005/007/009/010 |
+| Area                                                                                                                     | Status                            | Where                                                |
+| ------------------------------------------------------------------------------------------------------------------------ | --------------------------------- | ---------------------------------------------------- |
+| Backend: Node/TypeScript + Fastify                                                                                       | DECIDED 2026-09-03                | [ADR-002](../adr/ADR-002-backend-runtime.md)          |
+| Database: PostgreSQL with row-level security (each household can only see its own rows, enforced by the database itself) | DECIDED 2026-09-10                | [ADR-003](../adr/ADR-003-database.md)                 |
+| Inventory ledger model                                                                                                   | DECIDED 2026-09-08                | [ADR-008](../adr/ADR-008-inventory-ledger.md)         |
+| Allergen policies (deterministic, three-state, fail closed)                                                              | DECIDED (D-014, D-017)            | [DECISIONS.md](../../DECISIONS.md)                    |
+| Visual design direction v2 (terracotta, Fraunces/Inter, provenance chips)                                                | DECIDED 2026-09-15 (D-019)        | [design-direction.md](../design/design-direction.md)  |
+| Phone app: Expo / React Native                                                                                           | PROPOSED, needs Andy (A6)         | [ADR-001](../adr/ADR-001-client-platform.md)          |
+| Login: open-source library inside our backend (Better Auth), fallback Supabase Auth                                      | PROPOSED, needs Andy (A4)         | [ADR-004](../adr/ADR-004-authentication.md), brief B1 |
+| Hosting: nothing until Dean needs a shared backend, then one small VPS at about $5/month                                 | PROPOSED, needs Andy (A5)         | brief B2                                             |
+| Food data: Open Food Facts + USDA first, commercial only if coverage disappoints                                         | PROPOSED on measured evidence     | [ADR-006](../adr/ADR-006-food-data-sources.md)        |
+| MVP scope (which features are in the first version)                                                                      | PROPOSED, needs Dean (A1 = D-002) | [MVP_PRD.md §3](../prd/MVP_PRD.md)                   |
+| LLM vendor, OCR vendor, file storage, full offline mode                                                                  | OPEN, not needed yet              | ADR-005/007/009/010                                  |
 
 The pattern: everything that is expensive to change later is decided. Everything that is a swap behind an adapter is still open, and can stay open at zero cost until we need it.
 
@@ -84,15 +84,15 @@ Live status: [STATUS.md](../../STATUS.md).
 
 ## 6. Roadmap, and where the meeting's decisions land
 
-| Milestone | What it delivers | Gated by |
-|---|---|---|
-| M0, M1 | Foundation (done) | nothing |
-| M2 | Backend API: households, inventory endpoints, login | A4 login approach, A5 hosting, or a yes to A7 (build with a stub login first, swap later, $0) |
-| M3 | The phone app | A1 (D-002 scope), A6 (Expo), design sign-off, A12 colour darkenings |
-| M4 | Barcode scanning against real food data | A8 (label-data trust tier), a free USDA API key (needs your approval per rule 17) |
-| M5 | Receipt photos (fast-follow) | OCR vendor bake-off, first metered spend |
-| M6 | Recipe recommendations | LLM vendor by eval, first metered spend |
-| M7, M8, M9 | Shopping loop, consumption and reconciliation (A9 shortfall policy), hardening | later |
+| Milestone  | What it delivers                                                               | Gated by                                                                                      |
+| ---------- | ------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------- |
+| M0, M1     | Foundation (done)                                                              | nothing                                                                                       |
+| M2         | Backend API: households, inventory endpoints, login                            | A4 login approach, A5 hosting, or a yes to A7 (build with a stub login first, swap later, $0) |
+| M3         | The phone app                                                                  | A1 (D-002 scope), A6 (Expo), design sign-off, A12 colour darkenings                           |
+| M4         | Barcode scanning against real food data                                        | A8 (label-data trust tier), a free USDA API key (needs your approval per rule 17)             |
+| M5         | Receipt photos (fast-follow)                                                   | OCR vendor bake-off, first metered spend                                                      |
+| M6         | Recipe recommendations                                                         | LLM vendor by eval, first metered spend                                                       |
+| M7, M8, M9 | Shopping loop, consumption and reconciliation (A9 shortfall policy), hardening | later                                                                                         |
 
 On the recommended path the only cash before beta is $99/year Apple and $25 Google when Dean needs store builds, and about $5/month once a shared backend is needed. Details in the brief, Part B.
 

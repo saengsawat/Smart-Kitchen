@@ -101,6 +101,14 @@ Owners: `PO` = product owner (Dean), `ENG` = engineering.
 - **Consequences:** design-direction.md v1 tokens superseded by §0; ux-plan §7 records prototype coverage vs the 12-screen inventory (six MVP screens and the non-happy states still to design in M3-E0). **Scope gates unchanged:** M3 build still requires M3-E0 sign-off + D-002. New open items OQ-D7 (tier of label-sourced nutrition/allergen data — with D-017 gate b) and OQ-D8 (photo licensing → R-4).
 - **Alternatives:** keep v1 direction (rejected by PO as "looks like Claude web"); fresh-green accent (retired with OQ-D1).
 
+## D-020 — Navigation locked at four tabs; "Recipes" becomes a Menu page (recipes as a subset)
+- **Date:** 2026-09-21 · **Status:** PROPOSED (agreed verbally by Andy and Dean; ratified when Dean's additional-function list is triaged and Andy confirms the tab name) · **Owner:** Dean (product), Andy (PO)
+- **Decision:** Home, Inventory, Add food (centre scan) and Shopping are locked. The fifth tab becomes a Menu page: instant or planned menus (day, weekend, next N days), recommended menus from current inventory, recipes opened from a menu, and missing ingredients pushed to Shopping by the user or by the AI. Recipes are a subset of the Menu page.
+- **Architect recommendation:** ship in two layers, "Tonight" (today's Recipes screen) in MVP and "Plan ahead" as a fast-follow in the same tab; carry MealPlan in the data model from M2. Gap math and allergen verdicts stay deterministic (rule 7, P5); the AI proposes, the gap function adds. Detail in [docs/po/meeting-notes-2026-09-21.md](docs/po/meeting-notes-2026-09-21.md).
+- **Consequences:** D-002 gains a scope add (multi-day planning was deferred; layer 2 brings it forward). MealPlan/MealSlot leave "Deferred" in domain-model.md when ratified. ux-plan §1 and §6, MVP_PRD §3 and the prototype's Recipes tab update at ratification. Product name and the other brief items are unchanged.
+- **Alternatives:** keep Recipes as the tab and add planning inside Shopping (rejected: planning is the organising idea, recipes are the leaf); separate Menu and Recipes tabs (rejected: six tabs).
+- **New open question OQ-D9 (home page by user state):** the dashboard cannot be the first screen for a new user. Architect proposal: minimum required onboarding = household + allergies (safety gate, already designed as S1/S2); everything else progressive (home states: empty, sparse, ready; preferences asked when first used, skippable). To be written as an M3-E0 design ticket before the Home build ticket. Owner: Andy + Dean.
+
 ---
 
 ## Open product-owner questions (not yet decisions)
