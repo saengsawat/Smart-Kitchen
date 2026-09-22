@@ -15,6 +15,7 @@ export default tseslint.config(
     ignores: [
       "**/dist/**",
       "**/node_modules/**",
+      ".claude/**",
       "**/*.tsbuildinfo",
       "**/coverage/**",
       "pnpm-lock.yaml",
@@ -54,7 +55,7 @@ export default tseslint.config(
   // "*.js" block: these are standalone Node scripts, not part of any
   // package's tsconfig "include".
   {
-    files: ["scripts/**/*.mjs"],
+    files: ["scripts/**/*.mjs", "docs/**/*.mjs"],
     languageOptions: {
       ecmaVersion: "latest",
       sourceType: "module",

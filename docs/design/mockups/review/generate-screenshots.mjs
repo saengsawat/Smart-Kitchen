@@ -1,9 +1,8 @@
-import { mkdirSync } from 'node:fs';
+import { mkdirSync, mkdtempSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { dirname, join, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
-import { mkdtempSync } from 'node:fs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const outputDir = join(here, 'assets');
