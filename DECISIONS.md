@@ -127,6 +127,13 @@ Owners: `PO` = product owner (Dean), `ENG` = engineering.
 - **Consequences:** M3 build tickets are written from prototype v4 and the copy deck; Menu and Home tickets are written when Dean's list lands. Rework risk is confined to the two held screens. D-002 remains PROPOSED in this log until Dean's list is in; the PO accepts that the locked screens are in every plausible cut (the same reasoning as D-016).
 - **Alternatives:** wait for D-002 and the hallway test (rejected by PO: nothing the test finds changes architecture, only copy and layout).
 
+## D-024 — Dean's additional functionality (2026-09-22): triage toward D-002 ratification
+- **Date:** 2026-09-22 · **Status:** PROPOSED (architect triage; Andy decides per row, with Dean on rows 10 and 11) · **Owner:** Andy (PO), Dean (product)
+- **Input:** [docs/source/additional-functionality.extracted.md](docs/source/additional-functionality.extracted.md) (15 items). **Triage:** [docs/po/dean-additions-2026-09-22.md](docs/po/dean-additions-2026-09-22.md).
+- **Proposed:** MVP adds: move item Fridge ⇄ Freezer as a recorded location event; "Remove from inventory" wording and hide rule; favourite meals; safety stock (par level) feeding the deterministic gap math; allergen warnings on shopping rows (never "safe"; unknown for free-text rows); household unit-of-measure preference (display only, exact conversions). Folded into existing epics: executed-in-full shopping with category default locations (M7), menu-driven gaps (D-020, deterministic), defrost reminder as an in-app card first (Menu layer 2), shopping-row origin display (chips and tags first; any colour band from the palette, not literal green and blue, because green means Known Fact and colour is never the sole signal). Kept out of the first release: pantry photo recognition (already future), coupon notifications, AI healthier alternatives (after M6).
+- **Consequences if accepted:** D-002 becomes DECIDED as the current build plus the MVP adds; the held Menu and Home tickets (D-020, OQ-D9, D-023) are written; M7 and M3-T5 tickets inherit rows 5, 10, 11, 13. Nothing here adds cash cost.
+- **Alternatives:** take the whole list into MVP (rejected: rows 4, 12, 14 need vision or LLM vendors and metered spend); take none (rejected: rows 1, 8, 15 are cheap and clearly wanted).
+
 ---
 
 ## Open product-owner questions (not yet decisions)
