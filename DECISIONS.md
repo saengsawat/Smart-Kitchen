@@ -29,7 +29,7 @@ Owners: `PO` = product owner (Dean), `ENG` = engineering.
 - **Decision:** Single deployable API with lint-enforced module boundaries ([ARCHITECTURE.md §1–2](ARCHITECTURE.md)). Alternatives (services-first) rejected for team size and absent scale requirements. Revisit triggers documented in ARCHITECTURE.md §9.
 
 ## D-005 — Client platform: Expo/React Native
-- **Status:** PROPOSED · **Record:** [ADR-001](docs/adr/ADR-001-client-platform.md)
+- **Status:** DECIDED 2026-09-21 (PO Andy, brief item A6) · **Record:** [ADR-001](docs/adr/ADR-001-client-platform.md). Managed workflow first; barcode library and any UI library go through rule 11 at ticket time, one at a time.
 
 ## D-006 — Backend runtime: Node/TypeScript + Fastify
 - **Status:** DECIDED (2026-09-03) · **Owner:** ENG · **Record:** [ADR-002](docs/adr/ADR-002-backend-runtime.md)
@@ -108,6 +108,24 @@ Owners: `PO` = product owner (Dean), `ENG` = engineering.
 - **Consequences:** D-002 gains a scope add (multi-day planning was deferred; layer 2 brings it forward). MealPlan/MealSlot leave "Deferred" in domain-model.md when ratified. ux-plan §1 and §6, MVP_PRD §3 and the prototype's Recipes tab update at ratification. Product name and the other brief items are unchanged.
 - **Alternatives:** keep Recipes as the tab and add planning inside Shopping (rejected: planning is the organising idea, recipes are the leaf); separate Menu and Recipes tabs (rejected: six tabs).
 - **New open question OQ-D9 (home page by user state):** the dashboard cannot be the first screen for a new user. Architect proposal: minimum required onboarding = household + allergies (safety gate, already designed as S1/S2); everything else progressive (home states: empty, sparse, ready; preferences asked when first used, skippable). To be written as an M3-E0 design ticket before the Home build ticket. Owner: Andy + Dean.
+
+## D-021 — Token darkenings for contrast adopted (A12)
+- **Date:** 2026-09-21 · **Status:** DECIDED · **Owner:** PO (Andy), visual call
+- **Decision:** the seven PROPOSED changes in [tokens.md §2](docs/design/tokens.md) are the palette: `--ink-3` `#665c52`, `--amber` `#925b0a`, `--green` `#2c744b`, `--rose` `#9d4b51`, `--danger` `#882020`, text on `--brand-tint` pairs with `#a74925` (new token `--brand-on-tint`), primary CTA fill is `--brand-deep` `#b64f28` with a darker pressed stop `#9c4322`. Prototype v4 renders them; the PO reviewed them there.
+- **Consequences:** every measured pair passes its threshold; design-direction §0 carries the new values; the M3 token module ships these numbers and nothing else. `--brand` `#d9673b` stays for non-text uses (orb, active nav stroke, camera chrome).
+- **Alternatives:** keep v2 values (rejected: 16 failing pairs, several on safety text).
+
+## D-022 — Build against a stubbed identity first; auth vendor stays open (A7)
+- **Date:** 2026-09-21 · **Status:** DECIDED · **Owner:** PO (Andy)
+- **Decision:** M2 (API) and M3 (client) are built against an identity port with a fixture implementation (fixed test users in one household, plus a second household for isolation tests). No vendor, no signup, no cost. ADR-004 stays PROPOSED on vendor; the architect's recommendation is Better Auth (open source, in-process), fallback Supabase Auth. The swap is one adapter behind the port.
+- **Consequences:** every authorization test runs against the port, so it stays valid when the real provider lands; no endpoint may read identity from anywhere but the port; the fixture identity is compiled out of production builds.
+- **Alternatives:** wait for the vendor decision (rejected: idle time, and the decision has no bearing on the domain or screens).
+
+## D-023 — M3 build starts on the locked screens; design gate signed off with the hallway test deferred to pre-release
+- **Date:** 2026-09-21 · **Status:** DECIDED · **Owner:** PO (Andy), with Dean's verbal agreement of 2026-09-21 on the prototype shape
+- **Decision:** the M3-E0 design gate is signed off for the screens the 21 Sep session locked: onboarding (S1, S2), Inventory (S4, S5), Add food (S6 to S9), Shopping (S11), Profile (S12), the four-tab shell plus the Menu slot. The one household hallway test in ux-plan §4 step 4 is **deferred**, to run on the real app before any release, not before build. **Held** until Dean's additional-function list is triaged and D-002 is formally ratified: the Menu page internals (D-020, both views) and the Home dashboard states (OQ-D9). The Menu tab exists in the shell from day one as a placeholder so the nav never changes.
+- **Consequences:** M3 build tickets are written from prototype v4 and the copy deck; Menu and Home tickets are written when Dean's list lands. Rework risk is confined to the two held screens. D-002 remains PROPOSED in this log until Dean's list is in; the PO accepts that the locked screens are in every plausible cut (the same reasoning as D-016).
+- **Alternatives:** wait for D-002 and the hallway test (rejected by PO: nothing the test finds changes architecture, only copy and layout).
 
 ---
 

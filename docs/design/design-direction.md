@@ -14,12 +14,12 @@
 | `border` | `#dfd1ba` | `#d1cfc5` | |
 | `text.primary` | `#1e1813` | `#141413` | |
 | `text.secondary` | `#5b5045` | `#5e5d59` | |
-| `text.tertiary` | `#8f8274` | `#87867f` | |
-| `accent.brand` | `#d9673b` terracotta (deep `#b64f28`, tint `#f9dece`) | `#c96442` | **OQ-D1 resolved: terracotta.** Scarcity rule still binds — see §7 finding 2 |
-| `sentiment.positive` | `#2f7d51` (bg `#dfeee3`) | `#1f7a4d` | Known Fact chip, on-hand chips, fresh |
-| `sentiment.warning` | `#b4700c` (bg `#f6e6c8`) | `#ab6400` | Estimated chip, expiring soon, **allergen-unknown lines** |
-| `urgency.today` | `#c75f66` rose (bg `#f7dcdc`) | `#c4666b` | "use today" — explicitly *not* allergen red |
-| `sentiment.danger` | `#b12a2a` (bg `#f9d9d9`) | `#b53333` | **ALLERGEN ONLY**, unchanged rule |
+| `text.tertiary` | `#665c52` (was `#8f8274`) | `#87867f` | **D-021 (2026-09-21):** darkened for AA on all four surfaces |
+| `accent.brand` | `#d9673b` terracotta (deep `#b64f28`, pressed `#9c4322`, tint `#f9dece`, text on tint `#a74925`) · **primary CTA fill is `deep` (D-021)** | `#c96442` | **OQ-D1 resolved: terracotta.** Scarcity rule still binds — see §7 finding 2 |
+| `sentiment.positive` | `#2c744b` (bg `#dfeee3`; was `#2f7d51`, D-021) | `#1f7a4d` | Known Fact chip, on-hand chips, fresh |
+| `sentiment.warning` | `#925b0a` (bg `#f6e6c8`; was `#b4700c`, D-021) | `#ab6400` | Estimated chip, expiring soon, **allergen-unknown lines** |
+| `urgency.today` | `#9d4b51` rose (bg `#f7dcdc`; was `#c75f66`, D-021) | `#c4666b` | "use today" — explicitly *not* allergen red |
+| `sentiment.danger` | `#882020` (bg `#f9d9d9`; was `#b12a2a`, D-021) | `#b53333` | **ALLERGEN ONLY**, unchanged rule |
 | `ai` | `#7b4cb5` (bg `#eadff7`) | `#8145b5` | AI Interpretation chip only |
 | Display face | **Fraunces 600** (headings, recipe titles, hero) | optional | **OQ-D2 resolved: adopted** |
 | UI/data face | Inter, `tnum`/`lnum` on all numbers | Inter | unchanged |

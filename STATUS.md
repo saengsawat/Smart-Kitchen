@@ -1,6 +1,6 @@
 # STATUS.md
 
-_Last updated: 2026-09-16_
+_Last updated: 2026-09-22_
 
 ## Current phase
 **Milestones 0 and 1 COMPLETE; D-018 batch (M1-T6 → T10) and D-018a queue (M1-T11, M3-E0-T1/T2/T3) ALL COMPLETE as of 2026-09-16 — engineering is STOPPED for the PO/Dean decision session** ([decision brief](docs/po/decision-brief-2026-09.md)). 786 tests with DB / 668 without; CI green on main. Design gate M3-E0: engineering deliverables done (14-screen prototype, binding copy deck, token sheet); PO-run steps remain (Dean on-device review, hallway test, token-darkening call, sign-off + D-002). The deterministic foundation exists, reviewed and merged: inventory ledger, units engine, allergen rule engine, product-lookup ports + fixtures + R-1 research, and the Postgres schema with RLS/append-only enforcement — 475 tests (with DB), CI green. UI/UX planning package delivered 2026-09-10 (docs only). PO directive 2026-09-14: build only what needs **no spend and no PO/originator decision** — tickets M1-T6 → T7 → T8 → T9 → T10 — then **stop for PO review**. M2 (API) and M3 (client) remain gated (see D-018).
@@ -36,8 +36,13 @@ _Last updated: 2026-09-16_
 - **Visual direction v2 adopted 2026-09-15 (D-019):** the PO's revamped prototype v3 + competitor-research plan are the visual language (terracotta, Fraunces/Inter, pantry-paper neutrals, provenance chips, freshness ring). Architect fixed two allergen-copy violations and added the BLOCKED / unknown card states at adoption; token sheet in design-direction §0; screen coverage vs the 12-screen inventory in ux-plan §7 (S1/S2/S5/S9/S12 + non-happy states still to design). M3 build gates unchanged.
 - **UI/UX planning package delivered (PO directive, docs only):** [design-principles.md](docs/design/design-principles.md) (10 binding behavior principles) + [ux-plan.md](docs/design/ux-plan.md) (IA, 12-screen inventory, three make-or-break flows, design→build pipeline) + **M3-E0 gate epic** in BACKLOG.md. Nothing built; M3 build double-gated on M3-E0 sign-off + D-002.
 
+## Build resumed 2026-09-22 (D-021, D-022, D-023, D-005)
+- **Decided 2026-09-21/22 by Andy:** Expo (D-005, ADR-001 DECIDED), the seven token darkenings (D-021), build against a stubbed identity port (D-022), M3 build opens on the locked screens with the hallway test deferred to pre-release (D-023). Prototype **v4** is the build reference (Menu tab, Home states, D-021 palette); v3 archived.
+- **Dispatched:** M3-T1 (Expo scaffold, tokens, shell; Sonnet worker in a worktree). **Queued:** M2-T1 (identity port + tenancy over HTTP; Opus-class, model pin pending PO answer, see BACKLOG), then M3-T2 onward one at a time.
+- **Held:** Menu page internals (D-020) and Home dashboard states (OQ-D9) until Dean's additional-function list is triaged and D-002 is ratified. Session notes: [docs/po/meeting-notes-2026-09-21.md](docs/po/meeting-notes-2026-09-21.md).
+
 ## Awaiting owner action
-- **Session held 2026-09-21** ([notes](docs/po/meeting-notes-2026-09-21.md)): prototype shape agreed, four tabs locked, Recipes tab becomes a Menu page (D-020 PROPOSED), home-by-user-state raised (OQ-D9). Waiting on Dean's additional-function list and Andy's confirmation of which brief items (A2 to A12) were decided.
+- Dean's additional-function list (unblocks D-002 ratification, D-020, OQ-D9 tickets); Andy's model choice for Opus-class tickets (fable vs default Opus; Opus 5 declined by PO 2026-09-22).
 - **Andy + Dean decision session (this week):** agenda, recommendations and cost map in [docs/po/decision-brief-2026-09.md](docs/po/decision-brief-2026-09.md) — D-002, Q1/Q3, auth (open-source-first), hosting (phased), ADR-001, stubbed-auth M2 go/no-go, D-017 gate b, shortfall policy, UX opens incl. product name.
 - **Apply branch protection on `main`** per the checklist in [CONTRIBUTING.md](CONTRIBUTING.md) (require PR; required checks exactly `quality` and `secret-scan`; block force pushes). Architect verifies the branch's `protected` flag afterwards.
 

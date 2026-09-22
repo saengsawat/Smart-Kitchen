@@ -120,6 +120,8 @@ Rows 36-40 were added after independent review flagged that `.prov.est` and the 
 
 ### FAILs and proposed fixes
 
+**ADOPTED 2026-09-21 (D-021).** All seven token changes below are the palette; prototype v4 renders them. Row 25 resolved as: `.loop b` uses the new `--brand-on-tint` `#a74925`; `.btn.pri` resting fill `--brand-deep`, pressed `#9c4322`.
+
 16 of 40 measured pairs fail their threshold (rows 9-12, 17-20, 22-25, 36-38, 40). Every fix below darkens or lightens an *existing* token (or, for row 24, swaps to an existing token) rather than inventing a new hex, found by scaling the failing color toward black/white in 1% steps until the ratio clears the target, then checking the fix against every other pair that shares the token, **including, after review, the plain-card-background contexts in rows 36-40 alongside each token's original tinted-chip context.**
 
 | Rows | Failing token(s) | Proposed fix | New ratio(s) | Rationale |

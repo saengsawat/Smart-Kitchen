@@ -13,7 +13,7 @@ ADRs capture decisions that are expensive to reverse or that future contributors
 
 | ADR | Title | Status |
 |---|---|---|
-| [ADR-001](ADR-001-client-platform.md) | Client platform | PROPOSED (Expo/React Native) |
+| [ADR-001](ADR-001-client-platform.md) | Client platform | DECIDED (2026-09-21: Expo/React Native, managed workflow) |
 | [ADR-002](ADR-002-backend-runtime.md) | Backend runtime & framework | DECIDED (2026-09-03: Node/TypeScript + Fastify) |
 | [ADR-003](ADR-003-database.md) | Primary database | DECIDED (2026-09-10: PostgreSQL + RLS; managed provider open) |
 | [ADR-004](ADR-004-authentication.md) | Authentication | PROPOSED (managed provider; vendor open) |

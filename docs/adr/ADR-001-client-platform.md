@@ -1,6 +1,6 @@
 # ADR-001: Client platform
 
-**Status:** PROPOSED · Owner: product owner + eng · Target decision point: before M3 (first client work)
+**Status:** DECIDED 2026-09-21 (D-005, PO Andy, decision brief A6) · Owner: product owner + eng. Managed Expo workflow first; barcode library chosen by spike in M3; UI libraries go through rule 11 one at a time.
 
 ## Context
 Mobile-first product (brief §1). MVP needs: camera barcode scanning, responsive CRUD UI, two-device household sync; fast-follow needs receipt photo capture; later, push notifications. Small team, one codebase strongly preferred.

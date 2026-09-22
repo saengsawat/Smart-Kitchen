@@ -44,8 +44,8 @@ Rationale: the scan button is the product's front door (P1) and owns the center;
 1. **Wireframes** for all 12 screens incl. non-happy states (low-fi, fast, breadth-first).
 2. **Hi-fi mockups** in the design-direction tokens — extend the existing clickable prototype rather than starting over; every S-screen and shared component.
 3. **Copy deck** for all safety-relevant strings (P5's nine rules applied verbatim; allergen warnings; provenance labels; correction language) — reviewed against SR-1/SR-2 like code.
-4. **Validation:** PO (Andy) + product originator (Dean) review the updated prototype on-device; at least one real-household hallway test of flows 1–3 using the prototype; findings logged, design iterated once.
-5. **Exit gate:** PO sign-off recorded in DECISIONS + **D-002 ratified** ⇒ M3 build tickets get written (not before).
+4. **Validation:** PO (Andy) + product originator (Dean) review the updated prototype on-device (done 2026-09-21 via the walkthrough deck); at least one real-household hallway test of flows 1–3. **2026-09-21 (D-023): the hallway test is deferred to the real app, before any release, not before build.**
+5. **Exit gate:** PO sign-off recorded in DECISIONS + **D-002 ratified** ⇒ M3 build tickets get written. **2026-09-21 (D-023): signed off for the locked screens; Menu (D-020) and Home states (OQ-D9) held until Dean's additional-function list is triaged.**
 
 ## 5. Open design decisions (owner input)
 

@@ -1,6 +1,6 @@
 # ADR-004: Authentication
 
-**Status:** PROPOSED (managed provider); vendor OPEN · Target decision point: M2 (first authenticated endpoint)
+**Status:** PROPOSED (managed provider); vendor OPEN · Target decision point: M2 (first authenticated endpoint). **2026-09-21 (D-022):** M2 and M3 build against an identity port with a fixture implementation first; the vendor decision is not consumed. Architect recommendation on the PO's open-source-first preference: Better Auth (MIT, in-process), fallback Supabase Auth; see the decision brief B1.
 
 ## Context
 Standard email/social auth for household members; sensitive downstream data (allergies, health-adjacent profile) raises the cost of auth mistakes; team must not spend MVP time on credential infrastructure.
