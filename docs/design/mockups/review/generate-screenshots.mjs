@@ -20,7 +20,9 @@ const screens = [
   ['02-inventory', { screen: 'scr-inventory' }],
   ['03-add-food', { screen: 'scr-add' }],
   ['04-barcode-match', { screen: 'scr-scan' }],
-  ['05-recipes', { screen: 'scr-recipes' }],
+  ['05-menu-tonight', { screen: 'scr-menu' }],
+  ['24-menu-plan', { screen: 'scr-menu', menu: 'plan' }],
+  ['25-home-sparse', { screen: 'scr-home', state: 'home-sparse' }],
   ['06-shopping', { screen: 'scr-shopping' }],
   ['07-assistant', { screen: 'scr-assistant' }],
   ['08-account-household', { screen: 'scr-account' }],
@@ -36,8 +38,8 @@ const screens = [
   ['17-new-user-home', { screen: 'scr-home', state: 'new-user' }],
   ['18-camera-denied', { screen: 'scr-scan', state: 'camera-denied' }],
   ['19-barcode-no-match', { screen: 'scr-scan', state: 'scan-miss' }],
-  ['20-recipes-empty', { screen: 'scr-recipes', state: 'recipes-empty' }],
-  ['21-recipes-blocked-list', { screen: 'scr-recipes', state: 'recipes-blocked' }],
+  ['20-recipes-empty', { screen: 'scr-menu', state: 'recipes-empty' }],
+  ['21-recipes-blocked-list', { screen: 'scr-menu', state: 'recipes-blocked' }],
   ['22-shopping-offline', { screen: 'scr-shopping', state: 'offline' }],
 ];
 

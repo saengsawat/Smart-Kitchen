@@ -57,7 +57,7 @@ Rationale: the scan button is the product's front door (P1) and owns the center;
 | OQ-D5 | Onboarding allergy step: per-member at signup vs household-owner-enters-all | Owner-enters-all at signup, members confirm on join (conservative; pending Q3) |
 | OQ-D6 | Dark mode at MVP launch or fast-follow | Tokens support it (design-direction); ship light-first, dark fast-follow |
 
-## 7. Prototype v3 coverage (PO revamp, adopted 2026-09-15 — D-019)
+## 7. Prototype coverage (v3 adopted 2026-09-15, D-019; **v4 2026-09-21**: Menu tab replaces Recipes with Tonight and Plan ahead views (D-020 PROPOSED), Home adapts to kitchen state empty, sparse, ready (OQ-D9), A12 darkenings applied as PROPOSED; v3 archived at mockups/Archives/smart-kitchen-prototype-v3.html)
 
 | Screen | v3 status | Gap to close in M3-E0 |
 |---|---|---|

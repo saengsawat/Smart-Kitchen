@@ -43,6 +43,8 @@
       if (state === 'scan-miss') win.dev.scanMatch = false;
       if (state === 'recipes-empty') win.dev.recipeMode = 'none';
       if (state === 'recipes-blocked') win.dev.recipeMode = 'blocked';
+      if (state === 'home-sparse') win.dev.homeState = 'sparse';
+      if (params.get('menu')) win.dev.menuView = params.get('menu');
       win.applyDev();
 
       doc.querySelector('.hint')?.remove();

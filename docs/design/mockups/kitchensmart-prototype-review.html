@@ -58,8 +58,8 @@
   <section class="sheet cover">
     <div class="kicker">Andy + Dean · Product review</div>
     <h1>KitchenSmart<br>prototype walkthrough</h1>
-    <p class="sub">Every prototype page, in a practical meeting order. Review the product shape first; use the prompts to lock the decisions that unblock the next build phase.</p>
-    <div class="meta"><span class="pill">Prototype v3</span><span class="pill">17 core views</span><span class="pill">6 edge states</span><span class="pill">18 Sep 2026</span></div>
+    <p class="sub">Every prototype page, in a practical meeting order. v4 reflects the 21 Sep session: the Menu tab replaces Recipes (D-020), Home adapts to how stocked the kitchen is (OQ-D9), and the proposed contrast darkenings are applied (A12).</p>
+    <div class="meta"><span class="pill">Prototype v4</span><span class="pill">19 core views</span><span class="pill">6 edge states</span><span class="pill">21 Sep 2026</span></div>
     <span class="page-no">01</span>
   </section>
 
@@ -71,7 +71,7 @@
       <div><b>1 · Orient</b><p>Home → Inventory → Add Food. Confirm whether the dashboard is the right front door.</p></div>
       <div><b>2 · Capture</b><p>Barcode match, no match, manual entry, and item corrections. Check whether provenance feels understandable.</p></div>
       <div><b>3 · Decide safety</b><p>Allergies, profile visibility, recipe verdicts, and blocked states. These are policy decisions wearing UI clothes.</p></div>
-      <div><b>4 · Close the loop</b><p>Recipes → cook confirmation → shopping → assistant. Confirm what belongs in MVP versus later.</p></div>
+      <div><b>4 · Close the loop</b><p>Menu (tonight and planned) → recipe → cook confirmation → shopping → assistant. Confirm what belongs in MVP versus later.</p></div>
     </div>
     <div class="decision"><b>Meeting rule:</b> react to the decision and user flow, not typography polish. “Would we ship this behavior?” is the useful question.</div>
     <span class="page-no">02</span>
@@ -82,13 +82,15 @@
   <script>
     const A = 'review/assets/';
     const core = [
-      ['01-home-dashboard.png','Home dashboard','Daily starting point'],
+      ['01-home-dashboard.png','Home · ready','Stocked kitchen dashboard'],
+      ['25-home-sparse.png','Home · sparse','Few items, no recommendation yet'],
       ['02-inventory.png','Inventory','What is on hand'],
       ['03-add-food.png','Add food','Choose capture method'],
       ['04-barcode-match.png','Barcode match','Review catalog facts'],
       ['11-manual-add.png','Manual add','Fallback capture'],
       ['12-item-detail.png','Item detail','Quantity + ledger'],
-      ['05-recipes.png','Recipes','Ranked meal ideas'],
+      ['05-menu-tonight.png','Menu · tonight','Ranked ideas from inventory'],
+      ['24-menu-plan.png','Menu · plan ahead','Named menus and day slots'],
       ['14-recipe-ready.png','Recipe · ready','Known match path'],
       ['23-cook-confirm.png','Cook confirm','Deductions + shortfall'],
       ['15-recipe-unknown.png','Recipe · unknown','Uncertainty path'],
@@ -101,30 +103,32 @@
       ['13-badge-legend.png','Badge legend','Trust vocabulary'],
     ];
     const details = [
-      {i:0,s:'S3 · Existing household',d:'A1 · MVP scope / A10 · Home direction',q:'Is the dashboard the right front door, or should the app open directly to Inventory?',w:['Makes expiring food and a strong dinner suggestion immediately useful.','Provides fast routes to inventory, recipes, shopping, and the assistant.'],f:'Home → Inventory / Recipes / Add / Assistant'},
-      {i:1,s:'S4 · Core MVP',d:'A1 · MVP scope',q:'Does this list expose enough information to trust quantities and expiry without opening every item?',w:['Location tabs keep fridge, freezer, and pantry understandable.','Provenance and “needs confirmation” are visible before acting.'],f:'Home → Inventory → Item detail'},
-      {i:2,s:'S6 · Capture hub',d:'A1 · Scope / A11 · Imagery',q:'For the first release, are barcode scan and manual entry enough? Receipt and camera recognition are marked as later phases.',w:['Sets honest expectations instead of pretending every capture method ships now.','Keeps the primary action focused on getting food into inventory.'],f:'Add → Barcode / Manual / Later capture'},
-      {i:3,s:'S7 · Core MVP',d:'A8 · Label-data trust tier',q:'Should Open Food Facts label data appear as Estimated until the user confirms it?',w:['Shows source and GTIN, then asks the user to confirm quantity and location.','Avoids silently turning third-party catalog data into a known fact.','Who may promote label data to Known Fact is open (D-017); the prototype shows it as Estimated per field.'],f:'Scan → Review match → Add to inventory'},
-      {i:4,s:'S9 · Core fallback',d:'A1 · MVP scope',q:'Is the manual fallback fast enough for products with no barcode match and fresh produce?',w:['Unit type changes the available units.','A missed barcode can be kept for later enrichment.'],f:'Add → Manual → Inventory'},
-      {i:5,s:'S5 · Core MVP',d:'A9 · Shortfall / correction policy',q:'Does the ledger explanation make a corrected quantity feel trustworthy rather than mysterious?',w:['Quantity edits become append-only corrections, not silent overwrites.','Used up, discarded, and donated require a reason.'],f:'Inventory → Item → Correct / consume'},
-      {i:6,s:'S10 · Recommended scope',d:'A1 · MVP scope',q:'Are ranked recipe suggestions essential for MVP, or should the first slice stop at trustworthy inventory?',w:['Ranking explains expiry usage, purchase gaps, time, and preferences.','Safety verdicts are separate from the ranking score.'],f:'Home → Recipes → Recipe detail'},
-      {i:7,s:'S11 · Recipe detail',d:'A8 · Trust tier',q:'Is “no known allergen match” clear enough without sounding like a safety guarantee?',w:['Shows exact on-hand amounts and the evidence tier.','Cook action leads to explicit inventory deductions.'],f:'Recipes → Ready recipe → Cook'},
-      {i:8,s:'S11 · Cook confirm',d:'A9 · Shortfall policy',q:'When inventory is short, should we record what exists, flag the gap, and still log the meal?',w:['Every deduction names the lot it comes from, first expiry first.','The shortfall is written as a flagged correction, never a silent overwrite.','Proposed policy (OQ-1): record the statement, flag the gap, then prompt to fix inventory.'],f:'Recipe → Cook this → Confirm deductions → Inventory'},
-      {i:9,s:'S11 · Uncertainty path',d:'A8 · Label-data trust tier / D-017',q:'When an ingredient has no ingredient statement on file, is "not blocked, not cleared" plus a check-the-package prompt the right answer?',w:['Names the missing allergen data instead of hiding uncertainty.','Unknown is a third state: no red, no green, cooking stays allowed with a warning.','Separates shopping gaps from allergen unknowns.'],f:'Recipes → Unknown recipe → Check package → Cook'},
-      {i:10,s:'S11 · Safety stop',d:'A3 / A8 · Household safety policy',q:'Should blocked recipes remain visible for transparency, with no cook action?',w:['Allergen red is reserved for an actual known match.','The reason and affected household member are named.'],f:'Recipes → Blocked detail → No cook action'},
-      {i:11,s:'S13 · Shared utility',d:'A1 · MVP scope',q:'Does shared shopping belong in the reduced vertical slice, or can it follow inventory and recipes?',w:['Meal-plan gaps become a plain shared list.','Offline actions queue rather than disappear.'],f:'Recipes / Assistant → Shopping'},
-      {i:12,s:'S14 · AI surface',d:'A1 · MVP scope / B5 · LLM cost',q:'What is the one assistant job worth shipping first: meal ideas, expiry help, or list building?',w:['Prompt starters make the feature concrete.','The assistant should explain and act through deterministic app functions.'],f:'Home → Assistant → Recipe / Shopping action'},
-      {i:13,s:'S1 · New household',d:'A3 · Household permissions',q:'Who may create, join, invite, and manage a household in the first release?',w:['Supports create and join without assuming a single-person account.','This is where owner/member rules first become visible.'],f:'Sign in → Create or join → Allergies'},
-      {i:14,s:'S2 · Safety onboarding',d:'A2 / A3 / A10 · Market + permissions',q:'Confirm: US nine allergens, owner enters them for all members, and the household can see allergy flags.',w:['Severity is explicit per allergen.','Preferences are kept visually separate from safety constraints.'],f:'Household setup → Allergies → Home'},
-      {i:15,s:'S12 · Household profile',d:'A3 / A10 · Privacy + product name',q:'Which member details are household-visible, and is “KitchenSmart” only a placeholder?',w:['Central place for people, safety profiles, and household settings.','Name choice must happen before store/domain work.'],f:'Avatar → Household profile → Member allergy edit'},
-      {i:16,s:'System explanation',d:'A8 / A12 · Trust + contrast',q:'Do Known Fact, Estimated, and AI Interpretation feel distinct and understandable without relying on color alone?',w:['Shape, icon, label, and color all carry meaning.','Review these colors on a real phone before adopting the proposed contrast fixes.'],f:'Any provenance badge → Legend'},
+      {i:0,s:'S3 · Ready kitchen',d:'A10 · Home direction / OQ-D9',q:'Once the kitchen is stocked, is the dashboard the right front door?',w:['Makes expiring food and a strong dinner suggestion immediately useful.','A skippable “tell us your tastes” card appears only here, never as a sign-up questionnaire.','Fast routes to inventory, menu, shopping, and the assistant.'],f:'Home → Inventory / Menu / Add / Assistant'},
+      {i:1,s:'S3 · Sparse kitchen',d:'OQ-D9 · Home by kitchen state',q:'With a handful of items and no honest recommendation yet, is “almost there” plus what is on hand the right Home?',w:['No fake recommendations: the app says what it needs before it can suggest.','Safety (allergies) is already set at onboarding; tastes wait until they matter.','Empty state (scan your first item) is in the edge-state page.'],f:'Onboarding → Home (empty) → first scans → Home (sparse) → Home (ready)'},
+      {i:2,s:'S4 · Core MVP',d:'A1 · MVP scope',q:'Does this list expose enough information to trust quantities and expiry without opening every item?',w:['Location tabs keep fridge, freezer, and pantry understandable.','Provenance and “needs confirmation” are visible before acting.'],f:'Home → Inventory → Item detail'},
+      {i:3,s:'S6 · Capture hub',d:'A1 · Scope / A11 · Imagery',q:'For the first release, are barcode scan and manual entry enough? Receipt and camera recognition are marked as later phases.',w:['Sets honest expectations instead of pretending every capture method ships now.','Keeps the primary action focused on getting food into inventory.'],f:'Add → Barcode / Manual / Later capture'},
+      {i:4,s:'S7 · Core MVP',d:'A8 · Label-data trust tier',q:'Should Open Food Facts label data appear as Estimated until the user confirms it?',w:['Shows source and GTIN, then asks the user to confirm quantity and location.','Avoids silently turning third-party catalog data into a known fact.','Who may promote label data to Known Fact is open (D-017); the prototype shows it as Estimated per field.'],f:'Scan → Review match → Add to inventory'},
+      {i:5,s:'S9 · Core fallback',d:'A1 · MVP scope',q:'Is the manual fallback fast enough for products with no barcode match and fresh produce?',w:['Unit type changes the available units.','A missed barcode can be kept for later enrichment.'],f:'Add → Manual → Inventory'},
+      {i:6,s:'S5 · Core MVP',d:'A9 · Shortfall / correction policy',q:'Does the ledger explanation make a corrected quantity feel trustworthy rather than mysterious?',w:['Quantity edits become append-only corrections, not silent overwrites.','Used up, discarded, and donated require a reason.'],f:'Inventory → Item → Correct / consume'},
+      {i:7,s:'S10 · Menu · Tonight (D-020)',d:'A1 · MVP scope / D-020',q:'The Menu tab opens on Tonight: ranked ideas from what is in stock. Is this the MVP layer of the Menu page?',w:['Recipes are a subset of Menu, as agreed on 21 Sep.','Ranking explains expiry usage, purchase gaps, time, and preferences.','Safety verdicts are separate from the ranking score.'],f:'Home → Menu (Tonight) → Recipe detail'},
+      {i:8,s:'S10b · Menu · Plan ahead (D-020)',d:'D-020 · Menu page scope / A1',q:'Named menus with day slots, missing items pushed to Shopping in one tap. Ship with MVP, or as the fast-follow layer of the same tab?',w:['Menus: Monday, Weekend, Next 3 days, or custom; slots hold recipes.','“Add to Shopping” is deterministic gap math tagged with the menu, never generated text.','Blocked recipes cannot be placed in a slot; unknown ones carry the check-the-package warning.','Planning never changes inventory; cooking does.'],f:'Menu (Plan ahead) → slot → recipe → Add to Shopping'},
+      {i:9,s:'S11 · Recipe detail',d:'A8 · Trust tier',q:'Is “no known allergen match” clear enough without sounding like a safety guarantee?',w:['Shows exact on-hand amounts and the evidence tier.','Cook action leads to explicit inventory deductions.'],f:'Menu → Ready recipe → Add to menu / Cook'},
+      {i:10,s:'S11 · Cook confirm',d:'A9 · Shortfall policy',q:'When inventory is short, should we record what exists, flag the gap, and still log the meal?',w:['Every deduction names the lot it comes from, first expiry first.','The shortfall is written as a flagged correction, never a silent overwrite.','Proposed policy (OQ-1): record the statement, flag the gap, then prompt to fix inventory.'],f:'Recipe → Cook this → Confirm deductions → Inventory'},
+      {i:11,s:'S11 · Uncertainty path',d:'A8 · Label-data trust tier / D-017',q:'When an ingredient has no ingredient statement on file, is "not blocked, not cleared" plus a check-the-package prompt the right answer?',w:['Names the missing allergen data instead of hiding uncertainty.','Unknown is a third state: no red, no green, cooking stays allowed with a warning.','Separates shopping gaps from allergen unknowns.'],f:'Menu → Unknown recipe → Check package → Cook'},
+      {i:12,s:'S11 · Safety stop',d:'A3 / A8 · Household safety policy',q:'Should blocked recipes remain visible for transparency, with no cook action?',w:['Allergen red is reserved for an actual known match.','The reason and affected household member are named.'],f:'Menu → Blocked detail → No cook or plan action'},
+      {i:13,s:'S13 · Shared utility',d:'A1 · MVP scope',q:'Does shared shopping belong in the reduced vertical slice, or can it follow inventory and menus?',w:['Gaps from every menu land in one shared list, each tagged with its menu.','Offline actions queue rather than disappear.'],f:'Menu / Assistant → Shopping'},
+      {i:14,s:'S14 · AI surface',d:'A1 · MVP scope / B5 · LLM cost',q:'What is the one assistant job worth shipping first: meal ideas, expiry help, or list building?',w:['Prompt starters make the feature concrete.','The assistant should explain and act through deterministic app functions.'],f:'Home → Assistant → Recipe / Shopping action'},
+      {i:15,s:'S1 · New household',d:'A3 · Household permissions',q:'Who may create, join, invite, and manage a household in the first release?',w:['Supports create and join without assuming a single-person account.','This is where owner/member rules first become visible.'],f:'Sign in → Create or join → Allergies'},
+      {i:16,s:'S2 · Safety onboarding',d:'A2 / A3 / A10 · Market + permissions',q:'Confirm: US nine allergens, owner enters them for all members, and the household can see allergy flags.',w:['Severity is explicit per allergen.','Preferences are kept visually separate from safety constraints.'],f:'Household setup → Allergies → Home'},
+      {i:17,s:'S12 · Household profile',d:'A3 / A10 · Privacy + product name',q:'Which member details are household-visible, and is “KitchenSmart” only a placeholder?',w:['Central place for people, safety profiles, and household settings.','Name choice must happen before store/domain work.'],f:'Avatar → Household profile → Member allergy edit'},
+      {i:18,s:'System explanation',d:'A8 / A12 · Trust + contrast',q:'Do Known Fact, Estimated, and AI Interpretation feel distinct and understandable without relying on color alone?',w:['Shape, icon, label, and color all carry meaning.','Review these colors on a real phone before adopting the proposed contrast fixes.'],f:'Any provenance badge → Legend'},
     ];
     const states = [
       ['17-new-user-home.png','New user / empty home','First-run value before inventory exists'],
       ['18-camera-denied.png','Camera denied','Recovery path to settings or manual entry'],
       ['19-barcode-no-match.png','No barcode match','Keep code and fall back to manual'],
-      ['20-recipes-empty.png','No recipe results','Explain why and offer a useful next move'],
-      ['21-recipes-blocked-list.png','Blocked recipe list','Transparent but clearly unavailable'],
+      ['20-recipes-empty.png','Menu · no matches yet','Explain why and offer a useful next move'],
+      ['21-recipes-blocked-list.png','Menu · all blocked','Transparent but clearly unavailable'],
       ['22-shopping-offline.png','Shopping offline','Queue shared changes for sync'],
     ];
     const deck = document.getElementById('deck');
@@ -144,7 +148,7 @@
     appendix.innerHTML=`<div class="kicker">Edge-state check</div><h2>Don’t approve only the happy path</h2><p class="sub">These states usually reveal more product truth than the polished default screens.</p><div class="appendix-grid">${states.map(x=>`<div class="state"><img src="${A+x[0]}"><b>${x[1]}</b><span>${x[2]}</span></div>`).join('')}</div><span class="page-no">${pageNo()}</span>`;
     deck.appendChild(appendix);
     const close=document.createElement('section'); close.className='sheet';
-    close.innerHTML=`<div class="kicker">Close the meeting</div><h2>Decisions to leave with</h2><div class="agenda"><div><b>MVP shape</b><p>Ratify the reduced slice, or name the one or two additions that are truly non-negotiable.</p></div><div><b>Household safety</b><p>Confirm US-first allergens, owner/member rights, visibility, and label-data trust.</p></div><div><b>Product direction</b><p>Keep dashboard home? Light-first? Is KitchenSmart just a working name?</p></div><div><b>Build path</b><p>Expo client, Better Auth, stubbed-auth M2 now, and hosting only when shared testing needs it.</p></div></div><div class="decision"><b>Afterward:</b> record the answers in DECISIONS.md. Until then, every highlighted item here is a proposal, not a settled requirement.</div><span class="page-no">${pageNo()}</span>`;
+    close.innerHTML=`<div class="kicker">Close the meeting</div><h2>Decisions to leave with</h2><div class="agenda"><div><b>MVP shape</b><p>Ratify the reduced slice, or name the one or two additions that are truly non-negotiable.</p></div><div><b>Household safety</b><p>Confirm US-first allergens, owner/member rights, visibility, and label-data trust.</p></div><div><b>Product direction</b><p>Menu tab name (Menu). Home by kitchen state. Light-first? Is KitchenSmart just a working name?</p></div><div><b>Build path</b><p>Expo client, Better Auth, stubbed-auth M2 now, and hosting only when shared testing needs it.</p></div></div><div class="decision"><b>Afterward:</b> record the answers in DECISIONS.md. Until then, every highlighted item here is a proposal, not a settled requirement.</div><span class="page-no">${pageNo()}</span>`;
     deck.appendChild(close);
   </script>
 </body>
