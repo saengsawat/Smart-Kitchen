@@ -123,7 +123,7 @@ confirmed_by      UUID NULL     -- user who confirmed, where confirmation applie
 ## 5. Tenancy isolation & sensitive data
 
 - **App-layer:** every repository/query function takes a mandatory household context; no query path exists without it (enforced by module API design + tests).
-- **DB-layer (PROPOSED, evaluate in M1-T2):** Postgres RLS keyed on `household_id` via a per-request setting, as defense in depth. Cost: some ORM friction; Benefit: isolation survives application bugs. Leaning **yes** — matches NFR-1's "cannot" rather than "should not."
+- **DB-layer (ADOPTED in M1-T2, ADR-003 DECIDED; stale "PROPOSED" wording corrected 2026-09-22):** Postgres RLS keyed on `household_id` via the transaction-local `app.household_id` setting (migration 0006), as defense in depth; the app role `sk_app` has no BYPASSRLS and no UPDATE/DELETE on ledger tables. The HTTP layer (M2-T1) sets the context in `withHouseholdTransaction` with the role pinned on every request; a handler is handed a tenant-scoped runner, never the pool. The tenancy suite proves both layers independently: removing the tenant context returns nothing (RLS holds), and bypassing RLS still returns only the caller's household (the app predicate holds). Isolation survives application bugs, which is NFR-1's "cannot" rather than "should not."
 - `member_profiles` + `allergy_restrictions` are the most sensitive tables (health-adjacent): access-scoped to the owning user (not whole household) by default pending Q3/OQ-3; encrypted at rest by platform; excluded from logs (see threat model).
 
 ## 6. Idempotency

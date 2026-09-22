@@ -118,7 +118,7 @@ Owners: `PO` = product owner (Dean), `ENG` = engineering.
 ## D-022 — Build against a stubbed identity first; auth vendor stays open (A7)
 - **Date:** 2026-09-21 · **Status:** DECIDED · **Owner:** PO (Andy)
 - **Decision:** M2 (API) and M3 (client) are built against an identity port with a fixture implementation (fixed test users in one household, plus a second household for isolation tests). No vendor, no signup, no cost. ADR-004 stays PROPOSED on vendor; the architect's recommendation is Better Auth (open source, in-process), fallback Supabase Auth. The swap is one adapter behind the port.
-- **Consequences:** every authorization test runs against the port, so it stays valid when the real provider lands; no endpoint may read identity from anywhere but the port; the fixture identity is compiled out of production builds.
+- **Consequences:** every authorization test runs against the port, so it stays valid when the real provider lands; no endpoint may read identity from anywhere but the port; the fixture adapter is never *selected* in production: it loads only when `SK_IDENTITY=fixture` and `NODE_ENV` is on the allowlist (`development`, `test`, unset), and the process refuses to start otherwise. **Wording corrected 2026-09-22 at M2-T1 acceptance:** an earlier draft said "compiled out of production builds"; the module does ship in `dist/`, what is guarded is its selection, checked at startup and by a spawn test against the compiled server.
 - **Alternatives:** wait for the vendor decision (rejected: idle time, and the decision has no bearing on the domain or screens).
 
 ## D-023 — M3 build starts on the locked screens; design gate signed off with the hallway test deferred to pre-release
@@ -131,6 +131,10 @@ Owners: `PO` = product owner (Dean), `ENG` = engineering.
 
 ## Open product-owner questions (not yet decisions)
 Q1–Q8 in [PRODUCT.md §8](PRODUCT.md#8-unanswered-questions-product-owner-input-needed); Q9–Q10 in [MVP_PRD.md §14](docs/prd/MVP_PRD.md#14-open-questions). Answers get promoted to D-numbers here.
+
+**Open engineering questions (architect-owned, recorded 2026-09-22 from the M2-T1 review):**
+- **OQ-E1 Multi-household sessions.** `Session` carries one `householdId`; the schema allows a user to belong to several households. Safe today (the fixture map enforces one membership per user). Rule for M2-T3 and the auth-vendor adapter: the *set* of permitted households comes only from the identity port, and any client-side selection is validated against `household_memberships` inside the tenant session, never trusted from a header or body.
+- **OQ-E2 Lot expiry provenance.** `inventory_lots.expiry_tier` stores a tier with no source, confidence or timestamp (migration 0003), so `FieldProvenanceDto` carries honest nulls there. Decide with OQ-D7 whether lots get a full provenance block (schema change, M4 or M8).
 
 ## Research required (evidence before decision)
 - R-1 Barcode coverage: OFF/FDC hit-rate on a realistic US basket → feeds D-010 (ticket M1-T5).
