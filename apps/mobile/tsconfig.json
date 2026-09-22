@@ -1,0 +1,37 @@
+{
+  // Does not extend ../../tsconfig.base.json (M3-T1 deviation, see worker
+  // report): the base config sets "module"/"moduleResolution": "NodeNext",
+  // which requires explicit file extensions on relative imports and Node's
+  // own resolution algorithm. Metro (Expo's bundler) resolves modules its own
+  // way and does not honour NodeNext's rules, so an Expo app's tsconfig needs
+  // "moduleResolution": "Bundler" instead. Strictness flags are kept aligned
+  // with the base config by hand (strict, noUncheckedIndexedAccess,
+  // noImplicitOverride, noFallthroughCasesInSwitch) so this app is held to
+  // the same rigor without inheriting the incompatible module settings.
+  "compilerOptions": {
+    "target": "ESNext",
+    "lib": ["ESNext"],
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "jsx": "react-jsx",
+    "strict": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noUncheckedIndexedAccess": true,
+    "noImplicitOverride": true,
+    "noFallthroughCasesInSwitch": true,
+    "composite": true,
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "outDir": "dist",
+    "rootDir": ".",
+    "types": []
+  },
+  "include": ["app", "src"],
+  "exclude": ["node_modules", "dist"],
+  "references": [{ "path": "../../packages/adapters" }, { "path": "../../packages/contracts" }]
+}

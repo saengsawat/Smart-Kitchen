@@ -31,3 +31,8 @@ logs/
 
 # Claude Code agent worktrees (harness-created, never committed; also keeps them out of prettier --check)
 .claude/worktrees/
+
+# Expo (apps/mobile, M3-T1): local dev cache and the typed-routes file Expo
+# regenerates on every `expo start`/`expo export`
+.expo/
+expo-env.d.ts

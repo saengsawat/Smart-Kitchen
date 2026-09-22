@@ -1,0 +1,25 @@
+{
+  "expo": {
+    "name": "Smart Kitchen",
+    "slug": "smart-kitchen",
+    "scheme": "smartkitchen",
+    "version": "0.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "plugins": ["expo-router"],
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "app.smartkitchen.dev"
+    },
+    "android": {
+      "package": "app.smartkitchen.dev"
+    },
+    "web": {
+      "bundler": "metro"
+    },
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}

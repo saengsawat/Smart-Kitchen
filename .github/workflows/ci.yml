@@ -93,6 +93,9 @@ jobs:
         env:
           DATABASE_URL: postgres://postgres@localhost:5432/smart_kitchen_ci
 
+      - name: Mobile export smoke check (M3-T1)
+        run: pnpm --filter mobile export
+
       - name: Format check
         run: pnpm format:check
 

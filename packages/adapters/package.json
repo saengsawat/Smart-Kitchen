@@ -12,9 +12,11 @@
   "scripts": {
     "typecheck": "tsc -b --pretty"
   },
-  "dependencies": {},
+  "dependencies": {
+    "@smart-kitchen/contracts": "workspace:*",
+    "@smart-kitchen/domain": "workspace:*"
+  },
   "devDependencies": {
-    "@smart-kitchen/domain": "workspace:*",
     "@types/node": "^26.4.1"
   }
 }

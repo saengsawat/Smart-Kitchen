@@ -113,6 +113,23 @@ directory — it is an independent, disposable cluster on its own port, gone
 with the scratch directory. Pick a port that is not already in use if `55432`
 is taken locally.
 
+## Running the mobile app locally (M3-T1)
+
+`apps/mobile` is an Expo (managed workflow) + Expo Router app inside this
+same pnpm workspace. `pnpm install` at the root covers it too, no separate
+install step. To run it:
+
+```bash
+pnpm --filter mobile start
+```
+
+Full instructions, including how to load it on a phone over the same Wi-Fi
+in Expo Go (no tunnel, no Expo account, no paid resource, per CLAUDE.md rule 17)
+are in [apps/mobile/README.md](apps/mobile/README.md).
+
+`pnpm --filter mobile export` is the same export smoke check CI runs as part
+of the `quality` job.
+
 ## Windows: long paths
 
 pnpm's virtual store (`node_modules/.pnpm/<pkg>@<version>_<hash>/...`) produces long,

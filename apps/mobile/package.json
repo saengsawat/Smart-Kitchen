@@ -1,0 +1,31 @@
+{
+  "name": "mobile",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Expo/React Native client (ADR-001: Expo/React Native, D-005). M3-T1 scaffold: tokens, tab shell, fixture API client.",
+  "main": "expo-router/entry",
+  "scripts": {
+    "start": "expo start",
+    "android": "expo start --android",
+    "ios": "expo start --ios",
+    "export": "expo export --platform android --platform ios --output-dir dist",
+    "typecheck": "tsc -b --pretty"
+  },
+  "dependencies": {
+    "@expo/metro-runtime": "~57.0.16",
+    "@smart-kitchen/adapters": "workspace:*",
+    "@smart-kitchen/contracts": "workspace:*",
+    "expo": "~57.0.24",
+    "expo-constants": "~57.0.19",
+    "expo-font": "~57.0.4",
+    "expo-linking": "~57.0.10",
+    "expo-router": "~57.0.22",
+    "react": "19.2.3",
+    "react-native": "0.86.3",
+    "react-native-safe-area-context": "5.10.0",
+    "react-native-screens": "4.28.0"
+  },
+  "devDependencies": {
+    "@types/react": "~19.2.0"
+  }
+}

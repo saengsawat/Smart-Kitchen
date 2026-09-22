@@ -29,13 +29,19 @@ export default tseslint.config(
     // covered by the non-type-checked rules from js.configs.recommended +
     // typescript-eslint's syntax-only parsing below instead — they aren't
     // part of any package's tsconfig "include".
-    files: ["apps/**/*.ts", "packages/**/*.ts"],
+    //
+    // "*.tsx" added for apps/mobile (M3-T1): without it these files fell
+    // outside every "files" pattern above and were parsed by ESLint's plain
+    // espree parser, which cannot read TS syntax (types, `as const`, …) at
+    // all, let alone JSX-in-TS.
+    files: ["apps/**/*.ts", "apps/**/*.tsx", "packages/**/*.ts"],
     extends: [...tseslint.configs.recommendedTypeChecked],
     languageOptions: {
       globals: { ...globals.node },
       parserOptions: {
         projectService: true,
         tsconfigRootDir: __dirname,
+        ecmaFeatures: { jsx: true },
       },
     },
   },
@@ -44,6 +50,18 @@ export default tseslint.config(
     extends: [...tseslint.configs.recommended],
     languageOptions: {
       globals: { ...globals.node },
+    },
+  },
+  // apps/mobile's own CommonJS config files (M3-T1): Expo/Metro/Babel read
+  // these directly with Node's CJS loader (not through any package's
+  // tsconfig "include", same reasoning as the root-file-only "*.js" block
+  // above, which doesn't match these since they're nested under apps/mobile/).
+  {
+    files: ["apps/mobile/babel.config.js", "apps/mobile/metro.config.js"],
+    languageOptions: {
+      ecmaVersion: "latest",
+      sourceType: "commonjs",
+      globals: { ...globals.node, ...globals.commonjs },
     },
   },
   // scripts/**/*.mjs (M1-T5 follow-up, M1-T10-d): outside apps/**/packages/**
@@ -116,6 +134,65 @@ export default tseslint.config(
               from: ["./packages/adapters/src", "./packages/contracts/src"],
               message:
                 "packages/domain must not depend on adapters or contracts — it is the pure, zero-I/O core (ARCHITECTURE.md §2, CLAUDE.md rule 7).",
+            },
+          ],
+        },
+      ],
+    },
+  },
+  // --- apps/mobile domain-boundary rule (M3-T1) ---
+  // The mobile client must never import @smart-kitchen/domain directly. Only
+  // @smart-kitchen/contracts DTOs cross the client/server seam
+  // (ARCHITECTURE.md §2, M3-T1 invariant). @smart-kitchen/adapters is allowed
+  // (its fixture data is what the M3-T1 fixture ApiClient reads until an API
+  // endpoint exists), just not domain's own package. Proven by
+  // apps/mobile/src/lint-rules/domain-boundary.test.ts, which runs this exact
+  // rule config against an in-memory source string.
+  //
+  // Two rules, same reasoning as packages/domain's own block above:
+  //  1. no-restricted-imports: catches the bare specifier (@smart-kitchen/
+  //     domain) and any deep import into it (@smart-kitchen/domain/*).
+  //  2. no-restricted-paths: review finding F1 (M3-T1 review). Rule 1 alone
+  //     does not catch a relative path reaching straight into
+  //     packages/domain/src (e.g. "../../../packages/domain/src/inventory/
+  //     ledger"), which lints and typechecks clean without it. This zone
+  //     closes that gap the same way packages/domain's own zone does.
+  {
+    files: [
+      "apps/mobile/src/**/*.ts",
+      "apps/mobile/src/**/*.tsx",
+      "apps/mobile/app/**/*.ts",
+      "apps/mobile/app/**/*.tsx",
+    ],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          paths: [
+            {
+              name: "@smart-kitchen/domain",
+              message:
+                "apps/mobile must not import @smart-kitchen/domain directly. Use @smart-kitchen/contracts types instead (M3-T1 invariant).",
+            },
+          ],
+          patterns: [
+            {
+              group: ["@smart-kitchen/domain/*"],
+              message:
+                "apps/mobile must not import @smart-kitchen/domain directly. Use @smart-kitchen/contracts types instead (M3-T1 invariant).",
+            },
+          ],
+        },
+      ],
+      "import-x/no-restricted-paths": [
+        "error",
+        {
+          zones: [
+            {
+              target: ["./apps/mobile/src", "./apps/mobile/app"],
+              from: ["./packages/domain/src"],
+              message:
+                "apps/mobile must not reach into packages/domain/src by relative path. Use @smart-kitchen/contracts types instead (M3-T1 invariant).",
             },
           ],
         },
