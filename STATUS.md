@@ -38,11 +38,11 @@ _Last updated: 2026-09-22_
 
 ## Build resumed 2026-09-22 (D-021, D-022, D-023, D-005)
 - **Decided 2026-09-21/22 by Andy:** Expo (D-005, ADR-001 DECIDED), the seven token darkenings (D-021), build against a stubbed identity port (D-022), M3 build opens on the locked screens with the hallway test deferred to pre-release (D-023). Prototype **v4** is the build reference (Menu tab, Home states, D-021 palette); v3 archived.
-- **Dispatched:** M3-T1 (Expo scaffold, tokens, shell; Sonnet worker in a worktree). **Queued:** M2-T1 (identity port + tenancy over HTTP; Opus-class, model pin pending PO answer, see BACKLOG), then M3-T2 onward one at a time.
+- **Dispatched:** M3-T1 (Expo scaffold, tokens, shell; Sonnet worker in a worktree). **Dispatched in parallel:** M2-T1 (identity port + tenancy over HTTP; Opus worker in a worktree), then M3-T2 onward one at a time.
 - **Held:** Menu page internals (D-020) and Home dashboard states (OQ-D9) until Dean's additional-function list is triaged and D-002 is ratified. Session notes: [docs/po/meeting-notes-2026-09-21.md](docs/po/meeting-notes-2026-09-21.md).
 
 ## Awaiting owner action
-- Dean's additional-function list (unblocks D-002 ratification, D-020, OQ-D9 tickets); Andy's model choice for Opus-class tickets (fable vs default Opus; Opus 5 declined by PO 2026-09-22).
+- Dean's additional-function list (unblocks D-002 ratification, D-020, OQ-D9 tickets); (model question settled 2026-09-22: default Opus plus a detailed architect pass; Fable only when super important).
 - **Andy + Dean decision session (this week):** agenda, recommendations and cost map in [docs/po/decision-brief-2026-09.md](docs/po/decision-brief-2026-09.md) — D-002, Q1/Q3, auth (open-source-first), hosting (phased), ADR-001, stubbed-auth M2 go/no-go, D-017 gate b, shortfall policy, UX opens incl. product name.
 - **Apply branch protection on `main`** per the checklist in [CONTRIBUTING.md](CONTRIBUTING.md) (require PR; required checks exactly `quality` and `secret-scan`; block force pushes). Architect verifies the branch's `protected` flag afterwards.
 
