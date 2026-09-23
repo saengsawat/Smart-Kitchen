@@ -49,6 +49,16 @@ export class ZeroDeltaError extends Error {
   }
 }
 
+/**
+ * Provenance source recorded on a row a person wrote through this fixture,
+ * matching `apps/api/src/db/inventory/write-service.ts`'s `MANUAL_ENTRY_SOURCE`
+ * constant exactly (restated, not imported: `apps/mobile` never imports
+ * server code). The picked reason chip ("Spoiled", "Wrong item", …) now
+ * travels in the row's own `reason` field (M3-T4a; previously reused this
+ * field, the M3-T3 `provenance.source` workaround this ticket removes).
+ */
+const MANUAL_ENTRY_SOURCE = "manual-entry";
+
 export interface MutableItemFixture {
   readonly itemId: string;
   readonly displayName: string;
@@ -91,6 +101,7 @@ function buildRow(params: {
   recordedAt: string;
   actor: TransactionActorDto;
   provenance: FieldProvenanceDto;
+  reason: string | null;
   systemFlag?: "OVER_CONSUMPTION";
   correlationLabel?: string;
 }): InventoryTransactionDto {
@@ -102,6 +113,7 @@ function buildRow(params: {
     recordedAt: params.recordedAt,
     actor: params.actor,
     provenance: params.provenance,
+    reason: params.reason,
     ...(params.systemFlag ? { systemFlag: params.systemFlag } : {}),
     ...(params.correlationLabel ? { correlationLabel: params.correlationLabel } : {}),
   };
@@ -123,6 +135,7 @@ export function appendDecrease(
     recordedAt: string;
     actor: TransactionActorDto;
     provenance: FieldProvenanceDto;
+    reason: string | null;
     correlationLabel?: string;
   },
 ): void {
@@ -138,6 +151,7 @@ export function appendDecrease(
       recordedAt: params.recordedAt,
       actor: params.actor,
       provenance: params.provenance,
+      reason: params.reason,
       correlationLabel: params.correlationLabel,
     }),
   );
@@ -150,16 +164,20 @@ export function appendDecrease(
         deltaMicros: overshoot,
         recordedAt: params.recordedAt,
         actor: { kind: "system" },
-        // Review F11: never rendered directly today (the clamp row's
-        // caption is always clampSentence(), never provenance.source), but
-        // a plain, human-readable value future-proofs against that
-        // changing silently.
+        // Matches the domain's own clamp constants exactly
+        // (packages/domain/src/inventory/ledger.ts CLAMP_SOURCE/CLAMP_REASON,
+        // restated rather than imported: apps/mobile never imports
+        // @smart-kitchen/domain, M3-T1 invariant). Review F11: never
+        // rendered directly today (the clamp row's caption is always
+        // clampSentence(), never provenance.source/reason), but matching the
+        // real server's exact strings future-proofs against that changing.
         provenance: {
           tier: "ESTIMATED",
-          source: "inventory correction",
+          source: "inventory-ledger:over-consumption-clamp",
           confidence: null,
           recordedAt: null,
         },
+        reason: "over-consumption-clamp",
         systemFlag: "OVER_CONSUMPTION",
       }),
     );
@@ -189,6 +207,7 @@ export function appendIncrease(
       recordedAt: params.recordedAt,
       actor: params.actor,
       provenance: params.provenance,
+      reason: null,
       correlationLabel: params.correlationLabel,
     }),
   );
@@ -221,6 +240,7 @@ export function appendCorrection(
       confidence: null,
       recordedAt: null,
     },
+    reason: null,
   });
   item.history.push(row);
   return row;
@@ -229,9 +249,14 @@ export function appendCorrection(
 /**
  * `removeQuantity`: removes the full on-hand amount under the mapped
  * `TransactionType` (copy-deck.md §5). `reasonLabel` (the secondary reason
- * chip, e.g. "Spoiled") travels in `provenance.source`, never
- * `correlationLabel` (review F4 ruling: that field names a recipe, not a
- * removal reason).
+ * chip, e.g. "Spoiled") travels in the row's own `reason` field, matching
+ * `InventoryWriteRequestDto.reason` on the real endpoint exactly (M3-T4a:
+ * this replaces the M3-T3 `provenance.source` workaround, which stood in for
+ * a wire field that did not exist yet). `provenance.source` reverts to the
+ * fixed manual-entry source the real API records, the same for every manual
+ * write regardless of reason. Returns the appended row (review F3's rule,
+ * extended to removals): the caller needs the *actual* new row to offer an
+ * undo, never an assumption like "the last row in history".
  */
 export function appendRemoval(
   item: MutableItemFixture,
@@ -239,7 +264,7 @@ export function appendRemoval(
   recordedAt: string,
   actor: TransactionActorDto,
   reasonLabel?: string,
-): void {
+): InventoryTransactionDto {
   appendDecrease(item, {
     type,
     magnitudeMicros: currentMicros(item.history),
@@ -247,11 +272,18 @@ export function appendRemoval(
     actor,
     provenance: {
       tier: "KNOWN_FACT",
-      source: reasonLabel ?? "manual entry",
+      source: MANUAL_ENTRY_SOURCE,
       confidence: null,
       recordedAt: null,
     },
+    reason: reasonLabel ?? null,
   });
+  // appendDecrease always pushes the removal row itself first (a clamp row,
+  // if any, is a second, later push), so it is always the row immediately
+  // before wherever history now ends minus however many clamp rows followed
+  // — but a full-balance removal (this function's only call shape) can never
+  // overshoot, so there is never a clamp row to skip past.
+  return item.history.at(-1)!;
 }
 
 /** `undo`: appends the exact compensating `ADJUSTMENT` for a previously recorded row. Never deletes it. */
@@ -272,6 +304,11 @@ export function appendUndo(
     recordedAt,
     actor,
     provenance: { tier: "KNOWN_FACT", source: "undo", confidence: null, recordedAt: null },
+    // Matches the real endpoint's own convention exactly
+    // (apps/api/src/db/inventory/write-service.ts UNDO_REASON_PREFIX):
+    // relates the compensating row back to what it undoes, and is refused as
+    // a normal write's own `reason` (a client cannot forge it).
+    reason: `undo:${transactionId}`,
   });
   item.history.push(row);
   return row;

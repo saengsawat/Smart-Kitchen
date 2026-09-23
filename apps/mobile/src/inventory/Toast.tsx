@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { AccessibilityInfo, Pressable, StyleSheet, Text, View } from "react-native";
 import { colors, fontFamily, minTouchTarget, radius, spacing } from "../design/tokens";
 
@@ -6,18 +6,33 @@ import { colors, fontFamily, minTouchTarget, radius, spacing } from "../design/t
  * S4/S5's toast (prototype v4 `#toastEl`/`toast()`), e.g. copy-deck.md §5's
  * undo toast text "Corrected. Undo". Shown for a few seconds, announced to a
  * screen reader, optionally carrying one "Undo" action.
+ *
+ * **Global host (M3-T4a, BACKLOG.md Objective (f)).** A removal's toast must
+ * offer "Undo" across the S5 to S4 navigation the removal itself triggers
+ * (`router.back()`/`router.replace()` right after a successful removal), so
+ * the toast can no longer live in per-screen state: a screen-local
+ * `useState` unmounts with the screen. `ToastProvider` holds the one shared
+ * toast; `useToast()` (a screen calls `show(...)`) and `ToastHost` (rendered
+ * once, in `app/_layout.tsx`, alongside `<Slot />`) both read the same
+ * context, so the banner keeps rendering — and its timer keeps running —
+ * independent of which screen is mounted underneath it.
  */
 export interface ToastState {
   readonly message: string;
   readonly onUndo?: () => void;
 }
 
+interface ToastContextValue {
+  readonly toast: ToastState | null;
+  readonly show: (message: string, onUndo?: () => void) => void;
+}
+
+const ToastContext = createContext<ToastContextValue | null>(null);
+
 const VISIBLE_MS = 3200;
 
-export function useToast(): {
-  toast: ToastState | null;
-  show: (message: string, onUndo?: () => void) => void;
-} {
+/** Wrap the app once, in `app/_layout.tsx`, above both `<Slot />` and `<ToastHost />`. */
+export function ToastProvider({ children }: { children: React.ReactNode }): React.JSX.Element {
   const [toast, setToast] = useState<ToastState | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -39,10 +54,30 @@ export function useToast(): {
     timer.current = setTimeout(() => setToast(null), VISIBLE_MS);
   }, []);
 
-  return { toast, show };
+  return <ToastContext.Provider value={{ toast, show }}>{children}</ToastContext.Provider>;
 }
 
-export function ToastBanner({ toast }: { toast: ToastState | null }): React.JSX.Element | null {
+function useToastContext(caller: string): ToastContextValue {
+  const ctx = useContext(ToastContext);
+  if (!ctx) {
+    throw new Error(`${caller} must be rendered inside <ToastProvider> (app/_layout.tsx)`);
+  }
+  return ctx;
+}
+
+/** A screen's way to show a toast: `const { show } = useToast();`. */
+export function useToast(): { show: (message: string, onUndo?: () => void) => void } {
+  const { show } = useToastContext("useToast");
+  return { show };
+}
+
+/** The one place the toast actually renders. Mount exactly once, in `app/_layout.tsx`. */
+export function ToastHost(): React.JSX.Element | null {
+  const { toast } = useToastContext("ToastHost");
+  return <ToastBanner toast={toast} />;
+}
+
+function ToastBanner({ toast }: { toast: ToastState | null }): React.JSX.Element | null {
   if (!toast) {
     return null;
   }

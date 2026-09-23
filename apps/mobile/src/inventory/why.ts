@@ -43,17 +43,18 @@ export function formatRowTimestamp(recordedAt: string): string {
 
 /**
  * copy-deck.md §5 template's "{who or source}" clause. Review F4 ruling: a
- * removal's `provenance.source` is a reason ("Spoiled"), never a place, so
- * it renders as its own "reason: {lowercased}" clause (prototype wording),
- * distinct from `correlationLabel`, which names a recipe ("used in
- * {recipe}") and is never set on a removal row.
+ * removal's `reason` ("Spoiled") is a reason, never a place, so it renders as
+ * its own "reason: {lowercased}" clause (prototype wording), distinct from
+ * `correlationLabel`, which names a recipe ("used in {recipe}") and is never
+ * set on a removal row. M3-T4a: reads the wire's own `reason` field, removing
+ * the M3-T3 `provenance.source` workaround this used to read instead.
  */
 function whoOrSource(tx: InventoryTransactionDto): string {
   if (tx.type === "ADJUSTMENT" && tx.actor.kind === "user") {
     return "you";
   }
-  if (rowIsRemoval(tx.type) && tx.provenance.source) {
-    return `reason: ${tx.provenance.source.toLowerCase()}`;
+  if (rowIsRemoval(tx.type) && tx.reason) {
+    return `reason: ${tx.reason.toLowerCase()}`;
   }
   if (tx.correlationLabel) {
     return `used in ${tx.correlationLabel}`;

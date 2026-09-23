@@ -47,6 +47,7 @@ describe("InventoryTransactionDto / InventoryItemDetailDto (M3-T3)", () => {
         confidence: null,
         recordedAt: null,
       },
+      reason: null,
     };
     expect(row.systemFlag).toBeUndefined();
     expect(typeof row.deltaMicros).toBe("string");
@@ -61,6 +62,7 @@ describe("InventoryTransactionDto / InventoryItemDetailDto (M3-T3)", () => {
       recordedAt: "2026-09-17T19:21:00.000Z",
       actor: { kind: "system" },
       provenance: { tier: "ESTIMATED", source: "ledger-clamp", confidence: null, recordedAt: null },
+      reason: null,
       systemFlag: "OVER_CONSUMPTION",
     };
     expect(row.actor.displayInitials).toBeUndefined();

@@ -26,8 +26,8 @@ import {
   rowIsRemoval,
 } from "../../src/inventory/transactions";
 import { buildWhyLine, clampSentence, formatRowTimestamp } from "../../src/inventory/why";
-import { useToast, ToastBanner } from "../../src/inventory/Toast";
-import { LOCATION_LABELS } from "../../src/inventory/list-view";
+import { useToast } from "../../src/inventory/Toast";
+import { LOCATION_LABELS, needsConfirmation } from "../../src/inventory/list-view";
 
 const STEP_MICROS = 250_000n; // 0.25 unit, matching prototype v4's stepItemQty(±0.25)
 
@@ -42,7 +42,7 @@ export default function ItemDetailScreen(): React.JSX.Element {
   const itemId = params.itemId;
   const router = useRouter();
   const reducedMotion = useReducedMotion();
-  const { toast, show } = useToast();
+  const { show } = useToast();
 
   const [detail, setDetail] = useState<InventoryItemDetailDto | null>(null);
   const [notFound, setNotFound] = useState(false);
@@ -97,7 +97,7 @@ export default function ItemDetailScreen(): React.JSX.Element {
     if (!itemId) {
       return;
     }
-    await apiClient.undo(transactionId);
+    await apiClient.undo(itemId, transactionId);
     const updated = await apiClient.getInventoryItem(itemId);
     setDetail(updated);
     if (updated) {
@@ -135,12 +135,14 @@ export default function ItemDetailScreen(): React.JSX.Element {
     if (!itemId || !pendingReason) {
       return;
     }
+    const removedFromItemId = itemId;
     // Review F7: the reason top-chips are disabled at a zero balance (see
     // the render below), but catch anyway rather than leave an unhandled
     // rejection for a race (another write zeroing the item between render
     // and this tap).
+    let result: { readonly transactionId: string };
     try {
-      await apiClient.removeQuantity(itemId, pendingReason, subReason);
+      result = await apiClient.removeQuantity(itemId, pendingReason, subReason);
     } catch (error) {
       const message = messageForLedgerError(error);
       setRemovalError(message);
@@ -149,11 +151,28 @@ export default function ItemDetailScreen(): React.JSX.Element {
     }
     setPendingReason(null);
     setRemovalError(null);
+    // Objective (f): the toast (and its Undo) must survive the navigation
+    // below — show() writes to the global toast host (app/_layout.tsx),
+    // not screen-local state, so it does. `handleUndo` closes over
+    // `removedFromItemId`, not the (about to unmount) screen's `itemId`
+    // param, so the Undo action still targets the right item afterward.
+    show(`${ACTION_LABELS[pendingReason]}. Undo`, () => {
+      void apiClient.undo(removedFromItemId, result.transactionId);
+    });
     if (router.canGoBack()) {
       router.back();
     } else {
       router.replace("/inventory");
     }
+  }
+
+  async function handleConfirm(): Promise<void> {
+    if (!itemId) {
+      return;
+    }
+    await apiClient.confirmAiProposal(itemId);
+    const updated = await apiClient.getInventoryItem(itemId);
+    setDetail(updated);
   }
 
   if (notFound) {
@@ -181,6 +200,10 @@ export default function ItemDetailScreen(): React.JSX.Element {
   const isZeroBalance = parseMicros(summary.quantity.micros) <= 0n;
   const historyNewestFirst = [...detail.history].reverse();
   const whyLine = buildWhyLine(qtyDisplay, summary.quantity.unit, detail.history);
+  // Objective (g): Confirm reachable from S5, same action and label as the
+  // tray/row (app/inventory.tsx's handleConfirm/TrayRow), for an AI-tier
+  // item opened directly (e.g. by deep link, review F2's warm-open case).
+  const showConfirm = needsConfirmation(summary);
 
   return (
     <View style={styles.screen}>
@@ -193,6 +216,23 @@ export default function ItemDetailScreen(): React.JSX.Element {
             {summary.storageLocation ? LOCATION_LABELS[summary.storageLocation] : "Unassigned"}
           </Text>
         </View>
+
+        {showConfirm ? (
+          <View style={styles.confirmRow}>
+            <Text style={styles.confirmText}>Needs your confirmation</Text>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`Confirm ${summary.displayName ?? "item"}`}
+              onPress={() => void handleConfirm()}
+              style={({ pressed }) => [
+                styles.confirmButton,
+                pressScaleStyle(pressed, reducedMotion),
+              ]}
+            >
+              <Text style={styles.confirmButtonText}>Confirm</Text>
+            </Pressable>
+          </View>
+        ) : null}
 
         <View style={styles.whyBlock}>
           <Text style={styles.whyText}>{whyLine}</Text>
@@ -344,7 +384,6 @@ export default function ItemDetailScreen(): React.JSX.Element {
           <HistoryRow key={tx.transactionId} tx={tx} unit={summary.quantity.unit} />
         ))}
       </ScrollView>
-      <ToastBanner toast={toast} />
     </View>
   );
 }
@@ -425,13 +464,15 @@ function HistoryRow({
   // "{action} in {reason}" (reads as if the reason were a place); it gets
   // its own "reason: {lowercased}" caption instead. correlationLabel (a
   // recipe name) is the only thing that earns the "{action} in {label}"
-  // title, and is never set on a removal row.
+  // title, and is never set on a removal row. M3-T4a: reads the wire's own
+  // `reason` field, removing the M3-T3 `provenance.source` workaround this
+  // used to read instead.
   const title = tx.correlationLabel
     ? `${ACTION_LABELS[tx.type]} in ${tx.correlationLabel}`
     : ACTION_LABELS[tx.type];
   const captionText =
-    rowIsRemoval(tx.type) && tx.provenance.source
-      ? `reason: ${tx.provenance.source.toLowerCase()}`
+    rowIsRemoval(tx.type) && tx.reason
+      ? `reason: ${tx.reason.toLowerCase()}`
       : tx.provenance.source;
   const isNegative = tx.deltaMicros.startsWith("-");
 
@@ -519,6 +560,38 @@ const styles = StyleSheet.create({
     color: colors.ink,
   },
   qtyBigSub: { fontSize: 13, color: colors.ink3, fontFamily: fontFamily.body },
+  confirmRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: spacing.sm,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.line,
+    backgroundColor: colors.sand2,
+    padding: spacing.sm,
+  },
+  confirmText: {
+    flex: 1,
+    fontSize: 12.5,
+    fontWeight: "700",
+    color: colors.ink,
+    fontFamily: fontFamily.body,
+  },
+  confirmButton: {
+    minHeight: minTouchTarget - 4,
+    paddingHorizontal: spacing.md,
+    borderRadius: radius.sm,
+    backgroundColor: colors.brandDeep,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  confirmButtonText: {
+    color: colors.cream,
+    fontSize: 13,
+    fontWeight: "700",
+    fontFamily: fontFamily.body,
+  },
   whyBlock: {
     backgroundColor: colors.paper,
     borderRadius: radius.md,

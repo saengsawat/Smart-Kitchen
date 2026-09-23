@@ -181,15 +181,15 @@ export interface InventoryTransactionDto {
    * removal's "Spoiled", or `undo:<transactionId>` on a compensating row).
    * `null` where the row carries none.
    *
-   * Optional rather than required (M2-T2 deviation, declared in the worker
-   * report): `apps/mobile`'s fixture ledger builds these rows too and the
-   * ticket puts the client out of scope, so a required field would have meant
-   * editing it. Every row the API produces carries the field explicitly;
-   * `undefined` means "this producer does not record reasons", which a reader
-   * should treat exactly like `null`. M3-T4 wires the client and can tighten
-   * it to required.
+   * Required (tightened at M3-T4a): the M2-T2 worker report's deviation noted
+   * this as optional only because the client was out of that ticket's scope
+   * and its fixture ledger did not yet set the field on every row it built.
+   * M3-T4a wires the client to the real write/undo/detail endpoints and
+   * updates the fixture ledger to set it explicitly on every row, so every
+   * producer now carries it and a reader no longer has to treat `undefined`
+   * as a fourth state alongside `null`.
    */
-  readonly reason?: string | null;
+  readonly reason: string | null;
   /**
    * Present only on the ledger's own system-generated correction row (the
    * clamp, domain-model.md §4 invariant 2). Unforgeable by a caller in the

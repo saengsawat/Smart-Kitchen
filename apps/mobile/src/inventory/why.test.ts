@@ -24,6 +24,7 @@ const CHICKEN_BREAST_HISTORY: readonly InventoryTransactionDto[] = [
       confidence: null,
       recordedAt: null,
     },
+    reason: null,
   },
   {
     transactionId: "tx-stirfry",
@@ -38,6 +39,7 @@ const CHICKEN_BREAST_HISTORY: readonly InventoryTransactionDto[] = [
       confidence: null,
       recordedAt: null,
     },
+    reason: null,
     correlationLabel: "Chicken & spinach stir-fry",
   },
   {
@@ -48,6 +50,7 @@ const CHICKEN_BREAST_HISTORY: readonly InventoryTransactionDto[] = [
     recordedAt: "2026-09-17T19:21:00.000Z",
     actor: { kind: "system" },
     provenance: { tier: "ESTIMATED", source: "ledger-clamp", confidence: null, recordedAt: null },
+    reason: null,
     systemFlag: "OVER_CONSUMPTION",
   },
   {
@@ -63,6 +66,7 @@ const CHICKEN_BREAST_HISTORY: readonly InventoryTransactionDto[] = [
       confidence: null,
       recordedAt: null,
     },
+    reason: null,
   },
 ];
 
@@ -121,6 +125,7 @@ describe("buildWhyLine (copy-deck.md §5 template, prototype v4 chicken-breast e
         confidence: null,
         recordedAt: null,
       },
+      reason: null,
     };
     const result = buildWhyLine("1.50 lb", "lb", [correction]);
     expect(result).toContain("Corrected · +0.25 lb · Sep 20 · you.");
@@ -134,7 +139,13 @@ describe("buildWhyLine (copy-deck.md §5 template, prototype v4 chicken-breast e
       amount: "-1.000000",
       recordedAt: "2026-09-20T12:00:00.000Z",
       actor: { kind: "user", displayInitials: "DC" },
-      provenance: { tier: "KNOWN_FACT", source: "Spoiled", confidence: null, recordedAt: null },
+      provenance: {
+        tier: "KNOWN_FACT",
+        source: "manual-entry",
+        confidence: null,
+        recordedAt: null,
+      },
+      reason: "Spoiled",
     };
     const result = buildWhyLine("0 lb", "lb", [removal]);
     expect(result).toContain("Discarded · −1 lb · Sep 20 · reason: spoiled.");

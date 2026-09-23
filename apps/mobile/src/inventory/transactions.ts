@@ -31,15 +31,14 @@ export const REMOVAL_REASON_CHIPS: readonly {
 
 /**
  * S5's secondary reason row (prototype v4 `#reasonChips`), shown once a top
- * chip is picked. The contracts' `InventoryTransactionDto` carries no
- * separate free-text `reason` field (unlike the domain's `TransactionInput`,
- * deliberately reduced surface, see the DTO's doc comment); a dedicated wire
- * field is an M2-T2 follow-up, not this ticket (review F4). Until then the
- * picked sub-reason travels in `provenance.source`, not `correlationLabel`
- * (review F4 ruling: `correlationLabel` is for a recipe name only, so a
- * removal row is never rendered as "{action} in {reason}", which reads as if
- * the reason were a place; see `rowIsRemoval`/`why.ts`/`[itemId].tsx`, which
- * render it as its own "reason: {reason}" caption instead).
+ * chip is picked. The picked sub-reason travels in the row's own `reason`
+ * field (M2-T2 added it to `InventoryTransactionDto`; M3-T4a wires the
+ * client to it, removing the M3-T3 `provenance.source` workaround this
+ * comment used to describe), never `correlationLabel` (review F4 ruling:
+ * `correlationLabel` is for a recipe name only, so a removal row is never
+ * rendered as "{action} in {reason}", which reads as if the reason were a
+ * place; see `rowIsRemoval`/`why.ts`/`[itemId].tsx`, which render it as its
+ * own "reason: {reason}" caption instead).
  */
 export const REMOVAL_SUB_REASONS: readonly string[] = [
   "Spoiled",

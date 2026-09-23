@@ -20,7 +20,7 @@ import {
   tierRowAnnouncement,
 } from "../src/inventory/provenance";
 import { formatQuantityDisplay } from "../src/inventory/quantity";
-import { useToast, ToastBanner } from "../src/inventory/Toast";
+import { useToast } from "../src/inventory/Toast";
 
 const LOCATION_TABS: readonly LocationFilter[] = ["all", "FRIDGE", "FREEZER", "PANTRY"];
 const LOCATION_TAB_LABELS: Readonly<Record<LocationFilter, string>> = {
@@ -41,7 +41,7 @@ const LOCATION_TAB_LABELS: Readonly<Record<LocationFilter, string>> = {
 export default function InventoryScreen(): React.JSX.Element {
   const router = useRouter();
   const reducedMotion = useReducedMotion();
-  const { toast, show } = useToast();
+  const { show } = useToast();
 
   const [items, setItems] = useState<readonly InventoryItemSummaryDto[] | null>(null);
   const [stale, setStale] = useState(false);
@@ -307,8 +307,6 @@ export default function InventoryScreen(): React.JSX.Element {
           </ScrollView>
         </>
       )}
-
-      <ToastBanner toast={toast} />
     </View>
   );
 }

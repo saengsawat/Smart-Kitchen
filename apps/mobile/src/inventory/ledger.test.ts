@@ -82,6 +82,7 @@ describe("appendDecrease clamping (domain-model.md §4 invariant 2)", () => {
         confidence: null,
         recordedAt: null,
       },
+      reason: null,
     });
     expect(currentMicros(item.history)).toBe(1_000_000n);
     expect(item.history.some((tx) => tx.systemFlag === "OVER_CONSUMPTION")).toBe(false);
@@ -101,6 +102,7 @@ describe("appendDecrease clamping (domain-model.md §4 invariant 2)", () => {
         confidence: null,
         recordedAt: null,
       },
+      reason: null,
     });
     const decreaseRow = item.history[1]!;
     const clampRow = item.history[2]!;
@@ -124,13 +126,31 @@ describe("appendRemoval (removeQuantity): removes the full on-hand amount, mappe
       const row = item.history.at(-1)!;
       expect(row.type).toBe(type);
       expect(currentMicros(item.history)).toBe(0n);
-      // Review F4 ruling: the reason travels in provenance.source, never
-      // correlationLabel (reserved for a recipe name), so a removal row is
-      // never rendered as "{action} in {reason}".
-      expect(row.provenance.source).toBe("spoiled");
+      // M3-T4a: the reason travels in the row's own `reason` field, matching
+      // the real endpoint, never correlationLabel (reserved for a recipe
+      // name) and never provenance.source (the fixed manual-entry source
+      // every manual write carries) — review F4's ruling that a removal row
+      // is never rendered as "{action} in {reason}" still holds.
+      expect(row.reason).toBe("spoiled");
+      expect(row.provenance.source).toBe("manual-entry");
       expect(row.correlationLabel).toBeUndefined();
     },
   );
+
+  it("returns the appended row itself (never an assumption like 'the last row in history')", () => {
+    const item = freshItem();
+    appendCorrection(item, 1_000_000n, "2026-09-01T00:00:00.000Z", DEAN);
+    const result = appendRemoval(item, "DISCARD", "2026-09-02T00:00:00.000Z", DEAN, "Spoiled");
+    expect(result.transactionId).toBe(item.history.at(-1)!.transactionId);
+    expect(result.type).toBe("DISCARD");
+  });
+
+  it("reason is null when no reasonLabel is given", () => {
+    const item = freshItem();
+    appendCorrection(item, 1_000_000n, "2026-09-01T00:00:00.000Z", DEAN);
+    const result = appendRemoval(item, "CONSUME", "2026-09-02T00:00:00.000Z", DEAN);
+    expect(result.reason).toBeNull();
+  });
 });
 
 describe("appendUndo: appends the exact compensating row, never deletes the original", () => {
@@ -145,6 +165,9 @@ describe("appendUndo: appends the exact compensating row, never deletes the orig
     expect(currentMicros(item.history)).toBe(1_000_000n);
     // The original correction row is still there, untouched.
     expect(item.history.find((tx) => tx.transactionId === correction.transactionId)).toBeDefined();
+    // Matches the real endpoint's own convention exactly (write-service.ts
+    // UNDO_REASON_PREFIX): relates the compensating row back to what it undoes.
+    expect(undoRow.reason).toBe(`undo:${correction.transactionId}`);
   });
 
   it("throws for an unknown transaction id", () => {

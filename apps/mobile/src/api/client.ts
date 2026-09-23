@@ -1,5 +1,6 @@
 /**
- * `ApiClient` port + fixture/HTTP implementations (M3-T1, extended M3-T2, M3-T3).
+ * `ApiClient` port + fixture/HTTP implementations (M3-T1, extended M3-T2,
+ * M3-T3, M3-T4a).
  *
  * Only `@smart-kitchen/contracts` DTOs cross this boundary (M3-T1 invariant:
  * `apps/mobile` never imports `@smart-kitchen/domain`). `packages/adapters`
@@ -9,35 +10,55 @@
  * reference are removed in this ticket, discharging the M2-T1 review's
  * `expo export` bundling blocker for good).
  *
- * ## Read vs write, fixture vs HTTP (M3-T3)
+ * ## Read vs write, fixture vs HTTP (M3-T3, extended M3-T4a)
  *
- * `HttpApiClient` implements the port's inventory *list* read
- * (`getInventoryItems`, `GET /v1/inventory/items`, M2-T1) over real `fetch`,
- * used when `EXPO_PUBLIC_API_URL` is set (`src/config/env.ts`, the one file
- * allowed to read it) and never otherwise (BACKLOG.md M3-T3 Objective (d)).
- * Everything else on the port, including single-item detail/history,
- * onboarding/household state, and every write method, has no corresponding
- * endpoint yet (M2-T2 supplies the write endpoints; a read-detail-with-
- * history endpoint and M2-T3's household endpoints are later tickets still).
- * `HttpApiClient` therefore delegates those to an internal fixture client
+ * `HttpApiClient` implements every inventory read and write M2-T1/M2-T2
+ * supply over real `fetch`, used when `EXPO_PUBLIC_API_URL` is set
+ * (`src/config/env.ts`, the one file allowed to read it) and never
+ * otherwise (BACKLOG.md M3-T3 Objective (d)): the list
+ * (`getInventoryItems`, `GET /v1/inventory/items`), the detail-with-history
+ * read (`getInventoryItem`, `GET /v1/inventory/items/{id}`), corrections and
+ * removals (`correctQuantity`/`removeQuantity`,
+ * `POST /v1/inventory/items/{id}/transactions`) and undo
+ * (`POST .../{transactionId}/undo`). Onboarding/household state and
+ * `confirmAiProposal` have no endpoint yet (M2-T3, later), so `HttpApiClient`
+ * still delegates those to an internal fixture client
  * (`FixtureApiClient.returningUser()`) rather than leaving them unimplemented
- * dead ends, and `getInventoryItem` degrades honestly: it returns the real
- * list row wrapped with an *empty* history, never a fabricated one, until a
- * real history endpoint exists. This composition, and its scope, is flagged
- * for the reviewer in the worker report.
+ * dead ends. This composition, and its scope, is flagged for the reviewer in
+ * the worker report.
+ *
+ * ## Idempotency keys and retries (M3-T4a)
+ *
+ * Every write/undo call mints exactly one key (`nextIdempotencyKey`,
+ * `./idempotency`) and sends it once per *user action*: the key is minted
+ * before the first network attempt and reused, unchanged, on this method's
+ * own internal retry of a genuine network failure (see `writeWithRetry`
+ * below) — never re-minted, and never exposed as a reason to retry a
+ * request the server actually answered. A well-formed refusal (a 4xx/409
+ * with a coded body) is never retried: the ledger already decided, and
+ * retrying it would not change that decision, only duplicate the log noise.
  */
 
 import type {
+  ApiErrorBodyDto,
   HouseholdDto,
   InventoryItemDetailDto,
   InventoryItemsResponseDto,
   InventoryItemSummaryDto,
+  InventoryWriteRequestDto,
+  InventoryWriteResponseDto,
   MemberDto,
   MemberRestrictionDto,
   OnboardingStateDto,
   TransactionActorDto,
+  UndoRequestDto,
 } from "@smart-kitchen/contracts";
-import { INVENTORY_ITEMS_PATH } from "@smart-kitchen/contracts";
+import {
+  INVENTORY_ITEMS_PATH,
+  inventoryItemPath,
+  inventoryItemTransactionsPath,
+  inventoryTransactionUndoPath,
+} from "@smart-kitchen/contracts";
 import { getApiBaseUrl } from "../config/env";
 import { buildChenInventory } from "../inventory/fixture-household";
 import type { RemovalAction } from "../inventory/transactions";
@@ -49,7 +70,9 @@ import {
   toSummaryDto,
   type MutableItemFixture,
 } from "../inventory/ledger";
-import { parseMicros } from "../inventory/quantity";
+import { LedgerRefusedError } from "../inventory/errors";
+import { microsToAmountText, parseMicros } from "../inventory/quantity";
+import { nextIdempotencyKey } from "./idempotency";
 
 /** The Dean-Chen fixture token (tests/fixtures/identity/README.md). Obviously fake, not a secret. */
 export const FIXTURE_IDENTITY_TOKEN = "fixture.dean.chen";
@@ -116,6 +139,57 @@ function isInventoryItemsResponse(body: unknown): body is InventoryItemsResponse
   );
 }
 
+/** Same shallow-shape-guard rule as {@link isInventoryItemsResponse}, for `GET /v1/inventory/items/{id}`. */
+function isInventoryItemDetailResponse(body: unknown): body is InventoryItemDetailDto {
+  if (typeof body !== "object" || body === null) {
+    return false;
+  }
+  const candidate = body as { summary?: unknown; history?: unknown };
+  return (
+    typeof candidate.summary === "object" &&
+    candidate.summary !== null &&
+    Array.isArray(candidate.history)
+  );
+}
+
+/** Same shallow-shape-guard rule, for the write/undo endpoints' shared response shape. */
+function isInventoryWriteResponse(body: unknown): body is InventoryWriteResponseDto {
+  if (typeof body !== "object" || body === null) {
+    return false;
+  }
+  const candidate = body as { transactions?: unknown; item?: unknown; replayed?: unknown };
+  return (
+    Array.isArray(candidate.transactions) &&
+    typeof candidate.item === "object" &&
+    candidate.item !== null &&
+    typeof candidate.replayed === "boolean"
+  );
+}
+
+/**
+ * Pulls the code a refused write's body carries: `ledgerCode` when present
+ * (a coded `LedgerErrorCodeDto` refusal, including the 409 conflict path,
+ * whose `ledgerCode` is `IDEMPOTENCY_KEY_CONFLICT`), else the top-level
+ * `ApiErrorCode` (`NOT_FOUND`, `UNDO_NOT_POSSIBLE`, …). `undefined` for a
+ * body that does not even look like `ApiErrorBodyDto` (a proxy error page,
+ * an empty body) — `ledgerErrorMessage` renders that as the generic
+ * fallback, never a guess.
+ */
+function extractErrorCode(body: unknown): string | undefined {
+  if (typeof body !== "object" || body === null) {
+    return undefined;
+  }
+  const errorField = (body as { error?: unknown }).error;
+  if (typeof errorField !== "object" || errorField === null) {
+    return undefined;
+  }
+  const { ledgerCode, code } = errorField as ApiErrorBodyDto["error"];
+  if (typeof ledgerCode === "string") {
+    return ledgerCode;
+  }
+  return typeof code === "string" ? code : undefined;
+}
+
 export type JoinHouseholdResult =
   | { readonly ok: true; readonly household: HouseholdDto }
   | { readonly ok: false; readonly message: string };
@@ -171,15 +245,17 @@ export interface ApiClient {
   ): Promise<void>;
   savePreferences(memberId: string, preferences: readonly string[]): Promise<void>;
   /**
-   * S5 "Save correction": appends one `ADJUSTMENT` carrying the signed delta
-   * to reach `newAmountMicros` (an exact decimal-text micros value, never a
-   * `number`; the screen's stepper keeps its draft quantity in `bigint`
-   * micros throughout, see `app/inventory/[itemId].tsx`). Resolves with the
-   * appended row's id (review F3: the caller needs the *actual* new row to
-   * undo, never an assumption like "the last row in history", which could be
-   * a different, unrelated write that landed in between). Rejects with
-   * {@link ZeroDeltaError} when `newAmountMicros` equals the current amount.
-   * Fixture only (M2-T2 supplies the real write endpoint).
+   * S5 "Save correction": appends one `ADJUSTMENT` reaching `newAmountMicros`
+   * (an exact decimal-text micros value, never a `number`; the screen's
+   * stepper keeps its draft quantity in `bigint` micros throughout, see
+   * `app/inventory/[itemId].tsx`). Resolves with (one of) the appended
+   * row's id (review F3: the caller needs an *actual* new row to undo,
+   * never an assumption like "the last row in history", which could be a
+   * different, unrelated write that landed in between; `undo` resolves any
+   * row of a write's group back to the whole group, so one id is enough
+   * even when the write splits across lots). Rejects with
+   * {@link ZeroDeltaError} (fixture) or a coded {@link LedgerRefusedError}
+   * (`HttpApiClient`) when `newAmountMicros` equals the current amount.
    */
   correctQuantity(
     itemId: string,
@@ -189,13 +265,24 @@ export interface ApiClient {
    * S5 "Use or remove": removes the full on-hand amount under the reason
    * chip's mapped `TransactionType` (copy-deck.md §5). `reasonLabel` is the
    * secondary reason chip's text ("Spoiled", "Wrong item", …), recorded as
-   * the row's `correlationLabel` (see `src/inventory/transactions.ts`'s doc
-   * comment on why there is no separate `reason` field on the wire). Fixture
-   * only.
+   * the row's own `reason` field (M3-T4a; matches
+   * `InventoryWriteRequestDto.reason` exactly, replacing the M3-T3
+   * `provenance.source` workaround this doc comment used to describe).
+   * Resolves with the appended row's id, same rule as {@link correctQuantity}.
    */
-  removeQuantity(itemId: string, action: RemovalAction, reasonLabel?: string): Promise<void>;
-  /** S5's undo toast: appends the exact compensating `ADJUSTMENT` for `transactionId`. Never deletes it. Fixture only. */
-  undo(transactionId: string): Promise<void>;
+  removeQuantity(
+    itemId: string,
+    action: RemovalAction,
+    reasonLabel?: string,
+  ): Promise<{ readonly transactionId: string }>;
+  /**
+   * S5's undo toast: appends the exact compensating `ADJUSTMENT`(s) for
+   * `transactionId`'s whole write. Never deletes it. `itemId` is required
+   * (M3-T4a: the real endpoint is scoped to one item,
+   * `POST .../items/{itemId}/transactions/{transactionId}/undo`; the
+   * fixture no longer searches every item's history to find it).
+   */
+  undo(itemId: string, transactionId: string): Promise<void>;
   /** S4's "Confirm" action on an AI-tier row: promotes it to Known Fact. Fixture only. */
   confirmAiProposal(itemId: string): Promise<void>;
 }
@@ -345,23 +432,27 @@ export class FixtureApiClient implements ApiClient {
     }
   }
 
-  removeQuantity(itemId: string, action: RemovalAction, reasonLabel?: string): Promise<void> {
+  removeQuantity(
+    itemId: string,
+    action: RemovalAction,
+    reasonLabel?: string,
+  ): Promise<{ readonly transactionId: string }> {
     try {
       const item = this.requireItem(itemId);
-      appendRemoval(item, action, new Date().toISOString(), DEAN_ACTOR, reasonLabel);
-      return Promise.resolve();
+      const row = appendRemoval(item, action, new Date().toISOString(), DEAN_ACTOR, reasonLabel);
+      return Promise.resolve({ transactionId: row.transactionId });
     } catch (error) {
       return Promise.reject(toError(error));
     }
   }
 
-  undo(transactionId: string): Promise<void> {
+  undo(itemId: string, transactionId: string): Promise<void> {
     try {
-      const item = [...this.inventory.values()].find((candidate) =>
-        candidate.history.some((tx) => tx.transactionId === transactionId),
-      );
-      if (!item) {
-        throw new Error(`FixtureApiClient: undo found no transaction ${transactionId}`);
+      const item = this.requireItem(itemId);
+      if (!item.history.some((tx) => tx.transactionId === transactionId)) {
+        throw new Error(
+          `FixtureApiClient: undo found no transaction ${transactionId} on item ${itemId}`,
+        );
       }
       appendUndo(item, transactionId, new Date().toISOString(), DEAN_ACTOR);
       return Promise.resolve();
@@ -404,9 +495,21 @@ export class FixtureApiClient implements ApiClient {
 }
 
 /**
- * Real HTTP read for `GET /v1/inventory/items` (M2-T1), used when
- * `EXPO_PUBLIC_API_URL` is set. Everything else on the port delegates to an
- * internal fixture client — see this module's doc comment for why.
+ * A network attempt is retried at most this many times (so, at most this
+ * many *extra* attempts beyond the first) when `fetch` itself rejects — a
+ * genuinely flaky connection, never a well-formed refusal (see this
+ * module's doc comment on idempotency keys and retries). One retry is a
+ * deliberate, small choice: the ticket does not specify a count or backoff,
+ * and a screen still surfaces a failure to the user afterward, who can tap
+ * again (reusing nothing from this attempt; a fresh key for a fresh tap).
+ */
+const MAX_NETWORK_RETRIES = 1;
+
+/**
+ * Real HTTP client for the M2-T1/M2-T2 inventory endpoints, used when
+ * `EXPO_PUBLIC_API_URL` is set. Onboarding/household state and
+ * `confirmAiProposal` delegate to an internal fixture client — see this
+ * module's doc comment for why.
  */
 export class HttpApiClient implements ApiClient {
   private readonly baseUrl: string;
@@ -423,10 +526,50 @@ export class HttpApiClient implements ApiClient {
     return FIXTURE_IDENTITY_TOKEN;
   }
 
+  private authHeaders(): Record<string, string> {
+    return { Authorization: `Bearer ${FIXTURE_IDENTITY_TOKEN}` };
+  }
+
+  /**
+   * POSTs one write/undo body, retrying at most {@link MAX_NETWORK_RETRIES}
+   * times on a genuine network failure with the *same* body (so the same
+   * idempotency key) — see the module doc comment. A well-formed non-2xx
+   * response is never retried: it is parsed for its code and thrown as a
+   * {@link LedgerRefusedError} immediately.
+   */
+  private async postWrite(url: string, body: unknown): Promise<InventoryWriteResponseDto> {
+    let attempt = 0;
+    for (;;) {
+      let response: Response;
+      try {
+        response = await fetch(url, {
+          method: "POST",
+          headers: { ...this.authHeaders(), "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+      } catch (networkError) {
+        if (attempt >= MAX_NETWORK_RETRIES) {
+          throw toError(networkError);
+        }
+        attempt += 1;
+        continue;
+      }
+      if (!response.ok) {
+        const errorBody: unknown = await response.json().catch(() => null);
+        throw new LedgerRefusedError(extractErrorCode(errorBody) ?? "INTERNAL");
+      }
+      const parsedBody: unknown = await response.json();
+      if (!isInventoryWriteResponse(parsedBody)) {
+        throw new Error(`POST ${url} returned an unexpected response body`);
+      }
+      return parsedBody;
+    }
+  }
+
   async getInventoryItems(): Promise<readonly InventoryItemSummaryDto[]> {
     try {
       const response = await fetch(`${this.baseUrl}${INVENTORY_ITEMS_PATH}`, {
-        headers: { Authorization: `Bearer ${FIXTURE_IDENTITY_TOKEN}` },
+        headers: this.authHeaders(),
       });
       if (!response.ok) {
         throw new Error(`GET ${INVENTORY_ITEMS_PATH} failed with status ${response.status}`);
@@ -458,12 +601,24 @@ export class HttpApiClient implements ApiClient {
     return this.stale;
   }
 
-  getInventoryItem(itemId: string): Promise<InventoryItemDetailDto | null> {
-    // No per-item history-read endpoint exists yet (see module doc comment):
-    // this is the real list row, honestly wrapped with an empty history,
-    // never a fabricated one.
-    const found = this.cachedItems?.find((item) => item.itemId === itemId) ?? null;
-    return Promise.resolve(found ? { summary: found, history: [] } : null);
+  async getInventoryItem(itemId: string): Promise<InventoryItemDetailDto | null> {
+    const response = await fetch(`${this.baseUrl}${inventoryItemPath(itemId)}`, {
+      headers: this.authHeaders(),
+    });
+    if (response.status === 404) {
+      // Byte-identical to the 404 for an item that does not exist
+      // (data-model.md §5): S5's deep-link "This item is no longer
+      // available." state does not need to (and cannot) tell the two apart.
+      return null;
+    }
+    if (!response.ok) {
+      throw new Error(`GET ${inventoryItemPath(itemId)} failed with status ${response.status}`);
+    }
+    const body: unknown = await response.json();
+    if (!isInventoryItemDetailResponse(body)) {
+      throw new Error(`GET ${inventoryItemPath(itemId)} returned an unexpected response body`);
+    }
+    return body;
   }
 
   getOnboardingState(): Promise<OnboardingStateDto> {
@@ -494,19 +649,60 @@ export class HttpApiClient implements ApiClient {
     return this.delegate.savePreferences(memberId, preferences);
   }
 
-  correctQuantity(
+  async correctQuantity(
     itemId: string,
     newAmountMicros: string,
   ): Promise<{ readonly transactionId: string }> {
-    return this.delegate.correctQuantity(itemId, newAmountMicros);
+    const body: InventoryWriteRequestDto = {
+      idempotencyKey: nextIdempotencyKey(),
+      type: "ADJUSTMENT",
+      occurredAt: new Date().toISOString(),
+      // Decimal text, in the item's unit — the same exact form as
+      // QuantityDto.amount, not the raw micros this method receives
+      // (contracts' InventoryWriteRequestDto.targetAmount doc comment).
+      targetAmount: microsToAmountText(parseMicros(newAmountMicros)),
+    };
+    const result = await this.postWrite(
+      `${this.baseUrl}${inventoryItemTransactionsPath(itemId)}`,
+      body,
+    );
+    // Any row of this write's group resolves `undo` back to the whole
+    // group (ApiClient.correctQuantity's doc comment), so the first row is
+    // as good as any — there is always at least one (a no-op replay still
+    // echoes the original rows, per INVENTORY_WRITE_RESPONSE_DTO's doc
+    // comment).
+    return { transactionId: result.transactions[0]!.transactionId };
   }
 
-  removeQuantity(itemId: string, action: RemovalAction, reasonLabel?: string): Promise<void> {
-    return this.delegate.removeQuantity(itemId, action, reasonLabel);
+  async removeQuantity(
+    itemId: string,
+    action: RemovalAction,
+    reasonLabel?: string,
+  ): Promise<{ readonly transactionId: string }> {
+    const body: InventoryWriteRequestDto = {
+      idempotencyKey: nextIdempotencyKey(),
+      type: action,
+      occurredAt: new Date().toISOString(),
+      // amount omitted: "the whole on-hand quantity" (contracts doc
+      // comment) — S5's "Use or remove" always removes everything.
+      ...(reasonLabel === undefined ? {} : { reason: reasonLabel }),
+    };
+    const result = await this.postWrite(
+      `${this.baseUrl}${inventoryItemTransactionsPath(itemId)}`,
+      body,
+    );
+    return { transactionId: result.transactions[0]!.transactionId };
   }
 
-  undo(transactionId: string): Promise<void> {
-    return this.delegate.undo(transactionId);
+  async undo(itemId: string, transactionId: string): Promise<void> {
+    const body: UndoRequestDto = {
+      idempotencyKey: nextIdempotencyKey(),
+      occurredAt: new Date().toISOString(),
+    };
+    await this.postWrite(
+      `${this.baseUrl}${inventoryTransactionUndoPath(itemId, transactionId)}`,
+      body,
+    );
   }
 
   confirmAiProposal(itemId: string): Promise<void> {

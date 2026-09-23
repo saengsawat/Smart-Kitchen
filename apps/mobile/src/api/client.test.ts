@@ -1,6 +1,12 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { INVENTORY_ITEMS_PATH } from "@smart-kitchen/contracts";
-import type { InventoryItemsResponseDto } from "@smart-kitchen/contracts";
+import type {
+  InventoryItemDetailDto,
+  InventoryItemsResponseDto,
+  InventoryWriteRequestDto,
+  InventoryWriteResponseDto,
+  UndoRequestDto,
+} from "@smart-kitchen/contracts";
 import {
   createApiClient,
   FIXTURE_IDENTITY_TOKEN,
@@ -9,6 +15,36 @@ import {
   HttpApiClient,
   JOIN_CODE_ERROR_MESSAGE,
 } from "./client";
+
+/** Typed parse of a mocked `fetch`'s captured request body (test-only convenience). */
+function parsedBody<T>(init: RequestInit | undefined): T {
+  return JSON.parse(init?.body as string) as T;
+}
+
+/** Shared list-read fixture, reused by the detail/write describe blocks below. */
+const SAMPLE_RESPONSE: InventoryItemsResponseDto = {
+  items: [
+    {
+      itemId: "item-1",
+      displayName: "Whole milk",
+      productRef: null,
+      ingredientRef: null,
+      storageLocation: "FRIDGE",
+      quantity: { unit: "count", micros: "2000000", amount: "2" },
+      earliestExpiresAt: null,
+      provenance: {
+        quantity: {
+          tier: "KNOWN_FACT",
+          source: "barcode-scan",
+          confidence: null,
+          recordedAt: null,
+        },
+        earliestExpiresAt: null,
+      },
+      lots: [],
+    },
+  ],
+};
 
 describe("FixtureApiClient (M3-T1/M3-T2, no network, no persistence)", () => {
   it("supplies the fixture identity token documented in tests/fixtures/identity/README.md", () => {
@@ -267,9 +303,12 @@ describe("FixtureApiClient (M3-T1/M3-T2, no network, no persistence)", () => {
       expect(detail?.summary.quantity.micros).toBe("0");
       const last = detail?.history.at(-1);
       expect(last?.type).toBe("DISCARD");
-      // Review F4 ruling: the reason lives in provenance.source, not
-      // correlationLabel (reserved for a recipe name).
-      expect(last?.provenance.source).toBe("Spoiled");
+      // M3-T4a: the reason lives in the row's own `reason` field, matching
+      // the real endpoint (review F4 ruling: never correlationLabel, which
+      // is reserved for a recipe name; provenance.source stays the fixed
+      // manual-entry source every manual write carries).
+      expect(last?.reason).toBe("Spoiled");
+      expect(last?.provenance.source).toBe("manual-entry");
       expect(last?.correlationLabel).toBeUndefined();
     });
 
@@ -288,7 +327,7 @@ describe("FixtureApiClient (M3-T1/M3-T2, no network, no persistence)", () => {
       const correctionId = beforeUndo!.history.at(-1)!.transactionId;
       const historyLengthBefore = beforeUndo!.history.length;
 
-      await client.undo(correctionId);
+      await client.undo("fixture-item-chicken", correctionId);
       const afterUndo = await client.getInventoryItem("fixture-item-chicken");
       expect(afterUndo?.history).toHaveLength(historyLengthBefore + 1);
       expect(afterUndo?.summary.quantity.micros).toBe("1250000");
@@ -297,7 +336,13 @@ describe("FixtureApiClient (M3-T1/M3-T2, no network, no persistence)", () => {
 
     it("undo rejects an unknown transaction id", async () => {
       const client = FixtureApiClient.returningUser();
-      await expect(client.undo("not-a-real-transaction")).rejects.toThrow();
+      await expect(client.undo("fixture-item-chicken", "not-a-real-transaction")).rejects.toThrow();
+    });
+
+    it("undo rejects a transaction id that belongs to a different item", async () => {
+      const client = FixtureApiClient.returningUser();
+      const result = await client.correctQuantity("fixture-item-chicken", "1500000");
+      await expect(client.undo("fixture-item-spinach", result.transactionId)).rejects.toThrow();
     });
 
     it("confirmAiProposal promotes an AI-tier row to Known Fact", async () => {
@@ -339,30 +384,6 @@ describe("HttpApiClient (M3-T3, mocked fetch, no real network)", () => {
   afterEach(() => {
     globalThis.fetch = originalFetch;
   });
-
-  const SAMPLE_RESPONSE: InventoryItemsResponseDto = {
-    items: [
-      {
-        itemId: "item-1",
-        displayName: "Whole milk",
-        productRef: null,
-        ingredientRef: null,
-        storageLocation: "FRIDGE",
-        quantity: { unit: "count", micros: "2000000", amount: "2" },
-        earliestExpiresAt: null,
-        provenance: {
-          quantity: {
-            tier: "KNOWN_FACT",
-            source: "barcode-scan",
-            confidence: null,
-            recordedAt: null,
-          },
-          earliestExpiresAt: null,
-        },
-        lots: [],
-      },
-    ],
-  };
 
   it("fetches GET /v1/inventory/items with the fixture bearer token", async () => {
     let capturedUrl: string | undefined;
@@ -443,24 +464,322 @@ describe("HttpApiClient (M3-T3, mocked fetch, no real network)", () => {
     });
   });
 
-  it("getInventoryItem finds the row from the cached list with an empty history (no history endpoint yet)", async () => {
-    globalThis.fetch = () =>
-      Promise.resolve(new Response(JSON.stringify(SAMPLE_RESPONSE), { status: 200 }));
+  it("onboarding/household state still delegates to a fixture client (no endpoint yet, M2-T3)", async () => {
     const client = new HttpApiClient("http://localhost:4000");
-    await client.getInventoryItems();
-    const detail = await client.getInventoryItem("item-1");
-    expect(detail?.summary.itemId).toBe("item-1");
-    expect(detail?.history).toEqual([]);
+    const state = await client.getOnboardingState();
+    expect(state.household).not.toBeNull();
+  });
+});
+
+describe("HttpApiClient.getInventoryItem (M3-T4a: real GET /v1/inventory/items/{id})", () => {
+  const originalFetch = globalThis.fetch;
+  afterEach(() => {
+    globalThis.fetch = originalFetch;
   });
 
-  it("getInventoryItem returns null before any list has been fetched", async () => {
+  const SAMPLE_DETAIL: InventoryItemDetailDto = {
+    summary: SAMPLE_RESPONSE.items[0]!,
+    history: [
+      {
+        transactionId: "tx-1",
+        type: "PURCHASE",
+        deltaMicros: "2000000",
+        amount: "2.000000",
+        recordedAt: "2026-09-16T18:04:00.000Z",
+        actor: { kind: "user", displayInitials: "DC" },
+        provenance: {
+          tier: "KNOWN_FACT",
+          source: "manual-entry",
+          confidence: null,
+          recordedAt: null,
+        },
+        reason: null,
+      },
+    ],
+  };
+
+  it("fetches the detail endpoint with the fixture bearer token and returns it parsed", async () => {
+    let capturedUrl: string | undefined;
+    let capturedHeaders: Record<string, string> | undefined;
+    globalThis.fetch = ((url: string, init?: RequestInit) => {
+      capturedUrl = url;
+      capturedHeaders = init?.headers as Record<string, string> | undefined;
+      return Promise.resolve(new Response(JSON.stringify(SAMPLE_DETAIL), { status: 200 }));
+    }) as typeof fetch;
+
+    const client = new HttpApiClient("http://localhost:4000");
+    const detail = await client.getInventoryItem("item-1");
+
+    expect(capturedUrl).toBe("http://localhost:4000/v1/inventory/items/item-1");
+    expect(capturedHeaders).toEqual({ Authorization: `Bearer ${FIXTURE_IDENTITY_TOKEN}` });
+    expect(detail).toEqual(SAMPLE_DETAIL);
+  });
+
+  it("a 404 resolves null, indistinguishable from an item that does not exist", async () => {
+    globalThis.fetch = () =>
+      Promise.resolve(
+        new Response(
+          JSON.stringify({
+            error: { code: "NOT_FOUND", message: "Not found.", correlationId: "c1" },
+          }),
+          {
+            status: 404,
+          },
+        ),
+      );
     const client = new HttpApiClient("http://localhost:4000");
     expect(await client.getInventoryItem("item-1")).toBeNull();
   });
 
-  it("household/onboarding and write methods delegate to a fixture client (no endpoint yet)", async () => {
+  it("rejects a malformed response body rather than returning garbage", async () => {
+    globalThis.fetch = () => Promise.resolve(new Response(JSON.stringify({}), { status: 200 }));
     const client = new HttpApiClient("http://localhost:4000");
-    const state = await client.getOnboardingState();
-    expect(state.household).not.toBeNull();
+    await expect(client.getInventoryItem("item-1")).rejects.toThrow();
+  });
+
+  it("a non-404 non-ok status rejects", async () => {
+    globalThis.fetch = () => Promise.resolve(new Response("nope", { status: 500 }));
+    const client = new HttpApiClient("http://localhost:4000");
+    await expect(client.getInventoryItem("item-1")).rejects.toThrow();
+  });
+});
+
+describe("HttpApiClient writes/undo (M3-T4a: real POST endpoints, mocked fetch)", () => {
+  const originalFetch = globalThis.fetch;
+  afterEach(() => {
+    globalThis.fetch = originalFetch;
+  });
+
+  const UUID_SHAPE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+
+  function sampleWriteResponse(
+    transactions: readonly InventoryWriteResponseDto["transactions"][number][],
+  ): InventoryWriteResponseDto {
+    return {
+      transactions,
+      item: {
+        summary: SAMPLE_RESPONSE.items[0]!,
+        history: transactions,
+      },
+      replayed: false,
+    };
+  }
+
+  const SAMPLE_ROW: InventoryWriteResponseDto["transactions"][number] = {
+    transactionId: "tx-new",
+    type: "ADJUSTMENT",
+    deltaMicros: "250000",
+    amount: "0.250000",
+    recordedAt: "2026-09-20T12:00:00.000Z",
+    actor: { kind: "user", displayInitials: "DC" },
+    provenance: {
+      tier: "KNOWN_FACT",
+      source: "one-tap correction",
+      confidence: null,
+      recordedAt: null,
+    },
+    reason: null,
+  };
+
+  describe("correctQuantity", () => {
+    it("POSTs the transactions endpoint with method, bearer, and a well-formed body", async () => {
+      let capturedUrl: string | undefined;
+      let capturedInit: RequestInit | undefined;
+      globalThis.fetch = ((url: string, init?: RequestInit) => {
+        capturedUrl = url;
+        capturedInit = init;
+        return Promise.resolve(
+          new Response(JSON.stringify(sampleWriteResponse([SAMPLE_ROW])), { status: 200 }),
+        );
+      }) as typeof fetch;
+
+      const client = new HttpApiClient("http://localhost:4000");
+      const result = await client.correctQuantity("item-1", "1500000");
+
+      expect(capturedUrl).toBe("http://localhost:4000/v1/inventory/items/item-1/transactions");
+      expect(capturedInit?.method).toBe("POST");
+      expect((capturedInit?.headers as Record<string, string>).Authorization).toBe(
+        `Bearer ${FIXTURE_IDENTITY_TOKEN}`,
+      );
+      const body = parsedBody<InventoryWriteRequestDto>(capturedInit);
+      expect(body.type).toBe("ADJUSTMENT");
+      expect(body.targetAmount).toBe("1.500000");
+      expect(body.idempotencyKey).toMatch(UUID_SHAPE);
+      expect(typeof body.occurredAt).toBe("string");
+      expect(result.transactionId).toBe("tx-new");
+    });
+
+    it("a simulated retry (network failure then success) reuses the same idempotency key", async () => {
+      const capturedKeys: string[] = [];
+      let calls = 0;
+      globalThis.fetch = ((_url: string, init?: RequestInit) => {
+        calls += 1;
+        const body = parsedBody<InventoryWriteRequestDto>(init);
+        capturedKeys.push(body.idempotencyKey);
+        if (calls === 1) {
+          return Promise.reject(new Error("network down"));
+        }
+        return Promise.resolve(
+          new Response(JSON.stringify(sampleWriteResponse([SAMPLE_ROW])), { status: 200 }),
+        );
+      }) as typeof fetch;
+
+      const client = new HttpApiClient("http://localhost:4000");
+      const result = await client.correctQuantity("item-1", "1500000");
+
+      expect(calls).toBe(2);
+      expect(capturedKeys).toHaveLength(2);
+      expect(capturedKeys[0]).toBe(capturedKeys[1]); // never re-minted on retry
+      expect(result.transactionId).toBe("tx-new");
+    });
+
+    it("gives up and rejects after exhausting its retries against a persistent network failure", async () => {
+      globalThis.fetch = () => Promise.reject(new Error("network down"));
+      const client = new HttpApiClient("http://localhost:4000");
+      await expect(client.correctQuantity("item-1", "1500000")).rejects.toThrow();
+    });
+
+    it("a 409 idempotency conflict throws LedgerRefusedError('IDEMPOTENCY_KEY_CONFLICT'), never retried", async () => {
+      let calls = 0;
+      globalThis.fetch = () => {
+        calls += 1;
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              error: {
+                code: "CONFLICT",
+                message: "conflict",
+                correlationId: "c1",
+                ledgerCode: "IDEMPOTENCY_KEY_CONFLICT",
+              },
+            }),
+            { status: 409 },
+          ),
+        );
+      };
+      const client = new HttpApiClient("http://localhost:4000");
+      await expect(client.correctQuantity("item-1", "1500000")).rejects.toMatchObject({
+        code: "IDEMPOTENCY_KEY_CONFLICT",
+      });
+      expect(calls).toBe(1); // a well-formed refusal is never retried
+    });
+
+    it("a 400 ledger refusal throws LedgerRefusedError keyed off ledgerCode (e.g. ZERO_DELTA)", async () => {
+      globalThis.fetch = () =>
+        Promise.resolve(
+          new Response(
+            JSON.stringify({
+              error: {
+                code: "BAD_REQUEST",
+                message: "refused",
+                correlationId: "c1",
+                ledgerCode: "ZERO_DELTA",
+              },
+            }),
+            { status: 400 },
+          ),
+        );
+      const client = new HttpApiClient("http://localhost:4000");
+      await expect(client.correctQuantity("item-1", "1500000")).rejects.toMatchObject({
+        code: "ZERO_DELTA",
+      });
+    });
+
+    it("a 404 throws LedgerRefusedError('NOT_FOUND') (no ledgerCode on this path)", async () => {
+      globalThis.fetch = () =>
+        Promise.resolve(
+          new Response(
+            JSON.stringify({
+              error: { code: "NOT_FOUND", message: "Not found.", correlationId: "c1" },
+            }),
+            { status: 404 },
+          ),
+        );
+      const client = new HttpApiClient("http://localhost:4000");
+      await expect(client.correctQuantity("item-1", "1500000")).rejects.toMatchObject({
+        code: "NOT_FOUND",
+      });
+    });
+  });
+
+  describe("removeQuantity", () => {
+    it("POSTs the mapped type, the optional reason, and omits amount (whole balance)", async () => {
+      let capturedInit: RequestInit | undefined;
+      globalThis.fetch = ((_url: string, init?: RequestInit) => {
+        capturedInit = init;
+        return Promise.resolve(
+          new Response(JSON.stringify(sampleWriteResponse([{ ...SAMPLE_ROW, type: "DISCARD" }])), {
+            status: 200,
+          }),
+        );
+      }) as typeof fetch;
+
+      const client = new HttpApiClient("http://localhost:4000");
+      const result = await client.removeQuantity("item-1", "DISCARD", "Spoiled");
+
+      const body = parsedBody<InventoryWriteRequestDto>(capturedInit);
+      expect(body.type).toBe("DISCARD");
+      expect(body.reason).toBe("Spoiled");
+      expect(body.amount).toBeUndefined();
+      expect(result.transactionId).toBe("tx-new");
+    });
+
+    it("omits reason entirely when none is given", async () => {
+      let capturedInit: RequestInit | undefined;
+      globalThis.fetch = ((_url: string, init?: RequestInit) => {
+        capturedInit = init;
+        return Promise.resolve(
+          new Response(JSON.stringify(sampleWriteResponse([SAMPLE_ROW])), { status: 200 }),
+        );
+      }) as typeof fetch;
+      const client = new HttpApiClient("http://localhost:4000");
+      await client.removeQuantity("item-1", "CONSUME");
+      const body = parsedBody<InventoryWriteRequestDto>(capturedInit);
+      expect(body.reason).toBeUndefined();
+    });
+  });
+
+  describe("undo", () => {
+    it("POSTs the item-scoped undo path with its own idempotency key", async () => {
+      let capturedUrl: string | undefined;
+      let capturedInit: RequestInit | undefined;
+      globalThis.fetch = ((url: string, init?: RequestInit) => {
+        capturedUrl = url;
+        capturedInit = init;
+        return Promise.resolve(
+          new Response(JSON.stringify(sampleWriteResponse([SAMPLE_ROW])), { status: 200 }),
+        );
+      }) as typeof fetch;
+
+      const client = new HttpApiClient("http://localhost:4000");
+      await client.undo("item-1", "tx-original");
+
+      expect(capturedUrl).toBe(
+        "http://localhost:4000/v1/inventory/items/item-1/transactions/tx-original/undo",
+      );
+      const body = parsedBody<UndoRequestDto & { transactionId?: unknown }>(capturedInit);
+      expect(body.idempotencyKey).toMatch(UUID_SHAPE);
+      expect(body.transactionId).toBeUndefined(); // named in the path, never the body
+    });
+
+    it("a 409 UNDO_NOT_POSSIBLE throws LedgerRefusedError('UNDO_NOT_POSSIBLE')", async () => {
+      globalThis.fetch = () =>
+        Promise.resolve(
+          new Response(
+            JSON.stringify({
+              error: {
+                code: "UNDO_NOT_POSSIBLE",
+                message: "That change can't be undone. The stock it added has already been used.",
+                correlationId: "c1",
+              },
+            }),
+            { status: 409 },
+          ),
+        );
+      const client = new HttpApiClient("http://localhost:4000");
+      await expect(client.undo("item-1", "tx-original")).rejects.toMatchObject({
+        code: "UNDO_NOT_POSSIBLE",
+      });
+    });
   });
 });

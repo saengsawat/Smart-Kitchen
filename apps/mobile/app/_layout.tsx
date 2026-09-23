@@ -7,6 +7,7 @@ import fraunces from "../assets/fonts/Fraunces.ttf";
 import inter from "../assets/fonts/Inter.ttf";
 import { apiClient } from "../src/api/client";
 import { colors } from "../src/design/tokens";
+import { ToastHost, ToastProvider } from "../src/inventory/Toast";
 import { TabBar } from "../src/navigation/TabBar";
 import { resolveLayoutRedirectForRead, type OnboardingStateRead } from "../src/onboarding/route";
 
@@ -76,10 +77,18 @@ export default function RootLayout(): React.JSX.Element | null {
 
   return (
     <SafeAreaProvider>
-      <View style={{ flex: 1, backgroundColor: colors.sand }}>
-        {redirectTo ? <Redirect href={redirectTo} /> : <Slot />}
-        {hideTabBar ? null : <TabBar />}
-      </View>
+      {/* One host for the whole app (BACKLOG.md M3-T4a Objective (f)): a
+          removal's "Undo" toast must survive the S5 to S4 navigation the
+          removal itself triggers, which a per-screen toast cannot do (it
+          unmounts with the screen). ToastHost is a sibling of <Slot />, not
+          inside it, so a route change never remounts it. */}
+      <ToastProvider>
+        <View style={{ flex: 1, backgroundColor: colors.sand }}>
+          {redirectTo ? <Redirect href={redirectTo} /> : <Slot />}
+          {hideTabBar ? null : <TabBar />}
+        </View>
+        <ToastHost />
+      </ToastProvider>
     </SafeAreaProvider>
   );
 }

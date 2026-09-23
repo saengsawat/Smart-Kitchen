@@ -145,6 +145,7 @@ function buildChickenBreast(): MutableItemFixture {
       confidence: null,
       recordedAt: null,
     },
+    reason: null,
     correlationLabel: "Chicken & spinach stir-fry",
   });
   // Sat: purchased another 1.25 lb, scanned barcode.
