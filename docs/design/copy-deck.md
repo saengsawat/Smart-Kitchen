@@ -134,6 +134,8 @@ Per design-direction §7 fix #3: **Known Fact** on this surface is scoped to *pr
 
 `UNRECOGNIZED_ALLERGEN_DATA` and `CROSS_CONTACT` render on this surface too, using §3.1's strings; `high` and `critical` warnings are never deferred off this sheet.
 
+**Multiple unknowns, members or evidence entries (architect ruling at M3-T4b review, 2026-09-23):** the scan sheet renders one line per `ScreeningUnknown` and one line per `ScreeningEvidence` entry, using §3.1's per-reason, per-severity unknown strings and per-`EvidenceKind` evidence strings in this surface's condensed layout, each followed by the inline caveat clause. The single-line rows in the table above are the one-unknown, one-evidence special case of that rule. The client never picks a "primary" unknown or evidence entry, never hardcodes a severity, reason or locus, and never drops a `critical` warning (copy rule 4).
+
 ### §3.4 Assistant preview (post-MVP preview, labelled per P10)
 
 This is the one surface allowed to state the negative "can't mark ... safe" directly (see §10, exception 2), because it is the assistant explaining its own limits, not asserting a result. The standing caveat renders on this surface too, in the assistant's own voice: every reply below ends with the same disclaiming clause ("I still can't mark any food as safe" or, on the `ALLOWED` row, its slightly longer first-person form), never deferred and never dropped because the reply sounds conversational.
