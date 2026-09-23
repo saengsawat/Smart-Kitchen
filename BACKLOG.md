@@ -1,6 +1,6 @@
 # BACKLOG.md — Implementation Backlog
 
-Authoritative work plan. Structure: **Milestone → Epic → Ticket**. Only M0 and M1 are fully ticketed (per plan discipline — no speculative ticket dumps); M2–M9 stay at epic level until their predecessor is underway. Sequencing is dependency-driven, not demo-driven.
+Authoritative work plan. Structure: **Milestone → Epic → Ticket**. M0 and M1 are fully ticketed and complete; M2 (API) and M3 (client) are ticketed one step ahead of the work as each predecessor is accepted (M2-T1, M2-T2, M3-T1 to M3-T4b done; M2-T3 written and held; M2-T4, M3-T5, M3-T6 outlined); M4 to M9 stay at epic level until reached. No speculative ticket dumps. Sequencing is dependency-driven, not demo-driven.
 
 > **Tracking view:** a spreadsheet mirror of this backlog (tickets, model recommendations, status column) lives in `BACKLOG_TRACKER.xlsx` / `BACKLOG_TRACKER.csv` for status tracking. **This file remains authoritative** for ticket content; when tickets change here, regenerate/update the tracker (status values live in the tracker only).
 
