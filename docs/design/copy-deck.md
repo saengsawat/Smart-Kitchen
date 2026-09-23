@@ -279,6 +279,8 @@ Every value of `LedgerErrorCode` (`packages/domain/src/inventory/errors.ts`), cl
 
 **Generic fallback** (used for every internal-only code, if one ever reaches a screen): "Something went wrong saving that. Try again, and tell us if it keeps happening."
 
+**API-level refusals (not `LedgerErrorCode`s; added at M2-T2 acceptance, 2026-09-22):** `IDEMPOTENCY_KEY_CONFLICT` answers 409 and the client treats it as "already applied differently, do not retry": "That request was already used for a different change, so it was not applied again." `UNDO_NOT_POSSIBLE` answers 409 when the stock an entry added has since been used, so undoing it would overshoot: "That change can't be undone. The stock it added has already been used." An item the session cannot see answers 404 with "Not found." and is indistinguishable from an item that does not exist.
+
 | `LedgerErrorCode` | User-facing? | String | Reasoning |
 |---|---|---|---|
 | `ZERO_DELTA` | Yes | "Enter an amount to record a change." | Reachable by confirming a form with no quantity entered. |
@@ -368,6 +370,7 @@ One row per machine-code union member covered by this deck, mapped to the sectio
 | `LedgerErrorCode` | `INVALID_FIELD` | §8 |
 | `LedgerErrorCode` | `ITEM_MISMATCH` | §8 |
 | `LedgerErrorCode` | `CORRUPT_LEDGER` | §8 |
+| API-level refusal (not a LedgerErrorCode) | `UNDO_NOT_POSSIBLE`, `IDEMPOTENCY_KEY_CONFLICT` (409), item not visible (404) | §8 API-level refusals (added at M2-T2 acceptance) |
 
 ---
 
