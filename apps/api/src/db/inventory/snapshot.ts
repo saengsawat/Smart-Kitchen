@@ -1,5 +1,10 @@
 /**
- * Read model behind `GET /v1/inventory/items` (M2-T1).
+ * Read model behind `GET /v1/inventory/items` (M2-T1) and the summary half of
+ * `GET /v1/inventory/items/{itemId}` (M2-T2).
+ *
+ * Moved here from `src/http/` by M2-T2: `http/` holds route handlers and DTO
+ * mapping, and every statement against the database lives under `src/db/`.
+ * Nothing about the read changed in the move.
  *
  * The household's inventory as the list screen needs it: one row per item, its
  * maintained quantity, its lots, and the provenance tier of every value that
@@ -40,7 +45,7 @@ import type {
   StorageLocationDto,
 } from "@smart-kitchen/contracts";
 import type { ClientBase } from "pg";
-import { microsToDecimalText } from "../db/inventory/repository.js";
+import { microsToDecimalText } from "./repository.js";
 
 /** Raised when a stored enum value is outside the union this build knows. */
 export class UnknownStoredValueError extends Error {
@@ -137,6 +142,38 @@ const ITEMS_SQL = `
    WHERE i.household_id = $1
    ORDER BY i.created_at, i.id`;
 
+/**
+ * The same projection for one item.
+ *
+ * Written out rather than built by concatenating a predicate onto
+ * {@link ITEMS_SQL}: assembling SQL by string surgery is how a household
+ * predicate eventually goes missing, and these two statements are short enough
+ * that a reader can compare them side by side.
+ */
+const ITEM_BY_ID_SQL = `
+  SELECT i.id                          AS item_id,
+         i.unit                        AS unit,
+         i.display_name                AS display_name,
+         i.product_ref                 AS product_ref,
+         i.ingredient_ref              AS ingredient_ref,
+         i.storage_location            AS storage_location,
+         i.current_qty_micros::text    AS current_qty_micros,
+         q.provenance_tier             AS qty_tier,
+         q.provenance_source           AS qty_source,
+         q.provenance_confidence::text AS qty_confidence,
+         q.recorded_at                 AS qty_recorded_at
+    FROM inventory_items AS i
+    LEFT JOIN LATERAL (
+      SELECT t.provenance_tier, t.provenance_source, t.provenance_confidence, t.recorded_at
+        FROM inventory_transactions AS t
+       WHERE t.household_id = i.household_id
+         AND t.item_id = i.id
+       ORDER BY t.sequence DESC
+       LIMIT 1
+    ) AS q ON true
+   WHERE i.household_id = $1
+     AND i.id = $2`;
+
 /** Lots, soonest expiry first within an item so the head of the list is the one that matters. */
 const LOTS_SQL = `
   SELECT l.item_id                     AS item_id,
@@ -149,6 +186,20 @@ const LOTS_SQL = `
     FROM inventory_lots AS l
    WHERE l.household_id = $1
    ORDER BY l.item_id, l.expires_at ASC NULLS LAST, l.created_at, l.id`;
+
+/** The same lots, for one item. */
+const LOTS_BY_ITEM_SQL = `
+  SELECT l.item_id                     AS item_id,
+         l.id                          AS lot_id,
+         l.label                       AS label,
+         l.acquired_at                 AS acquired_at,
+         l.expires_at                  AS expires_at,
+         l.expiry_tier                 AS expiry_tier,
+         l.current_qty_micros::text    AS current_qty_micros
+    FROM inventory_lots AS l
+   WHERE l.household_id = $1
+     AND l.item_id = $2
+   ORDER BY l.expires_at ASC NULLS LAST, l.created_at, l.id`;
 
 function quantityProvenance(row: ItemRow): FieldProvenanceDto | null {
   if (row.qty_tier === null) return null;
@@ -196,15 +247,50 @@ export async function readInventorySnapshot(
 ): Promise<InventoryItemSummaryDto[]> {
   const items = await client.query<ItemRow>(ITEMS_SQL, [householdId]);
   const lots = await client.query<LotRow>(LOTS_SQL, [householdId]);
+  return assemble(items.rows, lots.rows);
+}
 
+/**
+ * Reads one item's summary, or `undefined` when it is not visible to this
+ * session.
+ *
+ * "Not visible" covers both "no such item" and "an item belonging to another
+ * household", deliberately indistinguishably: the caller turns either into the
+ * same 404, because which of the two it was is itself information about
+ * another household (the reasoning behind the household-scoped sequence key in
+ * migration 0003).
+ *
+ * Same two statements as {@link readInventorySnapshot}, narrowed by item id and
+ * still household-filtered in the SQL as well as by the policies. The item
+ * predicate is added to the filter rather than applied to the result in
+ * TypeScript: filtering after the fact would mean the query still read every
+ * item in the household, and a read that returns rows it then discards is one
+ * refactor away from returning them.
+ */
+export async function readInventoryItemSummary(
+  client: ClientBase,
+  householdId: string,
+  itemId: string,
+): Promise<InventoryItemSummaryDto | undefined> {
+  const items = await client.query<ItemRow>(ITEM_BY_ID_SQL, [householdId, itemId]);
+  if (items.rows.length === 0) return undefined;
+  const lots = await client.query<LotRow>(LOTS_BY_ITEM_SQL, [householdId, itemId]);
+  return assemble(items.rows, lots.rows)[0];
+}
+
+/** Row pair to DTO. Shared so the list and the single-item read cannot diverge. */
+function assemble(
+  itemRows: readonly ItemRow[],
+  lotRows: readonly LotRow[],
+): InventoryItemSummaryDto[] {
   const lotsByItem = new Map<string, LotRow[]>();
-  for (const lot of lots.rows) {
+  for (const lot of lotRows) {
     const bucket = lotsByItem.get(lot.item_id);
     if (bucket === undefined) lotsByItem.set(lot.item_id, [lot]);
     else bucket.push(lot);
   }
 
-  return items.rows.map((row) => {
+  return itemRows.map((row) => {
     const itemLots = lotsByItem.get(row.item_id) ?? [];
     // Already ordered soonest-expiry-first by LOTS_SQL, nulls last, so the
     // first lot with an expiry is the earliest one.

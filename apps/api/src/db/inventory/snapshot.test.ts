@@ -12,7 +12,7 @@
 
 import type { ClientBase } from "pg";
 import { describe, expect, it } from "vitest";
-import { readInventorySnapshot, UnknownStoredValueError } from "./inventory-snapshot.js";
+import { readInventorySnapshot, UnknownStoredValueError } from "./snapshot.js";
 
 function clientReturning(itemRows: readonly unknown[], lotRows: readonly unknown[]): ClientBase {
   let call = 0;

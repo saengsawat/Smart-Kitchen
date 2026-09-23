@@ -414,10 +414,12 @@ describe.skipIf(!dbTestsEnabled)(SUITE, () => {
      * policy therefore denies (migration 0006, fail-closed).
      */
     it("returns nothing when the tenant context is removed, for a session that otherwise sees rows", async () => {
-      const contextless: TenantSessionRunner = <T>(
-        _session: unknown,
-        fn: (client: PoolClient) => Promise<T>,
-      ) => withHouseholdTransaction(db.pool, null, fn, { assumeRole: APP_ROLE });
+      const contextless: TenantSessionRunner = {
+        read: <T>(_session: unknown, fn: (client: PoolClient) => Promise<T>) =>
+          withHouseholdTransaction(db.pool, null, fn, { assumeRole: APP_ROLE }),
+        write: <T>(_session: unknown, fn: (client: PoolClient) => Promise<T>) =>
+          withHouseholdTransaction(db.pool, null, fn, { assumeRole: APP_ROLE }),
+      };
       const sabotaged = buildWith(contextless);
 
       try {
@@ -436,10 +438,12 @@ describe.skipIf(!dbTestsEnabled)(SUITE, () => {
       // No `assumeRole`: the pool is connected as the database owner, which the
       // policies do not bind (migration 0006). The only thing left filtering is
       // `WHERE household_id = $1`, and it is filtering correctly.
-      const unpinned: TenantSessionRunner = <T>(
-        session: { householdId: string },
-        fn: (client: PoolClient) => Promise<T>,
-      ) => withHouseholdTransaction(db.pool, session.householdId, fn);
+      const unpinned: TenantSessionRunner = {
+        read: <T>(session: { householdId: string }, fn: (client: PoolClient) => Promise<T>) =>
+          withHouseholdTransaction(db.pool, session.householdId, fn),
+        write: <T>(session: { householdId: string }, fn: (client: PoolClient) => Promise<T>) =>
+          withHouseholdTransaction(db.pool, session.householdId, fn),
+      };
       const bypassed = buildWith(unpinned);
 
       try {

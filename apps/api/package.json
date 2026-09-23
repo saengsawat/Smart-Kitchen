@@ -9,6 +9,7 @@
     "build": "tsc -b --pretty",
     "start": "node dist/server.js",
     "typecheck": "tsc -b --pretty",
+    "db:seed:fixture": "node dist/seed/seed-fixture.js",
     "db:migrate": "node-pg-migrate --migrations-dir db/migrations --migrations-table sk_migrations up",
     "db:migrate:down": "node-pg-migrate --migrations-dir db/migrations --migrations-table sk_migrations down"
   },

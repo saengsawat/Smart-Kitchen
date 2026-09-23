@@ -54,6 +54,16 @@ export function buildApp(deps: AppDependencies): FastifyInstance {
     // caller-supplied header would let a caller choose what their requests are
     // filed under, and collide with somebody else's on purpose.
     requestIdHeader: false,
+    // Fastify's AJV defaults include `removeAdditional: true`, which turns a
+    // schema's `additionalProperties: false` from a rule into a shrug: the
+    // unknown property is deleted and the request proceeds. That is how
+    // `{"type":"DISCARD","amuont":"0.25"}` removed an entire item with a 200
+    // (M2-T2 review F1). A misspelled quantity field must be a refusal, not a
+    // different, larger write. The other AJV defaults are left alone: in
+    // particular `coerceTypes` stays on, and the exact-decimal parser in
+    // `db/inventory/quantity-text.ts` is what holds the line on a quantity
+    // sent as a JSON number (architect ruling, M2-T2 review F-note).
+    ajv: { customOptions: { removeAdditional: false } },
   });
 
   registerAuthorization(app, { identity: deps.identity });

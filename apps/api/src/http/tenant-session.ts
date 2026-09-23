@@ -22,6 +22,7 @@
  */
 
 import type { Pool, PoolClient } from "pg";
+import { withRetriedHouseholdTransaction } from "../db/retry.js";
 import { withHouseholdTransaction } from "../db/session.js";
 import type { Session } from "../identity/index.js";
 
@@ -34,11 +35,27 @@ import type { Session } from "../identity/index.js";
  */
 export const SK_APP_ROLE = "sk_app";
 
-/** Runs `fn` inside a transaction scoped to the caller's household. */
-export type TenantSessionRunner = <T>(
-  session: Session,
-  fn: (client: PoolClient) => Promise<T>,
-) => Promise<T>;
+/**
+ * The two ways a handler may touch the database, and there are only two.
+ *
+ * `read` is one plain transaction. `write` is the same transaction with the
+ * M1-T9 retry wrapper around it, because a ledger append can lose a race with
+ * a concurrent append to the same item and the answer to that is to re-run the
+ * whole thing, not to patch up a stale sequence (`db/retry.ts` explains which
+ * two Postgres error shapes mean exactly that, and why no other error is
+ * retried). Re-running is safe precisely because every write is idempotent
+ * under its key (INV-LEDGER-3), so a retried attempt lands once or reports
+ * itself as a duplicate.
+ *
+ * Split into two named entry points rather than one runner with a `retry`
+ * option: whether a request is a read or a write is a property of the endpoint,
+ * decided when it is written, not a flag somebody can forget to pass. Handlers
+ * still never see the `Pool`.
+ */
+export interface TenantSessionRunner {
+  read<T>(session: Session, fn: (client: PoolClient) => Promise<T>): Promise<T>;
+  write<T>(session: Session, fn: (client: PoolClient) => Promise<T>): Promise<T>;
+}
 
 /**
  * There is no option to change the role.
@@ -52,10 +69,14 @@ export type TenantSessionRunner = <T>(
  * `withHouseholdTransaction` directly, which is where that capability belongs.
  */
 export function createTenantSessionRunner(pool: Pool): TenantSessionRunner {
-  return function runInTenantSession<T>(
-    session: Session,
-    fn: (client: PoolClient) => Promise<T>,
-  ): Promise<T> {
-    return withHouseholdTransaction(pool, session.householdId, fn, { assumeRole: SK_APP_ROLE });
+  return {
+    read<T>(session: Session, fn: (client: PoolClient) => Promise<T>): Promise<T> {
+      return withHouseholdTransaction(pool, session.householdId, fn, { assumeRole: SK_APP_ROLE });
+    },
+    write<T>(session: Session, fn: (client: PoolClient) => Promise<T>): Promise<T> {
+      return withRetriedHouseholdTransaction(pool, session.householdId, fn, {
+        assumeRole: SK_APP_ROLE,
+      });
+    },
   };
 }

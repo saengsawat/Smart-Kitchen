@@ -113,6 +113,52 @@ directory — it is an independent, disposable cluster on its own port, gone
 with the scratch directory. Pick a port that is not already in use if `55432`
 is taken locally.
 
+## Seeding a development database (M2-T2)
+
+`pnpm --filter api db:seed:fixture` fills a database with the synthetic
+sign-ins in `tests/fixtures/identity/` and the Chen household's inventory, the
+one the prototype draws. That is what turns the API from something that answers
+an empty list into something a phone can read and write for real.
+
+It runs the compiled entry point, so build first, and it needs a migrated
+database:
+
+```bash
+export DATABASE_URL=postgres://postgres@localhost:55432/postgres
+pnpm --filter api db:migrate
+pnpm --filter api build
+pnpm --filter api db:seed:fixture
+```
+
+Things worth knowing:
+
+- **It refuses outside development.** `NODE_ENV` must be unset, `development`
+  or `test` (the same allowlist the fixture identity adapter uses). The
+  identities it writes are public strings committed to this repository, so
+  seeding them into a real deployment would be handing out accounts.
+- **It refuses without `DATABASE_URL`.** There is no default connection string.
+- **Re-running it changes nothing.** Item ids are derived from names, so the
+  second run finds everything already there and writes nothing. Run it as often
+  as you like.
+- **It only inserts.** No row it did not create is read, updated or deleted, and
+  no household other than the two fixture ones is touched.
+- **Connect as the role that ran the migrations** (the owner, or a superuser).
+  The seed does two different things with two different privilege levels: it
+  writes the households and users as the connecting role, which needs INSERT on
+  `households`, `users` and `household_memberships`, and it writes the inventory
+  as `sk_app` (via `SET LOCAL ROLE`), so that a seeded inventory row can never
+  need a privilege the running application lacks. A plain member of `sk_app` is
+  therefore **not** enough: `sk_app` holds only SELECT on `households`, so the
+  identity half fails. The throwaway-cluster recipe above connects as the owner
+  and works as written.
+- **The chicken breast's correction row is not seeded.** It is written by the
+  ledger, because the seed records a 2.25 lb meal against a 2.0 lb lot and the
+  ledger appends its own over-consumption correction. That row is the worked
+  example in `docs/design/copy-deck.md` §5.
+
+Point the app at it with `EXPO_PUBLIC_API_URL` (see
+[apps/mobile/README.md](apps/mobile/README.md)).
+
 ## Running the mobile app locally (M3-T1)
 
 `apps/mobile` is an Expo (managed workflow) + Expo Router app inside this

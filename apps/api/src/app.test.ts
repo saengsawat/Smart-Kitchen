@@ -79,9 +79,16 @@ function harness(overrides: Partial<AppDependencies> = {}): Harness {
   const scoped: Session[] = [];
   const logLines: string[] = [];
 
-  const tenantSession: TenantSessionRunner = (session, fn) => {
+  const runTenantSession = <T>(
+    session: Session,
+    fn: (client: PoolClient) => Promise<T>,
+  ): Promise<T> => {
     scoped.push(session);
     return fn(fakeClient([], []));
+  };
+  const tenantSession: TenantSessionRunner = {
+    read: runTenantSession,
+    write: runTenantSession,
   };
 
   const app = buildApp({

@@ -77,13 +77,25 @@ it directly.
 
 Everything else on the `ApiClient` port (single-item detail/history,
 onboarding/household state, and every write: corrections, removals, undo, AI
-confirmation) has no endpoint yet and stays fixture-backed even with
+confirmation) stays fixture-backed in this app even with
 `EXPO_PUBLIC_API_URL` set. `HttpApiClient` delegates those calls internally
-(see that class's doc comment in `src/api/client.ts`). A real API started
-this way returns an empty household today: **seeded rows arrive with M2-T2**
-(`pnpm --filter api db:seed:fixture`, BACKLOG.md), which also supplies the
-write endpoints this ticket's fixture-only methods stand in for. Unset the
-variable (or leave it unset) to go back to the fixture client.
+(see that class's doc comment in `src/api/client.ts`); wiring them to the API
+is M3-T4's job.
+
+**Giving a local API something to show (M2-T2).** A freshly migrated database
+holds no inventory, so the list arrives empty. `pnpm --filter api db:seed:fixture`
+writes the fixture identities and the Chen household's inventory, the same nine
+items the prototype draws, so S4 shows real rows read over the network. It needs
+`DATABASE_URL`, refuses to run unless `NODE_ENV` is unset, `development` or
+`test`, and can be re-run as often as you like: a second run changes nothing.
+Full instructions are in [CONTRIBUTING.md](../../CONTRIBUTING.md#seeding-a-development-database-m2-t2).
+
+M2-T2 also added the endpoints behind those fixture-only writes:
+`POST /v1/inventory/items/{itemId}/transactions` (corrections and removals),
+`POST /v1/inventory/items/{itemId}/transactions/{transactionId}/undo`, and
+`GET /v1/inventory/items/{itemId}` for the detail screen.
+
+Unset the variable (or leave it unset) to go back to the fixture client.
 
 ## Typecheck / lint / test
 
