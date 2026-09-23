@@ -256,6 +256,28 @@ Per P8 (every screen designs its non-happy states first). Format: headline, one 
 - **History order:** the S5 history list is newest first; the "Why {qty}?" narrative is chronological. Two widgets, each single-ordered (ruling at M3-T3 acceptance).
 - **Not built yet:** the S4 search icon is hidden until M4 (P10); the tray's Edit opens the item.
 
+### S6 · Add hub (added at M3-T4b acceptance, 2026-09-23)
+
+- Fast-follow tile tap: "Scan receipt is fast-follow · built after MVP launch, already planned."
+- Future tile tap: "Photograph a shelf is future · not yet scheduled."
+- Empty "Recently added": "Nothing added yet this session."
+
+### S8 · Scan confirm (added at M3-T4b acceptance, 2026-09-23)
+
+- Household still loading: "Checking allergen data for your household." The allergen block and the Add action wait for the household; a verdict is never shown with unnamed members.
+- Household failed to load: the §8 generic fallback plus action **Try again**; Add stays disabled.
+- Member name unavailable (new string, last resort): "a household member".
+- Lookup not available (before M2-T4): the §8 generic fallback.
+- Identity chip on this sheet reads "✓ Known fact" (the compact "✓ Fact" form is for list and ledger rows).
+- Toast after add: "Added {n} × {name} to {location} · Known Fact".
+
+### S9 · Manual add (added at M3-T4b acceptance, 2026-09-23)
+
+- Name required (inline, clears on typing): "Name this item before adding it."
+- Retained code: "Barcode {code} kept on file. If it is added to a data source later, we will offer to fill in these facts automatically."
+- Amount at zero: Add disabled, no copy.
+- Toast after add: "Added {name} · {n} {unit} to {location} · Known Fact".
+
 ### S7 · Barcode scan (camera)
 
 - **Permission denied:** "Camera access is off." / "Turn it on to scan barcodes, or add this item by hand." / actions **Open Settings** and **Enter manually**.
