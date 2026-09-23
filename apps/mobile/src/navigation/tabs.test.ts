@@ -40,14 +40,12 @@ describe("TAB_ORDER (five-slot shell, M3-T1 acceptance criteria)", () => {
       expect(tab.placeholder).not.toContain("—");
       expect(tab.label).not.toContain("—");
     }
-    expect(CENTER_ACTION.placeholder).not.toContain("—");
   });
 });
 
 describe("CENTER_ACTION (the FAB scan button)", () => {
-  it("opens the placeholder Add screen (M3-T4)", () => {
+  it("opens the real Add hub (M3-T4b: S6-S9, no longer a placeholder)", () => {
     expect(CENTER_ACTION.route).toBe("/add");
-    expect(CENTER_ACTION.placeholder).toBe("Coming in M3-T4.");
   });
 
   it("is not one of the four flex-row tabs", () => {

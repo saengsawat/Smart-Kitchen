@@ -783,3 +783,97 @@ describe("HttpApiClient writes/undo (M3-T4a: real POST endpoints, mocked fetch)"
     });
   });
 });
+
+describe("lookupProduct / createItem (M3-T4b)", () => {
+  describe("FixtureApiClient", () => {
+    it("resolves a fixture barcode to a hit with its (engine-generated) screening", async () => {
+      const client = FixtureApiClient.newUser();
+      const result = await client.lookupProduct("060000100810");
+      expect(result.status).toBe("hit");
+      if (result.status === "hit") {
+        expect(result.product.name.value).toBe("Stone-Ground Tahini");
+        expect(result.product.screening.verdict).toBe("BLOCKED");
+      }
+    });
+
+    it("resolves an unrecognised code as not-found", async () => {
+      const result = await FixtureApiClient.newUser().lookupProduct("000000000000");
+      expect(result.status).toBe("not-found");
+    });
+
+    it("createItem (BARCODE) appends a PURCHASE row and the item is readable afterward", async () => {
+      const client = FixtureApiClient.newUser();
+      const summary = await client.createItem({
+        idempotencyKey: "key-1",
+        source: "BARCODE",
+        displayName: "Sunrise Greek Yogurt Plain",
+        storageLocation: "FRIDGE",
+        unit: "oz",
+        amount: "64.000000",
+        quantityProvenance: {
+          tier: "KNOWN_FACT",
+          source: "manufacturer-label",
+          confidence: null,
+          recordedAt: null,
+        },
+        productRef: "dairy-003",
+      });
+      expect(summary.displayName).toBe("Sunrise Greek Yogurt Plain");
+      expect(summary.quantity.amount).toBe("64");
+
+      const items = await client.getInventoryItems();
+      expect(items).toHaveLength(1);
+      const detail = await client.getInventoryItem(summary.itemId);
+      expect(detail?.history).toHaveLength(1);
+      expect(detail?.history[0]?.type).toBe("PURCHASE");
+    });
+
+    it("createItem (MANUAL) appends an INITIAL_STOCK row", async () => {
+      const client = FixtureApiClient.newUser();
+      const summary = await client.createItem({
+        idempotencyKey: "key-2",
+        source: "MANUAL",
+        displayName: "Trader Joe's frozen dumplings",
+        storageLocation: "FREEZER",
+        unit: "count",
+        amount: "12",
+        quantityProvenance: {
+          tier: "KNOWN_FACT",
+          source: "manual-entry",
+          confidence: null,
+          recordedAt: null,
+        },
+      });
+      const detail = await client.getInventoryItem(summary.itemId);
+      expect(detail?.history[0]?.type).toBe("INITIAL_STOCK");
+      expect(detail?.summary.quantity.amount).toBe("12");
+    });
+  });
+
+  describe("HttpApiClient", () => {
+    it("lookupProduct rejects clearly (no endpoint until M2-T3)", async () => {
+      const client = new HttpApiClient("http://localhost:4000");
+      await expect(client.lookupProduct("060000100025")).rejects.toThrow(/not available yet/);
+    });
+
+    it("createItem rejects clearly (no endpoint until M2-T3)", async () => {
+      const client = new HttpApiClient("http://localhost:4000");
+      await expect(
+        client.createItem({
+          idempotencyKey: "key-1",
+          source: "MANUAL",
+          displayName: "x",
+          storageLocation: "PANTRY",
+          unit: "count",
+          amount: "1",
+          quantityProvenance: {
+            tier: "KNOWN_FACT",
+            source: "manual-entry",
+            confidence: null,
+            recordedAt: null,
+          },
+        }),
+      ).rejects.toThrow(/not available yet/);
+    });
+  });
+});

@@ -70,12 +70,17 @@ export const TAB_ORDER: readonly TabDefinition[] = [
   },
 ] as const;
 
-/** The centre floating scan button (prototype `.fab`); not part of TAB_ORDER's flex row. */
+/**
+ * The centre floating scan button (prototype `.fab`); not part of
+ * TAB_ORDER's flex row. `placeholder` (M3-T1: "Coming in M3-T4.") is
+ * removed as of M3-T4b: `app/add.tsx` and its `app/add/*` routes are the
+ * real S6-S9 screens now, not `PlaceholderScreen` (CLAUDE.md rule 15 — a
+ * stale "coming in" string the moment the ticket that builds it lands).
+ */
 export const CENTER_ACTION = {
   key: "add",
   label: "Add",
   route: "/add",
-  placeholder: "Coming in M3-T4.",
 } as const;
 
 export function isActiveRoute(currentPathname: string, tabRoute: string): boolean {

@@ -123,6 +123,26 @@ file itself (`apps/mobile/metro.config.js`, outside this ticket's file
 scope) still names `@smart-kitchen/adapters` in its own comment as an
 example, now stale, flagged for a small follow-up rather than edited here.
 
+## Camera permission (M3-T4b, S7 barcode scan)
+
+`expo-camera` (Expo's own module, the same rule-11 precedent as
+`expo-font`/`expo-crypto`) backs S7's barcode scanner. `app.json`'s
+`expo-camera` config plugin sets the iOS `NSCameraUsageDescription` /
+Android `CAMERA` permission strings at prebuild time from one place:
+
+```json
+["expo-camera", { "cameraPermission": "KitchenSmart uses the camera to scan a barcode when you add food." }]
+```
+
+A managed Expo Go session on a phone prompts for camera access the first
+time S7 opens; denying it (or dismissing the OS prompt) shows the
+permission-denied state (copy-deck.md §7 S7) with a working "Open Settings"
+and "Enter manually" (the typed-code fallback, always available whether or
+not the camera is granted). No device was available to this ticket's worker
+(`docs/handoff/M3-T4b.worker.md` records exactly what was verified on the
+typed fallback instead) — the camera path itself is owed a real-device check
+before this ticket's work ships.
+
 ## Fonts
 
 Fraunces (display) and Inter (body) are vendored under `assets/fonts/` from

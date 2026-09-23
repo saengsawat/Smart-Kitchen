@@ -66,6 +66,18 @@ export const StyleSheet = {
   },
 };
 
+/**
+ * Minimal `Linking` stand-in (M3-T4b, S7's permission-denied "Open Settings"
+ * action): the real module opens the OS settings app, which has no meaning
+ * under a test runner; a resolved no-op is faithful enough for a screen that
+ * only calls it fire-and-forget on a button press.
+ */
+export const Linking = {
+  openSettings(): Promise<void> {
+    return Promise.resolve();
+  },
+};
+
 export const AccessibilityInfo = {
   announceForAccessibility(message: string): void {
     // No-op: the real module speaks to the native accessibility bridge,

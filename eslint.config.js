@@ -71,9 +71,13 @@ export default tseslint.config(
   // research.mjs into ES2018-safe syntax and a manual `/* global */` comment
   // just to lint clean. Plain (non-type-checked) parsing, same as the "*.ts"/
   // "*.js" block: these are standalone Node scripts, not part of any
-  // package's tsconfig "include".
+  // package's tsconfig "include". Extended (M3-T4b review fix) with
+  // "packages/*/scripts/**/*.mjs" for the same reason, one level down:
+  // packages/adapters/scripts/gen-screening-fixtures.mjs sits outside that
+  // package's own tsconfig "include" (its own "rootDir": "src"), so without
+  // this addition `import.meta` failed to parse there too.
   {
-    files: ["scripts/**/*.mjs", "docs/**/*.mjs"],
+    files: ["scripts/**/*.mjs", "docs/**/*.mjs", "packages/*/scripts/**/*.mjs"],
     languageOptions: {
       ecmaVersion: "latest",
       sourceType: "module",

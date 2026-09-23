@@ -1,0 +1,19 @@
+{
+  "members": [
+    {
+      "memberId": "member-dean",
+      "displayName": "Dean Chen",
+      "role": "owner",
+      "restrictions": []
+    },
+    {
+      "memberId": "member-maya",
+      "displayName": "Maya Chen",
+      "role": "member",
+      "restrictions": [
+        { "restrictionId": "maya-peanut", "code": "peanut", "severity": "severe" },
+        { "restrictionId": "maya-sesame", "code": "sesame", "severity": "severe" }
+      ]
+    }
+  ]
+}

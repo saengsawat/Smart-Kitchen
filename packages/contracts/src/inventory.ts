@@ -336,3 +336,49 @@ export function inventoryItemTransactionsPath(itemId: string): string {
 export function inventoryTransactionUndoPath(itemId: string, transactionId: string): string {
   return `${inventoryItemTransactionsPath(itemId)}/${encodeURIComponent(transactionId)}/undo`;
 }
+
+// ---------------------------------------------------------------------------
+// M3-T4b: item creation (S8 scan confirm, S9 manual add).
+//
+// A new item's *first* row is `PURCHASE` (a scanned barcode: the household
+// already owns other purchases of things, this is one more) or
+// `INITIAL_STOCK` (a manual entry: nothing bought this moment, just recorded
+// as on hand) — the same two entry-side transaction types
+// {@link INVENTORY_WRITE_TYPES_DTO} deliberately excludes (that type's own
+// doc comment: "INITIAL_STOCK and PURCHASE belong to the add-food ... flows").
+// {@link CreateItemRequestDto.source} says which, so the server (or, until
+// M2-T3, the fixture ledger) never has to guess it from other fields.
+// ---------------------------------------------------------------------------
+
+/** Which Add-food path produced this item: drives the first ledger row's `TransactionTypeDto`. */
+export type CreateItemSourceDto = "BARCODE" | "MANUAL";
+
+/**
+ * Body of the not-yet-built `POST /v1/inventory/items` (M2-T3). Until then,
+ * `apps/mobile`'s fixture `ApiClient` implements {@link CreateItemRequestDto}
+ * against its in-memory ledger (`src/inventory/ledger.ts`) so S8/S9 have a
+ * real create path to call; `HttpApiClient.createItem` throws a clear
+ * "not available yet" error (BACKLOG.md M3-T4b Objective (e)).
+ *
+ * Exact quantities travel as decimal text, never a JSON number (this file's
+ * header, rule 2): {@link amount} is in {@link unit}, the same form as
+ * {@link QuantityDto.amount}.
+ */
+export interface CreateItemRequestDto {
+  /** Client-generated key, same replay-safety contract as {@link InventoryWriteRequestDto.idempotencyKey}. */
+  readonly idempotencyKey: string;
+  readonly source: CreateItemSourceDto;
+  /** Known Fact for both S8 (product identity) and S9 (typed by the user) — never AI-tier (BACKLOG.md D-019 adoption note). */
+  readonly displayName: string;
+  readonly storageLocation: StorageLocationDto;
+  readonly unit: string;
+  /** Initial on-hand amount, exact decimal text in {@link unit}. */
+  readonly amount: string;
+  /** Provenance of the initial quantity fact (tier/source/observedAt). */
+  readonly quantityProvenance: FieldProvenanceDto;
+  /** `BARCODE` source only: the scanned code, so the created item can carry a `productRef`. */
+  readonly productRef?: string;
+  /** When a best-by fact/estimate is on file; `null`/omitted when none is (never invented, CLAUDE.md rule 3). */
+  readonly bestByDate?: string | null;
+  readonly bestByProvenance?: FieldProvenanceDto | null;
+}

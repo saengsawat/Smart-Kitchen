@@ -1,0 +1,153 @@
+{
+  "productId": "condiment-102",
+  "codes": [
+    {
+      "codeType": "UPC_A",
+      "code": "060000100810"
+    }
+  ],
+  "name": {
+    "value": "Stone-Ground Tahini",
+    "provenance": {
+      "tier": "KNOWN_FACT",
+      "source": "manufacturer-label",
+      "confidence": null,
+      "recordedAt": "2026-08-15T00:00:00.000Z"
+    }
+  },
+  "brand": {
+    "value": "Far East Table",
+    "provenance": {
+      "tier": "KNOWN_FACT",
+      "source": "manufacturer-label",
+      "confidence": null,
+      "recordedAt": "2026-08-15T00:00:00.000Z"
+    }
+  },
+  "packageSize": {
+    "value": {
+      "qty": "16",
+      "unit": "oz"
+    },
+    "provenance": {
+      "tier": "KNOWN_FACT",
+      "source": "manufacturer-label",
+      "confidence": null,
+      "recordedAt": "2026-08-15T00:00:00.000Z"
+    }
+  },
+  "nutrition": [
+    {
+      "basis": "PER_SERVING",
+      "values": {
+        "calories": 190,
+        "proteinG": 6,
+        "carbsG": 7,
+        "fatG": 17,
+        "fiberG": 3,
+        "sugarG": 0,
+        "sodiumMg": 20
+      },
+      "provenance": {
+        "tier": "KNOWN_FACT",
+        "source": "manufacturer-label",
+        "confidence": null,
+        "recordedAt": "2026-08-15T00:00:00.000Z"
+      }
+    }
+  ],
+  "ingredientsText": {
+    "value": "Ground sesame seeds.",
+    "provenance": {
+      "tier": "KNOWN_FACT",
+      "source": "manufacturer-label",
+      "confidence": null,
+      "recordedAt": "2026-08-15T00:00:00.000Z"
+    }
+  },
+  "screening": {
+    "subjectKind": "PRODUCT",
+    "subjectId": "condiment-102",
+    "verdict": "BLOCKED",
+    "members": [
+      {
+        "memberId": "member-dean",
+        "verdict": "ALLOWED"
+      },
+      {
+        "memberId": "member-maya",
+        "verdict": "BLOCKED"
+      }
+    ],
+    "evidence": [
+      {
+        "memberId": "member-maya",
+        "restrictionId": "maya-sesame",
+        "restrictionLabel": "sesame",
+        "severity": "severe",
+        "kind": "ASSERTION_CONTAINS",
+        "locus": {
+          "part": "PRODUCT",
+          "ref": "Stone-Ground Tahini"
+        },
+        "matchedTerm": "sesame",
+        "matchedText": "sesame",
+        "assertionSource": "manufacturer-label",
+        "assertionTier": "KNOWN_FACT"
+      },
+      {
+        "memberId": "member-maya",
+        "restrictionId": "maya-sesame",
+        "restrictionLabel": "sesame",
+        "severity": "severe",
+        "kind": "NAME_TERM",
+        "locus": {
+          "part": "PRODUCT",
+          "ref": "Stone-Ground Tahini"
+        },
+        "matchedTerm": "tahini",
+        "matchedText": "tahini"
+      },
+      {
+        "memberId": "member-maya",
+        "restrictionId": "maya-sesame",
+        "restrictionLabel": "sesame",
+        "severity": "severe",
+        "kind": "INGREDIENT_TEXT_TERM",
+        "locus": {
+          "part": "PRODUCT",
+          "ref": "Stone-Ground Tahini"
+        },
+        "matchedTerm": "sesame seed",
+        "matchedText": "sesame seeds"
+      }
+    ],
+    "unknowns": [
+      {
+        "memberId": "member-maya",
+        "restrictionId": "maya-peanut",
+        "restrictionLabel": "peanut",
+        "severity": "severe",
+        "reason": "NO_ALLERGEN_DATA",
+        "locus": {
+          "part": "PRODUCT",
+          "ref": "Stone-Ground Tahini"
+        },
+        "detail": "no allergen completeness declaration on file for this item"
+      }
+    ],
+    "warnings": [
+      {
+        "code": "NO_SAFETY_GUARANTEE",
+        "severity": "info"
+      },
+      {
+        "code": "SEVERE_ALLERGY_UNKNOWN_DATA",
+        "severity": "critical",
+        "memberId": "member-maya",
+        "restrictionId": "maya-peanut",
+        "restrictionLabel": "peanut"
+      }
+    ]
+  }
+}

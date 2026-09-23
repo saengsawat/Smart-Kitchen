@@ -31,7 +31,12 @@
     "rootDir": ".",
     "types": []
   },
-  "include": ["app", "src"],
+  // Bare directory entries only pick up TS-recognised extensions by
+  // default; "src/**/*.json" is added explicitly (M3-T4b review fix F8) so
+  // `resolveJsonModule` actually covers `src/household/fixture-
+  // restrictions.json` under `tsc -b`'s stricter project-file-list check
+  // (the bare "src" entry alone left it "not listed within the file list").
+  "include": ["app", "src", "src/**/*.json"],
   "exclude": ["node_modules", "dist"],
   "references": [{ "path": "../../packages/contracts" }]
 }

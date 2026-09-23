@@ -94,6 +94,22 @@ const FORBIDDEN_TERMS = [
  *   verbatim: "It is never a safety check by itself." is the same negation
  *   shape as the caveat above, restored per review F17's ruling after an
  *   earlier draft reworded it instead.
+ * - copy-deck.md §3.3's scan-sheet caveat (M3-T4b, `src/scan/
+ *   allergen-copy.ts`): the `ALLOWED` row's full line, which folds the
+ *   caveat inline ("· not a safety guarantee") rather than repeating it as a
+ *   separate sentence, and that same suffix's own module-level constant
+ *   (`SCAN_SHEET_CAVEAT_SUFFIX`), appended (never retyped) onto the other
+ *   two verdict rows. Both are negations, same shape as the two entries
+ *   above, never a claim.
+ * - `"NO_SAFETY_GUARANTEE"` (M3-T4b, `src/scan/fixture-products.ts`): the
+ *   machine `WarningCode` itself (`packages/contracts/src/allergens.ts`),
+ *   not UI copy — the scanner's `isExemptPosition` only exempts a
+ *   *type*-position literal (a `"standard" | "severe"`-style union), not a
+ *   value literal used as an object property's value, which is what a
+ *   `ScreeningWarningDto.code` field is. Allow-listed by exact string
+ *   rather than widening the exemption rule, since a genuinely-rendered
+ *   "safe"/"guarantee" sentence must still be caught wherever else it
+ *   appears as a value literal.
  *
  * Compared with whitespace normalised (collapsed runs of whitespace,
  * trimmed) rather than raw string equality: a multi-line JSX text node's
@@ -103,6 +119,9 @@ const FORBIDDEN_TERMS = [
 const ALLOWED_SAFE_SENTENCES = [
   "Known matches only · not a guarantee this food is safe.",
   "Every value in KitchenSmart wears a tag showing how sure we are. A tag is our confidence in a fact. It is never a safety check by itself.",
+  "No known household match · label declaration · not a safety guarantee",
+  "· not a safety guarantee",
+  "NO_SAFETY_GUARANTEE",
 ] as const;
 
 function normalizeWhitespace(text: string): string {

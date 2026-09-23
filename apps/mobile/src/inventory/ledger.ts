@@ -79,6 +79,14 @@ export interface MutableItemFixture {
   confirmed: boolean;
   /** Whether this row belongs in S4's "Needs your confirmation" tray while unconfirmed. */
   readonly needsConfirmWhenUnconfirmed: boolean;
+  /**
+   * The scanned barcode's catalog product id, for an item created from S8
+   * (review F18: "plumb productRef through createItem ... so S4/S5 keep
+   * the catalog link"). `null` for every other item (the seeded fixture
+   * rows, and every S9 manual entry — a manual item was never resolved
+   * against the catalog in the first place).
+   */
+  readonly productRef: string | null;
 }
 
 let idCounter = 0;
@@ -314,6 +322,71 @@ export function appendUndo(
   return row;
 }
 
+let itemIdCounter = 0;
+
+/** Deterministic, collision-free within a session; real ids come from the server once M2-T3 lands. */
+export function nextFixtureItemId(prefix: "scan" | "manual"): string {
+  itemIdCounter += 1;
+  return `fixture-${prefix}-item-${String(itemIdCounter)}`;
+}
+
+/**
+ * `createItem` (M3-T4b, BACKLOG.md Objective (e)): builds a brand-new item
+ * with a single opening lot and a `PURCHASE` (barcode) or `INITIAL_STOCK`
+ * (manual) first row through {@link appendIncrease}, so the same append-only
+ * discipline and the same `toSummaryDto`/`toDetailDto` read path S4/S5
+ * already use applies to an item created from S8/S9 with no special-casing.
+ */
+export function createFixtureItem(params: {
+  itemId: string;
+  displayName: string;
+  storageLocation: StorageLocationDto;
+  unit: string;
+  amountMicros: bigint;
+  type: Extract<TransactionTypeDto, "PURCHASE" | "INITIAL_STOCK">;
+  recordedAt: string;
+  actor: TransactionActorDto;
+  quantityProvenance: FieldProvenanceDto;
+  lotId: string;
+  expiresAt: string | null;
+  expiresAtProvenance: FieldProvenanceDto | null;
+  /** The scanned barcode's catalog product id (S8), or `null` (S9 manual — review F18). */
+  productRef?: string | null;
+}): MutableItemFixture {
+  const item: MutableItemFixture = {
+    itemId: params.itemId,
+    displayName: params.displayName,
+    storageLocation: params.storageLocation,
+    unit: params.unit,
+    lots: [
+      {
+        lotId: params.lotId,
+        label: null,
+        acquiredAt: params.recordedAt,
+        expiresAt: params.expiresAt,
+        quantity: {
+          unit: params.unit,
+          micros: params.amountMicros.toString(),
+          amount: microsToAmountText(params.amountMicros),
+        },
+        expiresAtProvenance: params.expiresAtProvenance,
+      },
+    ],
+    history: [],
+    confirmed: false,
+    needsConfirmWhenUnconfirmed: false,
+    productRef: params.productRef ?? null,
+  };
+  appendIncrease(item, {
+    type: params.type,
+    amountMicros: params.amountMicros,
+    recordedAt: params.recordedAt,
+    actor: params.actor,
+    provenance: params.quantityProvenance,
+  });
+  return item;
+}
+
 /** Most recent row's provenance tier, or `null` for an item with no history (matches inventory-snapshot.ts). */
 function latestProvenance(item: MutableItemFixture): FieldProvenanceDto | null {
   const last = item.history.at(-1);
@@ -352,7 +425,7 @@ export function toSummaryDto(item: MutableItemFixture): InventoryItemSummaryDto 
   return {
     itemId: item.itemId,
     displayName: item.displayName,
-    productRef: null,
+    productRef: item.productRef,
     ingredientRef: null,
     storageLocation: item.storageLocation,
     quantity: { unit: item.unit, micros: micros.toString(), amount: microsToAmountText(micros) },

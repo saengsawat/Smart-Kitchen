@@ -80,6 +80,7 @@ function baseItem(params: {
     history: [],
     confirmed: false,
     needsConfirmWhenUnconfirmed: params.needsConfirmWhenUnconfirmed,
+    productRef: null,
   };
   appendIncrease(item, {
     type: "INITIAL_STOCK",
@@ -117,6 +118,7 @@ function buildChickenBreast(): MutableItemFixture {
     history: [],
     confirmed: false,
     needsConfirmWhenUnconfirmed: false,
+    productRef: null,
   };
 
   // Wed: purchased 2.0 lb, scanned barcode.

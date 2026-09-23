@@ -70,10 +70,13 @@ export default function RootLayout(): React.JSX.Element | null {
   // reachable by deep link without ever rendering index.tsx. Computing this
   // here, once, means no individual screen can forget to re-derive it.
   const redirectTo = resolveLayoutRedirectForRead(read, pathname);
-  // S1/S2 (M3-T2) are full-screen, matching prototype v4: no bottom tab bar
-  // during onboarding (or while this frame is about to redirect there),
-  // same as the prototype's onboarding screens never show `.nav`.
-  const hideTabBar = pathname.startsWith("/onboarding") || redirectTo !== null;
+  // S1/S2 (M3-T2) and S6-S9 (M3-T4b, the FAB's Add-food flow: hub, camera
+  // scan, scan confirm, manual add) are full-screen, matching prototype v4:
+  // no bottom tab bar during onboarding or Add (or while this frame is
+  // about to redirect there) — the prototype's own `#scr-add`/`#scr-scan`/
+  // `#scr-manual` never render `.nav`, unlike the four tab screens.
+  const hideTabBar =
+    pathname.startsWith("/onboarding") || pathname.startsWith("/add") || redirectTo !== null;
 
   return (
     <SafeAreaProvider>

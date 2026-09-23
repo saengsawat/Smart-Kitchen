@@ -25,6 +25,7 @@ function freshItem(): MutableItemFixture {
     history: [],
     confirmed: false,
     needsConfirmWhenUnconfirmed: false,
+    productRef: null,
   };
 }
 

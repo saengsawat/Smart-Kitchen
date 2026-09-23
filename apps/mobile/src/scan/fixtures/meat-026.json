@@ -1,0 +1,121 @@
+{
+  "productId": "meat-026",
+  "codes": [
+    {
+      "codeType": "UPC_A",
+      "code": "060000100100"
+    }
+  ],
+  "name": {
+    "value": "Boneless Chicken Breast",
+    "provenance": {
+      "tier": "KNOWN_FACT",
+      "source": "manufacturer-label",
+      "confidence": null,
+      "recordedAt": "2026-08-15T00:00:00.000Z"
+    }
+  },
+  "brand": {
+    "value": "Homestead Poultry",
+    "provenance": {
+      "tier": "KNOWN_FACT",
+      "source": "manufacturer-label",
+      "confidence": null,
+      "recordedAt": "2026-08-15T00:00:00.000Z"
+    }
+  },
+  "packageSize": {
+    "value": {
+      "qty": "1.5",
+      "unit": "lb"
+    },
+    "provenance": {
+      "tier": "KNOWN_FACT",
+      "source": "manufacturer-label",
+      "confidence": null,
+      "recordedAt": "2026-08-15T00:00:00.000Z"
+    }
+  },
+  "nutrition": [
+    {
+      "basis": "PER_SERVING",
+      "values": {
+        "calories": 120,
+        "proteinG": 22,
+        "carbsG": 0,
+        "fatG": 3,
+        "fiberG": 0,
+        "sugarG": 0,
+        "sodiumMg": 70
+      },
+      "provenance": {
+        "tier": "KNOWN_FACT",
+        "source": "manufacturer-label",
+        "confidence": null,
+        "recordedAt": "2026-08-15T00:00:00.000Z"
+      }
+    }
+  ],
+  "screening": {
+    "subjectKind": "PRODUCT",
+    "subjectId": "meat-026",
+    "verdict": "ALLOWED_WITH_UNKNOWNS",
+    "members": [
+      {
+        "memberId": "member-dean",
+        "verdict": "ALLOWED"
+      },
+      {
+        "memberId": "member-maya",
+        "verdict": "ALLOWED_WITH_UNKNOWNS"
+      }
+    ],
+    "evidence": [],
+    "unknowns": [
+      {
+        "memberId": "member-maya",
+        "restrictionId": "maya-peanut",
+        "restrictionLabel": "peanut",
+        "severity": "severe",
+        "reason": "NO_ALLERGEN_DATA",
+        "locus": {
+          "part": "PRODUCT",
+          "ref": "Boneless Chicken Breast"
+        },
+        "detail": "no allergen completeness declaration on file for this item"
+      },
+      {
+        "memberId": "member-maya",
+        "restrictionId": "maya-sesame",
+        "restrictionLabel": "sesame",
+        "severity": "severe",
+        "reason": "NO_ALLERGEN_DATA",
+        "locus": {
+          "part": "PRODUCT",
+          "ref": "Boneless Chicken Breast"
+        },
+        "detail": "no allergen completeness declaration on file for this item"
+      }
+    ],
+    "warnings": [
+      {
+        "code": "NO_SAFETY_GUARANTEE",
+        "severity": "info"
+      },
+      {
+        "code": "SEVERE_ALLERGY_UNKNOWN_DATA",
+        "severity": "critical",
+        "memberId": "member-maya",
+        "restrictionId": "maya-peanut",
+        "restrictionLabel": "peanut"
+      },
+      {
+        "code": "SEVERE_ALLERGY_UNKNOWN_DATA",
+        "severity": "critical",
+        "memberId": "member-maya",
+        "restrictionId": "maya-sesame",
+        "restrictionLabel": "sesame"
+      }
+    ]
+  }
+}

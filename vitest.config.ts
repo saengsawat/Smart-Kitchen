@@ -69,12 +69,30 @@ const expoCryptoMockPath = path.join(
   "expo-crypto-mock.ts",
 );
 
+/**
+ * `expo-camera` (added M3-T4b, rule-11 precedent as `expo-font`/`expo-crypto`,
+ * for `app/add/scan.tsx`'s barcode scanning) gets the same treatment, for the
+ * same empirically-confirmed reason: `ReferenceError: __DEV__ is not defined`
+ * from `expo`'s own `async-require/setup.ts`, reached through expo-camera's
+ * entry point before any test runs. See
+ * `apps/mobile/src/test-support/expo-camera-mock.ts`'s doc comment.
+ */
+const expoCameraMockPath = path.join(
+  repoRoot,
+  "apps",
+  "mobile",
+  "src",
+  "test-support",
+  "expo-camera-mock.ts",
+);
+
 export default defineConfig({
   resolve: {
     alias: {
       ...workspaceSourceAliases,
       "react-native": reactNativeMockPath,
       "expo-crypto": expoCryptoMockPath,
+      "expo-camera": expoCameraMockPath,
     },
   },
   test: {

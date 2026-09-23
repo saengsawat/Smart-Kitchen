@@ -41,6 +41,7 @@
 
 import type {
   ApiErrorBodyDto,
+  CreateItemRequestDto,
   HouseholdDto,
   InventoryItemDetailDto,
   InventoryItemsResponseDto,
@@ -50,6 +51,7 @@ import type {
   MemberDto,
   MemberRestrictionDto,
   OnboardingStateDto,
+  ProductLookupResultDto,
   TransactionActorDto,
   UndoRequestDto,
 } from "@smart-kitchen/contracts";
@@ -60,18 +62,23 @@ import {
   inventoryTransactionUndoPath,
 } from "@smart-kitchen/contracts";
 import { getApiBaseUrl } from "../config/env";
+import { fixtureChenMembers } from "../household/fixture-restrictions";
 import { buildChenInventory } from "../inventory/fixture-household";
 import type { RemovalAction } from "../inventory/transactions";
 import {
   appendCorrection,
   appendRemoval,
   appendUndo,
+  createFixtureItem,
+  nextFixtureItemId,
   toDetailDto,
   toSummaryDto,
   type MutableItemFixture,
 } from "../inventory/ledger";
 import { LedgerRefusedError } from "../inventory/errors";
 import { microsToAmountText, parseMicros } from "../inventory/quantity";
+import { fixtureLookupProduct } from "../scan/fixture-products";
+import { decimalAmountToMicros } from "../scan/quantity";
 import { nextIdempotencyKey } from "./idempotency";
 
 /** The Dean-Chen fixture token (tests/fixtures/identity/README.md). Obviously fake, not a secret. */
@@ -285,6 +292,22 @@ export interface ApiClient {
   undo(itemId: string, transactionId: string): Promise<void>;
   /** S4's "Confirm" action on an AI-tier row: promotes it to Known Fact. Fixture only. */
   confirmAiProposal(itemId: string): Promise<void>;
+  /**
+   * S7/S8: resolves a scanned or typed code to a product plus its household
+   * allergen screening (M3-T4b). The fixture maps a handful of codes to
+   * hand-authored literals (`src/scan/fixture-products.ts`); `HttpApiClient`
+   * rejects until M2-T3 supplies the real endpoint, and S7/S8 show the
+   * copy-deck.md §8 generic fallback for that rejection, same as any other
+   * write failure.
+   */
+  lookupProduct(code: string): Promise<ProductLookupResultDto>;
+  /**
+   * S8/S9: creates a new inventory item, appending its first `PURCHASE`
+   * (barcode) or `INITIAL_STOCK` (manual) row through the fixture ledger so
+   * the item appears in S4 and its history in S5 (M3-T4b). `HttpApiClient`
+   * rejects until M2-T3 supplies the real endpoint.
+   */
+  createItem(input: CreateItemRequestDto): Promise<InventoryItemSummaryDto>;
 }
 
 /**
@@ -312,23 +335,18 @@ export class FixtureApiClient implements ApiClient {
     return new FixtureApiClient(null, new Map());
   }
 
-  /** A household whose S2 gate is already satisfied for every member, with the Chen fixture inventory stocked. */
+  /**
+   * A household whose S2 gate is already satisfied for every member, with
+   * the Chen fixture inventory stocked. Members/restrictions come from
+   * `src/household/fixture-restrictions.ts` (review F8 ruling): the same
+   * one source of truth `packages/adapters/scripts/gen-screening-fixtures.mjs`
+   * reads to build the household the real allergen engine screens S8's
+   * fixture products against, so the two can never silently disagree again.
+   */
   static returningUser(): FixtureApiClient {
     const household = buildFixtureHousehold("The Chens");
-    const [owner, member] = household.members as [MemberDto, MemberDto];
     return new FixtureApiClient(
-      {
-        ...household,
-        members: [
-          { ...owner, noneConfirmed: true },
-          {
-            ...member,
-            restrictions: [
-              { kind: "MAJOR", code: "sesame", label: "sesame", severity: "standard" },
-            ],
-          },
-        ],
-      },
+      { ...household, members: fixtureChenMembers() },
       buildChenInventory(),
     );
   }
@@ -466,6 +484,36 @@ export class FixtureApiClient implements ApiClient {
       const item = this.requireItem(itemId);
       item.confirmed = true;
       return Promise.resolve();
+    } catch (error) {
+      return Promise.reject(toError(error));
+    }
+  }
+
+  lookupProduct(code: string): Promise<ProductLookupResultDto> {
+    return Promise.resolve(fixtureLookupProduct(code));
+  }
+
+  createItem(input: CreateItemRequestDto): Promise<InventoryItemSummaryDto> {
+    try {
+      const itemId = nextFixtureItemId(input.source === "BARCODE" ? "scan" : "manual");
+      const recordedAt = new Date().toISOString();
+      const item = createFixtureItem({
+        itemId,
+        displayName: input.displayName,
+        storageLocation: input.storageLocation,
+        unit: input.unit,
+        amountMicros: decimalAmountToMicros(input.amount),
+        type: input.source === "BARCODE" ? "PURCHASE" : "INITIAL_STOCK",
+        recordedAt,
+        actor: DEAN_ACTOR,
+        quantityProvenance: input.quantityProvenance,
+        lotId: `${itemId}-lot-1`,
+        expiresAt: input.bestByDate ?? null,
+        expiresAtProvenance: input.bestByProvenance ?? null,
+        productRef: input.productRef ?? null,
+      });
+      this.inventory.set(itemId, item);
+      return Promise.resolve(toSummaryDto(item));
     } catch (error) {
       return Promise.reject(toError(error));
     }
@@ -707,6 +755,26 @@ export class HttpApiClient implements ApiClient {
 
   confirmAiProposal(itemId: string): Promise<void> {
     return this.delegate.confirmAiProposal(itemId);
+  }
+
+  /**
+   * No endpoint exists yet (M2-T3). A clear, typed rejection rather than a
+   * silent fixture fallback, per BACKLOG.md M3-T4b Objective (e): S7/S8
+   * catch this the same way every other write failure is caught
+   * (`messageForLedgerError`), rendering copy-deck.md §8's generic fallback.
+   */
+  lookupProduct(code: string): Promise<ProductLookupResultDto> {
+    return Promise.reject(
+      new Error(`lookupProduct(${code}) is not available yet: the real endpoint lands in M2-T3.`),
+    );
+  }
+
+  /** Same "not available yet" rejection as {@link lookupProduct}, see its doc comment. */
+  createItem(input: CreateItemRequestDto): Promise<InventoryItemSummaryDto> {
+    void input;
+    return Promise.reject(
+      new Error("createItem is not available yet: the real endpoint lands in M2-T3."),
+    );
   }
 }
 
