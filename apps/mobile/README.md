@@ -5,10 +5,11 @@ the app scaffold, design tokens, the tab shell and a fixture `ApiClient`;
 M3-T2 added onboarding (S1 account + household, S2 allergies); M3-T3 added
 the inventory list (S4), item detail with ledger history (S5), the provenance
 legend, and an `HttpApiClient` that can read the real inventory list over the
-network (see "Pointing the app at a local API" below). Write actions
-(corrections, removals, undo, AI confirmation) and household/onboarding state
-stay fixture-only until M2-T2/M2-T3 add their endpoints; no real auth yet
-(D-022).
+network (see "Pointing the app at a local API" below); M3-T4a wired
+corrections, removals, undo and AI confirmation to the M2-T2 write endpoints
+over that same client. Household/onboarding state stays fixture-only until
+M2-T3 adds its endpoints; no real auth yet (D-022). M3-T4c added a web
+target (see "Run it in a browser" below) alongside the existing phone path.
 
 ## Run it (Windows, Andy's machine)
 
@@ -23,6 +24,63 @@ pnpm --filter mobile start
 This starts the Expo dev server and prints a QR code in the terminal. Press
 `w` to open the web build in a browser, or scan the QR code from a phone (see
 below).
+
+### Why `EXPO_NO_TYPESCRIPT_SETUP=1`
+
+`start`/`android`/`ios` set `EXPO_NO_TYPESCRIPT_SETUP=1` inline before the
+`expo` command. Without it, the Expo CLI's first-run "TypeScript setup" step
+rewrites `apps/mobile/tsconfig.json` (adding `extends: expo/tsconfig.base`
+and `.expo/types` to `include`, and stripping the M3-T1/M3-T4b comments that
+explain why this file deliberately does not extend the workspace base
+config) and writes a generated `apps/mobile/.gitignore`, every single time
+the dev server starts. Both are tracked files; a background dev server
+should never be the reason `git status` shows a diff. The env var makes the
+CLI print `Skipping TypeScript setup: EXPO_NO_TYPESCRIPT_SETUP is enabled.`
+and leave both files alone. `apps/mobile/src/lint-rules/start-script-env.test.ts`
+pins the var onto all three scripts so a future edit can't drop it silently.
+
+This only works identically on Windows and in CI because of the root
+`.npmrc`: pnpm's `shell-emulator=true` runs package.json scripts through
+pnpm's own bash-like shell instead of the OS shell, so `VAR=value command`
+(the everyday POSIX way to scope one env var to one command) parses the same
+way on Andy's machine as it does in CI's Ubuntu bash. No `cross-env`
+dependency was added for this (CLAUDE.md rule 11: `shell-emulator` is a pnpm
+feature, not a package).
+
+## Run it in a browser (M3-T4c)
+
+Same command as above (`pnpm --filter mobile start`), then press `w` in the
+terminal, or open the URL it prints (typically `http://localhost:8081`) in
+Chrome or Edge directly. `react-native-web` and `react-dom` (SDK 57's Expo
+web pair, added this ticket) back the web build; `app.json`'s `web.bundler`
+was already `"metro"` (the SDK 57 default, set at M3-T1) and `web.output` is
+now `"single"` (a plain client-side bundle: this app has no server-rendered
+routes, so there is nothing for Expo Router's default static-prerendering
+output mode to buy it, and prerendering would additionally require every
+screen to also run in a Node SSR context, which is never true here).
+
+Every route in the app (onboarding S1/S2, Home, Inventory list, item detail
+and history, Add hub, Manual add, Scan (the permission/typed-fallback path is
+expected on web, since browsers do not grant `expo-camera` access the same
+way a phone does) and the provenance Legend) bundles and renders on web the
+same as on a phone: no screen branches on `Platform.OS === "web"` to change
+allergen or provenance rendering, only (where needed) layout.
+
+**A known local caveat (Windows + OneDrive, Andy's machine).** If
+`pnpm --filter mobile export` fails with an `EINVAL`/`readlink` error naming
+some unrelated file under `node_modules/.pnpm/...`, that is OneDrive Files
+On-Demand racing Metro's web file-crawler on this exact folder (it is synced
+by OneDrive, and the crawler occasionally misreads OneDrive's own
+reparse-point bookkeeping on an ordinary file as a symlink, then fails to
+`readlink()` it, which is fatal to `export` though not to the dev server).
+It reproduces intermittently, on a different file each time, is not caused
+by anything in this app's code, dependencies, or config, and could not be
+worked around from within this ticket's file scope (see
+`docs/handoff/M3-T4c.worker.md` for what was tried). `pnpm --filter mobile
+start` (this section, above) does not hit it the same way and is the
+reliable way to check a screen in a browser locally; CI's export smoke check
+runs on Linux, which has no OneDrive and no NTFS reparse points, so it is not
+expected to see this.
 
 ## Run it on Dean's phone (Expo Go, same Wi-Fi, no tunnel, no account)
 
@@ -75,12 +133,16 @@ the one file in this app allowed to read `process.env` (eslint.config.js
 carries a matching single-file exemption). Nothing else in the app touches
 it directly.
 
-Everything else on the `ApiClient` port (single-item detail/history,
-onboarding/household state, and every write: corrections, removals, undo, AI
-confirmation) stays fixture-backed in this app even with
-`EXPO_PUBLIC_API_URL` set. `HttpApiClient` delegates those calls internally
-(see that class's doc comment in `src/api/client.ts`); wiring them to the API
-is M3-T4's job.
+The same `HttpApiClient` also carries the item detail/history read and every
+write M2-T2 exposes (corrections, removals, undo) over real `fetch` calls,
+wired in M3-T4a; nothing about writes changes based on this section, they
+just ride the same `EXPO_PUBLIC_API_URL` switch as the list read. Only
+onboarding/household state and `confirmAiProposal` (AI-tier confirmation)
+still delegate to an internal fixture client even with the variable set:
+those wait on the M2-T3 endpoints (see that class's doc comment in
+`src/api/client.ts` for the exact split). Leave the variable unset (the
+default) and every one of those calls, reads and writes alike, stays
+fixture-backed: in-memory, no network, nothing persists across a restart.
 
 **Giving a local API something to show (M2-T2).** A freshly migrated database
 holds no inventory, so the list arrives empty. `pnpm --filter api db:seed:fixture`
