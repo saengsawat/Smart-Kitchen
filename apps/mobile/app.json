@@ -24,7 +24,8 @@
       "package": "app.smartkitchen.dev"
     },
     "web": {
-      "bundler": "metro"
+      "bundler": "metro",
+      "output": "single"
     },
     "experiments": {
       "typedRoutes": true

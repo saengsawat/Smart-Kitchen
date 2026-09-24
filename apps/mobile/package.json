@@ -5,10 +5,10 @@
   "description": "Expo/React Native client (ADR-001: Expo/React Native, D-005). M3-T1 scaffold: tokens, tab shell, fixture API client.",
   "main": "expo-router/entry",
   "scripts": {
-    "start": "expo start",
-    "android": "expo start --android",
-    "ios": "expo start --ios",
-    "export": "expo export --platform android --platform ios --output-dir dist",
+    "start": "EXPO_NO_TYPESCRIPT_SETUP=1 expo start",
+    "android": "EXPO_NO_TYPESCRIPT_SETUP=1 expo start --android",
+    "ios": "EXPO_NO_TYPESCRIPT_SETUP=1 expo start --ios",
+    "export": "expo export --platform android --platform ios --platform web --output-dir dist",
     "typecheck": "tsc -b --pretty"
   },
   "dependencies": {
@@ -22,9 +22,11 @@
     "expo-linking": "~57.0.10",
     "expo-router": "~57.0.22",
     "react": "19.2.3",
+    "react-dom": "19.2.3",
     "react-native": "0.86.3",
-    "react-native-safe-area-context": "5.10.0",
-    "react-native-screens": "4.28.0"
+    "react-native-safe-area-context": "5.7.0",
+    "react-native-screens": "4.26.2",
+    "react-native-web": "0.21.2"
   },
   "devDependencies": {
     "@testing-library/react-native": "9.2.0",

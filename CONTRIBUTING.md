@@ -171,7 +171,8 @@ pnpm --filter mobile start
 
 Full instructions, including how to load it on a phone over the same Wi-Fi
 in Expo Go (no tunnel, no Expo account, no paid resource, per CLAUDE.md rule 17)
-are in [apps/mobile/README.md](apps/mobile/README.md).
+or in a browser (`pnpm --filter mobile start`, then press `w`; M3-T4c), are
+in [apps/mobile/README.md](apps/mobile/README.md).
 
 `pnpm --filter mobile export` is the same export smoke check CI runs as part
 of the `quality` job.
