@@ -23,8 +23,8 @@
     "expo-router": "~57.0.22",
     "react": "19.2.3",
     "react-native": "0.86.3",
-    "react-native-safe-area-context": "5.10.0",
-    "react-native-screens": "4.28.0"
+    "react-native-safe-area-context": "5.7.0",
+    "react-native-screens": "4.26.2"
   },
   "devDependencies": {
     "@testing-library/react-native": "9.2.0",
