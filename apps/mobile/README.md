@@ -70,7 +70,10 @@ before M3-T4c counts as verified end to end. On web, expect the camera scan
 screen to land on its permission or typed-code fallback path; that is a
 guess until the walk confirms it.
 
-**A known local caveat (Windows + OneDrive, Andy's machine).** If
+**A known local caveat (Windows + OneDrive).** Development moved to
+`D:_Smart-Kitchen`, outside OneDrive, on 2026-09-24; from there web bundling
+and export work. Kept for the record in case a checkout ends up under
+OneDrive again. If
 `pnpm --filter mobile export` fails with an `EINVAL`/`readlink` error naming
 some file under `node_modules/.pnpm/...`, or the web bundle fails with
 `Unable to resolve "./location/install"` (or another file that plainly exists),
