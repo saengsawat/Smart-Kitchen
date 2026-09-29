@@ -52,3 +52,14 @@ moduleWithLoad._load = function patchedLoad(
 // warns "not configured to support act(...)" otherwise; @testing-library/
 // react-native wraps every interaction in `act` but does not set the flag.
 (globalThis as unknown as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+
+// RN/Metro's dev-mode global (review round 1, F11): genuinely undefined
+// under vitest (no Metro ever runs), which would hide any `__DEV__`-gated
+// affordance (e.g. `app/shopping.tsx`'s "Simulate offline" toggle) from
+// every component test by default. `true` is the closest test-environment
+// analogue of "a dev build" (`pnpm test`/`pnpm start` both run under
+// development, never a release bundle), so this is the sensible shared
+// default; the one test that specifically proves a `__DEV__`-gated
+// affordance is *absent* in a release build overrides this to `false` for
+// its own duration and restores it afterward.
+(globalThis as unknown as { __DEV__?: boolean }).__DEV__ = true;

@@ -25,6 +25,16 @@ export const GENERIC_LEDGER_ERROR_MESSAGE =
   "Something went wrong saving that. Try again, and tell us if it keeps happening.";
 
 /**
+ * A read-failure counterpart to {@link GENERIC_LEDGER_ERROR_MESSAGE} (review
+ * round 1, F13): "saving that" is wrong copy for a load failure (S11's
+ * `getShoppingList` rejecting, e.g. `HttpApiClient`'s M7 "not available yet"
+ * path). PROPOSED, not yet in copy-deck.md §8 — the architect adds it there
+ * at acceptance (this worker's report proposes the exact string).
+ */
+export const GENERIC_READ_ERROR_MESSAGE =
+  "Something went wrong loading that. Try again, and tell us if it keeps happening.";
+
+/**
  * The three API-level codes copy-deck.md §8's "API-level refusals"
  * paragraph adds, none of which is a `LedgerErrorCodeDto`: `NOT_FOUND` and
  * `UNDO_NOT_POSSIBLE` are `ApiErrorCode`s the ledger never produces (an
