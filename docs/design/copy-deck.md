@@ -442,6 +442,8 @@ Source of truth is prototype v4 unless marked *new*. The S2 gate and the "none" 
 - card "Join with a code" · placeholder "Join code, for example CHEN-482" · button "Join household"
 - *new* validation "Enter a household name to continue." · "Household name must be 60 characters or fewer." · join-code error "That code didn't match a household. Check it with whoever invited you."
 
+- **Added at M3-T4d acceptance (2026-09-29), HTTP path only:** after a successful create, S1 shows once "Household created. Your join code: {code}. Save it to invite others." with the action **Continue** (the code is returned by the server exactly once and is never shown again until the profile screen, M3-T6). The fixture path goes straight to S2 as before. A failed household read anywhere in onboarding shows "Couldn't load your household." plus the §8 read fallback and **Try again**; the app never renders a destination on a failed read (the S2 gate fails closed). A household name outside 1 to 60 characters shows the §8 string. Over HTTP the S2 member headings and "No known allergies for {member}" render initials (for example "DC") because the server sends no full name (M2-T3).
+
 ### S2 · Allergies (per member; owner enters for all, OQ-D5 default)
 
 - Heading "Allergies" · helper "Required for every member before recipes can be screened. We can only warn about what you tell us, so an honest "none" is as useful as a real allergy. Preferences below are optional."
