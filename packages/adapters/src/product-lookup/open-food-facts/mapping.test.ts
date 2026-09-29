@@ -267,6 +267,12 @@ describe("outcome mapping", () => {
     ["200 with an unknown status value", 200, JSON.stringify({ status: 2, product: {} })],
     ["404 with an HTML page (a wrong base URL)", 404, "<html>Not Found</html>"],
     ["404 with JSON that is not OFF's miss", 404, JSON.stringify({ error: "nope" })],
+    // Review F1: a 404 carrying a found-product body is never a hit.
+    [
+      "404 with a status 1 product body",
+      404,
+      JSON.stringify({ status: 1, product: { product_name: "X" } }),
+    ],
     [
       "a body naming a different product",
       200,

@@ -33,6 +33,24 @@ describe("OFF allergen tag map vs the domain taxonomy", () => {
     for (const [tag] of mapEntries) expect(tag).toMatch(/^en:[a-z]+(?:-[a-z]+)*$/);
   });
 
+  it("is exactly this map: any entry removed or changed is a visible test change (review F2)", () => {
+    // Removing `en:molluscs` would turn a mollusc CONTAINS tag into an
+    // unknown, so a shellfish allergy would read ALLOWED_WITH_UNKNOWNS
+    // instead of BLOCKED. Narrowing this map must never pass silently.
+    expect(OFF_ALLERGEN_TAG_MAP).toEqual({
+      "en:peanuts": "peanut",
+      "en:nuts": "tree_nut",
+      "en:milk": "milk",
+      "en:eggs": "egg",
+      "en:fish": "fish",
+      "en:crustaceans": "shellfish",
+      "en:molluscs": "shellfish",
+      "en:soybeans": "soy",
+      "en:sesame-seeds": "sesame",
+      "en:coconut": "tree_nut",
+    });
+  });
+
   it("covers every major allergen except wheat, which OFF only reports as `en:gluten` (deliberately unmapped)", () => {
     const reached = new Set(Object.values(OFF_ALLERGEN_TAG_MAP));
     const missing = MAJOR_ALLERGEN_CODES.filter((code) => !reached.has(code));

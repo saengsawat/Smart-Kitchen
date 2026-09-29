@@ -129,20 +129,24 @@ export class OpenFoodFactsProductLookupPort implements ProductLookupPort {
       );
     }
 
-    const cached = this.cache.get(code.code);
+    // Review F3: one product, one entry. `096619555505` and `0096619555505`
+    // are the same GTIN (OFF normalizes both to 13 digits), so they share one
+    // cache entry, one in-flight request and one budget slot.
+    const key = cacheKey(code.code);
+    const cached = this.cache.get(key);
     if (cached !== undefined) return Promise.resolve(withCode(code, cached));
 
-    const pending = this.inFlight.get(code.code);
-    if (pending !== undefined) return pending.then((result) => ({ ...result, code }));
+    const pending = this.inFlight.get(key);
+    if (pending !== undefined) return pending.then((result) => restamp(code, result));
 
-    const request = this.send(code).finally(() => {
-      this.inFlight.delete(code.code);
+    const request = this.send(code, key).finally(() => {
+      this.inFlight.delete(key);
     });
-    this.inFlight.set(code.code, request);
+    this.inFlight.set(key, request);
     return request;
   }
 
-  private async send(code: ProductCode): Promise<ResolveResult> {
+  private async send(code: ProductCode, key: string): Promise<ResolveResult> {
     if (this.now() < this.cooldownUntil) {
       return errorResult(code, {
         code: "UPSTREAM_RATE_LIMITED",
@@ -205,7 +209,7 @@ export class OpenFoodFactsProductLookupPort implements ProductLookupPort {
       });
     }
     if (mapped.status === "error") return errorResult(code, mapped.error);
-    this.cache.set(code.code, mapped, mapped.status === "hit" ? this.hitTtlMs : this.notFoundTtlMs);
+    this.cache.set(key, mapped, mapped.status === "hit" ? this.hitTtlMs : this.notFoundTtlMs);
     return withCode(code, mapped);
   }
 }
@@ -214,8 +218,34 @@ function errorResult(code: ProductCode, error: AdapterError): ResolveResult {
   return { status: "error", code, error };
 }
 
+/**
+ * The cache and in-flight key: the 13-digit GTIN form for 9 to 13 digit
+ * codes (OFF's own normalization), EAN-8 unchanged.
+ */
+export function cacheKey(digits: string): string {
+  return digits.length > 8 && digits.length <= 13 ? digits.padStart(13, "0") : digits;
+}
+
+/**
+ * A shared entry answers with the identity of the code *this* caller asked
+ * for (id and codes), so which spelling filled the cache never leaks into
+ * another caller's `productId`.
+ */
 function withCode(code: ProductCode, outcome: CachedOutcome): ResolveResult {
   return outcome.status === "hit"
-    ? { status: "hit", code, product: outcome.product }
+    ? {
+        status: "hit",
+        code,
+        product: {
+          ...outcome.product,
+          id: code.code,
+          codes: [{ codeType: code.codeType, code: code.code }],
+        },
+      }
     : { status: "not-found", code };
+}
+
+function restamp(code: ProductCode, result: ResolveResult): ResolveResult {
+  if (result.status === "error") return { ...result, code };
+  return withCode(code, result);
 }

@@ -383,6 +383,53 @@ describe("in-memory cache (TTL and key)", () => {
   });
 });
 
+describe("one GTIN, one cache entry (review F3)", () => {
+  const UPC: ProductCode = { codeType: "UPC_A", code: "096619555505" };
+  const EAN: ProductCode = { codeType: "EAN13", code: "0096619555505" };
+
+  it("the 12 and 13 digit spellings share one entry and one upstream request, each answered with its own identity", async () => {
+    const { fetch, sent } = stubFetch(replay("full-peanut-butter.json"));
+    const port = new OpenFoodFactsProductLookupPort({
+      fetch,
+      throttle: { limit: 1, windowMs: 60_000 },
+    });
+    const first = await port.resolve(UPC);
+    const second = await port.resolve(EAN);
+
+    expect(sent).toHaveLength(1);
+    expect(first.status === "hit" && first.product.id).toBe("096619555505");
+    expect(second.status === "hit" && second.product.id).toBe("0096619555505");
+    expect(second.status === "hit" && second.product.codes).toEqual([EAN]);
+    expect(second.code).toEqual(EAN);
+  });
+
+  it("concurrent lookups of the two spellings send one request", async () => {
+    let release: () => void = () => {};
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const { fetch, sent } = stubFetch(async () => {
+      await gate;
+      return replay("full-peanut-butter.json")();
+    });
+    const port = new OpenFoodFactsProductLookupPort({ fetch });
+    const a = port.resolve(UPC);
+    const b = port.resolve(EAN);
+    release();
+    const [ra, rb] = await Promise.all([a, b]);
+    expect(sent).toHaveLength(1);
+    expect(ra.status === "hit" && ra.product.id).toBe("096619555505");
+    expect(rb.status === "hit" && rb.product.id).toBe("0096619555505");
+  });
+
+  it("the key is the 13-digit form for 9 to 13 digits; EAN-8 stays as is", async () => {
+    const { cacheKey } = await import("./open-food-facts-port.js");
+    expect(cacheKey("096619555505")).toBe("0096619555505");
+    expect(cacheKey("0096619555505")).toBe("0096619555505");
+    expect(cacheKey("96385074")).toBe("96385074");
+  });
+});
+
 describe("in-flight de-duplication", () => {
   it("two concurrent lookups of one code send one request", async () => {
     let release: () => void = () => {};
