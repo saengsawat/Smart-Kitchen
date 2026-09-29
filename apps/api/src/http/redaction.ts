@@ -43,6 +43,9 @@ export const REDACTED_EMAIL = "[redacted-email]";
 /** Replacement written in place of a bearer credential found inside a string. */
 export const REDACTED_TOKEN = "Bearer [redacted]";
 
+/** Replacement written in place of a household join code found inside a string (M2-T3). */
+export const REDACTED_JOIN_CODE = "[redacted-join-code]";
+
 /**
  * Keys redacted on an exact (normalised) match.
  *
@@ -105,6 +108,9 @@ const DENIED_KEYS: ReadonlySet<string> = new Set([
   "query",
   "querystring",
   "params",
+  // Household join codes (M2-T3): never logged, in any form.
+  "code",
+  "codes",
 ]);
 
 /**
@@ -124,6 +130,9 @@ const DENIED_KEY_SUBSTRINGS: readonly string[] = [
   "authorization",
   "bearer",
   "allerg",
+  // M2-T3: `joinCode`, `plaintextJoinCode`, `codeHash`, `joinCodeHash`.
+  "joincode",
+  "codehash",
 ];
 
 /** Normalises a property name for denylist matching. */
@@ -157,9 +166,20 @@ const EMAIL_PATTERN = /[^\s"'<>(),;:/\\]+@[^\s"'<>(),;:/\\]+\.[a-z]{2,}/gi;
 /** `Bearer <credential>` anywhere in a string, however it got there. */
 const BEARER_PATTERN = /\bbearer\s+[^\s"']+/gi;
 
+/**
+ * Anything shaped like a household join code (`CHEN-482`), in either case
+ * (M2-T3). A code has a syntax, so like an email it is caught by shape as
+ * well as by key. Four letters and exactly three digits, bounded, so a uuid
+ * segment (hex, four characters either side) does not match.
+ */
+const JOIN_CODE_SHAPE = /\b[a-z]{4}-[0-9]{3}\b/gi;
+
 /** Scrubs personal-data shapes out of a single string value. */
 export function redactString(value: string): string {
-  return value.replace(BEARER_PATTERN, REDACTED_TOKEN).replace(EMAIL_PATTERN, REDACTED_EMAIL);
+  return value
+    .replace(BEARER_PATTERN, REDACTED_TOKEN)
+    .replace(EMAIL_PATTERN, REDACTED_EMAIL)
+    .replace(JOIN_CODE_SHAPE, REDACTED_JOIN_CODE);
 }
 
 /** The shape an `Error` is reduced to in a log record. */

@@ -82,3 +82,22 @@ export {
   type ScannedProductDto,
 } from "./products.js";
 export { UNIT_KINDS_DTO, UNITS_BY_KIND_DTO, type UnitKindDto } from "./units.js";
+export {
+  HOUSEHOLD_JOIN_CODE_PATH,
+  HOUSEHOLD_JOIN_PATH,
+  HOUSEHOLD_ME_PATH,
+  HOUSEHOLD_MINE_PATH,
+  HOUSEHOLD_NAME_MAX_LENGTH,
+  HOUSEHOLDS_PATH,
+  type CreateHouseholdRequestDto,
+  type CreateHouseholdResponseDto,
+  type HouseholdMemberSummaryDto,
+  type HouseholdMembershipDto,
+  type HouseholdMembershipsResponseDto,
+  type HouseholdSummaryDto,
+  type JoinCodeDto,
+  type JoinHouseholdRequestDto,
+  type JoinHouseholdResponseDto,
+  type RotateJoinCodeResponseDto,
+} from "./household.js";
+export { CREATE_ITEM_UNITS_DTO } from "./inventory.js";

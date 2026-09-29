@@ -14,7 +14,7 @@
 
 import { describe, expect, it } from "vitest";
 import { lookupUnit, UNIT_KINDS } from "@smart-kitchen/domain";
-import { UNIT_KINDS_DTO, UNITS_BY_KIND_DTO } from "@smart-kitchen/contracts";
+import { CREATE_ITEM_UNITS_DTO, UNIT_KINDS_DTO, UNITS_BY_KIND_DTO } from "@smart-kitchen/contracts";
 
 describe("unit contracts vs domain unit registry", () => {
   it("UNIT_KINDS_DTO equals the domain's UNIT_KINDS, in the same order", () => {
@@ -41,5 +41,25 @@ describe("unit contracts vs domain unit registry", () => {
     for (const kind of UNIT_KINDS_DTO) {
       expect(UNITS_BY_KIND_DTO[kind].length).toBeGreaterThan(0);
     }
+  });
+});
+
+describe("M2-T3: the unit list POST /v1/inventory/items validates against", () => {
+  it("is exactly the S9 picker's units, flattened in kind order", () => {
+    expect(CREATE_ITEM_UNITS_DTO).toEqual(
+      UNIT_KINDS_DTO.flatMap((kind) => UNITS_BY_KIND_DTO[kind]),
+    );
+  });
+
+  it("every entry resolves in the domain registry, to a registered kind", () => {
+    for (const unit of CREATE_ITEM_UNITS_DTO) {
+      const resolved = lookupUnit(unit);
+      expect(resolved.ok, `lookupUnit(${unit}) should resolve`).toBe(true);
+      if (resolved.ok) expect(UNIT_KINDS).toContain(resolved.value.kind);
+    }
+  });
+
+  it("has no duplicates, so no unit is accepted under two spellings by accident", () => {
+    expect(new Set(CREATE_ITEM_UNITS_DTO).size).toBe(CREATE_ITEM_UNITS_DTO.length);
   });
 });

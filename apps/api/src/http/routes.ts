@@ -32,13 +32,17 @@ import {
   INVENTORY_ITEMS_PATH,
   INVENTORY_TRANSACTION_UNDO_ROUTE,
   INVENTORY_WRITE_TYPES_DTO,
+  type CreateItemRequestDto,
   type InventoryItemDetailDto,
+  type InventoryItemSummaryDto,
   type InventoryItemsResponseDto,
   type InventoryWriteRequestDto,
   type InventoryWriteResponseDto,
   type UndoRequestDto,
 } from "@smart-kitchen/contracts";
+import { randomUUID } from "node:crypto";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
+import { createInventoryItemWithStock } from "../db/inventory/create-service.js";
 import { readInventoryItemDetail } from "../db/inventory/detail.js";
 import { readInventorySnapshot } from "../db/inventory/snapshot.js";
 import {
@@ -50,6 +54,7 @@ import {
   type InventoryWriteResult,
 } from "../db/inventory/write-service.js";
 import { householdRoute, publicRoute, requireSession } from "./authorization.js";
+import { registerHouseholdRoutes, type HouseholdRouteDeps } from "./household-routes.js";
 import {
   ledgerErrorResponse,
   notVisibleResponse,
@@ -59,6 +64,12 @@ import type { TenantSessionRunner } from "./tenant-session.js";
 
 export interface RouteDeps {
   readonly tenantSession: TenantSessionRunner;
+  /**
+   * The household endpoints (M2-T3). Optional so a suite that exercises only
+   * the inventory routes need not build a join-code hasher; the composition
+   * root always supplies it.
+   */
+  readonly households?: Omit<HouseholdRouteDeps, "tenantSession">;
 }
 
 /** Path parameters are `uuid` columns; anything else names no row. */
@@ -107,6 +118,54 @@ const UNDO_BODY_SCHEMA = {
   properties: {
     idempotencyKey: { type: "string", minLength: 1, maxLength: 128 },
     occurredAt: { type: "string", minLength: 1, maxLength: 64 },
+  },
+} as const;
+
+/** A provenance block as `FieldProvenanceDto` carries it: all four keys, by shape only. */
+const PROVENANCE_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  required: ["tier", "source", "confidence", "recordedAt"],
+  properties: {
+    tier: { type: "string", enum: ["KNOWN_FACT", "ESTIMATED", "AI_INTERPRETATION"] },
+    source: { type: ["string", "null"], maxLength: 200 },
+    confidence: { type: ["string", "null"], maxLength: 32 },
+    recordedAt: { type: ["string", "null"], maxLength: 64 },
+  },
+} as const;
+
+/**
+ * Create body (M2-T3 (e)), by shape only, with the same "reject, never strip"
+ * rule as the write body. Every judgement about the values (name, unit,
+ * amount, tier, best-by pairing) is `create-service.ts`'s, so the refusals
+ * carry ledger codes a screen can map.
+ */
+const CREATE_ITEM_BODY_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  required: [
+    "idempotencyKey",
+    "source",
+    "displayName",
+    "storageLocation",
+    "unit",
+    "amount",
+    "quantityProvenance",
+  ],
+  properties: {
+    idempotencyKey: { type: "string", minLength: 1, maxLength: 128 },
+    source: { type: "string", enum: ["BARCODE", "MANUAL"] },
+    displayName: { type: "string", minLength: 1, maxLength: 200 },
+    storageLocation: { type: "string", enum: ["FRIDGE", "FREEZER", "PANTRY", "OTHER"] },
+    // Not an enum here: the unit rule lives in one place (`planCreation`,
+    // against CREATE_ITEM_UNITS_DTO and the domain registry) and answers with a
+    // ledger code the screen can map, rather than a generic 400.
+    unit: { type: "string", minLength: 1, maxLength: 16 },
+    amount: { type: "string", minLength: 1, maxLength: 64 },
+    quantityProvenance: PROVENANCE_SCHEMA,
+    productRef: { type: "string", minLength: 1, maxLength: 128 },
+    bestByDate: { type: ["string", "null"], maxLength: 64 },
+    bestByProvenance: { anyOf: [{ type: "null" }, PROVENANCE_SCHEMA] },
   },
 } as const;
 
@@ -197,6 +256,55 @@ export function registerRoutes(app: FastifyInstance, deps: RouteDeps): void {
     },
   );
 
+  app.post(
+    INVENTORY_ITEMS_PATH,
+    { config: { authorization: householdRoute() }, schema: { body: CREATE_ITEM_BODY_SCHEMA } },
+    async (request, reply): Promise<InventoryItemSummaryDto | undefined> => {
+      const session = requireSession(request);
+      const body = request.body as CreateItemRequestDto;
+      try {
+        const result = await deps.tenantSession.write(session, (client) =>
+          createInventoryItemWithStock(
+            client,
+            session.householdId,
+            {
+              idempotencyKey: body.idempotencyKey,
+              source: body.source,
+              displayName: body.displayName,
+              storageLocation: body.storageLocation,
+              unit: body.unit,
+              amount: body.amount,
+              quantityProvenance: body.quantityProvenance,
+              ...(body.productRef === undefined ? {} : { productRef: body.productRef }),
+              ...(body.bestByDate === undefined ? {} : { bestByDate: body.bestByDate }),
+              ...(body.bestByProvenance === undefined
+                ? {}
+                : { bestByProvenance: body.bestByProvenance }),
+              recordedAt: new Date().toISOString(),
+              actorUserId: session.userId,
+            },
+            // Server-minted, so a caller can neither choose nor collide with an id.
+            { itemId: randomUUID(), lotId: randomUUID() },
+          ),
+        );
+        request.log.info(
+          {
+            routePath: request.routeOptions.url ?? "(no route)",
+            rows: result.replayed ? 0 : 1,
+            replayed: result.replayed,
+          },
+          "inventory.item.created",
+        );
+        // Sent explicitly: a Fastify reply is thenable, so awaiting a bare
+        // `reply.code(...)` would wait for a response not yet sent.
+        await reply.code(result.replayed ? 200 : 201).send(result.summary);
+        return undefined;
+      } catch (error) {
+        return answerFailure(request, reply, error);
+      }
+    },
+  );
+
   app.get(
     INVENTORY_ITEM_ROUTE,
     { config: { authorization: householdRoute() } },
@@ -277,4 +385,8 @@ export function registerRoutes(app: FastifyInstance, deps: RouteDeps): void {
       }
     },
   );
+
+  if (deps.households !== undefined) {
+    registerHouseholdRoutes(app, { ...deps.households, tenantSession: deps.tenantSession });
+  }
 }

@@ -28,7 +28,7 @@ import {
   loadFixtureIdentityData,
   type FixtureIdentityData,
 } from "./fixture-identity-port.js";
-import type { IdentityPort } from "./types.js";
+import type { IdentityPort, MembershipDirectory } from "./types.js";
 
 /** Environment variable naming the adapter to register. */
 export const IDENTITY_ENV_VAR = "SK_IDENTITY";
@@ -126,6 +126,12 @@ export function chooseIdentityAdapter(env: EnvironmentLike): typeof FIXTURE_IDEN
 export interface SelectIdentityPortOptions {
   /** Pre-loaded fixture map, so tests can avoid the filesystem. */
   readonly fixtureData?: FixtureIdentityData;
+  /**
+   * Database-backed memberships (M2-T3). The composition root always passes
+   * one, so a household created or joined over HTTP takes effect on the next
+   * request; tests without a database leave it out.
+   */
+  readonly memberships?: MembershipDirectory;
 }
 
 /** Chooses and constructs the identity adapter for this process. */
@@ -135,5 +141,8 @@ export async function selectIdentityPort(
 ): Promise<IdentityPort> {
   chooseIdentityAdapter(env);
   const data = options.fixtureData ?? (await loadFixtureIdentityData());
-  return createFixtureIdentityPort(data);
+  return createFixtureIdentityPort(
+    data,
+    options.memberships === undefined ? {} : { memberships: options.memberships },
+  );
 }

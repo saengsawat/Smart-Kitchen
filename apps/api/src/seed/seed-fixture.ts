@@ -18,7 +18,10 @@
  *
  * It is safe to run repeatedly: identities insert with `ON CONFLICT DO
  * NOTHING`, and the inventory skips any item it already wrote (the ids are
- * derived, so "already wrote" is decidable). Rows belonging to anything other
+ * derived, so "already wrote" is decidable). M2-T3 adds the household-less
+ * `fixture.new.user` (a `users` row, no membership) and the Chen household's
+ * join code `CHEN-482`, stored as a hash and written only while the household
+ * has no live code (`fixture-join-code.ts`). Rows belonging to anything other
  * than the fixture households are never read, updated or deleted; the seed only
  * ever inserts.
  *
@@ -30,6 +33,7 @@
 
 import { pathToFileURL } from "node:url";
 import { Pool } from "pg";
+import { createJoinCodeHasher, resolveJoinCodePepper } from "../db/households/join-code.js";
 import {
   isFixtureEnvironmentPermitted,
   loadFixtureIdentityData,
@@ -38,6 +42,7 @@ import {
 } from "../identity/index.js";
 import { seedFixtureIdentities } from "../identity/test-support/seed-fixture-identities.js";
 import { seedChenInventory } from "./fixture-inventory.js";
+import { seedChenJoinCode } from "./fixture-join-code.js";
 
 /** Where the seed reports. Injected so tests never write to the real console. */
 export interface SeedIo {
@@ -98,12 +103,23 @@ export async function runFixtureSeed(
     return 1;
   }
 
+  let hasher;
+  try {
+    hasher = createJoinCodeHasher(resolveJoinCodePepper(env));
+  } catch (error) {
+    io.error(`smart-kitchen seed: ${error instanceof Error ? error.message : String(error)}`);
+    return 1;
+  }
+
   const pool = new Pool({ connectionString });
   try {
     await seedFixtureIdentities(pool, data);
+    const joinCode = await seedChenJoinCode(pool, household.householdId, owner.userId, hasher);
     const summary = await seedChenInventory(pool, household.householdId, owner.userId);
+    // Never the code itself, even this public one: no output path prints a code.
     io.out(
-      `smart-kitchen seed: identities ready; inventory items created ` +
+      `smart-kitchen seed: identities ready; join code ` +
+        `${joinCode.issued ? "issued" : "already present or rotated"}; inventory items created ` +
         `${String(summary.itemsCreated)}, already present ${String(summary.itemsAlreadyPresent)}, ` +
         `ledger rows appended ${String(summary.rowsAppended)}.`,
     );

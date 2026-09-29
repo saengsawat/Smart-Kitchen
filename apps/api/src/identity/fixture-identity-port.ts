@@ -20,7 +20,17 @@
 
 import { readFile } from "node:fs/promises";
 import { IDENTITY_SESSIONS_FIXTURE_PATH } from "./fixture-paths.js";
-import { isHouseholdRole, type HouseholdRole, type IdentityPort, type Session } from "./types.js";
+import {
+  isHouseholdRole,
+  orderMemberships,
+  sessionFor,
+  type Caller,
+  type HouseholdRole,
+  type IdentityPort,
+  type Membership,
+  type MembershipDirectory,
+  type Session,
+} from "./types.js";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -48,10 +58,28 @@ export interface FixtureSession {
   readonly email: string;
 }
 
+/**
+ * A fixture sign-in with no household yet (M2-T3: `fixture.new.user`).
+ *
+ * Kept apart from {@link FixtureSession} rather than making that type's
+ * `householdId` optional, so every existing reader of a fixture session keeps
+ * a household it can rely on, and a household-less person is a distinct,
+ * visible case.
+ */
+export interface FixtureUser {
+  readonly token: string;
+  readonly userId: string;
+  readonly displayName: string;
+  readonly displayInitials: string;
+  readonly email: string;
+}
+
 /** The whole validated fixture map. */
 export interface FixtureIdentityData {
   readonly households: readonly FixtureHousehold[];
   readonly sessions: readonly FixtureSession[];
+  /** Sign-ins declared with no `householdId` and no `role`. */
+  readonly unaffiliated: readonly FixtureUser[];
 }
 
 /** Raised when the fixture file cannot be understood. */
@@ -111,6 +139,7 @@ export function parseFixtureIdentityData(raw: unknown): FixtureIdentityData {
   }
 
   const sessions: FixtureSession[] = [];
+  const unaffiliated: FixtureUser[] = [];
   const tokens = new Set<string>();
   const userIds = new Set<string>();
   for (const [index, entry] of requireArray(root, "sessions").entries()) {
@@ -127,6 +156,19 @@ export function parseFixtureIdentityData(raw: unknown): FixtureIdentityData {
       throw new FixtureIdentityError(`${what}.userId "${userId}" is declared twice`);
     }
     userIds.add(userId);
+
+    // A sign-in with no household states neither field; stating one without
+    // the other is a half-written entry, not a household-less person.
+    if (record["householdId"] === undefined && record["role"] === undefined) {
+      unaffiliated.push({
+        token,
+        userId,
+        displayName: requireString(record, "displayName", what),
+        displayInitials: requireString(record, "displayInitials", what),
+        email: requireString(record, "email", what),
+      });
+      continue;
+    }
 
     const householdId = requireUuid(record, "householdId", what);
     if (!householdIds.has(householdId)) {
@@ -151,7 +193,7 @@ export function parseFixtureIdentityData(raw: unknown): FixtureIdentityData {
     });
   }
 
-  return { households, sessions };
+  return { households, sessions, unaffiliated };
 }
 
 /** Reads and validates `tests/fixtures/identity/sessions.json`. */
@@ -177,6 +219,26 @@ export async function loadFixtureIdentityData(
   return parseFixtureIdentityData(parsed);
 }
 
+/** Options for {@link createFixtureIdentityPort}. */
+export interface FixtureIdentityPortOptions {
+  /**
+   * Where memberships come from once households can be created and joined
+   * (M2-T3). When given, the database is the only source of memberships and
+   * the fixture map's `householdId`/`role` are seed input, nothing more: a
+   * household a fixture user creates, or one they join, takes effect on the
+   * next request. When omitted, the map's own declaration is the membership,
+   * which is what every suite without a database uses.
+   */
+  readonly memberships?: MembershipDirectory;
+}
+
+/**
+ * The time recorded for a membership the fixture map declares, for the
+ * directory-less port. The map records no time; with at most one membership
+ * per entry the value never decides anything.
+ */
+const DECLARED_JOINED_AT = new Date(0).toISOString();
+
 /**
  * Builds the port over an already-loaded map.
  *
@@ -184,19 +246,38 @@ export async function loadFixtureIdentityData(
  * case folding and no trimming: a token is a token, and "nearly right" is
  * wrong. Unknown tokens return `null`, which the HTTP layer turns into 401.
  */
-export function createFixtureIdentityPort(data: FixtureIdentityData): IdentityPort {
-  const byToken = new Map<string, Session>();
+export function createFixtureIdentityPort(
+  data: FixtureIdentityData,
+  options: FixtureIdentityPortOptions = {},
+): IdentityPort {
+  const userByToken = new Map<string, string>();
+  const declared = new Map<string, readonly Membership[]>();
   for (const session of data.sessions) {
-    byToken.set(session.token, {
-      userId: session.userId,
-      householdId: session.householdId,
-      role: session.role,
-    });
+    userByToken.set(session.token, session.userId);
+    declared.set(session.userId, [
+      { householdId: session.householdId, role: session.role, joinedAt: DECLARED_JOINED_AT },
+    ]);
+  }
+  for (const user of data.unaffiliated) {
+    userByToken.set(user.token, user.userId);
+    declared.set(user.userId, []);
+  }
+  const directory = options.memberships;
+
+  async function resolveCaller(bearerToken: string): Promise<Caller | null> {
+    const userId = userByToken.get(bearerToken);
+    if (userId === undefined) return null;
+    const memberships =
+      directory === undefined
+        ? (declared.get(userId) ?? [])
+        : await directory.listMemberships(userId);
+    return { userId, memberships: orderMemberships(memberships) };
   }
 
   return {
-    resolveSession(bearerToken: string): Promise<Session | null> {
-      return Promise.resolve(byToken.get(bearerToken) ?? null);
+    resolveCaller,
+    async resolveSession(bearerToken: string): Promise<Session | null> {
+      return sessionFor(await resolveCaller(bearerToken));
     },
   };
 }
