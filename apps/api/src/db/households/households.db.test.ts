@@ -401,6 +401,98 @@ describe.skipIf(!dbTestsEnabled)(SUITE, () => {
     });
   });
 
+  describe("rotation clock (M2-T3a)", () => {
+    /**
+     * The CI failure on main, made deterministic. Transaction B begins and
+     * freezes its `now()` first; transaction A then rotates and commits, so the
+     * live code's `created_at` is later than B's start; only then does B take
+     * the advisory lock and rotate. With `revoked_at = now()` B would stamp its
+     * own start time onto a row created after it, and
+     * `household_join_codes_revoked_after_created` would reject the update.
+     * B is driven on a raw pool client, mirroring `session.ts` (BEGIN, SET LOCAL
+     * ROLE, set_config), because `withHouseholdTransaction` cannot hold a
+     * transaction open across an await from the test.
+     */
+    it("a rotation whose transaction began before the previous rotation committed still succeeds (two connections)", async () => {
+      const gamma = await seedHousehold(db.pool, "gamma");
+      await asApp(gamma.householdId, (client) =>
+        issueJoinCode(client, gamma.householdId, gamma.userId, hasher),
+      );
+
+      const b = await db.pool.connect();
+      let committed = false;
+      try {
+        await b.query("BEGIN");
+        await b.query(`SET LOCAL ROLE ${APP_ROLE}`);
+        await b.query("SELECT set_config('app.household_id', $1, true)", [gamma.householdId]);
+        const bStart = (await b.query<{ started: Date }>("SELECT now() AS started")).rows[0]
+          ?.started;
+        if (bStart === undefined) throw new Error("no transaction start time");
+        await new Promise((resolve) => setTimeout(resolve, 20));
+
+        const a = await asApp(gamma.householdId, (client) =>
+          rotateJoinCode(client, gamma.householdId, gamma.userId, hasher),
+        );
+        // The ordering the bug needs: B's transaction started before A's code existed.
+        expect(bStart.getTime()).toBeLessThan(Date.parse(a.issuedAt));
+
+        await rotateJoinCode(b, gamma.householdId, gamma.userId, hasher);
+        await b.query("COMMIT");
+        committed = true;
+      } finally {
+        if (!committed) await b.query("ROLLBACK").catch(() => undefined);
+        b.release();
+      }
+
+      const rows = await db.pool.query<{ ok: boolean; live: boolean }>(
+        `SELECT (revoked_at IS NULL OR revoked_at >= created_at) AS ok, revoked_at IS NULL AS live
+           FROM household_join_codes WHERE household_id = $1`,
+        [gamma.householdId],
+      );
+      expect(rows.rows).toHaveLength(3);
+      expect(rows.rows.every((row) => row.ok)).toBe(true);
+      expect(rows.rows.filter((row) => row.live)).toHaveLength(1);
+    });
+
+    it("after many rotations every row satisfies the constraint and created_at strictly increases", async () => {
+      const delta = await seedHousehold(db.pool, "delta");
+      const issued = [
+        await asApp(delta.householdId, (client) =>
+          issueJoinCode(client, delta.householdId, delta.userId, hasher),
+        ),
+      ];
+      for (let rotation = 0; rotation < 8; rotation += 1) {
+        issued.push(
+          await asApp(delta.householdId, (client) =>
+            rotateJoinCode(client, delta.householdId, delta.userId, hasher),
+          ),
+        );
+      }
+      const times = issued.map((code) => Date.parse(code.issuedAt));
+      for (let index = 1; index < times.length; index += 1) {
+        expect(times[index]).toBeGreaterThan(times[index - 1] ?? Number.POSITIVE_INFINITY);
+      }
+
+      const rows = await db.pool.query<{ created_at: Date; revoked_at: Date | null }>(
+        `SELECT created_at, revoked_at FROM household_join_codes
+          WHERE household_id = $1 ORDER BY created_at`,
+        [delta.householdId],
+      );
+      expect(rows.rows).toHaveLength(9);
+      expect(rows.rows.filter((row) => row.revoked_at === null)).toHaveLength(1);
+      for (const [index, row] of rows.rows.entries()) {
+        if (row.revoked_at !== null) {
+          expect(row.revoked_at.getTime()).toBeGreaterThanOrEqual(row.created_at.getTime());
+          // Revoked before (or as) its successor was created.
+          const next = rows.rows[index + 1];
+          if (next !== undefined) {
+            expect(row.revoked_at.getTime()).toBeLessThanOrEqual(next.created_at.getTime());
+          }
+        }
+      }
+    });
+  });
+
   describe("migration 0008 round trip", () => {
     it("down removes the table and the functions; up restores them", async () => {
       const scratch = await createTestDatabase("m2t3-migration");
