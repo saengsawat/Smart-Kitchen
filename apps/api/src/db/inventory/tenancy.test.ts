@@ -385,6 +385,7 @@ describe.skipIf(!dbTestsEnabled)(SUITE, () => {
           ORDER BY c.relname`,
       );
       expect(protectedTables.rows.map((row) => row.relname)).toEqual([
+        "household_join_codes",
         "household_memberships",
         "households",
         "inventory_items",
