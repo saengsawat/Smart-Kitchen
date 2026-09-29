@@ -55,6 +55,17 @@ export async function seedFixtureIdentities(pool: Pool, data: FixtureIdentityDat
       );
     }
 
+    // M2-T3: a sign-in with no household is a `users` row and nothing else.
+    // Creating or joining a household over HTTP is what gives it one.
+    for (const user of data.unaffiliated) {
+      await client.query(
+        `INSERT INTO users (id, auth_provider_subject, email, display_name)
+         VALUES ($1, $2, $3, $4)
+         ON CONFLICT (id) DO NOTHING`,
+        [user.userId, `fixture|${user.token}`, user.email, user.displayName],
+      );
+    }
+
     await client.query("COMMIT");
   } catch (error) {
     await client.query("ROLLBACK");

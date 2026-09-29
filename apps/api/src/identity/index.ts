@@ -1,4 +1,4 @@
-/** Identity port and its fixture adapter (M2-T1, ADR-004, D-022). */
+/** Identity port and its fixture adapter (M2-T1, ADR-004, D-022; memberships M2-T3). */
 
 export {
   createFixtureIdentityPort,
@@ -7,7 +7,9 @@ export {
   parseFixtureIdentityData,
   type FixtureHousehold,
   type FixtureIdentityData,
+  type FixtureIdentityPortOptions,
   type FixtureSession,
+  type FixtureUser,
 } from "./fixture-identity-port.js";
 export {
   IDENTITY_FIXTURES_DIR,
@@ -29,7 +31,12 @@ export {
 export {
   HOUSEHOLD_ROLES,
   isHouseholdRole,
+  orderMemberships,
+  sessionFor,
+  type Caller,
   type HouseholdRole,
   type IdentityPort,
+  type Membership,
+  type MembershipDirectory,
   type Session,
 } from "./types.js";

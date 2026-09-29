@@ -55,4 +55,78 @@ export interface Session {
  */
 export interface IdentityPort {
   resolveSession(bearerToken: string): Promise<Session | null>;
+  /**
+   * The caller and **every** household they belong to (M2-T3, OQ-E1).
+   *
+   * `null` under exactly the same conditions as {@link resolveSession}'s
+   * `null`: the token is not a sign-in. A signed-in person with no household
+   * yet is **not** `null`; they are a {@link Caller} with an empty
+   * `memberships` list, which is what lets them create or join one.
+   *
+   * `resolveSession(token)` is always `sessionFor(await resolveCaller(token))`,
+   * so the single household a request runs as is always one of this set.
+   */
+  resolveCaller(bearerToken: string): Promise<Caller | null>;
+}
+
+/** One household the caller belongs to, as the identity port reports it. */
+export interface Membership {
+  readonly householdId: string;
+  readonly role: HouseholdRole;
+  /** When the membership was created. Decides which household a session runs as. */
+  readonly joinedAt: string;
+}
+
+/**
+ * A signed-in person, before any household has been chosen for the request.
+ *
+ * `memberships` is ordered most recently joined first, and is the whole set
+ * of households this person may act in (OQ-E1: the set comes only from the
+ * port; a header or body can never add to it).
+ */
+export interface Caller {
+  readonly userId: string;
+  readonly memberships: readonly Membership[];
+}
+
+/**
+ * Orders memberships most recently joined first.
+ *
+ * Ties (two memberships created in the same instant, which the seed can do)
+ * are broken by household id, descending, so the choice is deterministic and
+ * the same on every call. It is not meaningful beyond that.
+ */
+export function orderMemberships(memberships: readonly Membership[]): readonly Membership[] {
+  return [...memberships].sort((left, right) => {
+    const byTime = Date.parse(right.joinedAt) - Date.parse(left.joinedAt);
+    if (byTime !== 0 && !Number.isNaN(byTime)) return byTime;
+    if (left.householdId === right.householdId) return 0;
+    return left.householdId < right.householdId ? 1 : -1;
+  });
+}
+
+/**
+ * The one household a request runs as (M2-T3 (g)).
+ *
+ * With several memberships the most recently joined wins; switching is out of
+ * scope for now. No memberships means no session: household-scoped routes
+ * answer 403 and only the household-less routes (create, join, list mine)
+ * are reachable.
+ */
+export function sessionFor(caller: Caller | null): Session | null {
+  if (caller === null) return null;
+  const chosen = orderMemberships(caller.memberships)[0];
+  if (chosen === undefined) return null;
+  return { userId: caller.userId, householdId: chosen.householdId, role: chosen.role };
+}
+
+/**
+ * Where a port reads memberships from, when they live in the database.
+ *
+ * The fixture adapter knows who a token is; the database knows which
+ * households that person has created or joined since. Composing the two is
+ * what lets a newly created household take effect on the next request.
+ */
+export interface MembershipDirectory {
+  listMemberships(userId: string): Promise<readonly Membership[]>;
 }
