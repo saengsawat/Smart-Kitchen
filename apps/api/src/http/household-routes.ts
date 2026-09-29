@@ -102,6 +102,18 @@ const CREATE_BODY_SCHEMA = {
   },
 } as const;
 
+/**
+ * Rotation takes no input (review F3): no body, `null` or `{}` is accepted,
+ * anything else, such as a `householdId` naming another household, is a 400
+ * like every other unknown body field in this API. Checked in the handler
+ * rather than by a body schema, because a Fastify body schema also rejects a
+ * request that sends no body at all, which is how a client normally calls this.
+ */
+function isEmptyBody(body: unknown): boolean {
+  if (body === undefined || body === null) return true;
+  return typeof body === "object" && !Array.isArray(body) && Object.keys(body).length === 0;
+}
+
 const JOIN_BODY_SCHEMA = {
   type: "object",
   additionalProperties: false,
@@ -304,6 +316,9 @@ export function registerHouseholdRoutes(app: FastifyInstance, deps: HouseholdRou
     { config: { authorization: ownerRoute() } },
     async (request, reply): Promise<RotateJoinCodeResponseDto | undefined> => {
       const session = requireSession(request);
+      if (!isEmptyBody(request.body)) {
+        return send(reply, request, 400, "BAD_REQUEST", "That request could not be understood.");
+      }
       // The declaration already refused a member; this is the second layer, so
       // the rule survives a future edit to the declaration.
       if (session.role !== "owner") {

@@ -46,6 +46,7 @@ import {
   JOIN_CODE_PATTERN,
 } from "../db/households/join-code.js";
 import { withHouseholdTransaction } from "../db/session.js";
+import { insertRawTransaction } from "../db/test-support/inventory-fixtures.js";
 import {
   APP_ROLE,
   createTestDatabase,
@@ -555,6 +556,27 @@ describe.skipIf(!dbTestsEnabled)(SUITE, () => {
       expect(still.statusCode).toBe(200);
     });
 
+    it("refuses any body property on rotation, and rotates nothing (review F3)", async () => {
+      const liveBefore = await db.pool.query<{ code_hash: string }>(
+        "SELECT code_hash FROM household_join_codes WHERE revoked_at IS NULL ORDER BY code_hash",
+      );
+      for (const body of [{ householdId: okaforId }, { code: "ABCD-234" }, { anything: true }]) {
+        const answer = await call<ApiErrorBodyDto>(
+          app,
+          "POST",
+          HOUSEHOLD_JOIN_CODE_PATH,
+          DEAN,
+          body,
+        );
+        expect(answer.statusCode).toBe(400);
+        expect(answer.body.error.code).toBe("BAD_REQUEST");
+      }
+      const liveAfter = await db.pool.query<{ code_hash: string }>(
+        "SELECT code_hash FROM household_join_codes WHERE revoked_at IS NULL ORDER BY code_hash",
+      );
+      expect(liveAfter.rows).toEqual(liveBefore.rows);
+    });
+
     it("Dean rotates: the new code is returned once and the old one stops working", async () => {
       const rotated = await call<RotateJoinCodeResponseDto>(
         app,
@@ -764,6 +786,9 @@ describe.skipIf(!dbTestsEnabled)(SUITE, () => {
         { quantityProvenance: { ...yogurt.quantityProvenance, tier: "ESTIMATED" } },
       ],
       ["a different source", { source: "MANUAL", productRef: undefined }],
+      // Review F2: pin the unit and product comparisons.
+      ["a different unit", { unit: "kg" }],
+      ["a different product", { productRef: "dairy-099" }],
     ] as const)("the same key with %s is 409 and writes nothing", async (_case, override) => {
       const body = JSON.parse(JSON.stringify({ ...yogurt, ...override })) as CreateItemRequestDto;
       const answer = await call<ApiErrorBodyDto>(app, "POST", INVENTORY_ITEMS_PATH, DEAN, body);
@@ -773,6 +798,58 @@ describe.skipIf(!dbTestsEnabled)(SUITE, () => {
         ledgerCode: "IDEMPOTENCY_KEY_CONFLICT",
       });
       expect(await count("SELECT count(*)::text AS count FROM inventory_items")).toBe(1);
+    });
+
+    it("the same best-by written as a bare date is still a replay (review F2: canonicalisation)", async () => {
+      const again = await call<InventoryItemSummaryDto>(app, "POST", INVENTORY_ITEMS_PATH, DEAN, {
+        ...yogurt,
+        bestByDate: "2026-10-12",
+      });
+      expect(again.statusCode).toBe(200);
+      expect(again.body.itemId).toBe(yogurtId);
+      expect(
+        await count(
+          "SELECT count(*)::text AS count FROM inventory_transactions WHERE item_id = $1",
+          [yogurtId],
+        ),
+      ).toBe(1);
+    });
+
+    it("a matching row that is not the item's first row is a conflict (review F2: sequence pinned)", async () => {
+      // Every compared field equals what the request describes except the
+      // sequence: the row under the key is the item's second, so it cannot be
+      // the creation this request would replay.
+      const base = { ...yogurt, idempotencyKey: "seq-base", displayName: "Sequence yogurt" };
+      const created = await call<InventoryItemSummaryDto>(
+        app,
+        "POST",
+        INVENTORY_ITEMS_PATH,
+        DEAN,
+        base,
+      );
+      expect(created.statusCode).toBe(201);
+      const lotId = created.body.lots[0]?.lotId ?? "";
+      await insertRawTransaction(
+        db.pool,
+        { householdId: chenId, itemId: created.body.itemId, lotId, userId: deanUserId, unit: "g" },
+        {
+          sequence: 2,
+          type: "PURCHASE",
+          qty_delta: "907",
+          qty_delta_micros: "907000000",
+          provenance_tier: "KNOWN_FACT",
+          provenance_source: "barcode-scan",
+          idempotency_key: "seq-probe/lot/0",
+          occurred_at: new Date().toISOString(),
+          recorded_at: new Date().toISOString(),
+        },
+      );
+      const probe = await call<ApiErrorBodyDto>(app, "POST", INVENTORY_ITEMS_PATH, DEAN, {
+        ...base,
+        idempotencyKey: "seq-probe",
+      });
+      expect(probe.statusCode).toBe(409);
+      expect(probe.body.error.ledgerCode).toBe("IDEMPOTENCY_KEY_CONFLICT");
     });
 
     it("the same key and body from another member is a conflict, not Maya's replay of Dean's row", async () => {
@@ -869,6 +946,14 @@ describe.skipIf(!dbTestsEnabled)(SUITE, () => {
       ],
       ["a best-by with no provenance", { bestByProvenance: null }, 400, "INVALID_FIELD"],
       ["an unparseable best-by", { bestByDate: "soon" }, 400, "INVALID_TIMESTAMP"],
+      ["a bare number best-by (review F1)", { bestByDate: "1" }, 400, "INVALID_TIMESTAMP"],
+      ["a month-and-day best-by (review F1)", { bestByDate: "March 7" }, 400, "INVALID_TIMESTAMP"],
+      [
+        "a local-time best-by with no offset (review F1)",
+        { bestByDate: "2026-10-12T00:00:00" },
+        400,
+        "INVALID_TIMESTAMP",
+      ],
     ] as const)(
       "refuses %s with %i %s and writes nothing",
       async (_case, override, status, ledgerCode) => {
