@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   AccessibilityInfo,
   ActivityIndicator,
@@ -14,6 +14,7 @@ import type { MajorAllergenCodeDto } from "@smart-kitchen/contracts";
 import { MAJOR_ALLERGEN_CODES_DTO, MAJOR_ALLERGEN_LABELS_DTO } from "@smart-kitchen/contracts";
 import { apiClient } from "../../src/api/client";
 import { colors, fontFamily, minTouchTarget, radius, spacing } from "../../src/design/tokens";
+import { GENERIC_READ_ERROR_MESSAGE } from "../../src/inventory/errors";
 import {
   ALLERGY_GATE_MESSAGE,
   addCustomAllergen,
@@ -64,29 +65,47 @@ export default function AllergiesScreen(): React.JSX.Element {
   const [showGateMessage, setShowGateMessage] = useState(false);
   const [saveError, setSaveError] = useState(false);
   const [saving, setSaving] = useState(false);
+  /** M3-T4d review F2: S2's own read gets the same fail-closed handling as `app/_layout.tsx`'s. */
+  const [loadError, setLoadError] = useState(false);
 
-  useEffect(() => {
+  const load = useCallback(() => {
+    setLoadError(false);
     let cancelled = false;
-    void apiClient.getOnboardingState().then((state) => {
-      if (cancelled) {
-        return;
-      }
-      if (!state.household) {
-        // Deep link straight at S2 with no household yet: the gate has
-        // nothing to attach to, so send them back to S1 rather than render
-        // an empty member list (BACKLOG.md M3-T2 invariant: deep links
-        // cannot bypass the gate).
-        router.replace("/onboarding/account");
-        return;
-      }
-      setDrafts(state.household.members.map(draftFromMember));
-    });
+    void apiClient.getOnboardingState().then(
+      (state) => {
+        if (cancelled) {
+          return;
+        }
+        if (!state.household) {
+          // Deep link straight at S2 with no household yet: the gate has
+          // nothing to attach to, so send them back to S1 rather than render
+          // an empty member list (BACKLOG.md M3-T2 invariant: deep links
+          // cannot bypass the gate).
+          router.replace("/onboarding/account");
+          return;
+        }
+        setDrafts(state.household.members.map(draftFromMember));
+      },
+      () => {
+        // M3-T4d review F2: a rejected read must not spin the
+        // ActivityIndicator forever — render the fallback with Try again
+        // instead, same as `app/_layout.tsx`'s own read.
+        if (!cancelled) {
+          setLoadError(true);
+        }
+      },
+    );
     return () => {
       cancelled = true;
     };
-    // Loads once on mount; the fixture client's state does not change out
-    // from under this screen mid-session.
+    // Loads once on mount (and again on "Try again"); the fixture client's
+    // state does not change out from under this screen mid-session. `router`
+    // is not a dependency (no `react-hooks` lint plugin is configured in
+    // this app): expo-router's own object identity is not a signal this
+    // callback needs to react to.
   }, []);
+
+  useEffect(() => load(), [load]);
 
   function updateDraft(
     memberId: string,
@@ -139,6 +158,25 @@ export default function AllergiesScreen(): React.JSX.Element {
     if (router.canGoBack()) {
       router.back();
     }
+  }
+
+  if (loadError) {
+    return (
+      <View style={[styles.screen, styles.loadingScreen]}>
+        <View style={styles.readErrorWrap} accessibilityLiveRegion="assertive">
+          <Text style={styles.readErrorTitle}>Couldn&apos;t load your household.</Text>
+          <Text style={styles.readErrorBody}>{GENERIC_READ_ERROR_MESSAGE}</Text>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Try again"
+            onPress={load}
+            style={[styles.button, styles.buttonPrimary]}
+          >
+            <Text style={styles.buttonTextOnDark}>Try again</Text>
+          </Pressable>
+        </View>
+      </View>
+    );
   }
 
   if (!drafts) {
@@ -566,6 +604,24 @@ const styles = StyleSheet.create({
     fontFamily: fontFamily.body,
   },
   loadingScreen: { alignItems: "center", justifyContent: "center" },
+  readErrorWrap: {
+    alignItems: "center",
+    gap: spacing.sm,
+    paddingHorizontal: spacing.xl,
+  },
+  readErrorTitle: {
+    fontSize: 19,
+    fontFamily: fontFamily.display,
+    fontWeight: "600",
+    color: colors.ink,
+    textAlign: "center",
+  },
+  readErrorBody: {
+    fontSize: 13,
+    color: colors.ink2,
+    fontFamily: fontFamily.body,
+    textAlign: "center",
+  },
 
   button: {
     height: 48,
