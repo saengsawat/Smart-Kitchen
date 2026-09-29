@@ -259,14 +259,24 @@ no-package-size add, RUN fixtures never NOT_RUN).
 
 ## 9. Escalations and proposed backlog entries
 
-- **M3-T4e (client lookup wiring) needs, before OFF products reach S8:** the macro strip renders
-  `nutrition[0]` unrounded and without its basis, and OFF puts `PER_100G` first (for example
-  "403.846153846154 cal"); decide which profile S8 shows and how it rounds and labels it. The Add
-  path records `quantityProvenance: KNOWN_FACT` and toasts "· Known Fact" even when the package size
-  is Estimated; decide the item quantity's tier and toast copy. Map 400 `PLU_NOT_SUPPORTED`,
-  400 `BAD_REQUEST` and the `error` body to the §8 fallback (or new strings). Units `pt`, `qt`,
-  `gal` from OFF would be refused by `POST /v1/inventory/items`.
+**Blocking for M3-T4e (lift as a list):**
+
+1. Nutrition display: S8's macro strip renders `nutrition[0]` unrounded and without its basis, and
+   OFF puts `PER_100G` first; decide the profile, rounding and basis label.
+2. Per 100 ml (reviewer finding): OFF's `_100g` values are per 100 ml for liquids, but the adapter
+   labels every such profile `PER_100G`; the basis enum has no `PER_100ML`.
+3. Quantity tier: Add records `quantityProvenance: KNOWN_FACT` and toasts "· Known Fact" even when
+   the package size is Estimated; decide the item quantity's tier and the toast copy.
+4. Refusal mapping: 400 `PLU_NOT_SUPPORTED`, 400 `BAD_REQUEST` and the 200 `error` body need §8
+   strings (or new ones).
+5. Units: `pt`, `qt` and `gal` from OFF parse but are refused by `POST /v1/inventory/items`.
+
+**Other entries:**
+
 - **GTIN-14 code type** (adapter `CodeType`, contracts mirror, the existing consistency switch).
+- **UPC-E expansion** (architect ruling, round 1): 8-digit UPC-E codes are read today as EAN-8.
+- **`product_name_en` fallback** (architect ruling, round 1): a record with no `product_name` is
+  `not-found` today; fall back to `product_name_en` before giving up.
 - **M2-T4 (server screening):** OFF `ingredients_text` is often not English (the staging Nutella
   record is French: "LAIT", "NOISETTES", "SOJA"); the engine's English term lists will not match
   them, so milk, tree nut and soy there rest on the tags alone. Worth a language check (OFF's `lang`)
@@ -307,3 +317,47 @@ item by hand."; `BAD_REQUEST` on this route "That isn't a barcode number we can 
 `error` "The product database didn't answer. Try again in a moment, or add the item by hand."
 
 **`.env.example` names added:** `SK_OFF_BASE_URL`, `SK_OFF_USER_AGENT`, `SK_OFF_LIVE_TEST`.
+
+## 11. Review fixes (round 1)
+
+Reviewer verdict: PASS WITH FIXES (40 mutants, 38 killed; the two survivors were test gaps). Fixes
+in `c2d1fba`, nothing outside the three findings.
+
+- **F1** (`mapping.ts` 404 guard untested): added "404 with a status 1 product body"
+  (`{"status":1,"product":{"product_name":"X"}}`) to the `UPSTREAM_MALFORMED` table in
+  `mapping.test.ts`. With the guard deleted, that case now fails.
+- **F2** (`en:molluscs` removable unnoticed): `off-lookup-contracts-consistency.test.ts` now pins
+  `OFF_ALLERGEN_TAG_MAP` with an exact `toEqual` of all ten entries. With the molluscs entry
+  deleted, it fails.
+- **F3** (two cache entries for one GTIN): the cache and in-flight key is now
+  `cacheKey(code)`, the 13-digit form for 9 to 13 digits (`padStart(13, "0")`), EAN-8 unchanged.
+  A shared entry answers each caller with its own identity (`id` and `codes` restamped to the code
+  that caller asked for), so which spelling filled the cache never decides another caller's
+  `productId`. New tests: the 12 and 13 digit spellings resolve with one upstream request, in
+  sequence and concurrently, each with its own `id`; `cacheKey` shape. With the key reverted to the
+  raw code, both fail.
+
+Each fix was checked against its mutant: the three mutations applied together failed 4 tests; files
+restored from git afterwards.
+
+**Architect rulings recorded:** no-name as `not-found` accepted (backlog: `product_name_en`
+fallback); NOT_RUN before the household loads accepted; tier chips on name, brand and size accepted
+(§3.3 sentence added at acceptance); GTIN-14 and check-digit handling accepted (backlog: UPC-E
+expansion, GTIN-14 code type); 12 per minute and the 60 s cooldown accepted, the ticket's 100
+corrected at acceptance. The M3-T4e questions, plus the per-100 ml basis finding, are listed at the
+top of section 9.
+
+**Re-verification** from an empty build state (every `dist/` and `*.tsbuildinfo` deleted), CI order,
+network-blocking preload on both suite runs: see the numbers below.
+
+| Step | Result |
+| --- | --- |
+| `pnpm install --frozen-lockfile` | ok |
+| `pnpm lint` | exit 0 |
+| `pnpm typecheck` | exit 0 |
+| `pnpm test`, no `DATABASE_URL`, network blocked | exit 0: 119 files passed, 1 skipped; 1875 passed, 351 skipped (was 1870: +5 new tests) |
+| `pnpm test`, `DATABASE_URL` on a fresh throwaway PG17 cluster, network blocked | exit 0: 119 files passed, 1 skipped; 2206 passed, 20 skipped (was 2201) |
+| block-net log, each run | shim loaded into 127 processes, 0 blocked connections |
+| `pnpm format:check` | exit 0 |
+| `pnpm --filter mobile export` | exit 0; `apps/mobile/dist` deleted |
+| cluster | stopped, data directory removed |
