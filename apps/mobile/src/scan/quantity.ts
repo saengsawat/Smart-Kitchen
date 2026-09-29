@@ -71,13 +71,20 @@ export interface ScanPackageSizeInput {
   readonly qty: string;
   readonly unit: string;
   readonly tier: ProvenanceTierDto;
+  /** The record's own provenance source for the size field (e.g. "open-food-facts", "manufacturer-label"). */
+  readonly source: string;
 }
 
-/** S8's Add quantity plan: the exact micros to send, the unit to send it in, and the resulting quantity's tier. */
+/** The quantity's provenance source when the amount is just the count the user entered, no size involved. */
+export const SCANNED_BARCODE_QUANTITY_SOURCE = "scanned barcode";
+
+/** S8's Add quantity plan: the exact micros to send, the unit to send it in, and the resulting quantity's tier/source. */
 export interface ScanQuantityPlan {
   readonly amountMicros: bigint;
   readonly unit: string;
   readonly tier: "KNOWN_FACT" | "ESTIMATED";
+  /** `quantityProvenance.source` for `createItem` — see {@link planScanQuantity}'s doc comment. */
+  readonly source: string;
 }
 
 /**
@@ -97,24 +104,29 @@ export function isCreateItemUnit(unit: string): boolean {
 }
 
 /**
- * S8's item quantity (BACKLOG.md M3-T4e Objectives (d)/(e)): `count` whole
- * packages of `packageSize` each, when a package size exists and its
- * (already-normalized) unit is one `POST /v1/inventory/items` accepts
- * ({@link CREATE_ITEM_UNITS_DTO} — a strict subset of the domain registry,
- * so `pt`/`qt`/`gal` and anything unparsed by the source fall through here
- * even though some of them resolve in the registry itself). The quantity's
- * tier is the lowest tier among its inputs (rule: never raise a tier on the
- * client): `count` is always Known Fact (the user physically counted whole
- * packages), so the tier is `packageSize`'s own tier when its unit is used
- * directly.
+ * S8's item quantity (BACKLOG.md M3-T4e Objectives (d)/(e), review round 1
+ * F3 ruling). `count` whole packages of `packageSize` each, when a package
+ * size exists and its (already-normalized) unit is one `POST
+ * /v1/inventory/items` accepts ({@link CREATE_ITEM_UNITS_DTO} — a strict
+ * subset of the domain registry, so `pt`/`qt`/`gal` and anything unparsed
+ * by the source fall through to the count-only branch below even though
+ * some of them resolve in the registry itself): the amount is `count ×
+ * size`, exact micros, and the quantity's tier/source both come from the
+ * package size record itself — it is the fact the quantity is built from.
  *
- * When the unit cannot be used (present but not accepted, e.g. "qt"), the
- * item is recorded as the chosen count of packages, unit `each` — never an
- * invented conversion (CLAUDE.md rule 7) — and the quantity tier is fixed
- * `ESTIMATED`, because the count of packages is honest but the record no
- * longer states the item's real size, only how many of them there are.
- * When there is no package size at all, the only input is `count` itself,
- * so the quantity stays Known Fact, same as S9's manual entries.
+ * **Otherwise (F3 ruling, reversing this function's original wording): the
+ * amount is just `count`, the number of packages the user counted with
+ * their own eyes, unit `each`.** That count is the user's own fact —
+ * Known Fact — every time, whether there was no package size at all, or
+ * one that named a unit this ledger cannot accept (e.g. a "qt" carton):
+ * an unparsed or unsupported size does not make the *count* any less
+ * certain, and never invents a conversion either way (CLAUDE.md rule 7).
+ * The quantity's source is `"scanned barcode"` in this branch — never the
+ * package size's own source, since the size was not used to build the
+ * amount. The package size record, when present, is still shown on S8 as
+ * its own text with its own tier chip (`ConfirmSheet`'s package-size row):
+ * an Estimated OFF size sitting next to a Known Fact quantity is exactly
+ * the point — two different facts, two different tiers, never conflated.
  */
 export function planScanQuantity(
   packageSize: ScanPackageSizeInput | undefined,
@@ -130,11 +142,13 @@ export function planScanQuantity(
       // fallback to ESTIMATED is still correct if one ever did: never treat
       // an unconfirmed AI figure as a Known Fact quantity.
       tier: packageSize.tier === "KNOWN_FACT" ? "KNOWN_FACT" : "ESTIMATED",
+      source: packageSize.source,
     };
   }
   return {
     amountMicros: wholeUnitQuantityMicros(count),
     unit: "each",
-    tier: packageSize ? "ESTIMATED" : "KNOWN_FACT",
+    tier: "KNOWN_FACT",
+    source: SCANNED_BARCODE_QUANTITY_SOURCE,
   };
 }

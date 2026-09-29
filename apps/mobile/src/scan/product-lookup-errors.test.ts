@@ -5,7 +5,7 @@
  * itself producing these errors).
  */
 import { describe, expect, it } from "vitest";
-import { GENERIC_LEDGER_ERROR_MESSAGE } from "../inventory/errors";
+import { GENERIC_READ_ERROR_MESSAGE } from "../inventory/errors";
 import {
   messageForLookupError,
   NOT_A_BARCODE_MESSAGE,
@@ -32,17 +32,17 @@ describe("messageForLookupError", () => {
     );
   });
 
-  it("401/403 and any other refusal code fall through to the generic fallback, never a raw code or message", () => {
+  it("401/403 and any other refusal code fall through to the read fallback, never a raw code or message (review round 1 F2/R2: a lookup is a read, not a save)", () => {
     for (const code of ["UNAUTHORIZED", "FORBIDDEN", "INTERNAL", ""]) {
       expect(messageForLookupError(new ProductLookupRefusedError(code))).toBe(
-        GENERIC_LEDGER_ERROR_MESSAGE,
+        GENERIC_READ_ERROR_MESSAGE,
       );
     }
   });
 
-  it("a plain network/parse failure (not a ProductLookupRefusedError) also renders the generic fallback", () => {
-    expect(messageForLookupError(new Error("network down"))).toBe(GENERIC_LEDGER_ERROR_MESSAGE);
-    expect(messageForLookupError("not even an Error")).toBe(GENERIC_LEDGER_ERROR_MESSAGE);
+  it("a plain network/parse failure (not a ProductLookupRefusedError) also renders the read fallback", () => {
+    expect(messageForLookupError(new Error("network down"))).toBe(GENERIC_READ_ERROR_MESSAGE);
+    expect(messageForLookupError("not even an Error")).toBe(GENERIC_READ_ERROR_MESSAGE);
   });
 
   it("never leaks the server's own message onto the screen", () => {

@@ -38,6 +38,7 @@ import { ToastHost, ToastProvider } from "../inventory/Toast";
 import { colors } from "../design/tokens";
 import type {
   CreateItemRequestDto,
+  InventoryItemSummaryDto,
   ProductLookupResultDto,
   ScannedProductDto,
 } from "@smart-kitchen/contracts";
@@ -166,7 +167,7 @@ describe("S7 · scan miss", () => {
       await lookUp(result, "060000100810"); // first attempt: rejects
       expect(
         result.getByText(
-          "Something went wrong saving that. Try again, and tell us if it keeps happening.",
+          "Something went wrong loading that. Try again, and tell us if it keeps happening.",
         ),
       ).toBeTruthy();
 
@@ -430,6 +431,14 @@ const OFF_PROVENANCE = {
   recordedAt: "2026-09-29T13:02:12.000Z",
 } as const;
 
+/**
+ * Review round 1 F7: the real `GET /v1/products/096619555505` (the peanut
+ * butter record) no longer carries a `PER_100G` profile once the adapter
+ * requests `nutrition_data_per` (M3-T4e (c)) — that recording predates the
+ * field and so is genuinely absent from it, which the adapter now reads as
+ * "not 100g". This literal is kept in sync with what the real API sends:
+ * `PER_SERVING` only, the actual values from that same recorded response.
+ */
 function notRunProduct(withPackageSize: boolean): ScannedProductDto {
   return {
     productId: "096619555505",
@@ -441,8 +450,8 @@ function notRunProduct(withPackageSize: boolean): ScannedProductDto {
       : {}),
     nutrition: [
       {
-        basis: "PER_100G",
-        values: { calories: 562.5, proteinG: 12.5, carbsG: 10.94, fatG: 23.44 },
+        basis: "PER_SERVING",
+        values: { calories: 180, proteinG: 4, carbsG: 3.5, fatG: 7.5 },
         provenance: OFF_PROVENANCE,
       },
     ],
@@ -610,10 +619,17 @@ describe("S8 · nutrition strip (M3-T4e Objective (b))", () => {
       const result = await renderScreen();
       await lookUp(result, "096619555505");
 
-      expect(result.getByText(/Nutrition \(per serving\) via Open Food Facts/)).toBeTruthy();
+      // F5 ruling: the basis label sits next to the macros row, separate
+      // from the always-on caption sentence (checked below).
+      expect(result.getByText("per serving")).toBeTruthy();
       expect(result.getByText("180")).toBeTruthy(); // 179.6 rounded to a whole calorie
       expect(result.getByText("12.5g")).toBeTruthy(); // 12.54 rounded to one decimal
-      expect(result.queryByText(/per 100 g/)).toBeNull();
+      expect(result.queryByText("per 100 g")).toBeNull();
+      expect(
+        result.getByText(
+          "Nutrition & allergens: label data via Open Food Facts · tier shown per field",
+        ),
+      ).toBeTruthy();
     });
   });
 
@@ -624,41 +640,108 @@ describe("S8 · nutrition strip (M3-T4e Objective (b))", () => {
     await withLookup(product, async () => {
       const result = await renderScreen();
       await lookUp(result, "096619555505");
-      expect(result.getByText(/Nutrition \(per 100 g\) via Open Food Facts/)).toBeTruthy();
+      expect(result.getByText("per 100 g")).toBeTruthy();
+      expect(
+        result.getByText(
+          "Nutrition & allergens: label data via Open Food Facts · tier shown per field",
+        ),
+      ).toBeTruthy();
     });
   });
 
-  it('shows "Nutrition not on file" with no numbers when there is no profile at all', async () => {
+  it('shows "Nutrition not on file" with no numbers when there is no profile at all, caption still present (F5: the caption replaces only the numbers)', async () => {
     const product = nutritionTestProduct([]);
     await withLookup(product, async () => {
       const result = await renderScreen();
       await lookUp(result, "096619555505");
       expect(result.getByText("Nutrition not on file")).toBeTruthy();
-      expect(result.queryByText(/via Open Food Facts/)).toBeNull();
+      expect(result.queryByText("per serving")).toBeNull();
+      expect(result.queryByText("per 100 g")).toBeNull();
+      expect(
+        result.getByText(
+          "Nutrition & allergens: label data via Open Food Facts · tier shown per field",
+        ),
+      ).toBeTruthy();
+    });
+  });
+
+  it("review round 1 F7: renders the liquid record's real mapped shape (PER_SERVING only, no package size, the caption unconditional)", async () => {
+    // The exact shape `GET /v1/products/855643006045` answers today (Ripple
+    // Dairy-Free Milk, tests/fixtures/off/liquid-per-100ml-ripple.json):
+    // nutrition_data_per is "100ml", so the adapter emits no PER_100G
+    // profile at all, and its own "48 fl oz" quantity stays unparseable.
+    const product: ScannedProductDto = {
+      productId: "855643006045",
+      codes: [{ codeType: "UPC_A", code: "855643006045" }],
+      name: { value: "DAIRY-FREE MILK", provenance: OFF_PROVENANCE },
+      brand: { value: "ripple", provenance: OFF_PROVENANCE },
+      nutrition: [
+        {
+          basis: "PER_SERVING",
+          values: { calories: 70, proteinG: 8, carbsG: 0.5, fatG: 4 },
+          provenance: OFF_PROVENANCE,
+        },
+      ],
+      bestBy: null,
+      screening: { status: "NOT_RUN", reason: "HOUSEHOLD_RESTRICTIONS_NOT_STORED" },
+    };
+    await withLookup(product, async () => {
+      const result = await renderScreen();
+      await lookUp(result, "855643006045");
+
+      expect(result.getByText("per serving")).toBeTruthy();
+      expect(result.queryByText("per 100 g")).toBeNull();
+      expect(result.getByText("70")).toBeTruthy();
+      expect(result.getByText("8g")).toBeTruthy();
+      // No package size on this record at all (its own quantity is
+      // unparseable "48 fl oz") — nothing to show as a size, and the item
+      // still adds as a plain count, Known Fact.
+      expect(result.queryByText(/fl oz/)).toBeNull();
+      // The caption is unconditional (F5): present here exactly as it is
+      // when nutrition is absent (the other new test above).
+      expect(
+        result.getByText(
+          "Nutrition & allergens: label data via Open Food Facts · tier shown per field",
+        ),
+      ).toBeTruthy();
     });
   });
 });
 
-describe("S8 · quantity tier follows the lowest input, toast word follows it (M3-T4e Objective (d))", () => {
-  it("an Estimated (Open Food Facts) package size in a supported unit gives an Estimated quantity and toast", async () => {
+describe("S8 · quantity tier follows the lowest input, toast word follows it (M3-T4e Objective (d), review round 1 F1/F3)", () => {
+  it("an Estimated (Open Food Facts) package size in a supported unit gives an Estimated quantity, source open-food-facts, and the matching toast", async () => {
     await withLookup(notRunProduct(true), async () => {
       const result = await renderScreen();
       await lookUp(result, "096619555505");
+
+      const calls: CreateItemRequestDto[] = [];
+      const original = apiClient.createItem.bind(apiClient);
+      vi.spyOn(apiClient, "createItem").mockImplementation(async (input) => {
+        calls.push(input);
+        return original(input);
+      });
 
       fireEvent.press(result.getByLabelText("Add 1 to Fridge"));
       await flushPending();
       expect(replaced).toContain("/inventory");
 
+      // F1: the amount is built from the package size, so its provenance
+      // source is the size's own source, "open-food-facts" — not "scanned
+      // barcode" (this was the entire body's fix; assert it directly on
+      // what was sent, not just the resulting tier).
+      expect(calls[0]?.quantityProvenance.source).toBe("open-food-facts");
+
       const items = await apiClient.getInventoryItems();
       const created = items.find((item) => item.displayName === "Organic Creamy Peanut Butter");
       expect(created?.provenance.quantity?.tier).toBe("ESTIMATED");
+      expect(created?.provenance.quantity?.source).toBe("open-food-facts");
       expect(
         result.queryByText("Added 1 × Organic Creamy Peanut Butter to Fridge · Estimated"),
       ).toBeTruthy();
     });
   });
 
-  it("no package size at all keeps the quantity (and toast) Known Fact, same as before this ticket", async () => {
+  it('no package size at all keeps the quantity (and toast) Known Fact, source "scanned barcode", same as before this ticket', async () => {
     await withLookup(notRunProduct(false), async () => {
       const result = await renderScreen();
       await lookUp(result, "096619555505");
@@ -669,24 +752,40 @@ describe("S8 · quantity tier follows the lowest input, toast word follows it (M
       const items = await apiClient.getInventoryItems();
       const created = items.find((item) => item.displayName === "Organic Creamy Peanut Butter");
       expect(created?.provenance.quantity?.tier).toBe("KNOWN_FACT");
+      expect(created?.provenance.quantity?.source).toBe("scanned barcode");
       expect(
         result.queryByText("Added 1 × Organic Creamy Peanut Butter to Fridge · Known Fact"),
       ).toBeTruthy();
     });
   });
 
-  it("the fixture corpus's Known Fact package sizes still add as Known Fact (no regression)", async () => {
+  it('the fixture corpus\'s Known Fact package sizes still add as Known Fact, source "manufacturer-label" (F1, no regression)', async () => {
     const result = await renderScreen();
     await lookUp(result, "060000100810"); // Stone-Ground Tahini, "manufacturer-label" Known Fact
+
+    const calls: CreateItemRequestDto[] = [];
+    const original = apiClient.createItem.bind(apiClient);
+    vi.spyOn(apiClient, "createItem").mockImplementation(async (input) => {
+      calls.push(input);
+      return original(input);
+    });
+
     fireEvent.press(result.getByLabelText("Add 1 to Fridge"));
     await flushPending();
+
+    // F1: a fixture-corpus record's package size carries the corpus's own
+    // "manufacturer-label" source, and that is what the amount is built
+    // from here (a supported unit, "oz") — so that is the quantity's source.
+    expect(calls[0]?.quantityProvenance.source).toBe("manufacturer-label");
+
     const items = await apiClient.getInventoryItems();
     const created = items.find((item) => item.displayName === "Stone-Ground Tahini");
     expect(created?.provenance.quantity?.tier).toBe("KNOWN_FACT");
+    expect(created?.provenance.quantity?.source).toBe("manufacturer-label");
   });
 });
 
-describe("S8 · package units the ledger cannot accept (M3-T4e Objective (e))", () => {
+describe("S8 · package units the ledger cannot accept (M3-T4e Objective (e), review round 1 F3/F8 rulings)", () => {
   function litreProduct(unit: string): ScannedProductDto {
     return nutritionTestProduct([], {
       value: { qty: "1", unit },
@@ -694,43 +793,60 @@ describe("S8 · package units the ledger cannot accept (M3-T4e Objective (e))", 
     });
   }
 
-  it('a "qt" package size shows "N × 1 qt" as text, updates with the count, and adds as N each, Estimated', async () => {
+  it('a "qt" package size shows "N package(s) of 1 qt" as text (F8), updates with the count, and adds as N each, Known Fact (F3: the count is the user\'s own fact), source "scanned barcode" (F1)', async () => {
     await withLookup(litreProduct("qt"), async () => {
       const result = await renderScreen();
       await lookUp(result, "096619555505");
 
-      expect(result.getByText("1 × 1 qt")).toBeTruthy();
+      expect(result.getByText("1 package of 1 qt")).toBeTruthy();
       fireEvent.press(result.getByLabelText("Increase quantity"));
-      expect(result.getByText("2 × 1 qt")).toBeTruthy();
+      expect(result.getByText("2 packages of 1 qt")).toBeTruthy();
+      expect(result.queryByText("1 × 1 qt")).toBeNull(); // the old (reversed) format never renders
       expect(result.queryByText("1 qt")).toBeNull(); // never the bare size alone
+      // The size still wears its own (Estimated) tier chip even though the
+      // quantity itself is Known Fact — two different facts, F3's point.
+      // (Not unique: the product name is Estimated too, so at least one.)
+      expect(result.getAllByText("≈ Est.").length).toBeGreaterThanOrEqual(1);
+
+      const calls: CreateItemRequestDto[] = [];
+      const original = apiClient.createItem.bind(apiClient);
+      vi.spyOn(apiClient, "createItem").mockImplementation(async (input) => {
+        calls.push(input);
+        return original(input);
+      });
 
       fireEvent.press(result.getByLabelText("Add 2 to Fridge"));
       await flushPending();
+
+      expect(calls[0]?.quantityProvenance.tier).toBe("KNOWN_FACT");
+      expect(calls[0]?.quantityProvenance.source).toBe("scanned barcode");
 
       const items = await apiClient.getInventoryItems();
       const created = items.find((item) => item.displayName === "Nutrition Test Product");
       expect(created?.quantity.amount).toBe("2");
       expect(created?.quantity.unit).toBe("each");
-      expect(created?.provenance.quantity?.tier).toBe("ESTIMATED");
+      expect(created?.provenance.quantity?.tier).toBe("KNOWN_FACT");
       expect(
-        result.queryByText("Added 2 × Nutrition Test Product to Fridge · Estimated"),
+        result.queryByText("Added 2 × Nutrition Test Product to Fridge · Known Fact"),
       ).toBeTruthy();
     });
   });
 
   it.each(["pt", "gal", "fl oz"])(
-    "%s falls back the same way: each, Estimated, never an invented conversion",
+    "%s falls back the same way: each, Known Fact (F3), never an invented conversion",
     async (unit) => {
       await withLookup(litreProduct(unit), async () => {
         const result = await renderScreen();
         await lookUp(result, "096619555505");
+        expect(result.getByText(`1 package of 1 ${unit}`)).toBeTruthy();
         fireEvent.press(result.getByLabelText("Add 1 to Fridge"));
         await flushPending();
         const items = await apiClient.getInventoryItems();
         const created = items.find((item) => item.displayName === "Nutrition Test Product");
         expect(created?.quantity.unit).toBe("each");
         expect(created?.quantity.amount).toBe("1");
-        expect(created?.provenance.quantity?.tier).toBe("ESTIMATED");
+        expect(created?.provenance.quantity?.tier).toBe("KNOWN_FACT");
+        expect(created?.provenance.quantity?.source).toBe("scanned barcode");
       });
     },
   );
@@ -819,10 +935,59 @@ describe("S8 · held idempotency key + single-flight guard on Add (M3-T4e Object
     expect(calls).toHaveLength(2);
     expect(calls[0]?.idempotencyKey).not.toBe(calls[1]?.idempotencyKey);
   });
+
+  it("changing the location after a failed Add discards the held key; the next Add mints a fresh one (F6 pinning)", async () => {
+    const result = await renderScreen();
+    await lookUp(result, "060000100810");
+
+    const calls: CreateItemRequestDto[] = [];
+    const original = apiClient.createItem.bind(apiClient);
+    let attempt = 0;
+    vi.spyOn(apiClient, "createItem").mockImplementation(async (input) => {
+      calls.push(input);
+      attempt += 1;
+      if (attempt === 1) {
+        throw new Error("simulated network failure");
+      }
+      return original(input);
+    });
+
+    fireEvent.press(result.getByLabelText("Add 1 to Fridge"));
+    await flushPending();
+
+    // A real change to what Add would send: the storage location, not the count.
+    fireEvent.press(result.getByLabelText("Freezer"));
+    fireEvent.press(result.getByLabelText("Add 1 to Freezer"));
+    await flushPending();
+
+    expect(calls).toHaveLength(2);
+    expect(calls[0]?.idempotencyKey).not.toBe(calls[1]?.idempotencyKey);
+  });
+
+  it("the Add control reports accessibilityState.disabled while a create is pending (F6 pinning)", async () => {
+    const result = await renderScreen();
+    await lookUp(result, "060000100810");
+
+    // Never resolves: this test only observes the pending state, the same
+    // way manual.tsx's own `saving` state is checked mid-flight elsewhere.
+    const pending = new Promise<InventoryItemSummaryDto>(() => {
+      // intentionally never settles
+    });
+    vi.spyOn(apiClient, "createItem").mockReturnValue(pending);
+
+    const button = result.getByLabelText("Add 1 to Fridge");
+    fireEvent.press(button);
+    await flushPending();
+
+    const pendingProps = result.getByLabelText("Add 1 to Fridge").props as {
+      accessibilityState?: { disabled?: boolean };
+    };
+    expect(pendingProps.accessibilityState?.disabled).toBe(true);
+  });
 });
 
 describe("S7 · product-lookup refusals (M3-T4e Objective (a), copy-deck.md §8)", () => {
-  it("PLU_NOT_SUPPORTED renders its exact §8 string, with Enter it manually still offered", async () => {
+  it("PLU_NOT_SUPPORTED renders its exact §8 string, with Enter it manually offered but no code retained (review round 1 F4: nothing was ever sent anywhere)", async () => {
     const original = apiClient.lookupProduct.bind(apiClient);
     apiClient.lookupProduct = () =>
       Promise.reject(new ProductLookupRefusedError("PLU_NOT_SUPPORTED"));
@@ -834,25 +999,27 @@ describe("S7 · product-lookup refusals (M3-T4e Objective (a), copy-deck.md §8)
       ).toBeTruthy();
       const manualButton = result.getByLabelText("Enter it manually");
       fireEvent.press(manualButton);
-      expect(pushed).toEqual([{ pathname: "/add/manual", params: { code: "04061" } }]);
+      expect(pushed).toEqual(["/add/manual"]);
     } finally {
       apiClient.lookupProduct = original;
     }
   });
 
-  it("BAD_REQUEST renders its exact §8 string", async () => {
+  it("BAD_REQUEST renders its exact §8 string, Enter it manually with no code retained either (F4: never a plausible barcode)", async () => {
     const original = apiClient.lookupProduct.bind(apiClient);
     apiClient.lookupProduct = () => Promise.reject(new ProductLookupRefusedError("BAD_REQUEST"));
     try {
       const result = await renderScreen();
       await lookUp(result, "not-a-code");
       expect(result.getByText("That isn't a barcode number we can look up.")).toBeTruthy();
+      fireEvent.press(result.getByLabelText("Enter it manually"));
+      expect(pushed).toEqual(["/add/manual"]);
     } finally {
       apiClient.lookupProduct = original;
     }
   });
 
-  it("a 200 error outcome (upstream trouble) renders its exact §8 string, never result.message", async () => {
+  it("a 200 error outcome (upstream trouble) renders its exact §8 string, never result.message, and retains the code (F4: a valid barcode we could not resolve)", async () => {
     const original = apiClient.lookupProduct.bind(apiClient);
     apiClient.lookupProduct = (code: string) => {
       const answer: ProductLookupResultDto = {
@@ -871,12 +1038,14 @@ describe("S7 · product-lookup refusals (M3-T4e Objective (a), copy-deck.md §8)
         ),
       ).toBeTruthy();
       expect(result.queryByText(/this exact sentence/)).toBeNull();
+      fireEvent.press(result.getByLabelText("Enter it manually"));
+      expect(pushed).toEqual([{ pathname: "/add/manual", params: { code: "060000100810" } }]);
     } finally {
       apiClient.lookupProduct = original;
     }
   });
 
-  it("a 401/403 (or any other refused lookup) renders the generic fallback, with Enter it manually still offered", async () => {
+  it("a 401/403 (or any other refused lookup) renders the read fallback (review round 1 F2/R2), with Enter it manually still offered and the code retained (F4: a plausible barcode)", async () => {
     const original = apiClient.lookupProduct.bind(apiClient);
     apiClient.lookupProduct = () => Promise.reject(new ProductLookupRefusedError("UNAUTHORIZED"));
     try {
@@ -884,10 +1053,11 @@ describe("S7 · product-lookup refusals (M3-T4e Objective (a), copy-deck.md §8)
       await lookUp(result, "060000100810");
       expect(
         result.getByText(
-          "Something went wrong saving that. Try again, and tell us if it keeps happening.",
+          "Something went wrong loading that. Try again, and tell us if it keeps happening.",
         ),
       ).toBeTruthy();
-      expect(result.getByLabelText("Enter it manually")).toBeTruthy();
+      fireEvent.press(result.getByLabelText("Enter it manually"));
+      expect(pushed).toEqual([{ pathname: "/add/manual", params: { code: "060000100810" } }]);
     } finally {
       apiClient.lookupProduct = original;
     }

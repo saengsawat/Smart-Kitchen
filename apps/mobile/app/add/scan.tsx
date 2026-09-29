@@ -39,8 +39,13 @@ import {
 import {
   LOOKUP_UPSTREAM_ERROR_MESSAGE,
   messageForLookupError,
+  ProductLookupRefusedError,
 } from "../../src/scan/product-lookup-errors";
-import { isCreateItemUnit, planScanQuantity } from "../../src/scan/quantity";
+import {
+  isCreateItemUnit,
+  planScanQuantity,
+  SCANNED_BARCODE_QUANTITY_SOURCE,
+} from "../../src/scan/quantity";
 import { recordRecentlyAdded } from "../../src/scan/recently-added";
 import { nextIdempotencyKey } from "../../src/api/idempotency";
 
@@ -86,7 +91,16 @@ export default function ScanScreen(): React.JSX.Element {
   const [permission, requestPermission] = useCameraPermissions();
   const [phase, setPhase] = useState<ScanPhase>({ kind: "camera" });
   const [typedCode, setTypedCode] = useState("");
-  const [lookupError, setLookupError] = useState<string | null>(null);
+  // M3-T4e review round 1 F4: whether "Enter it manually" should carry the
+  // failed code forward depends on *why* the lookup failed. A refused
+  // request (PLU, bad request) never reached a source at all, so there is
+  // no barcode fact worth keeping; an `error` outcome or any other failure
+  // means we had a real, plausible barcode we simply could not resolve, the
+  // same case S9's own "kept on file" note already covers for a miss.
+  const [lookupFailure, setLookupFailure] = useState<{
+    readonly message: string;
+    readonly retainCode: boolean;
+  } | null>(null);
   const [count, setCount] = useState(1);
   const [location, setLocation] = useState<StorageLocationDto>("FRIDGE");
   const [addError, setAddError] = useState<string | null>(null);
@@ -200,7 +214,7 @@ export default function ScanScreen(): React.JSX.Element {
       return;
     }
     setLastAttemptedCode(trimmed);
-    setLookupError(null);
+    setLookupFailure(null);
     try {
       const result = await apiClient.lookupProduct(trimmed);
       if (result.status === "hit") {
@@ -215,9 +229,10 @@ export default function ScanScreen(): React.JSX.Element {
         // M3-T4e Objective (a): the source itself could not answer (rate
         // limit, outage, timeout, an unreadable reply) — copy-deck.md §8's
         // lookup-`error` string, never `result.message` (invariant: no
-        // server message ever reaches a screen).
+        // server message ever reaches a screen). This is a valid barcode we
+        // simply could not resolve, so the code is worth retaining (F4).
         scanLockRef.current = false;
-        setLookupError(LOOKUP_UPSTREAM_ERROR_MESSAGE);
+        setLookupFailure({ message: LOOKUP_UPSTREAM_ERROR_MESSAGE, retainCode: true });
       }
     } catch (error) {
       // Review F14: a lookup failure must not permanently lock the camera
@@ -227,8 +242,16 @@ export default function ScanScreen(): React.JSX.Element {
       // 400 BAD_REQUEST) gets its own copy-deck.md §8 sentence;
       // 401/403/5xx/network failures fall through to the same generic
       // fallback this catch has always shown.
+      // Review round 1 F4: PLU_NOT_SUPPORTED/BAD_REQUEST never reached a
+      // source at all (refused before ever asking), so there is no barcode
+      // fact to keep; every other refusal (401/403/5xx, a network failure)
+      // was a plausible barcode the source could not resolve, worth keeping.
       scanLockRef.current = false;
-      setLookupError(messageForLookupError(error));
+      const retainCode = !(
+        error instanceof ProductLookupRefusedError &&
+        (error.code === "PLU_NOT_SUPPORTED" || error.code === "BAD_REQUEST")
+      );
+      setLookupFailure({ message: messageForLookupError(error), retainCode });
     }
   }
 
@@ -244,11 +267,12 @@ export default function ScanScreen(): React.JSX.Element {
    * M3-T4e Objective (a): every S7 refusal (PLU, bad request, an upstream
    * `error` outcome, or the generic fallback) still offers "Enter it
    * manually", the same hand-off the miss panel gives — a lookup refusal is
-   * not a dead end. Retains whatever code the refused attempt used, same as
-   * the miss panel, but only when there is one worth keeping.
+   * not a dead end. Review round 1 F4: the code is retained only when
+   * `lookupFailure.retainCode` says it is a plausible barcode worth keeping
+   * (never for PLU_NOT_SUPPORTED/BAD_REQUEST, which never named one).
    */
   function handleGoManualFromError(): void {
-    if (lastAttemptedCode) {
+    if (lookupFailure?.retainCode && lastAttemptedCode) {
       router.push({ pathname: "/add/manual", params: { code: lastAttemptedCode } });
     } else {
       router.push("/add/manual");
@@ -274,11 +298,13 @@ export default function ScanScreen(): React.JSX.Element {
     setAdding(true);
     setAddError(null);
     try {
-      // M3-T4e Objectives (d)/(e): count whole packages of the record's own
-      // package size when it exists and its unit is one the ledger accepts;
-      // otherwise (no size at all, or a unit like "qt" the registry/ledger
-      // does not convert) the chosen count of packages, unit "each", tier
-      // Estimated — never an invented conversion (CLAUDE.md rule 7).
+      // M3-T4e Objectives (d)/(e), review round 1 F1/F3 rulings: count whole
+      // packages of the record's own package size when it exists and its
+      // unit is one the ledger accepts, tier/source from the size record;
+      // otherwise (no size at all, or a unit like "qt" the ledger does not
+      // convert) the chosen count of packages, unit "each" — the user's own
+      // count, Known Fact, source "scanned barcode" — never an invented
+      // conversion (CLAUDE.md rule 7).
       const packageSize = product.packageSize;
       const plan = planScanQuantity(
         packageSize
@@ -286,6 +312,12 @@ export default function ScanScreen(): React.JSX.Element {
               qty: packageSize.value.qty,
               unit: normalizePackageUnit(packageSize.value.unit),
               tier: packageSize.provenance.tier,
+              // FieldProvenanceDto.source is nullable in general (a value
+              // recorded with no known source); every real package-size
+              // record carries one (OFF: "open-food-facts", the fixture
+              // corpus: "manufacturer-label"), so this fallback is only a
+              // defensive "never invent a source name", not an expected path.
+              source: packageSize.provenance.source ?? SCANNED_BARCODE_QUANTITY_SOURCE,
             }
           : undefined,
         count,
@@ -303,7 +335,10 @@ export default function ScanScreen(): React.JSX.Element {
         amount: microsToAmountText(plan.amountMicros),
         quantityProvenance: {
           tier: plan.tier,
-          source: "scanned barcode",
+          // Review round 1 F1: the package size's own source when the
+          // amount is built from it, else "scanned barcode" (planScanQuantity
+          // already picks the right one — never hardcoded here).
+          source: plan.source,
           confidence: null,
           recordedAt: null,
         },
@@ -315,8 +350,10 @@ export default function ScanScreen(): React.JSX.Element {
       heldIdempotencyKey.current = null; // done: a later Add (a new scan) starts fresh
       recordRecentlyAdded(summary);
       // M3-T4e Objective (d): the toast's tier word follows the quantity
-      // tier, not a hardcoded "Known Fact" — an Estimated package size (or
-      // an unsupported package unit) reads "Estimated" here.
+      // tier, not a hardcoded "Known Fact" — an Estimated package size used
+      // directly (a supported unit) reads "Estimated" here; a count-only
+      // amount (no size, or an unsupported unit) is always Known Fact
+      // (review round 1 F3).
       const tierWord = plan.tier === "ESTIMATED" ? "Estimated" : "Known Fact";
       show(`Added ${count} × ${product.name.value} to ${LOCATION_LABELS[location]} · ${tierWord}`);
       router.replace("/inventory");
@@ -441,9 +478,9 @@ export default function ScanScreen(): React.JSX.Element {
       )}
       <ScanFrame reducedMotion={reducedMotion} />
       <Text style={styles.camHint}>Point the camera at a barcode</Text>
-      {lookupError ? (
+      {lookupFailure ? (
         <View style={styles.lookupErrorBox} accessibilityLiveRegion="assertive">
-          <Text style={styles.lookupErrorText}>{lookupError}</Text>
+          <Text style={styles.lookupErrorText}>{lookupFailure.message}</Text>
           {/* M3-T4e Objective (a): a refused lookup is not a dead end —
               "Enter it manually" stays offered, the same hand-off the miss
               panel gives. */}
@@ -588,10 +625,12 @@ function ConfirmSheet({
   // M3-T4e Objective (b): one profile only, PER_SERVING when the record has
   // it, else PER_100G, else none — never the record's own array order.
   const nutritionProfile = selectNutritionProfile(product.nutrition);
-  // M3-T4e Objective (e): a package unit the ledger cannot accept (pt/qt/gal,
-  // anything unparsed) still shows the record's own size, but as "{count} ×
-  // {qty} {unit}" text rather than the unit S8 would otherwise imply this
-  // item is stored in — the item itself is recorded as a count of packages.
+  // M3-T4e Objective (e), review round 1 F8 ruling: a package unit the
+  // ledger cannot accept (pt/qt/gal, anything unparsed) still shows the
+  // record's own size, but as "{count} package(s) of {qty} {unit}" text
+  // rather than the bare size S8 would otherwise imply this item is stored
+  // in — the item itself is recorded as a count of packages, each labelled
+  // with that size (never an invented conversion).
   const packageUnitSupported = product.packageSize
     ? isCreateItemUnit(normalizePackageUnit(product.packageSize.value.unit))
     : true;
@@ -635,7 +674,7 @@ function ConfirmSheet({
                 <Text style={styles.productMeta}>
                   {packageUnitSupported
                     ? `${trimAmountText(product.packageSize.value.qty)} ${product.packageSize.value.unit}`
-                    : `${String(count)} × ${trimAmountText(product.packageSize.value.qty)} ${product.packageSize.value.unit}`}
+                    : `${String(count)} ${count === 1 ? "package" : "packages"} of ${trimAmountText(product.packageSize.value.qty)} ${product.packageSize.value.unit}`}
                 </Text>
                 <TierChip tier={product.packageSize.provenance.tier} />
               </>
@@ -643,8 +682,16 @@ function ConfirmSheet({
           </View>
         ) : null}
 
+        {/* Review round 1 F5 ruling: the prototype caption always renders,
+            in both states; "Nutrition not on file" replaces only the
+            numbers, never the caption sentence. The basis ("per serving" /
+            "per 100 g") sits next to the macros row itself, not folded into
+            the caption text. */}
         {nutritionProfile ? (
           <>
+            <View style={styles.nutritionHeaderRow}>
+              <Text style={styles.basisLabel}>{NUTRITION_BASIS_LABEL[nutritionProfile.basis]}</Text>
+            </View>
             <View style={styles.macrosRow}>
               <Macro
                 label="cal"
@@ -666,28 +713,30 @@ function ConfirmSheet({
                 suffix="g"
               />
             </View>
-            {/* Review F4: the record's own tier chip, shown once for the
-                whole nutrition profile (every field in one
-                `NutritionProfileDto` shares one provenance — there is no
-                finer-grained per-macro tier in this record). M3-T4e
-                Objective (b): the basis ("per serving" / "per 100 g") is
-                named here too — never a number with no basis label. */}
-            <View style={styles.nutritionTierRow}>
-              <Text
-                style={styles.provChipSmall}
-                accessibilityLabel={chipAccessibilityLabel(nutritionProfile.provenance.tier)}
-              >
-                {ROW_CHIP_TEXT[nutritionProfile.provenance.tier]}
-              </Text>
-              <Text style={styles.helperCaption}>
-                Nutrition ({NUTRITION_BASIS_LABEL[nutritionProfile.basis]}) via Open Food Facts ·
-                tier shown per field
-              </Text>
-            </View>
           </>
         ) : (
-          <Text style={styles.helperCaption}>{NUTRITION_NOT_ON_FILE_TEXT}</Text>
+          <View style={styles.macrosRow}>
+            <Text style={styles.notOnFileText}>{NUTRITION_NOT_ON_FILE_TEXT}</Text>
+          </View>
         )}
+        {/* Review F4: the record's own tier chip, shown once for the whole
+            nutrition profile (every field in one `NutritionProfileDto`
+            shares one provenance — there is no finer-grained per-macro tier
+            in this record); absent when there is no profile to tier at
+            all. The caption itself is unconditional (F5). */}
+        <View style={styles.nutritionTierRow}>
+          {nutritionProfile ? (
+            <Text
+              style={styles.provChipSmall}
+              accessibilityLabel={chipAccessibilityLabel(nutritionProfile.provenance.tier)}
+            >
+              {ROW_CHIP_TEXT[nutritionProfile.provenance.tier]}
+            </Text>
+          ) : null}
+          <Text style={styles.helperCaption}>
+            Nutrition & allergens: label data via Open Food Facts · tier shown per field
+          </Text>
+        </View>
 
         {/* Review F3/F6/F7 ruling: one line per evidence entry and one line
             per unknown — never a single condensed "primary" pick. A product
@@ -1135,10 +1184,13 @@ const styles = StyleSheet.create({
     color: colors.ink,
   },
   productMeta: { fontSize: 13, color: colors.ink2, fontFamily: fontFamily.body },
+  nutritionHeaderRow: { flexDirection: "row", justifyContent: "flex-end" },
+  basisLabel: { fontSize: 11, color: colors.ink3, fontFamily: fontFamily.body },
   macrosRow: { flexDirection: "row", justifyContent: "space-between", paddingVertical: spacing.sm },
   macro: { alignItems: "center" },
   macroValue: { fontSize: 15, fontWeight: "700", color: colors.ink, fontFamily: fontFamily.body },
   macroLabel: { fontSize: 10.5, color: colors.ink3, fontFamily: fontFamily.body },
+  notOnFileText: { fontSize: 13, color: colors.ink2, fontFamily: fontFamily.body },
   nutritionTierRow: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
   helperCaption: { fontSize: 11, color: colors.ink3, fontFamily: fontFamily.body, flexShrink: 1 },
   allergenRow: { gap: spacing.xs, paddingVertical: spacing.sm },

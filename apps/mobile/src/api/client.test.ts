@@ -1,6 +1,10 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { INVENTORY_ITEMS_PATH } from "@smart-kitchen/contracts";
-import { GENERIC_LEDGER_ERROR_MESSAGE, messageForLedgerError } from "../inventory/errors";
+import {
+  GENERIC_LEDGER_ERROR_MESSAGE,
+  GENERIC_READ_ERROR_MESSAGE,
+  messageForLedgerError,
+} from "../inventory/errors";
 import { messageForLookupError, ProductLookupRefusedError } from "../scan/product-lookup-errors";
 import type {
   CreateItemRequestDto,
@@ -1204,11 +1208,11 @@ describe("lookupProduct / createItem (M3-T4b)", () => {
           expect.unreachable();
         } catch (error) {
           expect(error).toBeInstanceOf(ProductLookupRefusedError);
-          expect(messageForLookupError(error)).toBe(GENERIC_LEDGER_ERROR_MESSAGE);
+          expect(messageForLookupError(error)).toBe(GENERIC_READ_ERROR_MESSAGE);
         }
       });
 
-      it("a 500 throws ProductLookupRefusedError rendering the generic fallback", async () => {
+      it("a 500 throws ProductLookupRefusedError rendering the read fallback (review round 1 F2/R2: a lookup is a read)", async () => {
         globalThis.fetch = () =>
           Promise.resolve(
             new Response(JSON.stringify({ error: { code: "INTERNAL", message: "boom" } }), {
@@ -1220,7 +1224,7 @@ describe("lookupProduct / createItem (M3-T4b)", () => {
           await client.lookupProduct("096619555505");
           expect.unreachable();
         } catch (error) {
-          expect(messageForLookupError(error)).toBe(GENERIC_LEDGER_ERROR_MESSAGE);
+          expect(messageForLookupError(error)).toBe(GENERIC_READ_ERROR_MESSAGE);
         }
       });
 

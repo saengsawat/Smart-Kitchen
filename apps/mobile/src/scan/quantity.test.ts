@@ -102,39 +102,81 @@ describe("isCreateItemUnit (M3-T4e Objective (e))", () => {
   });
 });
 
-describe("planScanQuantity (M3-T4e Objectives (d)/(e): count x package size, tier = lowest input)", () => {
-  it("a Known Fact package size (the fixture corpus) in a supported unit stays Known Fact", () => {
-    const plan = planScanQuantity({ qty: "16", unit: "oz", tier: "KNOWN_FACT" }, 2);
-    expect(plan).toEqual({ amountMicros: 32_000_000n, unit: "oz", tier: "KNOWN_FACT" });
+describe("planScanQuantity (M3-T4e Objectives (d)/(e), review round 1 F1/F3 rulings)", () => {
+  it("a Known Fact package size (the fixture corpus) in a supported unit stays Known Fact, source from the size", () => {
+    const plan = planScanQuantity(
+      { qty: "16", unit: "oz", tier: "KNOWN_FACT", source: "manufacturer-label" },
+      2,
+    );
+    expect(plan).toEqual({
+      amountMicros: 32_000_000n,
+      unit: "oz",
+      tier: "KNOWN_FACT",
+      source: "manufacturer-label",
+    });
   });
 
-  it("an Estimated package size (Open Food Facts, D-025) in a supported unit gives an Estimated quantity", () => {
-    const plan = planScanQuantity({ qty: "793.8", unit: "g", tier: "ESTIMATED" }, 1);
-    expect(plan).toEqual({ amountMicros: 793_800_000n, unit: "g", tier: "ESTIMATED" });
+  it("an Estimated package size (Open Food Facts, D-025) in a supported unit gives an Estimated quantity, source open-food-facts", () => {
+    const plan = planScanQuantity(
+      { qty: "793.8", unit: "g", tier: "ESTIMATED", source: "open-food-facts" },
+      1,
+    );
+    expect(plan).toEqual({
+      amountMicros: 793_800_000n,
+      unit: "g",
+      tier: "ESTIMATED",
+      source: "open-food-facts",
+    });
   });
 
-  it("no package size at all: the chosen count in each, Known Fact (the user physically counted)", () => {
+  it("no package size at all: the chosen count in each, Known Fact, source scanned barcode (the user physically counted)", () => {
     const plan = planScanQuantity(undefined, 3);
-    expect(plan).toEqual({ amountMicros: 3_000_000n, unit: "each", tier: "KNOWN_FACT" });
+    expect(plan).toEqual({
+      amountMicros: 3_000_000n,
+      unit: "each",
+      tier: "KNOWN_FACT",
+      source: "scanned barcode",
+    });
   });
 
-  it("a package unit the ledger cannot accept (qt): count of packages, unit each, tier Estimated (never a conversion)", () => {
-    const plan = planScanQuantity({ qty: "1", unit: "qt", tier: "ESTIMATED" }, 1);
-    expect(plan).toEqual({ amountMicros: 1_000_000n, unit: "each", tier: "ESTIMATED" });
+  it('F3 ruling: a package unit the ledger cannot accept (qt) still counts as Known Fact "N each", never invented, source scanned barcode', () => {
+    // Reversed from this function's first draft: an unparsed/unsupported
+    // size does not make the *count* the user entered any less certain -
+    // "1 each" is their own fact regardless of what the label's size says,
+    // and the amount never used the size to build itself, so it is not the
+    // size's source either.
+    const plan = planScanQuantity(
+      { qty: "1", unit: "qt", tier: "ESTIMATED", source: "open-food-facts" },
+      1,
+    );
+    expect(plan).toEqual({
+      amountMicros: 1_000_000n,
+      unit: "each",
+      tier: "KNOWN_FACT",
+      source: "scanned barcode",
+    });
   });
 
-  it("the same unsupported-unit fallback applies even when the record itself claims Known Fact", () => {
-    // Never possible from a real source today (OFF is always ESTIMATED,
-    // the fixture corpus never uses pt/qt/gal), but pinned so a future
-    // source cannot silently upgrade an unconvertible package into a
-    // Known Fact "each" quantity by using a high-tier size record.
-    const plan = planScanQuantity({ qty: "2", unit: "gal", tier: "KNOWN_FACT" }, 1);
-    expect(plan.tier).toBe("ESTIMATED");
+  it("the unsupported-unit fallback is Known Fact even when the size record itself is Known Fact (the count, not the size, decides)", () => {
+    const plan = planScanQuantity(
+      { qty: "2", unit: "gal", tier: "KNOWN_FACT", source: "manufacturer-label" },
+      1,
+    );
+    expect(plan.tier).toBe("KNOWN_FACT");
     expect(plan.unit).toBe("each");
+    expect(plan.source).toBe("scanned barcode");
   });
 
   it("multiple packages of an unsupported unit still multiply the count, not the size", () => {
-    const plan = planScanQuantity({ qty: "48", unit: "fl oz", tier: "ESTIMATED" }, 4);
-    expect(plan).toEqual({ amountMicros: 4_000_000n, unit: "each", tier: "ESTIMATED" });
+    const plan = planScanQuantity(
+      { qty: "48", unit: "fl oz", tier: "ESTIMATED", source: "open-food-facts" },
+      4,
+    );
+    expect(plan).toEqual({
+      amountMicros: 4_000_000n,
+      unit: "each",
+      tier: "KNOWN_FACT",
+      source: "scanned barcode",
+    });
   });
 });

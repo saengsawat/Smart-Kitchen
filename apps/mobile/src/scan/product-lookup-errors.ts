@@ -15,7 +15,7 @@
  * for the screen's own `result.status === "error"` branch.
  */
 
-import { GENERIC_LEDGER_ERROR_MESSAGE, messageForLedgerError } from "../inventory/errors";
+import { GENERIC_READ_ERROR_MESSAGE } from "../inventory/errors";
 
 /** copy-deck.md §8, `PLU_NOT_SUPPORTED` row, verbatim. */
 export const PLU_NOT_SUPPORTED_MESSAGE =
@@ -47,14 +47,14 @@ export class ProductLookupRefusedError extends Error {
 
 /**
  * Picks S7's sentence for a rejected `lookupProduct` call (BACKLOG.md
- * M3-T4e Objective (a)): `PLU_NOT_SUPPORTED` and `BAD_REQUEST` get their own
- * copy-deck.md §8 string; every other {@link ProductLookupRefusedError} code
- * (401/403, an unrecognised code, `INTERNAL`) and anything that is not one of
- * these errors at all (a plain network failure, an unexpected-body `Error`)
- * falls through to {@link messageForLedgerError}'s existing generic fallback
- * — the same sentence this screen has always shown for a lookup it could not
- * complete, so a pre-existing "the read failed" rendering does not change
- * shape under this ticket.
+ * M3-T4e Objective (a), review round 1 F2/R2 ruling): `PLU_NOT_SUPPORTED`
+ * and `BAD_REQUEST` get their own copy-deck.md §8 string; every other
+ * {@link ProductLookupRefusedError} code (401/403, an unrecognised code,
+ * `INTERNAL`) and anything that is not one of these errors at all (a plain
+ * network failure, an unexpected-body `Error`) falls through to
+ * {@link GENERIC_READ_ERROR_MESSAGE} — a lookup is a *read*, never a save,
+ * so it gets the read fallback ("Something went wrong loading that...")
+ * rather than the ledger's save-failure sentence.
  */
 export function messageForLookupError(error: unknown): string {
   if (error instanceof ProductLookupRefusedError) {
@@ -64,8 +64,8 @@ export function messageForLookupError(error: unknown): string {
       case "BAD_REQUEST":
         return NOT_A_BARCODE_MESSAGE;
       default:
-        return GENERIC_LEDGER_ERROR_MESSAGE;
+        return GENERIC_READ_ERROR_MESSAGE;
     }
   }
-  return messageForLedgerError(error);
+  return GENERIC_READ_ERROR_MESSAGE;
 }
