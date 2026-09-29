@@ -34,6 +34,8 @@ allergy_restrictions (id, user_id FK, allergen_code NULL, custom_name NULL,
                       severity ENUM(standard,severe), CHECK(allergen_code OR custom_name))
 ```
 
+**Join codes and membership doors (M2-T3, migration 0008).** `household_join_codes` (`code_hash` PK, hex HMAC-SHA-256 of the normalised code under the server pepper `SK_JOIN_CODE_PEPPER`, plaintext never stored; `household_id`, `created_by`, `created_at`, `revoked_at`). At most one live code per household; `revoked_at` is set once and frozen by trigger; RLS like every household-scoped table, `sk_app` SELECT/INSERT/UPDATE(`revoked_at`) only. Codes are `XXXX-NNN` (letters without I and O, digits 2 to 9), returned in plaintext once, at issue. Memberships are created at runtime only through `app_create_household` (owner, new household) and `app_redeem_join_code` (member, live code, idempotent); `sk_app` holds no INSERT on `households` or `household_memberships`. `app_user_memberships` lists one user's memberships for the identity port. Membership changes are not a table: they are audit log lines (ARCHITECTURE §7.10). Join codes do not expire today (OQ-E3).
+
 ### Food knowledge (global, not household-scoped)
 ```
 product_catalog_items(id, name, brand, category, package_qty, package_unit,

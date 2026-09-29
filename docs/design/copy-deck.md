@@ -305,6 +305,8 @@ Every value of `LedgerErrorCode` (`packages/domain/src/inventory/errors.ts`), cl
 
 **API-level refusals (not `LedgerErrorCode`s; added at M2-T2 acceptance, 2026-09-22):** `IDEMPOTENCY_KEY_CONFLICT` answers 409 and the client treats it as "already applied differently, do not retry": "That request was already used for a different change, so it was not applied again." `UNDO_NOT_POSSIBLE` answers 409 when the stock an entry added has since been used, so undoing it would overshoot: "That change can't be undone. The stock it added has already been used." An item the session cannot see answers 404 with "Not found." and is indistinguishable from an item that does not exist.
 
+**Household refusals (added at M2-T3 acceptance, 2026-09-29):** `JOIN_CODE_INVALID` answers 404 for an unknown, revoked or malformed code alike: "That code didn't match a household. Check it with whoever invited you." (the S1 string, §11). `RATE_LIMITED` answers 429 after ten join attempts in ten minutes: "Too many tries. Wait a few minutes and try again." `NOT_OWNER` answers 403 when a member tries an owner action such as rotating the code: "Only the household owner can do that." A household name outside 1 to 60 characters answers 400: "Give the household a name of 1 to 60 characters."
+
 | `LedgerErrorCode` | User-facing? | String | Reasoning |
 |---|---|---|---|
 | `ZERO_DELTA` | Yes | "Enter an amount to record a change." | Reachable by confirming a form with no quantity entered. |

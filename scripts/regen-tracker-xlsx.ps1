@@ -2,7 +2,7 @@
 # Usage (close BACKLOG_TRACKER.xlsx in Excel first, the file is replaced):
 #   powershell -NoProfile -File scripts/regen-tracker-xlsx.ps1
 $ErrorActionPreference = 'Stop'
-$repo = 'C:\Users\Andy\OneDrive\006_Smart Kitchen App'
+$repo = 'D:\06_Smart-Kitchen'
 $csv  = Join-Path $repo 'BACKLOG_TRACKER.csv'
 $xlsx = Join-Path $repo 'BACKLOG_TRACKER.xlsx'
 
