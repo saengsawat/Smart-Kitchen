@@ -26,22 +26,78 @@ const UNIT_KIND_LABELS: Readonly<Record<UnitKindDto, string>> = {
   COUNT: "Count",
 };
 
+/** `location` narrowed to one of S9's own pickable locations, or the default when unset/unrecognised. */
+function prefillLocation(location: string | undefined): StorageLocationDto {
+  return (MANUAL_LOCATIONS as readonly string[]).includes(location ?? "")
+    ? (location as StorageLocationDto)
+    : "FRIDGE";
+}
+
+/** The `UnitKindDto` that lists `unit`, or `null` if none does (an unrecognised/omitted prefill). */
+function unitKindForUnit(unit: string | undefined): UnitKindDto | null {
+  if (!unit) {
+    return null;
+  }
+  for (const kind of UNIT_KINDS_DTO) {
+    if (UNITS_BY_KIND_DTO[kind].includes(unit)) {
+      return kind;
+    }
+  }
+  return null;
+}
+
+/**
+ * A prefilled whole-unit count from S11's close-the-loop Add (M3-T5
+ * Objective (d)): S11 only ever prefills a whole amount (its no-`itemId`
+ * rows are all whole counts/pounds — broccoli, granola, paper towels), and
+ * S9's stepper is whole-unit-only regardless of source (review F17: it
+ * floors at zero, never offers a fraction), so a non-integer or missing
+ * prefill falls back to S9's own default of 1 rather than guessing a
+ * rounding rule this ticket does not own.
+ */
+function prefillCount(amount: string | undefined): number {
+  if (!amount) {
+    return 1;
+  }
+  const parsed = Number.parseInt(amount, 10);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : 1;
+}
+
 /**
  * S9 · Manual add (M3-T4b), prototype v4 `#scr-manual`. Manual entries are
  * Known Fact for identity and quantity, per objective (d); no confirmation
  * step, no allergen row (that data does not exist for a hand-typed item).
+ *
+ * **M3-T5 addition:** `name`/`amount`/`unit`/`location` search params
+ * prefill the form (never auto-save it) for S11's close-the-loop Add on a
+ * gap row with no `itemId` yet (Objective (d): "opens S9 manual add
+ * prefilled ... S9's existing save creates the item" — no new form, no
+ * change to what happens on Save).
  */
 export default function ManualAddScreen(): React.JSX.Element {
   const router = useRouter();
   const { show } = useToast();
-  const params = useLocalSearchParams<{ code?: string }>();
+  const params = useLocalSearchParams<{
+    code?: string;
+    name?: string;
+    amount?: string;
+    unit?: string;
+    location?: string;
+  }>();
   const retainedCode = params.code;
+  const prefillKind = unitKindForUnit(params.unit) ?? "MASS";
 
-  const [name, setName] = useState("");
-  const [unitKind, setUnitKind] = useState<UnitKindDto>("MASS");
-  const [unit, setUnit] = useState(UNITS_BY_KIND_DTO.MASS[0]!);
-  const [count, setCount] = useState(1);
-  const [location, setLocation] = useState<StorageLocationDto>("FRIDGE");
+  const [name, setName] = useState(params.name ?? "");
+  const [unitKind, setUnitKind] = useState<UnitKindDto>(prefillKind);
+  const [unit, setUnit] = useState(
+    params.unit && UNITS_BY_KIND_DTO[prefillKind].includes(params.unit)
+      ? params.unit
+      : UNITS_BY_KIND_DTO[prefillKind][0]!,
+  );
+  const [count, setCount] = useState(() => prefillCount(params.amount));
+  const [location, setLocation] = useState<StorageLocationDto>(() =>
+    prefillLocation(params.location),
+  );
   const [nameError, setNameError] = useState<string | null>(null);
   const [addError, setAddError] = useState<string | null>(null);
 

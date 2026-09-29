@@ -12,7 +12,13 @@ import { apiClient } from "../api/client";
 
 let pushed: unknown[] = [];
 let replaced: unknown[] = [];
-let searchParams: { code?: string } = {};
+let searchParams: {
+  code?: string;
+  name?: string;
+  amount?: string;
+  unit?: string;
+  location?: string;
+} = {};
 
 vi.mock("expo-router", () => ({
   useRouter: () => ({
@@ -120,5 +126,78 @@ describe("S9 · manual add", () => {
   it("shows no retained-code note when not reached from a miss", async () => {
     const result = await renderScreen();
     expect(result.queryByText(/kept on file/)).toBeNull();
+  });
+
+  describe("M3-T5 prefill (S11's close-the-loop Add on a gap row with no itemId)", () => {
+    it("prefills name, unit kind/unit, count and location from the search params", async () => {
+      searchParams = { name: "Broccoli", amount: "2", unit: "lb", location: "FRIDGE" };
+      const result = await renderScreen();
+
+      expect((result.getByLabelText("Item name").props as { value?: string }).value).toBe(
+        "Broccoli",
+      );
+      const massProps = result.getByLabelText("Mass").props as {
+        accessibilityState?: { selected?: boolean };
+      };
+      expect(massProps.accessibilityState?.selected).toBe(true);
+      const lbProps = result.getByLabelText("lb").props as {
+        accessibilityState?: { selected?: boolean };
+      };
+      expect(lbProps.accessibilityState?.selected).toBe(true);
+      expect(result.getByText("2")).toBeTruthy(); // the stepper's value
+      const fridgeProps = result.getByLabelText("Fridge").props as {
+        accessibilityState?: { selected?: boolean };
+      };
+      expect(fridgeProps.accessibilityState?.selected).toBe(true);
+    });
+
+    it("saving a prefilled item creates it with the prefilled amount/unit/location", async () => {
+      searchParams = { name: "Broccoli", amount: "2", unit: "lb", location: "FRIDGE" };
+      const result = await renderScreen();
+      fireEvent.press(result.getByLabelText("Add to inventory"));
+      await flushPending();
+
+      const items = await apiClient.getInventoryItems();
+      const created = items.find((item) => item.displayName === "Broccoli");
+      expect(created?.quantity.unit).toBe("lb");
+      expect(created?.quantity.amount).toBe("2");
+      expect(created?.storageLocation).toBe("FRIDGE");
+    });
+
+    it("falls back to S9's own defaults when the prefill is absent (no regression for the S7/S8 miss path)", async () => {
+      searchParams = { code: "040000519073" };
+      const result = await renderScreen();
+
+      expect((result.getByLabelText("Item name").props as { value?: string }).value).toBe("");
+      const massProps = result.getByLabelText("Mass").props as {
+        accessibilityState?: { selected?: boolean };
+      };
+      expect(massProps.accessibilityState?.selected).toBe(true);
+      expect(result.getByText("1")).toBeTruthy();
+    });
+
+    it("falls back to a whole-unit default (1) for a non-integer or missing amount, never guessing a rounding rule", async () => {
+      searchParams = { name: "Weird item", amount: "0.75", unit: "lb" };
+      const result = await renderScreen();
+      expect(result.getByText("1")).toBeTruthy();
+    });
+
+    it("ignores an unrecognised unit, falling back to Mass's first unit", async () => {
+      searchParams = { name: "Mystery", amount: "1", unit: "not-a-real-unit" };
+      const result = await renderScreen();
+      const massProps = result.getByLabelText("Mass").props as {
+        accessibilityState?: { selected?: boolean };
+      };
+      expect(massProps.accessibilityState?.selected).toBe(true);
+    });
+
+    it("ignores an unrecognised location, falling back to Fridge", async () => {
+      searchParams = { name: "Mystery", location: "OTHER" };
+      const result = await renderScreen();
+      const fridgeProps = result.getByLabelText("Fridge").props as {
+        accessibilityState?: { selected?: boolean };
+      };
+      expect(fridgeProps.accessibilityState?.selected).toBe(true);
+    });
   });
 });
