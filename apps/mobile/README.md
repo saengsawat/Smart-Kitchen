@@ -7,9 +7,13 @@ the inventory list (S4), item detail with ledger history (S5), the provenance
 legend, and an `HttpApiClient` that can read the real inventory list over the
 network (see "Pointing the app at a local API" below); M3-T4a wired
 corrections, removals, undo and AI confirmation to the M2-T2 write endpoints
-over that same client. Household/onboarding state stays fixture-only until
-M2-T3 adds its endpoints; no real auth yet (D-022). M3-T4c added a web
-target (see "Run it in a browser" below) alongside the existing phone path.
+over that same client. M3-T4d wired household create/join/read and manual
+item creation to the M2-T3 endpoints (see "Pointing the app at a local API"
+below); the *restrictions half* of onboarding state (each member's
+allergies/preferences) still stays entirely client-local, because the server
+stores none of it until M2-T4 (A3 household permissions). No real auth yet
+(D-022). M3-T4c added a web target (see "Run it in a browser" below)
+alongside the existing phone path.
 
 ## Run it (Windows, Andy's machine)
 
@@ -125,14 +129,15 @@ nudges toward an account) which CLAUDE.md rule 17 says to avoid unless
 approved; plain LAN mode is enough for same-network testing and was decided
 against in D-023 planning ("no tunnel, no Expo account, no paid resource").
 
-## Pointing the app at a local API (M3-T3)
+## Pointing the app at a local API (M3-T3, extended M3-T4d)
 
 By default the app talks to nothing: `src/api/client.ts`'s `apiClient`
 singleton is a `FixtureApiClient` (in-memory, no network, no persistence
 across restarts). Setting `EXPO_PUBLIC_API_URL` before starting the dev
-server switches inventory list reads (`GET /v1/inventory/items`) to a real
-`HttpApiClient` against that base URL, bearer-authenticated as the fixture
-identity (`fixture.dean.chen`, `tests/fixtures/identity/README.md`):
+server switches every inventory read/write and the M2-T3 household/item
+endpoints (below) to a real `HttpApiClient` against that base URL,
+bearer-authenticated as `EXPO_PUBLIC_IDENTITY_TOKEN` when set, else the
+fixture default (`fixture.dean.chen`, `tests/fixtures/identity/README.md`):
 
 ```powershell
 $env:EXPO_PUBLIC_API_URL = "http://localhost:4000"
@@ -141,21 +146,50 @@ pnpm --filter mobile start
 
 Expo inlines `EXPO_PUBLIC_*` variables into the bundle at build/start time
 (its own convention, not something this app configures beyond reading it);
-changing the value needs a restart, not just a reload. `src/config/env.ts` is
-the one file in this app allowed to read `process.env` (eslint.config.js
+changing either value needs a restart, not just a reload. `src/config/env.ts`
+is the one file in this app allowed to read `process.env` (eslint.config.js
 carries a matching single-file exemption). Nothing else in the app touches
 it directly.
 
 The same `HttpApiClient` also carries the item detail/history read and every
 write M2-T2 exposes (corrections, removals, undo) over real `fetch` calls,
-wired in M3-T4a; nothing about writes changes based on this section, they
-just ride the same `EXPO_PUBLIC_API_URL` switch as the list read. Only
-onboarding/household state and `confirmAiProposal` (AI-tier confirmation)
-still delegate to an internal fixture client even with the variable set:
-those wait on the M2-T3 endpoints (see that class's doc comment in
-`src/api/client.ts` for the exact split). Leave the variable unset (the
-default) and every one of those calls, reads and writes alike, stays
-fixture-backed: in-memory, no network, nothing persists across a restart.
+wired in M3-T4a. M3-T4d (this ticket) added household create/join/read
+(`POST /v1/households`, `POST /v1/households/join`, `GET /v1/households/me`,
+the household half of S1's onboarding state) and manual item creation
+(`POST /v1/inventory/items`, S9). The *restrictions half* of onboarding state
+— each member's allergies/preferences — stays entirely client-local even
+against a real API: the server stores none of it until M2-T4 (A3 household
+permissions), so it keeps running through the same in-memory mechanism the
+fixture path always used, just attached to the real member ids the server
+returns (`FixtureApiClient.syncHouseholdFromServer`, `src/api/client.ts`).
+Only `confirmAiProposal` (AI-tier confirmation) and barcode lookup
+(`lookupProduct`, M3-T4e once M2-T4a lands) still reject/delegate to the
+fixture: those wait on further endpoints. Leave `EXPO_PUBLIC_API_URL` unset
+(the default) and every call, reads and writes alike, stays fixture-backed:
+in-memory, no network, nothing persists across a restart.
+
+**Running as a fresh user (M3-T4d).** `EXPO_PUBLIC_IDENTITY_TOKEN` picks
+which fixture identity `HttpApiClient` authenticates as
+(`tests/fixtures/identity/README.md`); the API's dev seed
+(`pnpm --filter api db:seed:fixture`) writes all four. Leave it unset for
+Dean Chen (owner of the seeded Chen household, the default), or set it to
+try the create/join flow from S1 as someone with no household yet:
+
+```powershell
+$env:EXPO_PUBLIC_API_URL = "http://localhost:4000"
+$env:EXPO_PUBLIC_IDENTITY_TOKEN = "fixture.new.user"
+pnpm --filter mobile start
+```
+
+Walking S1 through as `fixture.new.user`: "Create household" posts the name,
+shows the one-time join code once (it is never shown again, the plaintext
+only ever travels on this one response), then "Continue" moves on to S2. "Join
+with a code" against `CHEN-482` (the Chen household's seeded code) joins as a
+new member instead. Either way, S9 "Add manually" from the inventory tab then
+creates an item through `POST /v1/inventory/items`, which S4 lists and S5
+shows with its `INITIAL_STOCK` row. `fixture.maya.chen` is the Chen
+household's existing member, useful for trying the join flow's "already a
+member" path (`CHEN-482` again resolves the same household, no new row).
 
 **Giving a local API something to show (M2-T2).** A freshly migrated database
 holds no inventory, so the list arrives empty. `pnpm --filter api db:seed:fixture`
@@ -165,12 +199,14 @@ items the prototype draws, so S4 shows real rows read over the network. It needs
 `test`, and can be re-run as often as you like: a second run changes nothing.
 Full instructions are in [CONTRIBUTING.md](../../CONTRIBUTING.md#seeding-a-development-database-m2-t2).
 
-M2-T2 also added the endpoints behind those fixture-only writes:
+M2-T2 added the endpoints behind the inventory writes above:
 `POST /v1/inventory/items/{itemId}/transactions` (corrections and removals),
 `POST /v1/inventory/items/{itemId}/transactions/{transactionId}/undo`, and
-`GET /v1/inventory/items/{itemId}` for the detail screen.
+`GET /v1/inventory/items/{itemId}` for the detail screen. M2-T3 added the
+household endpoints and `POST /v1/inventory/items` (item creation) above.
 
-Unset the variable (or leave it unset) to go back to the fixture client.
+Unset `EXPO_PUBLIC_API_URL` (or leave it unset) to go back to the fixture
+client; `EXPO_PUBLIC_IDENTITY_TOKEN` has no effect on the fixture path.
 
 ## Typecheck / lint / test
 
