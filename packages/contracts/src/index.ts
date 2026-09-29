@@ -82,3 +82,10 @@ export {
   type ScannedProductDto,
 } from "./products.js";
 export { UNIT_KINDS_DTO, UNITS_BY_KIND_DTO, type UnitKindDto } from "./units.js";
+export {
+  type ShoppingListDto,
+  type ShoppingMemberDto,
+  type ShoppingRowDto,
+  type ShoppingRowOriginDto,
+  type ShoppingRowStatusDto,
+} from "./shopping.js";
