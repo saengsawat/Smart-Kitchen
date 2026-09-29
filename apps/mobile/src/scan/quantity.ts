@@ -11,6 +11,7 @@
  * already-micros text.
  */
 
+import { CREATE_ITEM_UNITS_DTO, type ProvenanceTierDto } from "@smart-kitchen/contracts";
 import { MICROS_PER_UNIT } from "../inventory/quantity";
 
 /**
@@ -63,4 +64,91 @@ export function wholeUnitQuantityMicros(count: number): bigint {
     );
   }
   return BigInt(count) * MICROS_PER_UNIT;
+}
+
+/** A scanned product's package size, its unit already normalized (e.g. OFF/corpus "ct" -> this app's "each"). */
+export interface ScanPackageSizeInput {
+  readonly qty: string;
+  readonly unit: string;
+  readonly tier: ProvenanceTierDto;
+  /** The record's own provenance source for the size field (e.g. "open-food-facts", "manufacturer-label"). */
+  readonly source: string;
+}
+
+/** The quantity's provenance source when the amount is just the count the user entered, no size involved. */
+export const SCANNED_BARCODE_QUANTITY_SOURCE = "scanned barcode";
+
+/** S8's Add quantity plan: the exact micros to send, the unit to send it in, and the resulting quantity's tier/source. */
+export interface ScanQuantityPlan {
+  readonly amountMicros: bigint;
+  readonly unit: string;
+  readonly tier: "KNOWN_FACT" | "ESTIMATED";
+  /** `quantityProvenance.source` for `createItem` — see {@link planScanQuantity}'s doc comment. */
+  readonly source: string;
+}
+
+/**
+ * Whether `POST /v1/inventory/items` accepts this (already-normalized) unit
+ * (BACKLOG.md M3-T4e Objective (e)). {@link CREATE_ITEM_UNITS_DTO} is the
+ * household-facing whitelist (`packages/contracts/src/units.ts`), a strict
+ * subset of the domain registry: `pt`, `qt` and `gal` resolve in the
+ * registry but are not on this list, and `fl oz` resolves in neither — both
+ * are "the registry refuses" in the ticket's shorthand for "this app's
+ * ledger cannot record it as its own unit". Never a registry lookup
+ * client-side (the client has no domain import, M3-T1/M3-T3 invariant);
+ * this list is the one client-visible source of truth for what a package's
+ * unit can become on the wire.
+ */
+export function isCreateItemUnit(unit: string): boolean {
+  return CREATE_ITEM_UNITS_DTO.includes(unit);
+}
+
+/**
+ * S8's item quantity (BACKLOG.md M3-T4e Objectives (d)/(e), review round 1
+ * F3 ruling). `count` whole packages of `packageSize` each, when a package
+ * size exists and its (already-normalized) unit is one `POST
+ * /v1/inventory/items` accepts ({@link CREATE_ITEM_UNITS_DTO} — a strict
+ * subset of the domain registry, so `pt`/`qt`/`gal` and anything unparsed
+ * by the source fall through to the count-only branch below even though
+ * some of them resolve in the registry itself): the amount is `count ×
+ * size`, exact micros, and the quantity's tier/source both come from the
+ * package size record itself — it is the fact the quantity is built from.
+ *
+ * **Otherwise (F3 ruling, reversing this function's original wording): the
+ * amount is just `count`, the number of packages the user counted with
+ * their own eyes, unit `each`.** That count is the user's own fact —
+ * Known Fact — every time, whether there was no package size at all, or
+ * one that named a unit this ledger cannot accept (e.g. a "qt" carton):
+ * an unparsed or unsupported size does not make the *count* any less
+ * certain, and never invents a conversion either way (CLAUDE.md rule 7).
+ * The quantity's source is `"scanned barcode"` in this branch — never the
+ * package size's own source, since the size was not used to build the
+ * amount. The package size record, when present, is still shown on S8 as
+ * its own text with its own tier chip (`ConfirmSheet`'s package-size row):
+ * an Estimated OFF size sitting next to a Known Fact quantity is exactly
+ * the point — two different facts, two different tiers, never conflated.
+ */
+export function planScanQuantity(
+  packageSize: ScanPackageSizeInput | undefined,
+  count: number,
+): ScanQuantityPlan {
+  if (packageSize && isCreateItemUnit(packageSize.unit)) {
+    return {
+      amountMicros: packageQuantityMicros(count, packageSize.qty),
+      unit: packageSize.unit,
+      // AI_INTERPRETATION never reaches this path in practice (OFF and the
+      // fixture corpus only ever carry KNOWN_FACT/ESTIMATED package sizes,
+      // and createItem refuses AI_INTERPRETATION outright), but a defensive
+      // fallback to ESTIMATED is still correct if one ever did: never treat
+      // an unconfirmed AI figure as a Known Fact quantity.
+      tier: packageSize.tier === "KNOWN_FACT" ? "KNOWN_FACT" : "ESTIMATED",
+      source: packageSize.source,
+    };
+  }
+  return {
+    amountMicros: wholeUnitQuantityMicros(count),
+    unit: "each",
+    tier: "KNOWN_FACT",
+    source: SCANNED_BARCODE_QUANTITY_SOURCE,
+  };
 }

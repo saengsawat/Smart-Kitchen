@@ -47,6 +47,16 @@ export const OFF_PRODUCT_FIELDS = [
   "allergens_tags",
   "traces_tags",
   "nutriments",
+  /**
+   * Whether OFF's `_100g`-suffixed nutriment values are actually per 100 g
+   * or per 100 ml (M3-T4e, ADR-006 open item): OFF reuses the same `_100g`
+   * key suffix for both a mass-based and a volume-based product, and this
+   * field is the only signal that distinguishes them. `mapping.ts`'s
+   * `nutritionProfiles` reads it and emits no `PER_100G` profile unless it
+   * is exactly `"100g"`, so a liquid's per-100-ml figures are never shown
+   * under a per-100-g label.
+   */
+  "nutrition_data_per",
   "categories_tags",
   "image_front_url",
   "last_modified_t",

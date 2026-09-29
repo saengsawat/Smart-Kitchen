@@ -78,7 +78,7 @@ describe("request shape", () => {
     expect(sent[0]?.headers["Authorization"]).toBeUndefined();
   });
 
-  it("the field list is exactly the ticket's", () => {
+  it("the field list is exactly the ticket's (plus M3-T4e's nutrition_data_per)", () => {
     expect([...OFF_PRODUCT_FIELDS]).toEqual([
       "code",
       "product_name",
@@ -89,6 +89,7 @@ describe("request shape", () => {
       "allergens_tags",
       "traces_tags",
       "nutriments",
+      "nutrition_data_per",
       "categories_tags",
       "image_front_url",
       "last_modified_t",
