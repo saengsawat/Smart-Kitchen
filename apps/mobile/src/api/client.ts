@@ -52,6 +52,8 @@ import type {
   MemberRestrictionDto,
   OnboardingStateDto,
   ProductLookupResultDto,
+  ShoppingListDto,
+  ShoppingRowDto,
   TransactionActorDto,
   UndoRequestDto,
 } from "@smart-kitchen/contracts";
@@ -67,6 +69,7 @@ import { buildChenInventory } from "../inventory/fixture-household";
 import type { RemovalAction } from "../inventory/transactions";
 import {
   appendCorrection,
+  appendIncrease,
   appendRemoval,
   appendUndo,
   createFixtureItem,
@@ -79,6 +82,12 @@ import { LedgerRefusedError } from "../inventory/errors";
 import { microsToAmountText, parseMicros } from "../inventory/quantity";
 import { fixtureLookupProduct } from "../scan/fixture-products";
 import { decimalAmountToMicros } from "../scan/quantity";
+import {
+  buildFixtureShoppingRows,
+  fixtureShoppingMembers,
+  fixtureShoppingSyncedAt,
+  toShoppingListDto,
+} from "../shopping/fixture-shopping-list";
 import { nextIdempotencyKey } from "./idempotency";
 
 /** The Dean-Chen fixture token (tests/fixtures/identity/README.md). Obviously fake, not a secret. */
@@ -129,6 +138,28 @@ function buildFixtureHousehold(name: string): HouseholdDto {
 
 function toError(value: unknown): Error {
   return value instanceof Error ? value : new Error(String(value));
+}
+
+/**
+ * Review round 1, F6: `addCheckedOffToInventory` must refuse rather than
+ * silently convert when a shopping row's own `unit` disagrees with the
+ * inventory item it names (M1-T1: one unit per item, never a silent
+ * conversion). Exported as its own pure function so this guard is directly
+ * testable without needing to construct an artificial mismatched row
+ * through `FixtureApiClient`'s public API (the shipped fixture has none, by
+ * design — the units-consistency and gap-drift tests already enforce that).
+ */
+export function assertShoppingRowUnitMatchesItem(
+  rowId: string,
+  itemId: string,
+  rowUnit: string,
+  itemUnit: string,
+): void {
+  if (rowUnit !== itemUnit) {
+    throw new Error(
+      `FixtureApiClient: addCheckedOffToInventory(${rowId}) refused: row unit "${rowUnit}" does not match item "${itemId}"'s unit "${itemUnit}"`,
+    );
+  }
 }
 
 /**
@@ -308,6 +339,63 @@ export interface ApiClient {
    * rejects until M2-T3 supplies the real endpoint.
    */
   createItem(input: CreateItemRequestDto): Promise<InventoryItemSummaryDto>;
+  /**
+   * `true` when this client believes it is currently offline (M3-T5, ADR-010
+   * option C). `FixtureApiClient` via its dev-only
+   * {@link FixtureApiClient.setOfflineForDev} toggle (there is no real
+   * network to lose, so a manual switch is the only way to exercise S11's
+   * offline states against it — see {@link hasDevOfflineToggle});
+   * `HttpApiClient` via the same signal {@link isInventoryStale} already
+   * tracks (a fetch that failed after a prior success, flipped back on the
+   * next success).
+   */
+  isOffline(): boolean;
+  /**
+   * Subscribes to every {@link isOffline} change; returns an unsubscribe
+   * function. Never fires for the state at subscription time, only a later
+   * change (S11 reads {@link isOffline} directly for the initial render).
+   */
+  subscribeOffline(listener: (offline: boolean) => void): () => void;
+  /** S11's list (M3-T5). Fixture only until M7; `HttpApiClient` rejects with the established "not available yet" pattern. */
+  getShoppingList(): Promise<ShoppingListDto>;
+  /**
+   * S11's check control, toggling one row `open`/`done`. `idempotencyKey` is
+   * minted by the *caller* at tap time (unlike every other write in this
+   * port, which mints its own): the screen must decide, before this call,
+   * whether to invoke it directly (online) or hold the same key for a later
+   * replay (offline, `src/shopping/queue.ts`), so the key has to exist
+   * before that decision is made.
+   */
+  checkOffShoppingRow(rowId: string, checked: boolean, idempotencyKey: string): Promise<void>;
+  /** S11's AI-row Remove (decline): deletes the suggestion row. Fixture only until M7. */
+  removeShoppingSuggestion(rowId: string): Promise<void>;
+  /**
+   * S11's close-the-loop Add: appends one `PURCHASE` of the row's
+   * `buyMicros` to `row.itemId`'s ledger (never a quantity mutation,
+   * CLAUDE.md rule 10). Refused while offline by the screen itself
+   * (BACKLOG.md M3-T5 Objective (f): "the ledger write needs the server"),
+   * so, unlike {@link checkOffShoppingRow}, this is never queued.
+   */
+  addCheckedOffToInventory(
+    rowId: string,
+    idempotencyKey: string,
+  ): Promise<{ readonly transactionId: string }>;
+}
+
+/**
+ * The shape of {@link FixtureApiClient}'s dev-only offline toggle, not part
+ * of {@link ApiClient} itself (`HttpApiClient`'s offline state is derived
+ * from real fetch outcomes, never a manual switch — see `isOffline`'s doc
+ * comment). A screen feature-detects it with {@link hasDevOfflineToggle}
+ * rather than assuming which concrete client it holds.
+ */
+export interface DevOfflineToggle {
+  setOfflineForDev(offline: boolean): void;
+}
+
+/** Narrows `client` to {@link DevOfflineToggle} when it actually has the dev toggle (today, only {@link FixtureApiClient}). */
+export function hasDevOfflineToggle(client: ApiClient): client is ApiClient & DevOfflineToggle {
+  return typeof (client as Partial<DevOfflineToggle>).setOfflineForDev === "function";
 }
 
 /**
@@ -322,6 +410,29 @@ export interface ApiClient {
 export class FixtureApiClient implements ApiClient {
   private household: HouseholdDto | null;
   private inventory: Map<string, MutableItemFixture>;
+  /**
+   * M3-T5's shopping list, seeded once per instance (independent of
+   * household create/join, unlike `inventory`): the fixture ships one static
+   * Chen list regardless of onboarding path, the same simplification the
+   * ticket's own "the fixture client ships the prototype's Chen list"
+   * wording assumes. Flagged in the worker report: a `newUser()` instance
+   * (empty `inventory`) still carries rows naming Chen inventory item ids,
+   * so `addCheckedOffToInventory` for those rows only resolves once the
+   * household has joined/returned to the Chen inventory, same as this
+   * ticket's own acceptance criteria exercise it. Re-seeded (a fresh copy,
+   * same as `inventory`) on {@link createHousehold}/{@link joinHousehold} so
+   * a later household never sees an earlier one's check-offs.
+   */
+  private shoppingRows: Map<string, ShoppingRowDto> = buildFixtureShoppingRows();
+  /**
+   * Keyed by rowId (review round 1, F3): a row's `addCheckedOffToInventory`
+   * result, once it has one, is returned again for every later call on that
+   * same row rather than appending a second `PURCHASE` (CLAUDE.md rule 10).
+   * Reset alongside `shoppingRows`.
+   */
+  private appliedShoppingWrites = new Map<string, { readonly transactionId: string }>();
+  private offline = false;
+  private offlineListeners: Array<(offline: boolean) => void> = [];
 
   private constructor(
     initialHousehold: HouseholdDto | null,
@@ -379,6 +490,8 @@ export class FixtureApiClient implements ApiClient {
   createHousehold(name: string): Promise<HouseholdDto> {
     this.household = buildFixtureHousehold(name);
     this.inventory = new Map();
+    this.shoppingRows = buildFixtureShoppingRows();
+    this.appliedShoppingWrites = new Map();
     return Promise.resolve(this.household);
   }
 
@@ -388,6 +501,8 @@ export class FixtureApiClient implements ApiClient {
     }
     this.household = buildFixtureHousehold("The Chens");
     this.inventory = buildChenInventory();
+    this.shoppingRows = buildFixtureShoppingRows();
+    this.appliedShoppingWrites = new Map();
     return Promise.resolve({ ok: true, household: this.household });
   }
 
@@ -519,6 +634,134 @@ export class FixtureApiClient implements ApiClient {
     }
   }
 
+  isOffline(): boolean {
+    return this.offline;
+  }
+
+  subscribeOffline(listener: (offline: boolean) => void): () => void {
+    this.offlineListeners.push(listener);
+    return () => {
+      this.offlineListeners = this.offlineListeners.filter((l) => l !== listener);
+    };
+  }
+
+  /** See {@link DevOfflineToggle}'s doc comment. */
+  setOfflineForDev(offline: boolean): void {
+    if (offline === this.offline) {
+      return;
+    }
+    this.offline = offline;
+    for (const listener of this.offlineListeners) {
+      listener(offline);
+    }
+  }
+
+  getShoppingList(): Promise<ShoppingListDto> {
+    return Promise.resolve(
+      toShoppingListDto(this.shoppingRows, fixtureShoppingMembers(), fixtureShoppingSyncedAt()),
+    );
+  }
+
+  checkOffShoppingRow(rowId: string, checked: boolean, idempotencyKey: string): Promise<void> {
+    // Idempotent by construction (setting the same status/checker twice is a
+    // no-op on this in-memory map, unlike a ledger append), so the key is
+    // accepted for interface parity with the offline queue's replay call but
+    // not otherwise consulted.
+    void idempotencyKey;
+    try {
+      const row = this.requireShoppingRow(rowId);
+      this.shoppingRows.set(rowId, {
+        ...row,
+        status: checked ? "done" : "open",
+        checkedOffBy: checked ? (DEAN_ACTOR.displayInitials ?? "DC") : null,
+      });
+      return Promise.resolve();
+    } catch (error) {
+      return Promise.reject(toError(error));
+    }
+  }
+
+  removeShoppingSuggestion(rowId: string): Promise<void> {
+    if (!this.shoppingRows.delete(rowId)) {
+      return Promise.reject(new Error(`FixtureApiClient: unknown shopping rowId ${rowId}`));
+    }
+    return Promise.resolve();
+  }
+
+  /**
+   * Review round 1, F3/F6: keyed by **rowId**, not the idempotency key.
+   * `buyMicros` is a fixed fact of the row for the life of this session
+   * (the same value every other read of the row shows, checked off or
+   * not — same reasoning as `formatShoppingAmount` never re-deriving it),
+   * so "the same check-off's gap, bought twice" is a real duplicate no
+   * matter how many times the row gets unchecked and re-checked in between,
+   * or how many different idempotency keys a caller mints across those
+   * taps. The idempotency key is still accepted (parity with the real M7
+   * endpoint, which will want it for its own network-retry safety) but no
+   * longer the dedup key here.
+   */
+  addCheckedOffToInventory(
+    rowId: string,
+    idempotencyKey: string,
+  ): Promise<{ readonly transactionId: string }> {
+    void idempotencyKey;
+    try {
+      const cached = this.appliedShoppingWrites.get(rowId);
+      if (cached) {
+        // Already added once for this row (a double-tap before the first
+        // call settled, a retry, or a later Add after an uncheck/re-check
+        // cycle): return that same result rather than a second PURCHASE
+        // row (CLAUDE.md rule 10; the exact "duplicate PURCHASE rows on
+        // replay" risk BACKLOG.md M3-T5's review model calls out).
+        return Promise.resolve(cached);
+      }
+      const row = this.requireShoppingRow(rowId);
+      // Review F3: a data-integrity guard, not just a client-side one — Add
+      // only ever makes sense for a row this session has actually checked
+      // off (buyMicros is "how much was bought", not "how much to buy
+      // right now"; appending it against an open row would silently
+      // fabricate a purchase nobody confirmed).
+      if (row.status !== "done") {
+        throw new Error(
+          `FixtureApiClient: addCheckedOffToInventory(${rowId}) refused: the row is not checked off`,
+        );
+      }
+      if (row.itemId === null) {
+        throw new Error(
+          `FixtureApiClient: addCheckedOffToInventory(${rowId}) has no itemId; the screen must route this row through S9 instead`,
+        );
+      }
+      const item = this.requireItem(row.itemId);
+      assertShoppingRowUnitMatchesItem(rowId, row.itemId, row.unit, item.unit);
+      appendIncrease(item, {
+        type: "PURCHASE",
+        amountMicros: parseMicros(row.buyMicros),
+        recordedAt: new Date().toISOString(),
+        actor: DEAN_ACTOR,
+        provenance: {
+          tier: "KNOWN_FACT",
+          source: "shopping list check-off",
+          confidence: null,
+          recordedAt: null,
+        },
+      });
+      const appended = item.history[item.history.length - 1]!;
+      const result = { transactionId: appended.transactionId };
+      this.appliedShoppingWrites.set(rowId, result);
+      return Promise.resolve(result);
+    } catch (error) {
+      return Promise.reject(toError(error));
+    }
+  }
+
+  private requireShoppingRow(rowId: string): ShoppingRowDto {
+    const row = this.shoppingRows.get(rowId);
+    if (!row) {
+      throw new Error(`FixtureApiClient: unknown shopping rowId ${rowId}`);
+    }
+    return row;
+  }
+
   private requireItem(itemId: string): MutableItemFixture {
     const item = this.inventory.get(itemId);
     if (!item) {
@@ -564,6 +807,7 @@ export class HttpApiClient implements ApiClient {
   private readonly delegate: FixtureApiClient;
   private cachedItems: readonly InventoryItemSummaryDto[] | null = null;
   private stale = false;
+  private offlineListeners: Array<(offline: boolean) => void> = [];
 
   constructor(baseUrl: string) {
     this.baseUrl = baseUrl;
@@ -631,14 +875,14 @@ export class HttpApiClient implements ApiClient {
         throw new Error(`GET ${INVENTORY_ITEMS_PATH} returned an unexpected response body`);
       }
       this.cachedItems = body.items;
-      this.stale = false;
+      this.setStale(false);
       return body.items;
     } catch (error) {
       if (this.cachedItems) {
         // copy-deck.md §7 S4 stale-cache offline: serve the last good read
         // rather than fail the screen. No cache yet (first load failed) is a
         // genuine error the caller must handle.
-        this.stale = true;
+        this.setStale(true);
         return this.cachedItems;
       }
       throw toError(error);
@@ -647,6 +891,28 @@ export class HttpApiClient implements ApiClient {
 
   isInventoryStale(): boolean {
     return this.stale;
+  }
+
+  /** M3-T5's connectivity signal, reusing this same stale flag (see {@link ApiClient.isOffline}'s doc comment). */
+  isOffline(): boolean {
+    return this.stale;
+  }
+
+  subscribeOffline(listener: (offline: boolean) => void): () => void {
+    this.offlineListeners.push(listener);
+    return () => {
+      this.offlineListeners = this.offlineListeners.filter((l) => l !== listener);
+    };
+  }
+
+  private setStale(value: boolean): void {
+    if (value === this.stale) {
+      return;
+    }
+    this.stale = value;
+    for (const listener of this.offlineListeners) {
+      listener(value);
+    }
   }
 
   async getInventoryItem(itemId: string): Promise<InventoryItemDetailDto | null> {
@@ -774,6 +1040,48 @@ export class HttpApiClient implements ApiClient {
     void input;
     return Promise.reject(
       new Error("createItem is not available yet: the real endpoint lands in M2-T3."),
+    );
+  }
+
+  /**
+   * No shopping endpoint exists yet (M7). Same "not available yet"
+   * rejection as {@link lookupProduct}; S11 shows copy-deck.md §8's generic
+   * fallback with Try again for all four shopping methods below (BACKLOG.md
+   * M3-T5 Objective (h)).
+   */
+  getShoppingList(): Promise<ShoppingListDto> {
+    return Promise.reject(
+      new Error("getShoppingList is not available yet: the real endpoint lands in M7."),
+    );
+  }
+
+  /** Same "not available yet" rejection as {@link getShoppingList}. */
+  checkOffShoppingRow(rowId: string, checked: boolean, idempotencyKey: string): Promise<void> {
+    void rowId;
+    void checked;
+    void idempotencyKey;
+    return Promise.reject(
+      new Error("checkOffShoppingRow is not available yet: the real endpoint lands in M7."),
+    );
+  }
+
+  /** Same "not available yet" rejection as {@link getShoppingList}. */
+  removeShoppingSuggestion(rowId: string): Promise<void> {
+    void rowId;
+    return Promise.reject(
+      new Error("removeShoppingSuggestion is not available yet: the real endpoint lands in M7."),
+    );
+  }
+
+  /** Same "not available yet" rejection as {@link getShoppingList}. */
+  addCheckedOffToInventory(
+    rowId: string,
+    idempotencyKey: string,
+  ): Promise<{ readonly transactionId: string }> {
+    void rowId;
+    void idempotencyKey;
+    return Promise.reject(
+      new Error("addCheckedOffToInventory is not available yet: the real endpoint lands in M7."),
     );
   }
 }

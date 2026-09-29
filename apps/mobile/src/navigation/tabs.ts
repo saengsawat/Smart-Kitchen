@@ -66,7 +66,14 @@ export const TAB_ORDER: readonly TabDefinition[] = [
     label: "Shopping",
     route: "/shopping",
     icon: "cart",
-    placeholder: "Coming in M3-T5.",
+    // M3-T5 built the real screen (`app/shopping.tsx`, no longer
+    // `PlaceholderScreen`); "Coming in M3-T5." went stale the moment this
+    // ticket landed (CLAUDE.md rule 15, same precedent as Home's own
+    // placeholder string above and the CENTER_ACTION doc comment below).
+    // This field is otherwise unused now (nothing renders it for Shopping),
+    // kept truthful rather than removed, since `TabDefinition.placeholder`
+    // is a required field shared by every tab.
+    placeholder: "In-session only; the list won't survive an app restart until M7.",
   },
 ] as const;
 

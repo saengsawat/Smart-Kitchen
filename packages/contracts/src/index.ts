@@ -101,3 +101,10 @@ export {
   type RotateJoinCodeResponseDto,
 } from "./household.js";
 export { CREATE_ITEM_UNITS_DTO } from "./inventory.js";
+export {
+  type ShoppingListDto,
+  type ShoppingMemberDto,
+  type ShoppingRowDto,
+  type ShoppingRowOriginDto,
+  type ShoppingRowStatusDto,
+} from "./shopping.js";
