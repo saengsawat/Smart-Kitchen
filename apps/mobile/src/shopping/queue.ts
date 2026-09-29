@@ -33,6 +33,12 @@
  * - **No duplicate delivery.** Because there is at most one entry per row,
  *   and a confirmed entry is deleted before any later tap could enqueue a
  *   new one, `apply` is never called twice for the same tap.
+ * - **At most one replay walk in flight (review round 1, F4).** Two
+ *   overlapping `replay` calls (e.g. two connectivity flaps close together)
+ *   share the same in-flight walk rather than each starting an independent
+ *   one: a second call while a walk is running gets the *same* promise the
+ *   first call is already awaiting, so a queued entry is never handed to
+ *   `apply` twice just because `replay` was invoked twice.
  */
 
 export interface QueuedCheckOff {
@@ -53,6 +59,7 @@ export interface ReplayResult {
 
 export class ShoppingCheckOffQueue {
   private readonly entries = new Map<string, QueuedCheckOff>();
+  private replayInFlight: Promise<ReplayResult> | null = null;
 
   /** Queues (or replaces the still-pending entry for) one row. */
   enqueue(entry: QueuedCheckOff): void {
@@ -64,6 +71,16 @@ export class ShoppingCheckOffQueue {
     return this.entries.has(rowId);
   }
 
+  /**
+   * The still-pending entry for `rowId`, or `undefined` if none (review
+   * round 1, F1): lets a caller reconstruct a row's optimistic display
+   * state after this queue has outlived a remount — the screen no longer
+   * has to have been mounted continuously since the tap that queued it.
+   */
+  get(rowId: string): QueuedCheckOff | undefined {
+    return this.entries.get(rowId);
+  }
+
   /** Every row currently queued, oldest-queued first. */
   queuedRowIds(): readonly string[] {
     return [...this.entries.keys()];
@@ -73,13 +90,31 @@ export class ShoppingCheckOffQueue {
     return this.entries.size;
   }
 
+  /** Drops every pending entry with no replay attempt (test/session-reset hygiene only; never called by the screen itself). */
+  clear(): void {
+    this.entries.clear();
+  }
+
   /**
    * Replays every queued entry, in order, via `apply`. A confirmed entry is
    * removed; a failed one stays queued (module doc comment). Never throws:
    * a rejected `apply` is caught per entry so one failure does not abort the
-   * rest of the walk.
+   * rest of the walk. Two overlapping calls share one walk (F4): a second
+   * call made while a walk is already running returns that same walk's
+   * promise instead of starting a second, concurrent one.
    */
-  async replay(apply: ApplyQueuedCheckOff): Promise<ReplayResult> {
+  replay(apply: ApplyQueuedCheckOff): Promise<ReplayResult> {
+    if (this.replayInFlight) {
+      return this.replayInFlight;
+    }
+    const walk = this.runReplay(apply).finally(() => {
+      this.replayInFlight = null;
+    });
+    this.replayInFlight = walk;
+    return walk;
+  }
+
+  private async runReplay(apply: ApplyQueuedCheckOff): Promise<ReplayResult> {
     const confirmed: string[] = [];
     const failed: string[] = [];
     // A snapshot: `apply` must not observe (or race) mutations `enqueue`

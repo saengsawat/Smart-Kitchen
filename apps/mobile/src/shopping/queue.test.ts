@@ -125,4 +125,31 @@ describe("ShoppingCheckOffQueue (M3-T5 Objective (f))", () => {
     // The stale in-flight call must not delete the newer entry.
     expect(queue.isQueued("row-1")).toBe(true);
   });
+
+  it("two overlapping replay calls share one walk: an entry is delivered to apply only once (F4)", async () => {
+    const queue = new ShoppingCheckOffQueue();
+    queue.enqueue(entry({ rowId: "row-1", idempotencyKey: "key-1" }));
+
+    const applyCalls: QueuedCheckOff[] = [];
+    let resolveApply: (() => void) | undefined;
+    const apply = (e: QueuedCheckOff): Promise<void> => {
+      applyCalls.push(e);
+      return new Promise<void>((resolve) => {
+        resolveApply = resolve;
+      });
+    };
+
+    // Two replay() calls back to back, before apply() has resolved,
+    // simulating two connectivity flaps close together (or the screen's
+    // own subscribeOffline handler firing twice in quick succession).
+    const first = queue.replay(apply);
+    const second = queue.replay(apply);
+
+    resolveApply?.();
+    await first;
+    await second;
+
+    expect(applyCalls).toHaveLength(1);
+    expect(queue.isQueued("row-1")).toBe(false);
+  });
 });
