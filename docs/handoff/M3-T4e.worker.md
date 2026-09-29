@@ -278,6 +278,10 @@ above used only the local stub, spending none of that budget.
   introduced under the ConfirmSheet's existing helper-caption convention, not full copy-deck
   entries (see §9). If the architect wants them formalised as binding deck strings, that is a
   small doc-only follow-up.
+- **CI follow-up (F9, review round 1, note only):** `pnpm --filter mobile export` should set
+  `EXPO_OFFLINE=1 EXPO_NO_TELEMETRY=1` to guarantee it stays network-free in CI (rule 18); not
+  changed in this ticket, since it is a build-tooling concern outside this ticket's file scope,
+  but flagged here so it lands before this export step is relied on as a CI gate.
 
 ## 9. Proposed copy-deck strings
 
@@ -293,3 +297,103 @@ constants), the exact text to add would be:
 > **Nutrition basis:** the strip shows one profile, PER_SERVING when the record has it, else
 > PER_100G, labelled inline ("per serving" / "per 100 g"); "Nutrition not on file" with no
 > numbers when neither exists.
+
+## 10. Review fixes (round 1)
+
+Independent review verdict: **PASS WITH FIXES**. The tier rule, the adapter gate, the held key
+and the no-message rule all held under mutation; eight items (F1-F8) were ruled and fixed on
+this same branch, plus one note-only item (F9). No scope growth beyond these.
+
+**F1 [major]: `quantityProvenance.source` was hardcoded `"scanned barcode"`.** Fixed by having
+`planScanQuantity` (`apps/mobile/src/scan/quantity.ts`) return the right `source` alongside its
+`tier`/`unit`: the package size's own `provenance.source` (live OFF: `"open-food-facts"`; the
+fixture corpus: `"manufacturer-label"`) whenever the amount is built from that size (a supported
+unit); `"scanned barcode"` whenever the amount is just the count (no size, or an unsupported
+unit - see F3). `ScanPackageSizeInput` gained a `source` field; `handleAdd` passes `plan.source`
+straight through, never a literal. Tests: two new spy-based tests assert
+`calls[0]?.quantityProvenance.source` directly for an OFF record (`"open-food-facts"`) and a
+fixture-corpus record (`"manufacturer-label"`), in `scan-screen.test.ts`'s quantity-tier
+describe block; `quantity.test.ts`'s `planScanQuantity` suite asserts `source` on every case.
+
+**F2 [major]: the lookup error fallback was the save sentence, not the read one.** Ruling R2:
+`messageForLookupError`'s two fallback returns (the `ProductLookupRefusedError` switch's
+`default` case, and the final catch-all for anything else) both now return
+`GENERIC_READ_ERROR_MESSAGE` ("Something went wrong loading that. Try again, and tell us if it
+keeps happening.") instead of delegating to `messageForLedgerError`/
+`GENERIC_LEDGER_ERROR_MESSAGE`. Updated: `scan-screen.test.ts`'s F14 lookup-failure-recovery test
+and the 401/403 refusal test (both now expect "...loading that..."); `client.test.ts`'s 401 and
+500 `lookupProduct` tests; `product-lookup-errors.test.ts`'s two generic-fallback tests. Left
+alone exactly as instructed: the two household-load assertions (still `GENERIC_LEDGER_ERROR_MESSAGE`,
+set directly in `scan.tsx`'s allergen-block error box, unrelated to `messageForLookupError`).
+
+**F3 [major, ruled]: unparsed and unsupported package sizes now give a Known Fact quantity, not
+Estimated (a wording reversal from the ticket's own first draft).** Ruling (option a): the count
+of packages the user entered is their own fact regardless of what the package size says - "N
+each" is `KNOWN_FACT` whenever the amount is just the count (no size, an unparsed size such as
+Ripple's "48 fl oz", or an unsupported unit such as "qt"); only `count × size` (a supported unit
+used directly) inherits the size's own tier. The package size, when present, keeps its own tier
+chip regardless (an Estimated OFF size can now sit right next to a Known Fact quantity - two
+different facts, never conflated). `planScanQuantity`'s fallback branch is now unconditionally
+`{ tier: "KNOWN_FACT", source: SCANNED_BARCODE_QUANTITY_SOURCE }`, whether or not a package size
+was present at all. Rewrote `quantity.test.ts`'s "qt"/"gal" cases and `scan-screen.test.ts`'s
+"package units the ledger cannot accept" describe block accordingly (tier, source and toast word
+all now assert `KNOWN_FACT`/`"scanned barcode"`/"Known Fact" instead of `ESTIMATED`/"Estimated").
+
+**F4 [minor]: S9 hand-off no longer retains a code for `PLU_NOT_SUPPORTED`/`BAD_REQUEST`.** New
+`lookupFailure` state (`{ message, retainCode }`) replaces the plain `lookupError` string:
+`retainCode` is `false` only for those two refused-before-ever-asking codes, `true` for a 200
+`error` outcome and every other failure (a plausible barcode the source could not resolve, or
+simply could not be reached). `handleGoManualFromError` reads `lookupFailure.retainCode` before
+deciding whether to pass `{ code: lastAttemptedCode }` or push bare `"/add/manual"`. Tests: the
+PLU and BAD_REQUEST tests now assert `pushed` is `["/add/manual"]` (no params); the 200 `error`
+and 401/403 tests now assert the code *is* retained.
+
+**F5 [minor]: the nutrition caption is unconditional; the basis moved next to the macros row.**
+`ConfirmSheet` now always renders "Nutrition & allergens: label data via Open Food Facts · tier
+shown per field" in its own row (with the tier chip only when a profile exists); "Nutrition not
+on file" replaces only the macros row's numbers, in a new `nutritionHeaderRow`/`basisLabel`
+element that sits above the macros ("per serving" / "per 100 g", present only when there is a
+profile). Updated the three nutrition-strip tests to check the basis label and the caption as
+two separate text nodes rather than one combined sentence, and added a caption-presence check to
+the "not on file" case.
+
+**F6 [minor]: two pinning tests added.** "Changing the location after a failed Add discards the
+held key" (mirrors the existing count-change test, pressing a different location chip instead)
+and "the Add control reports `accessibilityState.disabled` while a create is pending" (a
+`createItem` mock that never resolves, asserting the button is disabled mid-flight) - both in
+`scan-screen.test.ts`'s held-key describe block.
+
+**F7 [minor]: `notRunProduct`'s literal now matches the real adapter output.** Its nutrition
+array was `PER_100G` with the original (pre-fix) numbers; the real
+`GET /v1/products/096619555505` no longer carries a `PER_100G` profile once the adapter reads
+`nutrition_data_per` (that recording predates the field, so it is genuinely absent), so the
+literal now carries `PER_SERVING` only, with that same recording's real per-serving values.
+Added one more S8 render test using the liquid record's real mapped shape (Ripple, `PER_SERVING`
+only, no package size at all, since its own "48 fl oz" stays unparseable) to exercise the actual
+end-to-end shape rather than only a synthetic one.
+
+**F8 [minor, R3 ruled]: the unsupported-package-unit text is "{count} package(s) of {qty}
+{unit}", not "{count} × {qty} {unit}".** Singular/plural on `count === 1`; the CTA label is
+unchanged ("Add {count} to {location}"). Updated the "qt"/"pt"/"gal"/"fl oz" tests' string
+literals accordingly (e.g. "1 package of 1 qt", "2 packages of 1 qt").
+
+**F9 [note only]: no code change.** Logged in §8 above as a CI follow-up
+(`EXPO_OFFLINE=1 EXPO_NO_TELEMETRY=1` on the mobile export step).
+
+**Verification after round 1 (empty build state, CI order, identical steps to §5):**
+
+```
+rm -rf apps/api/dist apps/mobile/dist packages/adapters/dist packages/contracts/dist \
+  packages/domain/dist apps/api/tsconfig.tsbuildinfo packages/adapters/tsconfig.tsbuildinfo \
+  packages/contracts/tsconfig.tsbuildinfo packages/domain/tsconfig.tsbuildinfo
+pnpm install --frozen-lockfile   # Lockfile up to date, resolution step skipped
+pnpm lint                        # clean
+pnpm typecheck                   # tsc -b --pretty, clean
+pnpm test                        # 1983 passed, 356 skipped (DATABASE_URL unset, loud skip notices)
+pnpm format:check                # All matched files use Prettier code style!
+pnpm --filter mobile export      # web/android/ios all bundled; output deleted afterward
+```
+
+Net test count: **1983 passed / 356 skipped** (up from 1980/356 at the first hand-off: three
+tests genuinely added, F6's two pinning tests plus F7's extra render test; every other fix
+edited an existing test's expectation rather than adding a new one).
