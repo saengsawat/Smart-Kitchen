@@ -29,3 +29,6 @@ export const RECOMMENDATIONS_FIXTURES_DIR = path.join(
   "fixtures",
   "recommendations",
 );
+
+/** Recorded Open Food Facts responses (M2-T4a). Captured by hand, never fetched by the suite. */
+export const OFF_FIXTURES_DIR = path.join(REPO_ROOT, "tests", "fixtures", "off");

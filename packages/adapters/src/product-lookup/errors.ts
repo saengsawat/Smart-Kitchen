@@ -19,7 +19,20 @@ export type AdapterErrorCode =
   /** A barcode manifest entry referenced a `productId` with no matching fixture. */
   | "FIXTURE_REFERENCE_NOT_FOUND"
   /** An ingredient search query was empty/whitespace-only. */
-  | "INVALID_QUERY";
+  | "INVALID_QUERY"
+  // Live-source failures (M2-T4a, Open Food Facts). Every one of these is an
+  // `error` result, never `not-found`: the source did not answer the question,
+  // which is different from answering "no such product".
+  /** The source answered 429, or this process's own throttle or cooldown refused to send. */
+  | "UPSTREAM_RATE_LIMITED"
+  /** The source answered 5xx, or the request never reached it (DNS, connection, TLS). */
+  | "UPSTREAM_UNAVAILABLE"
+  /** The source did not answer within the per-request timeout. */
+  | "UPSTREAM_TIMEOUT"
+  /** The source answered a 4xx other than a well-formed 404 miss (auth, bad request, gone). */
+  | "UPSTREAM_REJECTED"
+  /** The source answered, but not with the documented shape (not JSON, wrong status value, wrong code). */
+  | "UPSTREAM_MALFORMED";
 
 /** A rejected adapter operation, with enough context to explain it to a caller or a log. */
 export interface AdapterError {

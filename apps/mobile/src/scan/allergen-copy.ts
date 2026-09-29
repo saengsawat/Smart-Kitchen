@@ -26,6 +26,7 @@
 
 import type {
   ScreeningEvidenceDto,
+  ScreeningOutcomeDto,
   ScreeningResultDto,
   ScreeningUnknownDto,
   ScreeningWarningDto,
@@ -38,6 +39,35 @@ export const SCAN_SHEET_CAVEAT_SUFFIX = " · not a safety guarantee";
 /** copy-deck.md §3.3, `ALLOWED` row, verbatim (already folds the caveat into the line itself). */
 export const SCAN_SHEET_ALLOWED_LINE =
   "No known household match · label declaration · not a safety guarantee";
+
+/**
+ * copy-deck.md §3.3, `NOT_RUN` row (added at D-025), verbatim. **Not a
+ * verdict**: it says the check did not happen. It already folds the
+ * caveat in, names no member and no allergen, and is rendered only when the
+ * lookup response itself says `screening.status === "NOT_RUN"`; nothing in
+ * the client ever decides on its own that a check did not run (M2-T4a (e)).
+ */
+export const SCAN_SHEET_NOT_RUN_LINE =
+  // The caveat is appended from its one constant, never retyped (the same
+  // rule the other verdict rows follow, and what the copy scan allow-lists).
+  "Allergens not checked · this household's allergies are not on the server yet · read the label" +
+  SCAN_SHEET_CAVEAT_SUFFIX;
+
+/**
+ * The neutral glyph the `NOT_RUN` row leads with: an open circle, neither a
+ * check nor a cross, so it cannot read as "passed" or "failed" (P9: the
+ * words carry the meaning, the glyph only marks the row).
+ */
+export const SCAN_SHEET_NOT_RUN_GLYPH = "○";
+
+/**
+ * The screening result to render verdict lines from, or `null` when the
+ * server said screening did not run. Keyed off `status` only; there is no
+ * fallback that turns a missing or unknown status into either state.
+ */
+export function ranScreeningResult(outcome: ScreeningOutcomeDto): ScreeningResultDto | null {
+  return outcome.status === "RUN" ? outcome.result : null;
+}
 
 /** A resolver from `memberId` to a display name, built by the caller from the household DTO it holds (review F11) — never a fixed map, never the raw id. */
 export type MemberNameResolver = (memberId: string) => string;

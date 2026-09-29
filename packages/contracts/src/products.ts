@@ -91,13 +91,22 @@ export interface ScannedProductDto {
   readonly codes: readonly ProductCodeDto[];
   readonly name: ProvenancedDto<string>;
   readonly brand?: ProvenancedDto<string>;
-  readonly packageSize: ProvenancedDto<PackageSizeDto>;
+  /**
+   * Absent when the source gives no package size that parses cleanly into
+   * the unit registry (M2-T4a: an Open Food Facts `quantity` such as
+   * "48 fl oz" or "2 x 60 g"). Never defaulted, never guessed.
+   */
+  readonly packageSize?: ProvenancedDto<PackageSizeDto>;
   readonly nutrition: readonly NutritionProfileDto[];
   readonly ingredientsText?: ProvenancedDto<string>;
   readonly bestBy: ProvenancedDto<string> | null;
   readonly imageRef?: ProvenancedDto<string>;
-  /** Allergen screening for this household, already decided server-side (fixture today, M2-T3 later). Never computed client-side. */
-  readonly screening: ScreeningResultDto;
+  /**
+   * Allergen screening for this household, already decided server-side.
+   * Never computed client-side, and never inferred client-side either: the
+   * client renders `NOT_RUN` only when the server says so (M2-T4a).
+   */
+  readonly screening: ScreeningOutcomeDto;
 }
 
 /** Outcome of a barcode/code lookup (mirrors adapters' `ResolveResult` shape, wire-safe). */
@@ -105,3 +114,47 @@ export type ProductLookupResultDto =
   | { readonly status: "hit"; readonly code: string; readonly product: ScannedProductDto }
   | { readonly status: "not-found"; readonly code: string }
   | { readonly status: "error"; readonly code: string; readonly message: string };
+
+// ---------------------------------------------------------------------------
+// M2-T4a: the screening outcome and the lookup route.
+// ---------------------------------------------------------------------------
+
+/**
+ * Why screening did not run for a lookup. Until M2-T4 stores a household's
+ * restrictions on the server there is nothing to screen against, so every
+ * live lookup carries `HOUSEHOLD_RESTRICTIONS_NOT_STORED`. The list may grow
+ * (an engine outage, say); copy-deck.md §3.3's `NOT_RUN` string stays
+ * generic, so a new reason never needs new copy to render safely.
+ */
+export const SCREENING_NOT_RUN_REASONS_DTO = ["HOUSEHOLD_RESTRICTIONS_NOT_STORED"] as const;
+export type ScreeningNotRunReasonDto = (typeof SCREENING_NOT_RUN_REASONS_DTO)[number];
+
+/**
+ * The allergen row's input on S8 (M2-T4a, D-025).
+ *
+ * `RUN` carries the engine's decided result, rendered as one of the three
+ * verdicts. `NOT_RUN` is **not a verdict**: it says the check did not
+ * happen, never that the product passed or failed it. The scan sheet renders
+ * copy-deck.md §3.3's `NOT_RUN` string for it in neutral ink, and never
+ * decides on its own that a check did not run.
+ */
+export type ScreeningOutcomeDto =
+  | { readonly status: "RUN"; readonly result: ScreeningResultDto }
+  | { readonly status: "NOT_RUN"; readonly reason: ScreeningNotRunReasonDto };
+
+/**
+ * `GET /v1/products/{code}` (M2-T4a): a barcode lookup for the caller's
+ * household, any member. `code` is 8, 12, 13 or 14 digits; a 4 or 5 digit
+ * produce code (PLU) is refused with 400 `PLU_NOT_SUPPORTED` and never sent
+ * to a barcode source (ADR-006's settled sub-decision). The body is a
+ * {@link ProductLookupResultDto} with HTTP 200 for all three outcomes;
+ * `error` means the source could not answer (rate limited, unavailable,
+ * timed out, or answered with something unreadable), which is never the
+ * same thing as `not-found`.
+ */
+export const PRODUCT_LOOKUP_ROUTE = "/v1/products/:code";
+
+/** The URL a client sends for {@link PRODUCT_LOOKUP_ROUTE}, with the code encoded. */
+export function productLookupPath(code: string): string {
+  return `/v1/products/${encodeURIComponent(code)}`;
+}

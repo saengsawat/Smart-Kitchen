@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
+import type { ScannedProductDto, ScreeningResultDto } from "@smart-kitchen/contracts";
 import { fixtureLookupProduct, formatScannedCodeDisplay, MISS_CODE } from "./fixture-products";
+
+/** M2-T4a: fixture products are engine-generated, so their screening is always `RUN`. */
+function screeningOf(product: ScannedProductDto): ScreeningResultDto {
+  if (product.screening.status !== "RUN") throw new Error("fixture screening should be RUN");
+  return product.screening.result;
+}
 
 describe("fixtureLookupProduct", () => {
   it("resolves the tahini hit as BLOCKED for Maya, naming sesame (engine-generated, review F1/F2/F3)", () => {
@@ -7,14 +14,14 @@ describe("fixtureLookupProduct", () => {
     expect(result.status).toBe("hit");
     if (result.status !== "hit") return;
     expect(result.product.name.value).toBe("Stone-Ground Tahini");
-    expect(result.product.screening.verdict).toBe("BLOCKED");
-    const maya = result.product.screening.members.find((m) => m.memberId === "member-maya");
+    expect(screeningOf(result.product).verdict).toBe("BLOCKED");
+    const maya = screeningOf(result.product).members.find((m) => m.memberId === "member-maya");
     expect(maya?.verdict).toBe("BLOCKED");
-    expect(result.product.screening.evidence.some((e) => e.matchedText === "sesame")).toBe(true);
+    expect(screeningOf(result.product).evidence.some((e) => e.matchedText === "sesame")).toBe(true);
     // The engine also finds Maya's peanut unresolved on the same product —
     // both are real facts about this scan (review F3/F6/F7's point).
-    expect(result.product.screening.unknowns).toHaveLength(1);
-    expect(result.product.screening.unknowns[0]?.restrictionLabel).toBe("peanut");
+    expect(screeningOf(result.product).unknowns).toHaveLength(1);
+    expect(screeningOf(result.product).unknowns[0]?.restrictionLabel).toBe("peanut");
     expect(result.product.bestBy).not.toBeNull(); // fixture-authored shelf-life estimate, added on top
   });
 
@@ -23,26 +30,26 @@ describe("fixtureLookupProduct", () => {
     expect(result.status).toBe("hit");
     if (result.status !== "hit") return;
     expect(result.product.ingredientsText).toBeUndefined();
-    expect(result.product.screening.verdict).toBe("ALLOWED_WITH_UNKNOWNS");
-    expect(result.product.screening.evidence).toEqual([]);
-    const labels = result.product.screening.unknowns.map((u) => u.restrictionLabel);
+    expect(screeningOf(result.product).verdict).toBe("ALLOWED_WITH_UNKNOWNS");
+    expect(screeningOf(result.product).evidence).toEqual([]);
+    const labels = screeningOf(result.product).unknowns.map((u) => u.restrictionLabel);
     expect(labels).toEqual(["peanut", "sesame"]);
-    expect(result.product.screening.unknowns.every((u) => u.severity === "severe")).toBe(true);
+    expect(screeningOf(result.product).unknowns.every((u) => u.severity === "severe")).toBe(true);
   });
 
   it("resolves the chicken-breast hit (no allergen data at all, fractional 1.5 lb package) as ALLOWED_WITH_UNKNOWNS", () => {
     const result = fixtureLookupProduct("060000100100");
     expect(result.status).toBe("hit");
     if (result.status !== "hit") return;
-    expect(result.product.packageSize.value).toEqual({ qty: "1.5", unit: "lb" });
-    expect(result.product.screening.verdict).toBe("ALLOWED_WITH_UNKNOWNS");
+    expect(result.product.packageSize?.value).toEqual({ qty: "1.5", unit: "lb" });
+    expect(screeningOf(result.product).verdict).toBe("ALLOWED_WITH_UNKNOWNS");
   });
 
   it("no fixture product screens ALLOWED (D-017 gate b is open — no corpus record carries a declaration)", () => {
     for (const code of ["060000100810", "060000100070", "060000100100"]) {
       const result = fixtureLookupProduct(code);
       if (result.status !== "hit") throw new Error("expected a hit");
-      expect(result.product.screening.verdict).not.toBe("ALLOWED");
+      expect(screeningOf(result.product).verdict).not.toBe("ALLOWED");
     }
   });
 

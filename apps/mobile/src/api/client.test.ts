@@ -794,7 +794,10 @@ describe("lookupProduct / createItem (M3-T4b)", () => {
       expect(result.status).toBe("hit");
       if (result.status === "hit") {
         expect(result.product.name.value).toBe("Stone-Ground Tahini");
-        expect(result.product.screening.verdict).toBe("BLOCKED");
+        expect(result.product.screening).toMatchObject({
+          status: "RUN",
+          result: { verdict: "BLOCKED" },
+        });
       }
     });
 

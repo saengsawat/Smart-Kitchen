@@ -52,6 +52,13 @@ export const API_ERROR_CODES = [
   "RATE_LIMITED",
   /** 403 from an owner-only household action attempted by a member (M2-T3: rotating the join code). */
   "NOT_OWNER",
+  /**
+   * 400 from `GET /v1/products/{code}` for a 4 or 5 digit produce code
+   * (M2-T4a). A PLU is never sent through a barcode lookup: a PLU queried as
+   * a barcode comes back as a wrong-but-found product more often than as a
+   * clean miss (ADR-006, R-1). Produce gets its own curated table in M4.
+   */
+  "PLU_NOT_SUPPORTED",
 ] as const;
 
 export type ApiErrorCode = (typeof API_ERROR_CODES)[number];

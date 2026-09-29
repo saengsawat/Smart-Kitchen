@@ -1,0 +1,16 @@
+{
+  "capture": {
+    "capturedAt": "2026-09-29T18:25:06.570Z",
+    "host": "https://world.openfoodfacts.org",
+    "request": "/api/v2/product/481293740567.json?fields=code,product_name,brands,quantity,serving_size,ingredients_text,allergens_tags,traces_tags,nutriments,categories_tags,image_front_url,last_modified_t",
+    "userAgent": "SmartKitchen/0.1 (development; https://github.com/saengsawat/Smart-Kitchen)",
+    "httpStatus": 404,
+    "contentType": "application/json; charset=utf-8",
+    "note": "A check-digit-valid code OFF does not know (status 0)."
+  },
+  "body": {
+    "code": "0481293740567",
+    "status": 0,
+    "status_verbose": "product not found"
+  }
+}

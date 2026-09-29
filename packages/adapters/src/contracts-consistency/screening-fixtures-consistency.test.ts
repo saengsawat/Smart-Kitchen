@@ -66,10 +66,13 @@ describe("apps/mobile/src/scan/fixtures/*.json matches the real engine, regenera
   it("no corpus record used here carries an AllergenDeclaration (D-017 gate b is open) — every verdict is BLOCKED or ALLOWED_WITH_UNKNOWNS, never ALLOWED", () => {
     const generated = generateScreeningFixtures();
     for (const [productId, product] of Object.entries(generated)) {
+      // M2-T4a: generated results are wrapped as `{ status: "RUN", result }`;
+      // the generator runs the engine, so it never emits NOT_RUN.
+      expect(product.screening.status, `${productId} screening status`).toBe("RUN");
+      const verdict = product.screening.status === "RUN" ? product.screening.result.verdict : null;
       expect(
-        product.screening.verdict === "BLOCKED" ||
-          product.screening.verdict === "ALLOWED_WITH_UNKNOWNS",
-        `${productId} screened ${product.screening.verdict}; expected BLOCKED or ALLOWED_WITH_UNKNOWNS ` +
+        verdict === "BLOCKED" || verdict === "ALLOWED_WITH_UNKNOWNS",
+        `${productId} screened ${String(verdict)}; expected BLOCKED or ALLOWED_WITH_UNKNOWNS ` +
           `since no corpus record carries an AllergenDeclaration yet`,
       ).toBe(true);
     }
