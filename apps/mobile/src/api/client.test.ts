@@ -1,8 +1,11 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { INVENTORY_ITEMS_PATH } from "@smart-kitchen/contracts";
+import { GENERIC_LEDGER_ERROR_MESSAGE, messageForLedgerError } from "../inventory/errors";
 import type {
+  CreateItemRequestDto,
   InventoryItemDetailDto,
   InventoryItemsResponseDto,
+  InventoryItemSummaryDto,
   InventoryWriteRequestDto,
   InventoryWriteResponseDto,
   UndoRequestDto,
@@ -14,6 +17,7 @@ import {
   FIXTURE_JOIN_CODE,
   FixtureApiClient,
   hasDevOfflineToggle,
+  householdSyncInputFromSummary,
   HttpApiClient,
   JOIN_CODE_ERROR_MESSAGE,
 } from "./client";
@@ -380,6 +384,169 @@ describe("createApiClient (M3-T3 Objective (d): HTTP when a base URL is set, fix
   });
 });
 
+describe("householdSyncInputFromSummary (M3-T4d, pure mapping)", () => {
+  it("maps each member's displayInitials into displayName, dropping isCaller", () => {
+    const result = householdSyncInputFromSummary({
+      householdId: "hh-1",
+      name: "The Ostrowskis",
+      members: [
+        { memberId: "mem-1", displayInitials: "AO", role: "owner", isCaller: true },
+        { memberId: "mem-2", displayInitials: "?", role: "member", isCaller: false },
+      ],
+    });
+    expect(result).toEqual({
+      householdId: "hh-1",
+      name: "The Ostrowskis",
+      members: [
+        { memberId: "mem-1", displayName: "AO", role: "owner" },
+        { memberId: "mem-2", displayName: "?", role: "member" },
+      ],
+    });
+  });
+});
+
+describe("FixtureApiClient.syncHouseholdFromServer (M3-T4d)", () => {
+  it("replaces identity/members/roles wholesale but keeps no restrictions for a brand-new member", () => {
+    const client = FixtureApiClient.newUser();
+    const household = client.syncHouseholdFromServer({
+      householdId: "hh-1",
+      name: "The Ostrowskis",
+      members: [{ memberId: "mem-1", displayName: "AO", role: "owner" }],
+    });
+    expect(household).toEqual({
+      householdId: "hh-1",
+      name: "The Ostrowskis",
+      members: [
+        {
+          memberId: "mem-1",
+          displayName: "AO",
+          role: "owner",
+          restrictions: [],
+          noneConfirmed: false,
+          preferences: [],
+        },
+      ],
+    });
+  });
+
+  it("preserves a member's restrictions/preferences already saved this session across a resync", async () => {
+    const client = FixtureApiClient.newUser();
+    client.syncHouseholdFromServer({
+      householdId: "hh-1",
+      name: "The Ostrowskis",
+      members: [{ memberId: "mem-1", displayName: "AO", role: "owner" }],
+    });
+    await client.saveMemberRestrictions(
+      "mem-1",
+      [{ kind: "MAJOR", code: "peanut", label: "peanut", severity: "severe" }],
+      { noneConfirmed: false },
+    );
+    await client.savePreferences("mem-1", ["Vegetarian"]);
+
+    // Same member id, name/role unchanged (a later GET /v1/households/me).
+    const resynced = client.syncHouseholdFromServer({
+      householdId: "hh-1",
+      name: "The Ostrowskis",
+      members: [{ memberId: "mem-1", displayName: "AO", role: "owner" }],
+    });
+    expect(resynced.members[0]?.restrictions).toEqual([
+      { kind: "MAJOR", code: "peanut", label: "peanut", severity: "severe" },
+    ]);
+    expect(resynced.members[0]?.preferences).toEqual(["Vegetarian"]);
+  });
+
+  it("a member no longer present in the server response is dropped, never left as a stale row", () => {
+    const client = FixtureApiClient.newUser();
+    client.syncHouseholdFromServer({
+      householdId: "hh-1",
+      name: "The Ostrowskis",
+      members: [
+        { memberId: "mem-1", displayName: "AO", role: "owner" },
+        { memberId: "mem-2", displayName: "BX", role: "member" },
+      ],
+    });
+    const resynced = client.syncHouseholdFromServer({
+      householdId: "hh-1",
+      name: "The Ostrowskis",
+      members: [{ memberId: "mem-1", displayName: "AO", role: "owner" }],
+    });
+    expect(resynced.members.map((m) => m.memberId)).toEqual(["mem-1"]);
+  });
+});
+
+describe("HttpApiClient.clearHouseholdUntilServerSaysOtherwise (M3-T4d review F6, pinned)", () => {
+  const originalFetch = globalThis.fetch;
+  afterEach(() => {
+    globalThis.fetch = originalFetch;
+  });
+
+  it("saveMemberRestrictions on a fresh HttpApiClient, before any server read, rejects (never assumes a household)", async () => {
+    globalThis.fetch = () => {
+      throw new Error("must not call fetch");
+    };
+    const client = new HttpApiClient("http://localhost:4000");
+    // Review round 2 pin: "member-dean" (tests/fixtures/identity/README.md),
+    // not an arbitrary id like "mem-1" — the internal delegate starts from
+    // `FixtureApiClient.returningUser()` (kept only for `confirmAiProposal`'s
+    // inventory, see the module doc comment), whose *un-cleared* household
+    // really does have a "member-dean". A made-up id would reject either
+    // way (an "unknown memberId" refusal, same as a cleared household's "no
+    // household yet" one), so it cannot tell "the household was cleared"
+    // apart from "the id doesn't exist"; deleting
+    // `clearHouseholdUntilServerSaysOtherwise()` must make this one resolve
+    // instead of reject.
+    await expect(
+      client.saveMemberRestrictions("member-dean", [], { noneConfirmed: true }),
+    ).rejects.toThrow();
+  });
+
+  it("savePreferences on a fresh HttpApiClient, before any server read, rejects the same way", async () => {
+    globalThis.fetch = () => {
+      throw new Error("must not call fetch");
+    };
+    const client = new HttpApiClient("http://localhost:4000");
+    // Same "member-dean", same reasoning as the test above.
+    await expect(client.savePreferences("member-dean", ["Vegetarian"])).rejects.toThrow();
+  });
+
+  it("saveMemberRestrictions and savePreferences never call fetch, on a fresh client or after a real household sync", async () => {
+    let fetchCalls = 0;
+    globalThis.fetch = () => {
+      fetchCalls += 1;
+      return Promise.resolve(
+        new Response(
+          JSON.stringify({
+            household: {
+              householdId: "hh-1",
+              name: "The Ostrowskis",
+              members: [
+                { memberId: "mem-1", displayInitials: "AO", role: "owner", isCaller: true },
+              ],
+            },
+            joinCode: { code: "ABCD-234", issuedAt: "2026-09-29T00:00:00.000Z" },
+          }),
+          { status: 201 },
+        ),
+      );
+    };
+    const client = new HttpApiClient("http://localhost:4000");
+
+    // A fresh client, no server read yet: rejects, no fetch call.
+    await expect(
+      client.saveMemberRestrictions("mem-1", [], { noneConfirmed: true }).catch(() => undefined),
+    ).resolves.toBeUndefined();
+    expect(fetchCalls).toBe(0);
+
+    // After a real household sync (one fetch call), the two restriction
+    // calls still make zero fetch calls of their own — purely local.
+    await client.createHousehold("The Ostrowskis");
+    expect(fetchCalls).toBe(1);
+    await client.saveMemberRestrictions("mem-1", [], { noneConfirmed: true });
+    await client.savePreferences("mem-1", ["Vegetarian"]);
+    expect(fetchCalls).toBe(1);
+  });
+});
+
 describe("HttpApiClient (M3-T3, mocked fetch, no real network)", () => {
   const originalFetch = globalThis.fetch;
 
@@ -403,6 +570,24 @@ describe("HttpApiClient (M3-T3, mocked fetch, no real network)", () => {
     expect(capturedHeaders).toEqual({ Authorization: `Bearer ${FIXTURE_IDENTITY_TOKEN}` });
     expect(items).toEqual(SAMPLE_RESPONSE.items);
     expect(client.isInventoryStale()).toBe(false);
+  });
+
+  it("authenticates as EXPO_PUBLIC_IDENTITY_TOKEN when set (M3-T4d Objective (e))", async () => {
+    vi.stubEnv("EXPO_PUBLIC_IDENTITY_TOKEN", "fixture.new.user");
+    let capturedHeaders: Record<string, string> | undefined;
+    globalThis.fetch = ((_url: string, init?: RequestInit) => {
+      capturedHeaders = init?.headers as Record<string, string> | undefined;
+      return Promise.resolve(new Response(JSON.stringify(SAMPLE_RESPONSE), { status: 200 }));
+    }) as typeof fetch;
+
+    try {
+      const client = new HttpApiClient("http://localhost:4000");
+      await client.getInventoryItems();
+      expect(capturedHeaders).toEqual({ Authorization: "Bearer fixture.new.user" });
+      expect(client.getIdentityToken()).toBe("fixture.new.user");
+    } finally {
+      vi.unstubAllEnvs();
+    }
   });
 
   it("parses the DTO's quantity as exact text, never through Number", async () => {
@@ -466,10 +651,17 @@ describe("HttpApiClient (M3-T3, mocked fetch, no real network)", () => {
     });
   });
 
-  it("onboarding/household state still delegates to a fixture client (no endpoint yet, M2-T3)", async () => {
+  it("a brand-new HttpApiClient has no household until the server says otherwise (never assumes one, M3-T4d)", async () => {
+    globalThis.fetch = () =>
+      Promise.resolve(
+        new Response(
+          JSON.stringify({ error: { code: "FORBIDDEN", message: "no", correlationId: "c1" } }),
+          { status: 403 },
+        ),
+      );
     const client = new HttpApiClient("http://localhost:4000");
     const state = await client.getOnboardingState();
-    expect(state.household).not.toBeNull();
+    expect(state.household).toBeNull();
   });
 });
 
@@ -856,29 +1048,361 @@ describe("lookupProduct / createItem (M3-T4b)", () => {
   });
 
   describe("HttpApiClient", () => {
-    it("lookupProduct rejects clearly (no endpoint until M2-T3)", async () => {
+    const originalFetch = globalThis.fetch;
+    afterEach(() => {
+      globalThis.fetch = originalFetch;
+    });
+
+    it("lookupProduct rejects clearly (no endpoint until M2-T4a/M3-T4e)", async () => {
       const client = new HttpApiClient("http://localhost:4000");
       await expect(client.lookupProduct("060000100025")).rejects.toThrow(/not available yet/);
     });
 
-    it("createItem rejects clearly (no endpoint until M2-T3)", async () => {
-      const client = new HttpApiClient("http://localhost:4000");
-      await expect(
-        client.createItem({
-          idempotencyKey: "key-1",
-          source: "MANUAL",
-          displayName: "x",
-          storageLocation: "PANTRY",
-          unit: "count",
-          amount: "1",
-          quantityProvenance: {
-            tier: "KNOWN_FACT",
-            source: "manual-entry",
-            confidence: null,
-            recordedAt: null,
+    const SAMPLE_ITEM_INPUT: CreateItemRequestDto = {
+      idempotencyKey: "key-1",
+      source: "MANUAL",
+      displayName: "x",
+      storageLocation: "PANTRY",
+      unit: "count",
+      amount: "1",
+      quantityProvenance: {
+        tier: "KNOWN_FACT",
+        source: "manual-entry",
+        confidence: null,
+        recordedAt: null,
+      },
+    };
+
+    const SAMPLE_ITEM_SUMMARY: InventoryItemSummaryDto = SAMPLE_RESPONSE.items[0]!;
+
+    describe("createItem (M3-T4d: real POST /v1/inventory/items)", () => {
+      it("POSTs to the items path with the fixture bearer token and the input verbatim, returning the created summary", async () => {
+        let capturedUrl: string | undefined;
+        let capturedInit: RequestInit | undefined;
+        globalThis.fetch = ((url: string, init?: RequestInit) => {
+          capturedUrl = url;
+          capturedInit = init;
+          return Promise.resolve(
+            new Response(JSON.stringify(SAMPLE_ITEM_SUMMARY), { status: 201 }),
+          );
+        }) as typeof fetch;
+
+        const client = new HttpApiClient("http://localhost:4000");
+        const result = await client.createItem(SAMPLE_ITEM_INPUT);
+
+        expect(capturedUrl).toBe(`http://localhost:4000${INVENTORY_ITEMS_PATH}`);
+        expect(capturedInit?.method).toBe("POST");
+        expect((capturedInit?.headers as Record<string, string>).Authorization).toBe(
+          `Bearer ${FIXTURE_IDENTITY_TOKEN}`,
+        );
+        expect(parsedBody<CreateItemRequestDto>(capturedInit)).toEqual(SAMPLE_ITEM_INPUT);
+        expect(result).toEqual(SAMPLE_ITEM_SUMMARY);
+      });
+
+      it("a 200 replay resolves the same way as a 201 create", async () => {
+        globalThis.fetch = () =>
+          Promise.resolve(new Response(JSON.stringify(SAMPLE_ITEM_SUMMARY), { status: 200 }));
+        const client = new HttpApiClient("http://localhost:4000");
+        const result = await client.createItem(SAMPLE_ITEM_INPUT);
+        expect(result).toEqual(SAMPLE_ITEM_SUMMARY);
+      });
+
+      it("a simulated retry (network failure then success) reuses the same request body, never mints a second idempotencyKey", async () => {
+        const capturedKeys: string[] = [];
+        let calls = 0;
+        globalThis.fetch = ((_url: string, init?: RequestInit) => {
+          calls += 1;
+          capturedKeys.push(parsedBody<CreateItemRequestDto>(init).idempotencyKey);
+          if (calls === 1) {
+            return Promise.reject(new Error("network down"));
+          }
+          return Promise.resolve(
+            new Response(JSON.stringify(SAMPLE_ITEM_SUMMARY), { status: 201 }),
+          );
+        }) as typeof fetch;
+
+        const client = new HttpApiClient("http://localhost:4000");
+        const result = await client.createItem(SAMPLE_ITEM_INPUT);
+
+        expect(calls).toBe(2);
+        expect(capturedKeys).toEqual(["key-1", "key-1"]); // reused, never re-minted
+        expect(result).toEqual(SAMPLE_ITEM_SUMMARY);
+      });
+
+      it("gives up and rejects after exhausting its retries against a persistent network failure", async () => {
+        globalThis.fetch = () => Promise.reject(new Error("network down"));
+        const client = new HttpApiClient("http://localhost:4000");
+        await expect(client.createItem(SAMPLE_ITEM_INPUT)).rejects.toThrow();
+      });
+
+      it("a 409 IDEMPOTENCY_KEY_CONFLICT throws LedgerRefusedError, never retried, rendering its §8 sentence (review F9)", async () => {
+        let calls = 0;
+        globalThis.fetch = () => {
+          calls += 1;
+          return Promise.resolve(
+            new Response(
+              JSON.stringify({
+                error: {
+                  code: "CONFLICT",
+                  message: "conflict",
+                  correlationId: "c1",
+                  ledgerCode: "IDEMPOTENCY_KEY_CONFLICT",
+                },
+              }),
+              { status: 409 },
+            ),
+          );
+        };
+        const client = new HttpApiClient("http://localhost:4000");
+        await expect(client.createItem(SAMPLE_ITEM_INPUT)).rejects.toMatchObject({
+          code: "IDEMPOTENCY_KEY_CONFLICT",
+        });
+        expect(calls).toBe(1);
+        try {
+          await client.createItem(SAMPLE_ITEM_INPUT);
+          expect.unreachable();
+        } catch (error) {
+          expect(messageForLedgerError(error)).toBe(
+            "That request was already used for a different change, so it was not applied again.",
+          );
+        }
+      });
+
+      it("a 400 validation refusal (e.g. INVALID_FIELD) throws LedgerRefusedError, rendering the generic fallback (review F9)", async () => {
+        globalThis.fetch = () =>
+          Promise.resolve(
+            new Response(
+              JSON.stringify({
+                error: {
+                  code: "BAD_REQUEST",
+                  message: "bad",
+                  correlationId: "c1",
+                  ledgerCode: "INVALID_FIELD",
+                },
+              }),
+              { status: 400 },
+            ),
+          );
+        const client = new HttpApiClient("http://localhost:4000");
+        await expect(client.createItem(SAMPLE_ITEM_INPUT)).rejects.toMatchObject({
+          code: "INVALID_FIELD",
+        });
+        try {
+          await client.createItem(SAMPLE_ITEM_INPUT);
+          expect.unreachable();
+        } catch (error) {
+          expect(messageForLedgerError(error)).toBe(GENERIC_LEDGER_ERROR_MESSAGE);
+        }
+      });
+
+      it("rejects a malformed 2xx response body rather than returning garbage", async () => {
+        globalThis.fetch = () => Promise.resolve(new Response(JSON.stringify({}), { status: 201 }));
+        const client = new HttpApiClient("http://localhost:4000");
+        await expect(client.createItem(SAMPLE_ITEM_INPUT)).rejects.toThrow();
+      });
+    });
+
+    describe("createHousehold (M3-T4d: real POST /v1/households)", () => {
+      const SAMPLE_CREATE_RESPONSE = {
+        household: {
+          householdId: "hh-1",
+          name: "The Ostrowskis",
+          members: [{ memberId: "mem-1", displayInitials: "NH", role: "owner", isCaller: true }],
+        },
+        joinCode: { code: "ABCD-234", issuedAt: "2026-09-29T00:00:00.000Z" },
+      };
+
+      it("POSTs the trimmed name, returns the mapped household plus the one-time join code", async () => {
+        let capturedUrl: string | undefined;
+        let capturedInit: RequestInit | undefined;
+        globalThis.fetch = ((url: string, init?: RequestInit) => {
+          capturedUrl = url;
+          capturedInit = init;
+          return Promise.resolve(
+            new Response(JSON.stringify(SAMPLE_CREATE_RESPONSE), { status: 201 }),
+          );
+        }) as typeof fetch;
+
+        const client = new HttpApiClient("http://localhost:4000");
+        const result = await client.createHousehold("  The Ostrowskis  ");
+
+        expect(capturedUrl).toBe("http://localhost:4000/v1/households");
+        expect(capturedInit?.method).toBe("POST");
+        expect((capturedInit?.headers as Record<string, string>).Authorization).toBe(
+          `Bearer ${FIXTURE_IDENTITY_TOKEN}`,
+        );
+        expect(parsedBody<{ name: string }>(capturedInit)).toEqual({ name: "The Ostrowskis" });
+        expect(result.householdId).toBe("hh-1");
+        expect(result.name).toBe("The Ostrowskis");
+        expect(result.joinCode).toBe("ABCD-234");
+        // Server sends only initials (M2-T3, never a full name); mapped through
+        // as this client's stand-in displayName, restrictions/preferences local.
+        expect(result.members).toEqual([
+          {
+            memberId: "mem-1",
+            displayName: "NH",
+            role: "owner",
+            restrictions: [],
+            noneConfirmed: false,
+            preferences: [],
           },
-        }),
-      ).rejects.toThrow(/not available yet/);
+        ]);
+      });
+
+      it("a 400 BAD_REQUEST (invalid name) throws LedgerRefusedError", async () => {
+        globalThis.fetch = () =>
+          Promise.resolve(
+            new Response(
+              JSON.stringify({
+                error: { code: "BAD_REQUEST", message: "bad", correlationId: "c1" },
+              }),
+              { status: 400 },
+            ),
+          );
+        const client = new HttpApiClient("http://localhost:4000");
+        await expect(client.createHousehold("The Ostrowskis")).rejects.toMatchObject({
+          code: "BAD_REQUEST",
+        });
+      });
+
+      it("feeds getOnboardingState's household half afterward, restrictions saved locally survive a later resync", async () => {
+        globalThis.fetch = () =>
+          Promise.resolve(new Response(JSON.stringify(SAMPLE_CREATE_RESPONSE), { status: 201 }));
+        const client = new HttpApiClient("http://localhost:4000");
+        await client.createHousehold("The Ostrowskis");
+
+        await client.saveMemberRestrictions("mem-1", [], { noneConfirmed: true });
+
+        // A later GET /v1/households/me for the same household+members
+        // must not wipe the restriction just saved.
+        globalThis.fetch = () =>
+          Promise.resolve(
+            new Response(JSON.stringify(SAMPLE_CREATE_RESPONSE.household), { status: 200 }),
+          );
+        const state = await client.getOnboardingState();
+        expect(state.household?.members[0]?.noneConfirmed).toBe(true);
+      });
+    });
+
+    describe("joinHousehold (M3-T4d: real POST /v1/households/join)", () => {
+      const SAMPLE_JOIN_RESPONSE = {
+        household: {
+          householdId: "hh-chen",
+          name: "The Chens",
+          members: [
+            { memberId: "mem-dean", displayInitials: "DC", role: "owner", isCaller: false },
+            { memberId: "mem-maya", displayInitials: "MC", role: "member", isCaller: true },
+          ],
+        },
+        alreadyMember: false,
+      };
+
+      it("POSTs the code, returns ok:true with the mapped household and alreadyMember", async () => {
+        let capturedUrl: string | undefined;
+        let capturedInit: RequestInit | undefined;
+        globalThis.fetch = ((url: string, init?: RequestInit) => {
+          capturedUrl = url;
+          capturedInit = init;
+          return Promise.resolve(
+            new Response(JSON.stringify(SAMPLE_JOIN_RESPONSE), { status: 200 }),
+          );
+        }) as typeof fetch;
+
+        const client = new HttpApiClient("http://localhost:4000");
+        const result = await client.joinHousehold("CHEN-482");
+
+        expect(capturedUrl).toBe("http://localhost:4000/v1/households/join");
+        expect(parsedBody<{ code: string }>(capturedInit)).toEqual({ code: "CHEN-482" });
+        expect(result.ok).toBe(true);
+        if (result.ok) {
+          expect(result.household.householdId).toBe("hh-chen");
+          expect(result.household.members).toHaveLength(2);
+          expect(result.alreadyMember).toBe(false);
+        }
+      });
+
+      it("a repeat join maps alreadyMember: true", async () => {
+        globalThis.fetch = () =>
+          Promise.resolve(
+            new Response(JSON.stringify({ ...SAMPLE_JOIN_RESPONSE, alreadyMember: true }), {
+              status: 200,
+            }),
+          );
+        const client = new HttpApiClient("http://localhost:4000");
+        const result = await client.joinHousehold("CHEN-482");
+        expect(result.ok).toBe(true);
+        if (result.ok) {
+          expect(result.alreadyMember).toBe(true);
+        }
+      });
+
+      it("a 404 JOIN_CODE_INVALID resolves ok:false with the exact S1 string, never the server message", async () => {
+        globalThis.fetch = () =>
+          Promise.resolve(
+            new Response(
+              JSON.stringify({
+                error: {
+                  code: "JOIN_CODE_INVALID",
+                  message: "this exact sentence must never reach the screen",
+                  correlationId: "c1",
+                },
+              }),
+              { status: 404 },
+            ),
+          );
+        const client = new HttpApiClient("http://localhost:4000");
+        const result = await client.joinHousehold("WRONG-000");
+        expect(result).toEqual({ ok: false, message: JOIN_CODE_ERROR_MESSAGE });
+      });
+
+      it("a 429 RATE_LIMITED resolves ok:false with the §8 rate-limit string", async () => {
+        globalThis.fetch = () =>
+          Promise.resolve(
+            new Response(
+              JSON.stringify({
+                error: { code: "RATE_LIMITED", message: "too many", correlationId: "c1" },
+              }),
+              { status: 429 },
+            ),
+          );
+        const client = new HttpApiClient("http://localhost:4000");
+        const result = await client.joinHousehold("CHEN-482");
+        expect(result).toEqual({
+          ok: false,
+          message: "Too many tries. Wait a few minutes and try again.",
+        });
+      });
+
+      it("any other failure (e.g. a 500, or a network failure) resolves ok:false with the generic fallback", async () => {
+        globalThis.fetch = () =>
+          Promise.resolve(
+            new Response(
+              JSON.stringify({ error: { code: "INTERNAL", message: "boom", correlationId: "c1" } }),
+              { status: 500 },
+            ),
+          );
+        const client = new HttpApiClient("http://localhost:4000");
+        const serverErrorResult = await client.joinHousehold("CHEN-482");
+        expect(serverErrorResult.ok).toBe(false);
+
+        globalThis.fetch = () => Promise.reject(new Error("network down"));
+        const networkFailureResult = await client.joinHousehold("CHEN-482");
+        expect(networkFailureResult.ok).toBe(false);
+      });
+
+      it("a malformed 2xx body resolves ok:false with the generic fallback, never an unhandled rejection (review F10)", async () => {
+        globalThis.fetch = () => Promise.resolve(new Response(JSON.stringify({}), { status: 200 }));
+        const client = new HttpApiClient("http://localhost:4000");
+        const result = await client.joinHousehold("CHEN-482");
+        expect(result).toEqual({ ok: false, message: GENERIC_LEDGER_ERROR_MESSAGE });
+      });
+
+      it("an unparsable 2xx body (not JSON at all) resolves ok:false the same way (review F10)", async () => {
+        globalThis.fetch = () => Promise.resolve(new Response("not json", { status: 200 }));
+        const client = new HttpApiClient("http://localhost:4000");
+        const result = await client.joinHousehold("CHEN-482");
+        expect(result).toEqual({ ok: false, message: GENERIC_LEDGER_ERROR_MESSAGE });
+      });
     });
   });
 });

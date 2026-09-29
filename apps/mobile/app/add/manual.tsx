@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import {
@@ -113,6 +113,34 @@ export default function ManualAddScreen(): React.JSX.Element {
   );
   const [nameError, setNameError] = useState<string | null>(null);
   const [addError, setAddError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  /**
+   * Review F3: `createItem`'s idempotency key, held across retaps of Save
+   * until either a save succeeds or an input actually changes. Ref, not
+   * state: `handleSave` reads and mints it synchronously (see
+   * `saveInFlight` below for why state cannot gate this), and a `null`
+   * value means "mint fresh" (first tap, or any tap after an input
+   * changed the payload this key would otherwise have been reused for).
+   */
+  const heldIdempotencyKey = useRef<string | null>(null);
+  /**
+   * Review F3/F11: a synchronous single-flight guard, same reasoning as
+   * `app/onboarding/account.tsx`'s `requestInFlight` — two Save taps
+   * dispatched in the same frame both read `saving` (React state) as
+   * `false` before either commit lands, so state alone cannot stop a
+   * second `createItem` call. `createItem` *is* idempotency-key-protected
+   * server-side (unlike account.tsx's household calls), so a genuine
+   * double-send would still resolve to one item, not a duplicate — but it
+   * would still be a second wasted request, and the point of holding one
+   * key across retaps (above) is exactly to make retries safe, not to
+   * lean on the network sending two of them.
+   */
+  const saveInFlight = useRef(false);
+
+  /** Any real change to what Save would send discards a held key (review F3): a reused key needs the same body. */
+  function forgetHeldKey(): void {
+    heldIdempotencyKey.current = null;
+  }
 
   function handleBack(): void {
     if (router.canGoBack()) {
@@ -125,6 +153,7 @@ export default function ManualAddScreen(): React.JSX.Element {
   function handlePickUnitKind(kind: UnitKindDto): void {
     setUnitKind(kind);
     setUnit(UNITS_BY_KIND_DTO[kind][0]!);
+    forgetHeldKey();
   }
 
   // Review F17: zero is not a quantity worth recording (S8's stepper floors
@@ -133,7 +162,7 @@ export default function ManualAddScreen(): React.JSX.Element {
   const canSave = count > 0;
 
   async function handleSave(): Promise<void> {
-    if (!canSave) {
+    if (!canSave || saveInFlight.current) {
       return;
     }
     const trimmedName = name.trim();
@@ -143,10 +172,17 @@ export default function ManualAddScreen(): React.JSX.Element {
     }
     setNameError(null);
     setAddError(null);
+    saveInFlight.current = true;
+    setSaving(true);
     try {
+      // Review F3: reuse the key held from an earlier failed attempt on
+      // this exact payload; mint one only when none is held (first tap, or
+      // the first tap since an input last changed it away).
+      const idempotencyKey = heldIdempotencyKey.current ?? nextIdempotencyKey();
+      heldIdempotencyKey.current = idempotencyKey;
       const amountMicros = wholeUnitQuantityMicros(count);
       const summary = await apiClient.createItem({
-        idempotencyKey: nextIdempotencyKey(),
+        idempotencyKey,
         source: "MANUAL",
         displayName: trimmedName,
         storageLocation: location,
@@ -159,11 +195,19 @@ export default function ManualAddScreen(): React.JSX.Element {
           recordedAt: null,
         },
       });
+      heldIdempotencyKey.current = null; // done: a later Save (a new item) starts fresh
       recordRecentlyAdded(summary);
       show(`Added ${trimmedName} · ${count} ${unit} to ${LOCATION_LABELS[location]} · Known Fact`);
       router.replace("/inventory");
     } catch (error) {
+      // The key stays held (not cleared): a retap with the same,
+      // unchanged inputs must replay under the same key, never mint a new
+      // one (invariant: a 409 is never retried with a new key, and more
+      // generally a retry is the same user action, not a new one).
       setAddError(messageForLedgerError(error));
+    } finally {
+      saveInFlight.current = false;
+      setSaving(false);
     }
   }
 
@@ -207,6 +251,7 @@ export default function ManualAddScreen(): React.JSX.Element {
               if (nameError) {
                 setNameError(null);
               }
+              forgetHeldKey();
             }}
             style={styles.textInput}
           />
@@ -241,7 +286,10 @@ export default function ManualAddScreen(): React.JSX.Element {
               <Pressable
                 accessibilityRole="button"
                 accessibilityLabel="Decrease quantity"
-                onPress={() => setCount((prev) => Math.max(0, prev - 1))}
+                onPress={() => {
+                  setCount((prev) => Math.max(0, prev - 1));
+                  forgetHeldKey();
+                }}
                 style={styles.stepButton}
               >
                 <Text style={styles.stepButtonText}>{"−"}</Text>
@@ -250,7 +298,10 @@ export default function ManualAddScreen(): React.JSX.Element {
               <Pressable
                 accessibilityRole="button"
                 accessibilityLabel="Increase quantity"
-                onPress={() => setCount((prev) => prev + 1)}
+                onPress={() => {
+                  setCount((prev) => prev + 1);
+                  forgetHeldKey();
+                }}
                 style={styles.stepButton}
               >
                 <Text style={styles.stepButtonText}>+</Text>
@@ -263,7 +314,10 @@ export default function ManualAddScreen(): React.JSX.Element {
                   accessibilityRole="button"
                   accessibilityLabel={u}
                   accessibilityState={{ selected: unit === u }}
-                  onPress={() => setUnit(u)}
+                  onPress={() => {
+                    setUnit(u);
+                    forgetHeldKey();
+                  }}
                   style={[styles.chip, unit === u ? styles.chipOn : null]}
                 >
                   <Text style={[styles.chipText, unit === u ? styles.chipTextOn : null]}>{u}</Text>
@@ -287,7 +341,10 @@ export default function ManualAddScreen(): React.JSX.Element {
                 accessibilityRole="button"
                 accessibilityLabel={LOCATION_LABELS[loc]}
                 accessibilityState={{ selected: location === loc }}
-                onPress={() => setLocation(loc)}
+                onPress={() => {
+                  setLocation(loc);
+                  forgetHeldKey();
+                }}
                 style={[styles.locChip, location === loc ? styles.locChipOn : null]}
               >
                 <Text style={[styles.locChipText, location === loc ? styles.locChipTextOn : null]}>
@@ -307,10 +364,10 @@ export default function ManualAddScreen(): React.JSX.Element {
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Add to inventory"
-          accessibilityState={{ disabled: !canSave }}
-          disabled={!canSave}
+          accessibilityState={{ disabled: !canSave || saving }}
+          disabled={!canSave || saving}
           onPress={() => void handleSave()}
-          style={[styles.primaryButton, canSave ? null : styles.primaryButtonDisabled]}
+          style={[styles.primaryButton, canSave && !saving ? null : styles.primaryButtonDisabled]}
         >
           <Text style={styles.primaryButtonText}>Add to inventory</Text>
         </Pressable>

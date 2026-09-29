@@ -1,15 +1,20 @@
 import { useFonts } from "expo-font";
 import { Redirect, Slot, usePathname } from "expo-router";
-import { useEffect, useState } from "react";
-import { View } from "react-native";
+import { useCallback, useEffect, useState } from "react";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import fraunces from "../assets/fonts/Fraunces.ttf";
 import inter from "../assets/fonts/Inter.ttf";
 import { apiClient } from "../src/api/client";
-import { colors } from "../src/design/tokens";
+import { colors, fontFamily, minTouchTarget, spacing } from "../src/design/tokens";
+import { GENERIC_READ_ERROR_MESSAGE } from "../src/inventory/errors";
 import { ToastHost, ToastProvider } from "../src/inventory/Toast";
 import { TabBar } from "../src/navigation/TabBar";
-import { resolveLayoutRedirectForRead, type OnboardingStateRead } from "../src/onboarding/route";
+import {
+  resolveLayoutRedirectForRead,
+  resolveOnboardingRoute,
+  type OnboardingStateRead,
+} from "../src/onboarding/route";
 
 // expo-router boots the splash screen and expects the app to signal it's
 // ready; without a real splash-hide sequence configured (out of scope for a
@@ -21,6 +26,14 @@ export default function RootLayout(): React.JSX.Element | null {
   });
   const pathname = usePathname();
   const [read, setRead] = useState<OnboardingStateRead | null>(null);
+  /**
+   * M3-T4d review F2: the pathname a `getOnboardingState()` read most
+   * recently *failed* for (network error, 401, 5xx, anything). Compared
+   * against the *current* `pathname` below, never trusted on its own: a
+   * failure recorded for a pathname the user has since navigated away from
+   * must not keep blocking a different, unrelated screen forever.
+   */
+  const [readErrorPathname, setReadErrorPathname] = useState<string | null>(null);
 
   useEffect(() => {
     if (fontError) {
@@ -30,7 +43,14 @@ export default function RootLayout(): React.JSX.Element | null {
     }
   }, [fontError]);
 
-  useEffect(() => {
+  const load = useCallback(() => {
+    // A fresh attempt for this pathname always clears its own prior
+    // failure first (shopping.tsx's `load()` does the same): "Try again"
+    // must not keep showing the old fallback while a new read is in
+    // flight, and a failure recorded for a *different*, earlier pathname
+    // was already irrelevant to this one.
+    setReadErrorPathname((prev) => (prev === pathname ? null : prev));
+    let cancelled = false;
     // Re-reads on every pathname change, not just on mount: this layout
     // does not remount when S1 creates/joins a household or S2's Continue
     // calls router.replace("/"), so a mount-only read would keep serving a
@@ -45,23 +65,84 @@ export default function RootLayout(): React.JSX.Element | null {
     // stale read (it renders the destination screen for that one frame
     // instead — see the function's own doc comment for the exact bug this
     // closes). The fixture client's promises resolve within a microtask, so
-    // that frame is not visibly perceptible in practice.
-    let cancelled = false;
-    void apiClient.getOnboardingState().then((state) => {
-      if (!cancelled) {
-        setRead({ pathname, state });
-      }
-    });
+    // that frame is not visibly perceptible in practice. A *rejected* read
+    // is different (M3-T4d review F2): it must never be treated as "render
+    // the destination for one frame", because there is no fresh read on the
+    // way to correct it — see the render logic below, which checks
+    // `readErrorPathname` before it ever looks at `read`.
+    void apiClient.getOnboardingState().then(
+      (state) => {
+        if (!cancelled) {
+          setRead({ pathname, state });
+        }
+      },
+      () => {
+        if (!cancelled) {
+          setReadErrorPathname(pathname);
+        }
+      },
+    );
     return () => {
       cancelled = true;
     };
   }, [pathname]);
 
+  useEffect(() => load(), [load]);
+
   if (!fontsLoaded && !fontError) {
     return null;
   }
+
+  // M3-T4d review F2: fail CLOSED. A rejected read for the *current*
+  // pathname always blocks — cold start (no household ever read yet) and a
+  // later navigation's re-read both take this branch identically, and a
+  // stale `read` from an earlier, different pathname is never consulted
+  // here, so a deep link straight at /inventory or /add can never ride a
+  // stale success past a fresh failure on its own read. Never renders
+  // `<Slot />` or `<Redirect />` on this branch.
+  if (readErrorPathname === pathname) {
+    return (
+      <SafeAreaProvider>
+        <View style={styles.errorScreen} accessibilityLiveRegion="assertive">
+          <Text style={styles.errorTitle}>Couldn&apos;t load your household.</Text>
+          <Text style={styles.errorBody}>{GENERIC_READ_ERROR_MESSAGE}</Text>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Try again"
+            onPress={load}
+            style={styles.errorButton}
+          >
+            <Text style={styles.errorButtonText}>Try again</Text>
+          </Pressable>
+        </View>
+      </SafeAreaProvider>
+    );
+  }
+
   if (!read) {
     return null;
+  }
+
+  // M3-T4d review round 2, F2: the pending window. `read` can be non-null
+  // but *stale* (tagged for an earlier pathname) while this pathname's own
+  // fresh read is still in flight — that is exactly the M3-T2 review F18
+  // case, whose fix is to render the current screen for that one frame
+  // rather than compute a redirect from stale data (`resolveLayoutRedirectForRead`
+  // returns `null` on a pathname mismatch, below). F18's own scenario is
+  // safe to fall through on: the stale route was already "home", so
+  // showing Slot while a fresh confirmation is in flight risks nothing.
+  // But when the stale route was NOT "home" (it called for S1/S2) and the
+  // current pathname is not already under "/onboarding", falling through
+  // would render Slot (real content) for as long as the fresh read takes,
+  // unbounded over a real network, exactly the bypass F2 closes for a
+  // *rejected* read; a *pending* read is the same bypass, just not failed
+  // yet. Hold (render nothing) until the fresh read for this pathname
+  // lands: a hold never redirects either, so F18's fix still holds too.
+  if (read.pathname !== pathname && !pathname.startsWith("/onboarding")) {
+    const staleRoute = resolveOnboardingRoute(read.state);
+    if (staleRoute !== "home") {
+      return null;
+    }
   }
 
   // M3-T2 review F2: this is the ONE gate every route in the app goes
@@ -95,3 +176,37 @@ export default function RootLayout(): React.JSX.Element | null {
     </SafeAreaProvider>
   );
 }
+
+const styles = StyleSheet.create({
+  errorScreen: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: spacing.sm,
+    paddingHorizontal: spacing.xl,
+    backgroundColor: colors.sand,
+  },
+  errorTitle: {
+    fontSize: 19,
+    fontFamily: fontFamily.display,
+    fontWeight: "600",
+    color: colors.ink,
+    textAlign: "center",
+  },
+  errorBody: { fontSize: 13, color: colors.ink2, fontFamily: fontFamily.body, textAlign: "center" },
+  errorButton: {
+    minHeight: minTouchTarget,
+    paddingHorizontal: spacing.lg,
+    borderRadius: 14,
+    backgroundColor: colors.brandDeep,
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: spacing.sm,
+  },
+  errorButtonText: {
+    color: colors.cream,
+    fontSize: 15,
+    fontWeight: "700",
+    fontFamily: fontFamily.body,
+  },
+});

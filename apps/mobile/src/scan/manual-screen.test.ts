@@ -6,6 +6,7 @@
 import React from "react";
 import { cleanup, fireEvent, render } from "@testing-library/react-native";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import type { CreateItemRequestDto } from "@smart-kitchen/contracts";
 import { flushPending } from "../test-support/flush";
 import { ToastHost, ToastProvider } from "../inventory/Toast";
 import { apiClient } from "../api/client";
@@ -35,6 +36,7 @@ afterEach(() => {
   pushed = [];
   replaced = [];
   searchParams = {};
+  vi.restoreAllMocks();
 });
 
 async function renderScreen(): Promise<ReturnType<typeof render>> {
@@ -224,6 +226,101 @@ describe("S9 · manual add", () => {
         accessibilityState?: { selected?: boolean };
       };
       expect(fridgeProps.accessibilityState?.selected).toBe(true);
+    });
+  });
+
+  describe("review F3: idempotency key held across retaps, single-flight guard", () => {
+    it("two Save taps in one frame produce exactly one createItem call, one key (review F3/F11)", async () => {
+      const result = await renderScreen();
+      fireEvent.changeText(result.getByLabelText("Item name"), "Double tap item");
+
+      const calls: CreateItemRequestDto[] = [];
+      const original = apiClient.createItem.bind(apiClient);
+      vi.spyOn(apiClient, "createItem").mockImplementation(async (input) => {
+        calls.push(input);
+        return original(input);
+      });
+
+      const button = result.getByLabelText("Add to inventory");
+      // No `await`/`flushPending` between these two: `saveInFlight` (a
+      // `useRef`, not React state) must already be set by the time the
+      // second press's synchronous handler body runs, same frame as the
+      // first — the exact race `saving` (state) alone cannot close.
+      fireEvent.press(button);
+      fireEvent.press(button);
+      await flushPending();
+
+      expect(calls).toHaveLength(1);
+      expect(replaced).toContain("/inventory");
+      const items = await apiClient.getInventoryItems();
+      expect(items.filter((item) => item.displayName === "Double tap item")).toHaveLength(1);
+    });
+
+    it("a failed save reuses the same key on a retap; the retap succeeds and creates exactly one item (review F3)", async () => {
+      const result = await renderScreen();
+      fireEvent.changeText(result.getByLabelText("Item name"), "Retry item");
+
+      const calls: CreateItemRequestDto[] = [];
+      const original = apiClient.createItem.bind(apiClient);
+      let attempt = 0;
+      vi.spyOn(apiClient, "createItem").mockImplementation(async (input) => {
+        calls.push(input);
+        attempt += 1;
+        if (attempt === 1) {
+          throw new Error("simulated network failure");
+        }
+        return original(input);
+      });
+
+      const button = result.getByLabelText("Add to inventory");
+      fireEvent.press(button);
+      await flushPending();
+      expect(
+        result.getByText(
+          "Something went wrong saving that. Try again, and tell us if it keeps happening.",
+        ),
+      ).toBeTruthy();
+      expect(replaced).toEqual([]);
+
+      // Nothing about the form changed since the failed attempt: the retap
+      // must reuse the same idempotencyKey, not mint a fresh one.
+      fireEvent.press(button);
+      await flushPending();
+
+      expect(calls).toHaveLength(2);
+      expect(calls[0]?.idempotencyKey).toBe(calls[1]?.idempotencyKey);
+      expect(replaced).toContain("/inventory");
+      const items = await apiClient.getInventoryItems();
+      expect(items.filter((item) => item.displayName === "Retry item")).toHaveLength(1);
+    });
+
+    it("changing an input after a failed save discards the held key; the next Save mints a fresh one (review F3)", async () => {
+      const result = await renderScreen();
+      fireEvent.changeText(result.getByLabelText("Item name"), "Changed item");
+
+      const calls: CreateItemRequestDto[] = [];
+      const original = apiClient.createItem.bind(apiClient);
+      let attempt = 0;
+      vi.spyOn(apiClient, "createItem").mockImplementation(async (input) => {
+        calls.push(input);
+        attempt += 1;
+        if (attempt === 1) {
+          throw new Error("simulated network failure");
+        }
+        return original(input);
+      });
+
+      const button = result.getByLabelText("Add to inventory");
+      fireEvent.press(button);
+      await flushPending();
+
+      // A real change to what Save would send: the amount stepper.
+      fireEvent.press(result.getByLabelText("Increase quantity"));
+      fireEvent.press(button);
+      await flushPending();
+
+      expect(calls).toHaveLength(2);
+      expect(calls[0]?.idempotencyKey).not.toBe(calls[1]?.idempotencyKey);
     });
   });
 });

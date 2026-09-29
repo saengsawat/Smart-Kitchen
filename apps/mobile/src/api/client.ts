@@ -10,22 +10,42 @@
  * reference are removed in this ticket, discharging the M2-T1 review's
  * `expo export` bundling blocker for good).
  *
- * ## Read vs write, fixture vs HTTP (M3-T3, extended M3-T4a)
+ * ## Read vs write, fixture vs HTTP (M3-T3, extended M3-T4a, M3-T4d)
  *
  * `HttpApiClient` implements every inventory read and write M2-T1/M2-T2
- * supply over real `fetch`, used when `EXPO_PUBLIC_API_URL` is set
+ * supply, plus the M2-T3 household and item-creation endpoints (M3-T4d),
+ * over real `fetch`, used when `EXPO_PUBLIC_API_URL` is set
  * (`src/config/env.ts`, the one file allowed to read it) and never
  * otherwise (BACKLOG.md M3-T3 Objective (d)): the list
  * (`getInventoryItems`, `GET /v1/inventory/items`), the detail-with-history
  * read (`getInventoryItem`, `GET /v1/inventory/items/{id}`), corrections and
  * removals (`correctQuantity`/`removeQuantity`,
- * `POST /v1/inventory/items/{id}/transactions`) and undo
- * (`POST .../{transactionId}/undo`). Onboarding/household state and
- * `confirmAiProposal` have no endpoint yet (M2-T3, later), so `HttpApiClient`
- * still delegates those to an internal fixture client
- * (`FixtureApiClient.returningUser()`) rather than leaving them unimplemented
- * dead ends. This composition, and its scope, is flagged for the reviewer in
- * the worker report.
+ * `POST /v1/inventory/items/{id}/transactions`), undo
+ * (`POST .../{transactionId}/undo`), household create/join/read
+ * (`createHousehold`, `joinHousehold`, the household half of
+ * `getOnboardingState`) and item creation (`createItem`,
+ * `POST /v1/inventory/items`).
+ *
+ * The server stores no member restrictions until M2-T4 (A3 household
+ * permissions), so the *restrictions half* of onboarding state — every
+ * member's `restrictions`/`noneConfirmed`/`preferences` — stays entirely
+ * client-local even against a real API: never sent, never read from the
+ * wire. `HttpApiClient` keeps an internal `FixtureApiClient`
+ * (`this.delegate`, started from {@link FixtureApiClient.returningUser} for
+ * its inventory fixture only and immediately stripped of its household via
+ * {@link FixtureApiClient.clearHouseholdUntilServerSaysOtherwise} — this
+ * client must never assume a household it did not get from the server)
+ * purely as that local store: `saveMemberRestrictions`/`savePreferences`
+ * delegate to it unchanged, and
+ * every household read from the server (`createHousehold`, `joinHousehold`,
+ * `getOnboardingState`) is folded into it through
+ * {@link FixtureApiClient.syncHouseholdFromServer}, which overwrites the
+ * household's identity/members/roles from the wire but preserves whatever
+ * restrictions/preferences this session already saved for a member who is
+ * still present. `confirmAiProposal` still has no endpoint (M2-T3 doesn't
+ * add one), so it keeps delegating to the same fixture instance too — its
+ * `this.inventory` is unrelated to real HTTP inventory items, a pre-existing
+ * gap this ticket does not close (see the worker report).
  *
  * ## Idempotency keys and retries (M3-T4a)
  *
@@ -41,13 +61,19 @@
 
 import type {
   ApiErrorBodyDto,
+  CreateHouseholdRequestDto,
+  CreateHouseholdResponseDto,
   CreateItemRequestDto,
   HouseholdDto,
+  HouseholdRoleDto,
+  HouseholdSummaryDto,
   InventoryItemDetailDto,
   InventoryItemsResponseDto,
   InventoryItemSummaryDto,
   InventoryWriteRequestDto,
   InventoryWriteResponseDto,
+  JoinHouseholdRequestDto,
+  JoinHouseholdResponseDto,
   MemberDto,
   MemberRestrictionDto,
   OnboardingStateDto,
@@ -58,12 +84,15 @@ import type {
   UndoRequestDto,
 } from "@smart-kitchen/contracts";
 import {
+  HOUSEHOLD_JOIN_PATH,
+  HOUSEHOLD_ME_PATH,
+  HOUSEHOLDS_PATH,
   INVENTORY_ITEMS_PATH,
   inventoryItemPath,
   inventoryItemTransactionsPath,
   inventoryTransactionUndoPath,
 } from "@smart-kitchen/contracts";
-import { getApiBaseUrl } from "../config/env";
+import { getApiBaseUrl, getIdentityToken as resolveIdentityToken } from "../config/env";
 import { fixtureChenMembers } from "../household/fixture-restrictions";
 import { buildChenInventory } from "../inventory/fixture-household";
 import type { RemovalAction } from "../inventory/transactions";
@@ -78,7 +107,7 @@ import {
   toSummaryDto,
   type MutableItemFixture,
 } from "../inventory/ledger";
-import { LedgerRefusedError } from "../inventory/errors";
+import { GENERIC_LEDGER_ERROR_MESSAGE, LedgerRefusedError } from "../inventory/errors";
 import { microsToAmountText, parseMicros } from "../inventory/quantity";
 import { fixtureLookupProduct } from "../scan/fixture-products";
 import { decimalAmountToMicros } from "../scan/quantity";
@@ -99,6 +128,14 @@ export const FIXTURE_JOIN_CODE = "CHEN-482";
 /** Exact copy for a join code that does not match (BACKLOG.md M3-T2 Objective (a)). */
 export const JOIN_CODE_ERROR_MESSAGE =
   "That code didn't match a household. Check it with whoever invited you.";
+
+/**
+ * copy-deck.md §8 "Household refusals" (added at M2-T3 acceptance), verbatim:
+ * `HttpApiClient.joinHousehold`'s 429 `RATE_LIMITED` string (BACKLOG.md
+ * M3-T4d Objective (b)). The fixture never rate-limits (no network, no
+ * attempt counter), so only `HttpApiClient` ever returns this.
+ */
+export const RATE_LIMITED_MESSAGE = "Too many tries. Wait a few minutes and try again.";
 
 const CHEN_HOUSEHOLD_ID = "hh-fixture-chen";
 
@@ -204,6 +241,91 @@ function isInventoryWriteResponse(body: unknown): body is InventoryWriteResponse
   );
 }
 
+/** Same shallow-shape-guard rule (M3-T4d), for `POST /v1/inventory/items`'s body: the bare `InventoryItemSummaryDto`, not an envelope. */
+function isInventoryItemSummary(body: unknown): body is InventoryItemSummaryDto {
+  if (typeof body !== "object" || body === null) {
+    return false;
+  }
+  const candidate = body as { itemId?: unknown; quantity?: unknown; provenance?: unknown };
+  return (
+    typeof candidate.itemId === "string" &&
+    typeof candidate.quantity === "object" &&
+    candidate.quantity !== null &&
+    typeof candidate.provenance === "object" &&
+    candidate.provenance !== null
+  );
+}
+
+/** Same shallow-shape-guard rule (M3-T4d), for `GET /v1/households/me`'s and every household envelope's `HouseholdSummaryDto` member. */
+function isHouseholdSummary(body: unknown): body is HouseholdSummaryDto {
+  if (typeof body !== "object" || body === null) {
+    return false;
+  }
+  const candidate = body as { householdId?: unknown; name?: unknown; members?: unknown };
+  return (
+    typeof candidate.householdId === "string" &&
+    typeof candidate.name === "string" &&
+    Array.isArray(candidate.members)
+  );
+}
+
+/** Same shallow-shape-guard rule (M3-T4d), for `POST /v1/households`'s `{ household, joinCode }` body. */
+function isCreateHouseholdResponse(body: unknown): body is CreateHouseholdResponseDto {
+  if (typeof body !== "object" || body === null) {
+    return false;
+  }
+  const candidate = body as { household?: unknown; joinCode?: unknown };
+  if (!isHouseholdSummary(candidate.household)) {
+    return false;
+  }
+  const joinCode = candidate.joinCode as { code?: unknown; issuedAt?: unknown } | undefined;
+  return (
+    typeof joinCode === "object" &&
+    joinCode !== null &&
+    typeof joinCode.code === "string" &&
+    typeof joinCode.issuedAt === "string"
+  );
+}
+
+/** Same shallow-shape-guard rule (M3-T4d), for `POST /v1/households/join`'s `{ household, alreadyMember }` body. */
+function isJoinHouseholdResponse(body: unknown): body is JoinHouseholdResponseDto {
+  if (typeof body !== "object" || body === null) {
+    return false;
+  }
+  const candidate = body as { household?: unknown; alreadyMember?: unknown };
+  return isHouseholdSummary(candidate.household) && typeof candidate.alreadyMember === "boolean";
+}
+
+/**
+ * Maps the wire's `HouseholdSummaryDto` (M2-T3: `memberId`,
+ * `displayInitials`, `role`, `isCaller`, never a full name or any
+ * restriction) into {@link FixtureApiClient.syncHouseholdFromServer}'s
+ * input shape (M3-T4d). `displayName` is the member's initials: M2-T3 never
+ * sends a full name over the wire (household.ts's header, rule 2), so
+ * initials are the only textual identity this client has for a member it
+ * did not create locally. Exported so this mapping is directly testable
+ * without a fake `fetch` (BACKLOG.md M3-T4d "Tests required").
+ */
+export function householdSyncInputFromSummary(summary: HouseholdSummaryDto): {
+  readonly householdId: string;
+  readonly name: string;
+  readonly members: readonly {
+    readonly memberId: string;
+    readonly displayName: string;
+    readonly role: HouseholdRoleDto;
+  }[];
+} {
+  return {
+    householdId: summary.householdId,
+    name: summary.name,
+    members: summary.members.map((member) => ({
+      memberId: member.memberId,
+      displayName: member.displayInitials,
+      role: member.role,
+    })),
+  };
+}
+
 /**
  * Pulls the code a refused write's body carries: `ledgerCode` when present
  * (a coded `LedgerErrorCodeDto` refusal, including the 409 conflict path,
@@ -229,7 +351,18 @@ function extractErrorCode(body: unknown): string | undefined {
 }
 
 export type JoinHouseholdResult =
-  | { readonly ok: true; readonly household: HouseholdDto }
+  | {
+      readonly ok: true;
+      readonly household: HouseholdDto;
+      /**
+       * `true` when the caller already belonged and nothing was added
+       * (`JoinHouseholdResponseDto.alreadyMember`, M2-T3's idempotent-join
+       * rule). Optional, `HttpApiClient` only: `FixtureApiClient` has no
+       * server-side membership to check twice against, so it never sets
+       * this field (undefined, not false — there is no real answer to give).
+       */
+      readonly alreadyMember?: boolean;
+    }
   | { readonly ok: false; readonly message: string };
 
 /** `removeQuantity`'s `action` (copy-deck.md §5), re-exported so a screen can import it from either module. */
@@ -262,9 +395,23 @@ export interface ApiClient {
   getOnboardingState(): Promise<OnboardingStateDto>;
   /** S1 "Continue with email": signs in as the fixture identity (D-022). */
   signInWithEmail(): Promise<void>;
-  /** S1 "Create household": name must already be validated (`src/onboarding/validation.ts`). */
-  createHousehold(name: string): Promise<HouseholdDto>;
-  /** S1 "Join household": only {@link FIXTURE_JOIN_CODE} succeeds. */
+  /**
+   * S1 "Create household": name must already be validated
+   * (`src/onboarding/validation.ts`). `joinCode` is `HttpApiClient`-only
+   * (M3-T4d review F1): it carries the wire's one-time `JoinCodeDto.code`
+   * from `POST /v1/households`, present exactly once, on this call's own
+   * result, never re-fetchable later — the server itself only sends the
+   * plaintext once (household.ts's header, rule 3), so `app/onboarding/
+   * account.tsx` must capture it here or not at all, and shows a one-time
+   * interstitial on that path only. `FixtureApiClient` never sets this
+   * field (`undefined`, not a stand-in code): the fixture path never showed
+   * a created household's code before this ticket, and the review corrected
+   * the ticket's original premise that it did (the prototype puts a
+   * household's code on S12/profile, not S1) — so the fixture path goes
+   * straight to S2 after create, exactly as it always has.
+   */
+  createHousehold(name: string): Promise<HouseholdDto & { readonly joinCode?: string }>;
+  /** S1 "Join household": only {@link FIXTURE_JOIN_CODE} succeeds against the fixture. */
   joinHousehold(code: string): Promise<JoinHouseholdResult>;
   /**
    * S2 Continue: persists one member's final restriction list. `noneConfirmed`
@@ -483,16 +630,86 @@ export class FixtureApiClient implements ApiClient {
     return Promise.resolve({ household: this.household });
   }
 
+  /**
+   * M3-T4d: `HttpApiClient`'s hook to keep this fixture instance's household
+   * in step with the real server household it read (`createHousehold`,
+   * `joinHousehold`, `getOnboardingState`), while keeping every member's
+   * restrictions/preferences entirely client-local (the server stores none
+   * until M2-T4). Replaces `householdId`/`name`/`members` identity, role and
+   * display name wholesale from `next` (the wire's own truth), but for each
+   * incoming member carries forward whatever `restrictions`/`noneConfirmed`/
+   * `preferences` this same instance already had for that `memberId` — a
+   * member dropped from `next` (should not happen against a real
+   * household) is simply dropped, never left as a stale row. Returns the
+   * resulting household so a caller doesn't need a second
+   * `getOnboardingState()` round trip just to read back what it set.
+   */
+  syncHouseholdFromServer(next: {
+    readonly householdId: string;
+    readonly name: string;
+    readonly members: readonly {
+      readonly memberId: string;
+      readonly displayName: string;
+      readonly role: HouseholdRoleDto;
+    }[];
+  }): HouseholdDto {
+    const previousByMemberId = new Map(
+      (this.household?.members ?? []).map((member) => [member.memberId, member]),
+    );
+    this.household = {
+      householdId: next.householdId,
+      name: next.name,
+      members: next.members.map((member) => {
+        const previous = previousByMemberId.get(member.memberId);
+        return {
+          memberId: member.memberId,
+          displayName: member.displayName,
+          role: member.role,
+          restrictions: previous?.restrictions ?? [],
+          noneConfirmed: previous?.noneConfirmed ?? false,
+          preferences: previous?.preferences ?? [],
+        };
+      }),
+    };
+    return this.household;
+  }
+
+  /**
+   * M3-T4d: strips just the household half of a {@link returningUser}
+   * instance, leaving its inventory/shopping fixtures alone. `HttpApiClient`
+   * uses this once, at construction: it still starts its internal delegate
+   * from {@link returningUser} (not {@link newUser}) purely for
+   * `confirmAiProposal`'s pre-existing, still-fixture-only inventory (that
+   * method has no real endpoint yet, an out-of-scope gap this ticket does
+   * not close), but this client's *household* must never be assumed — it
+   * comes only from what the server actually returns (`createHousehold`,
+   * `joinHousehold`, `getOnboardingState`). Without this call,
+   * `returningUser()`'s hardcoded, already-onboarded Chen fixture household
+   * would sit there as a false positive until the first real household
+   * round trip overwrote it.
+   */
+  clearHouseholdUntilServerSaysOtherwise(): void {
+    this.household = null;
+  }
+
   signInWithEmail(): Promise<void> {
     return Promise.resolve();
   }
 
-  createHousehold(name: string): Promise<HouseholdDto> {
+  createHousehold(name: string): Promise<HouseholdDto & { readonly joinCode?: string }> {
     this.household = buildFixtureHousehold(name);
     this.inventory = new Map();
     this.shoppingRows = buildFixtureShoppingRows();
     this.appliedShoppingWrites = new Map();
-    return Promise.resolve(this.household);
+    // M3-T4d review F1: no `joinCode` here. The ticket's original premise
+    // was wrong — the fixture path never showed a code after create
+    // (FIXTURE_JOIN_CODE/CHEN-482 is only ever the *join* card's example
+    // placeholder; the prototype puts a household's code on S12/profile,
+    // not S1). `undefined` (the field simply absent) is what tells
+    // `app/onboarding/account.tsx` to skip the post-create interstitial and
+    // go straight to S2, exactly like every fixture-path create before this
+    // ticket.
+    return Promise.resolve({ ...this.household });
   }
 
   joinHousehold(code: string): Promise<JoinHouseholdResult> {
@@ -797,8 +1014,9 @@ export class FixtureApiClient implements ApiClient {
 const MAX_NETWORK_RETRIES = 1;
 
 /**
- * Real HTTP client for the M2-T1/M2-T2 inventory endpoints, used when
- * `EXPO_PUBLIC_API_URL` is set. Onboarding/household state and
+ * Real HTTP client for the M2-T1/M2-T2 inventory endpoints and the M2-T3
+ * household/item-creation endpoints (M3-T4d), used when
+ * `EXPO_PUBLIC_API_URL` is set. Onboarding's restrictions half and
  * `confirmAiProposal` delegate to an internal fixture client — see this
  * module's doc comment for why.
  */
@@ -811,15 +1029,30 @@ export class HttpApiClient implements ApiClient {
 
   constructor(baseUrl: string) {
     this.baseUrl = baseUrl;
+    // M3-T4d: `.returningUser()`, not `.newUser()` — only for
+    // `confirmAiProposal`'s pre-existing, still-fixture-only inventory (a
+    // gap outside this ticket's scope) — then immediately stripped of its
+    // household: this client's household comes only from the server
+    // (invariant: never assume a household it did not get from the
+    // server), and `.returningUser()`'s household is the already-onboarded
+    // Chen fixture, a false positive this client must not start with.
     this.delegate = FixtureApiClient.returningUser();
+    this.delegate.clearHouseholdUntilServerSaysOtherwise();
   }
 
+  /**
+   * `EXPO_PUBLIC_IDENTITY_TOKEN` when set (M3-T4d Objective (e)), else the
+   * same fixture default `FixtureApiClient` uses. Read fresh on every call,
+   * not cached at construction: `src/config/env.ts` itself only ever
+   * re-reads `process.env` (Expo inlines it at build time either way), so
+   * this just avoids adding a second, redundant place that could go stale.
+   */
   getIdentityToken(): string {
-    return FIXTURE_IDENTITY_TOKEN;
+    return resolveIdentityToken();
   }
 
   private authHeaders(): Record<string, string> {
-    return { Authorization: `Bearer ${FIXTURE_IDENTITY_TOKEN}` };
+    return { Authorization: `Bearer ${this.getIdentityToken()}` };
   }
 
   /**
@@ -935,7 +1168,30 @@ export class HttpApiClient implements ApiClient {
     return body;
   }
 
-  getOnboardingState(): Promise<OnboardingStateDto> {
+  /**
+   * `GET /v1/households/me` (M3-T4d Objective (c)). The route's only 403 is
+   * `no-household` (`apps/api/src/http/authorization.ts`: `householdRoute()`
+   * carries no role restriction, so a signed-in caller with a household
+   * never gets 403 here) — read as "no household yet", not a failure to
+   * surface. A successful read is folded into `this.delegate` so the
+   * restrictions half of onboarding state stays attached to the right
+   * member ids (see the module doc comment).
+   */
+  async getOnboardingState(): Promise<OnboardingStateDto> {
+    const response = await fetch(`${this.baseUrl}${HOUSEHOLD_ME_PATH}`, {
+      headers: this.authHeaders(),
+    });
+    if (response.status === 403) {
+      return { household: null };
+    }
+    if (!response.ok) {
+      throw new Error(`GET ${HOUSEHOLD_ME_PATH} failed with status ${String(response.status)}`);
+    }
+    const body: unknown = await response.json();
+    if (!isHouseholdSummary(body)) {
+      throw new Error(`GET ${HOUSEHOLD_ME_PATH} returned an unexpected response body`);
+    }
+    this.delegate.syncHouseholdFromServer(householdSyncInputFromSummary(body));
     return this.delegate.getOnboardingState();
   }
 
@@ -943,12 +1199,85 @@ export class HttpApiClient implements ApiClient {
     return this.delegate.signInWithEmail();
   }
 
-  createHousehold(name: string): Promise<HouseholdDto> {
-    return this.delegate.createHousehold(name);
+  /**
+   * `POST /v1/households` (M3-T4d Objective (a)). No idempotency key in
+   * {@link CreateHouseholdRequestDto} (M2-T3 never gave this endpoint one),
+   * so unlike every write below, a network failure here is not retried:
+   * retrying blindly could create a second household if the first request
+   * actually landed and only the response was lost. A non-2xx response is
+   * thrown as a {@link LedgerRefusedError} so a caller can render it through
+   * `messageForLedgerError`, same convention as every other coded refusal.
+   */
+  async createHousehold(name: string): Promise<HouseholdDto & { readonly joinCode?: string }> {
+    const body: CreateHouseholdRequestDto = { name: name.trim() };
+    const response = await fetch(`${this.baseUrl}${HOUSEHOLDS_PATH}`, {
+      method: "POST",
+      headers: { ...this.authHeaders(), "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    if (!response.ok) {
+      const errorBody: unknown = await response.json().catch(() => null);
+      throw new LedgerRefusedError(extractErrorCode(errorBody) ?? "INTERNAL");
+    }
+    const parsedBody: unknown = await response.json();
+    if (!isCreateHouseholdResponse(parsedBody)) {
+      throw new Error(`POST ${HOUSEHOLDS_PATH} returned an unexpected response body`);
+    }
+    const household = this.delegate.syncHouseholdFromServer(
+      householdSyncInputFromSummary(parsedBody.household),
+    );
+    // The plaintext code is in this one response and nowhere else
+    // (household.ts's header, rule 3) — attached here, never re-fetchable.
+    return { ...household, joinCode: parsedBody.joinCode.code };
   }
 
-  joinHousehold(code: string): Promise<JoinHouseholdResult> {
-    return this.delegate.joinHousehold(code);
+  /**
+   * `POST /v1/households/join` (M3-T4d Objective (b)). Unlike
+   * {@link createHousehold}, every failure here (network, 404
+   * `JOIN_CODE_INVALID`, 429 `RATE_LIMITED`, a malformed 2xx body — review
+   * F10 — anything else) resolves `{ ok: false }` rather than rejecting:
+   * `JoinHouseholdResult` already models "this didn't work, here is what to
+   * tell the person", and S1 shows only the deck string, never a server
+   * message (invariant) or an unhandled rejection. A join carries no
+   * idempotency key either (same as create); a network failure is answered
+   * with the generic fallback rather than silently retried.
+   */
+  async joinHousehold(code: string): Promise<JoinHouseholdResult> {
+    let response: Response;
+    try {
+      const body: JoinHouseholdRequestDto = { code };
+      response = await fetch(`${this.baseUrl}${HOUSEHOLD_JOIN_PATH}`, {
+        method: "POST",
+        headers: { ...this.authHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+    } catch {
+      return { ok: false, message: GENERIC_LEDGER_ERROR_MESSAGE };
+    }
+    if (!response.ok) {
+      const errorBody: unknown = await response.json().catch(() => null);
+      const errorCode = extractErrorCode(errorBody);
+      if (errorCode === "JOIN_CODE_INVALID") {
+        return { ok: false, message: JOIN_CODE_ERROR_MESSAGE };
+      }
+      if (errorCode === "RATE_LIMITED") {
+        return { ok: false, message: RATE_LIMITED_MESSAGE };
+      }
+      return { ok: false, message: GENERIC_LEDGER_ERROR_MESSAGE };
+    }
+    // Review F10: a malformed 2xx body (an unparsable body, an envelope
+    // change, a proxy's HTML) is a failure this typed result already knows
+    // how to carry — resolve it the same as every other unreachable-server
+    // case, never an unhandled rejection out of a nominally
+    // never-throws-on-a-known-outcome method.
+    const parsedBody: unknown = await response.json().catch(() => null);
+    if (!isJoinHouseholdResponse(parsedBody)) {
+      return { ok: false, message: GENERIC_LEDGER_ERROR_MESSAGE };
+    }
+    const household = this.delegate.syncHouseholdFromServer(
+      householdSyncInputFromSummary(parsedBody.household),
+    );
+    return { ok: true, household, alreadyMember: parsedBody.alreadyMember };
   }
 
   saveMemberRestrictions(
@@ -1035,12 +1364,46 @@ export class HttpApiClient implements ApiClient {
     );
   }
 
-  /** Same "not available yet" rejection as {@link lookupProduct}, see its doc comment. */
-  createItem(input: CreateItemRequestDto): Promise<InventoryItemSummaryDto> {
-    void input;
-    return Promise.reject(
-      new Error("createItem is not available yet: the real endpoint lands in M2-T3."),
-    );
+  /**
+   * `POST /v1/inventory/items` (M3-T4d Objective (d)). `input.idempotencyKey`
+   * is minted once by the caller (S8/S9, at Save-tap time, the M3-T4a
+   * pattern) and reused unchanged on this method's own internal
+   * network-retry, same rule as {@link postWrite}, so a retried save after a
+   * lost response still lands as one item, never two. A 200 (replay) and a
+   * 201 (created) both resolve the same way: the server's own
+   * `InventoryItemSummaryDto`. A non-2xx is thrown as a
+   * {@link LedgerRefusedError}: 409 `IDEMPOTENCY_KEY_CONFLICT` renders its
+   * §8 sentence, a 400 validation refusal (an unrecognised `ledgerCode` like
+   * `INVALID_FIELD`, or none at all) falls through `ledgerErrorMessage` to
+   * the generic fallback, exactly as Objective (d) asks.
+   */
+  async createItem(input: CreateItemRequestDto): Promise<InventoryItemSummaryDto> {
+    let attempt = 0;
+    for (;;) {
+      let response: Response;
+      try {
+        response = await fetch(`${this.baseUrl}${INVENTORY_ITEMS_PATH}`, {
+          method: "POST",
+          headers: { ...this.authHeaders(), "Content-Type": "application/json" },
+          body: JSON.stringify(input),
+        });
+      } catch (networkError) {
+        if (attempt >= MAX_NETWORK_RETRIES) {
+          throw toError(networkError);
+        }
+        attempt += 1;
+        continue;
+      }
+      if (!response.ok) {
+        const errorBody: unknown = await response.json().catch(() => null);
+        throw new LedgerRefusedError(extractErrorCode(errorBody) ?? "INTERNAL");
+      }
+      const parsedBody: unknown = await response.json();
+      if (!isInventoryItemSummary(parsedBody)) {
+        throw new Error(`POST ${INVENTORY_ITEMS_PATH} returned an unexpected response body`);
+      }
+      return parsedBody;
+    }
   }
 
   /**
