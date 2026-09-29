@@ -141,6 +141,28 @@ function toError(value: unknown): Error {
 }
 
 /**
+ * Review round 1, F6: `addCheckedOffToInventory` must refuse rather than
+ * silently convert when a shopping row's own `unit` disagrees with the
+ * inventory item it names (M1-T1: one unit per item, never a silent
+ * conversion). Exported as its own pure function so this guard is directly
+ * testable without needing to construct an artificial mismatched row
+ * through `FixtureApiClient`'s public API (the shipped fixture has none, by
+ * design — the units-consistency and gap-drift tests already enforce that).
+ */
+export function assertShoppingRowUnitMatchesItem(
+  rowId: string,
+  itemId: string,
+  rowUnit: string,
+  itemUnit: string,
+): void {
+  if (rowUnit !== itemUnit) {
+    throw new Error(
+      `FixtureApiClient: addCheckedOffToInventory(${rowId}) refused: row unit "${rowUnit}" does not match item "${itemId}"'s unit "${itemUnit}"`,
+    );
+  }
+}
+
+/**
  * Runtime shape check for `GET /v1/inventory/items`'s body (review F15): a
  * `JSON.parse` result is `unknown`, not `InventoryItemsResponseDto`, no
  * matter what a type assertion claims, and a network layer can hand back
@@ -402,7 +424,12 @@ export class FixtureApiClient implements ApiClient {
    * a later household never sees an earlier one's check-offs.
    */
   private shoppingRows: Map<string, ShoppingRowDto> = buildFixtureShoppingRows();
-  /** Keyed by `addCheckedOffToInventory`'s idempotency key: replaying the same key returns the same result instead of a second `PURCHASE` (CLAUDE.md rule 10). Reset alongside `shoppingRows`. */
+  /**
+   * Keyed by rowId (review round 1, F3): a row's `addCheckedOffToInventory`
+   * result, once it has one, is returned again for every later call on that
+   * same row rather than appending a second `PURCHASE` (CLAUDE.md rule 10).
+   * Reset alongside `shoppingRows`.
+   */
   private appliedShoppingWrites = new Map<string, { readonly transactionId: string }>();
   private offline = false;
   private offlineListeners: Array<(offline: boolean) => void> = [];
@@ -661,27 +688,51 @@ export class FixtureApiClient implements ApiClient {
     return Promise.resolve();
   }
 
+  /**
+   * Review round 1, F3/F6: keyed by **rowId**, not the idempotency key.
+   * `buyMicros` is a fixed fact of the row for the life of this session
+   * (the same value every other read of the row shows, checked off or
+   * not — same reasoning as `formatShoppingAmount` never re-deriving it),
+   * so "the same check-off's gap, bought twice" is a real duplicate no
+   * matter how many times the row gets unchecked and re-checked in between,
+   * or how many different idempotency keys a caller mints across those
+   * taps. The idempotency key is still accepted (parity with the real M7
+   * endpoint, which will want it for its own network-retry safety) but no
+   * longer the dedup key here.
+   */
   addCheckedOffToInventory(
     rowId: string,
     idempotencyKey: string,
   ): Promise<{ readonly transactionId: string }> {
+    void idempotencyKey;
     try {
-      const cached = this.appliedShoppingWrites.get(idempotencyKey);
+      const cached = this.appliedShoppingWrites.get(rowId);
       if (cached) {
-        // Same key seen again (a retry/replay of the same Add tap): the
-        // append already happened once, so this returns that same result
-        // rather than a second PURCHASE row (CLAUDE.md rule 10; the exact
-        // "duplicate PURCHASE rows on replay" risk BACKLOG.md M3-T5's
-        // review model calls out).
+        // Already added once for this row (a double-tap before the first
+        // call settled, a retry, or a later Add after an uncheck/re-check
+        // cycle): return that same result rather than a second PURCHASE
+        // row (CLAUDE.md rule 10; the exact "duplicate PURCHASE rows on
+        // replay" risk BACKLOG.md M3-T5's review model calls out).
         return Promise.resolve(cached);
       }
       const row = this.requireShoppingRow(rowId);
+      // Review F3: a data-integrity guard, not just a client-side one — Add
+      // only ever makes sense for a row this session has actually checked
+      // off (buyMicros is "how much was bought", not "how much to buy
+      // right now"; appending it against an open row would silently
+      // fabricate a purchase nobody confirmed).
+      if (row.status !== "done") {
+        throw new Error(
+          `FixtureApiClient: addCheckedOffToInventory(${rowId}) refused: the row is not checked off`,
+        );
+      }
       if (row.itemId === null) {
         throw new Error(
           `FixtureApiClient: addCheckedOffToInventory(${rowId}) has no itemId; the screen must route this row through S9 instead`,
         );
       }
       const item = this.requireItem(row.itemId);
+      assertShoppingRowUnitMatchesItem(rowId, row.itemId, row.unit, item.unit);
       appendIncrease(item, {
         type: "PURCHASE",
         amountMicros: parseMicros(row.buyMicros),
@@ -696,7 +747,7 @@ export class FixtureApiClient implements ApiClient {
       });
       const appended = item.history[item.history.length - 1]!;
       const result = { transactionId: appended.transactionId };
-      this.appliedShoppingWrites.set(idempotencyKey, result);
+      this.appliedShoppingWrites.set(rowId, result);
       return Promise.resolve(result);
     } catch (error) {
       return Promise.reject(toError(error));
