@@ -162,9 +162,8 @@ against a real API: the server stores none of it until M2-T4 (A3 household
 permissions), so it keeps running through the same in-memory mechanism the
 fixture path always used, just attached to the real member ids the server
 returns (`FixtureApiClient.syncHouseholdFromServer`, `src/api/client.ts`).
-Only `confirmAiProposal` (AI-tier confirmation) and barcode lookup
-(`lookupProduct`, M3-T4e once M2-T4a lands) still reject/delegate to the
-fixture: those wait on further endpoints. Leave `EXPO_PUBLIC_API_URL` unset
+Only `confirmAiProposal` (AI-tier confirmation) still delegates to the
+fixture: it waits on an endpoint. Barcode lookup is live (M3-T4e). Leave `EXPO_PUBLIC_API_URL` unset
 (the default) and every call, reads and writes alike, stays fixture-backed:
 in-memory, no network, nothing persists across a restart.
 
@@ -240,9 +239,8 @@ client; `EXPO_PUBLIC_IDENTITY_TOKEN` has no effect on the fixture path.
 ## Running barcode lookups against the API (M2-T4a)
 
 The API answers `GET /v1/products/{code}` by asking Open Food Facts, server
-side (D-025). The phone never talks to OFF. Until M3-T4e wires
-`HttpApiClient.lookupProduct` to that endpoint, the app's scan screen still
-uses the four fixture barcodes, so try the endpoint itself with curl:
+side (D-025). The phone never talks to OFF. The app's scan screen calls that endpoint when `EXPO_PUBLIC_API_URL` is set
+(M3-T4e). To try the endpoint on its own with curl:
 
 ```powershell
 # API running as in CONTRIBUTING.md, with SK_IDENTITY=fixture and DATABASE_URL.
