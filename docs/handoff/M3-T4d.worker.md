@@ -386,3 +386,74 @@ difference the shared mock exists to catch); whether `account.tsx`'s new `anyBus
 (F4) is the right UX for the *rest* of F4 (still backlog) or should have been folded in now; and
 whether `forgetHeldKey()` on every keystroke in the name field (F3) is too eager (it is safe, just
 mints more keys than strictly necessary if someone edits the name and edits it back).
+
+## 10. Review fixes (round 2)
+
+Re-review verdict: **PASS WITH FIXES**. Ten of round 1's findings closed by mutation; one item
+(F2's pending window) still open, plus two pinning gaps. All three addressed below, same branch.
+
+**F2 [major], still open: the pending window.** Round 1's fix only handled a *rejected* read; while a
+fresh read for the current pathname is still *pending* (neither resolved nor rejected), `_layout.tsx`
+fell through to the pre-existing M3-T2 review F18 tolerance ("stale read, render the destination for
+one frame"), which has no time bound. The reviewer's probe: a read at `/` answers `household: null`
+(redirect to S1); a deep link to `/inventory` then gets a read that never resolves, and `<Slot />`
+renders for as long as that request hangs, unbounded over a real network, and `Try again` reopens the
+same window.
+
+Fix, `app/_layout.tsx`: once `read` exists but is stale (`read.pathname !== pathname`) and the current
+pathname is not already under `/onboarding`, the *stale* read's own route is recomputed
+(`resolveOnboardingRoute(read.state)`, already exported by `src/onboarding/route.ts`, read-only
+import, that file is still untouched). If that stale route is **not** `"home"`, render `null` (hold)
+instead of falling through to `<Slot />` or a redirect, until the fresh read for this pathname lands.
+When the stale route **is** `"home"` (F18's own scenario: S2's Continue just called
+`router.replace("/")`, and the pre-save read still tagged for `/onboarding/allergies` said "home" was
+already reachable), the fall-through to `<Slot />` is unchanged, exactly F18's original fix. A hold
+never redirects either, so F18's actual bug (an incorrect bounce back to S2 computed from stale data)
+stays fixed either way; the only behaviour change is a blank frame instead of instant content during
+the rare case where the stale route was not already `"home"`.
+
+Two new tests in `root-layout.test.ts`: a never-resolving read after an S1-routed read renders neither
+`SLOT_RENDERED` nor a redirect nor the read-failure fallback (it is pending, not failed) for as long
+as it stays pending; a never-resolving read after a `"home"`-routed read still renders `SLOT_RENDERED`
+(F18 preserved). Mutation-checked: stubbing the new hold condition to `if (false && ...)` fails
+exactly the first of these two and leaves the other four in the file green.
+
+**F4/F11 pin.** The join-side guard (`account.tsx`'s `handleJoinHousehold`, the same `requestInFlight`
+ref as the create side) was unpinned: every round-1 onboarding test stayed green with its
+`if (requestInFlight.current)` stubbed to `if (false)`, because none of them ever tapped Join twice or
+tapped Join while Create was in flight. Two new tests in `account-screen.test.ts`: two Join-household
+taps in one frame produce exactly one `joinHousehold` call; a Join-household tap while a create is in
+flight is refused. Mutation-checked the same way: stubbing the join guard to `if (false)` fails
+exactly these two new tests (2 and 1 calls respectively, both expected 0/1) and leaves the other four
+in the file green.
+
+**F6 pin.** The two `clearHouseholdUntilServerSaysOtherwise` tests used `"mem-1"`, an id that rejects
+`saveMemberRestrictions`/`savePreferences` either way: whether the household was cleared (`"no
+household yet"`) or not (`"unknown memberId mem-1"`, since `"mem-1"` was never a real member of
+`FixtureApiClient.returningUser()`'s Chen fixture either), so the assertion could not tell the fix
+apart from its absence. Both now use `"member-dean"`
+(`apps/mobile/src/household/fixture-restrictions.json`), a real member of the *un-cleared*
+`returningUser()` household: with the fix, this still rejects (`"no household yet"`, the household
+really is cleared); without it, `saveMemberRestrictions("member-dean", ...)` would actually *resolve*
+(a real member of the un-cleared fixture), flipping the `.rejects.toThrow()` assertion. Mutation-
+checked: commenting out the constructor's `clearHouseholdUntilServerSaysOtherwise()` call fails
+exactly the first of the three tests in that describe block (the `savePreferences` test uses the same
+id and would also now fail the same way; the third, "never calls fetch", still passes either way,
+since it only ever asserts on `fetchCalls`, not on reject/resolve).
+
+**Verification, round 2 (empty build state, CI order):** `pnpm install --frozen-lockfile` (up to
+date), `pnpm lint` (clean), `pnpm typecheck` (clean), `pnpm test`: **119 test files (118 passed, 1
+skipped, the gated live file), 2099 tests (1744 passed, 355 skipped: 350 pre-existing DB suites plus 5
+in the skipped live file)** (+4 tests since round 1's 1740: the two F2 pending-window tests, the two
+F4/F11 join-side tests), `pnpm format:check` (clean, after one `prettier --write` pass on
+`root-layout.test.ts`), `pnpm --filter mobile export` (all three platforms, output deleted). **The
+live suite was not re-run this round**: the round 2 instructions did not ask for it, and none of
+this round's three fixes touch `HttpApiClient`'s wire behaviour (F2 is `_layout.tsx`-only, F4/F11 and
+F6 are pinning tests against already-passing behaviour), so nothing here needed a real server to
+verify; said plainly rather than silently reused from round 1's already-stale live run.
+
+**Backlog note (no code, per the ruling):** the reviewer recommends adding `export const
+ActivityIndicator = hostComponent("ActivityIndicator")` to the shared `react-native` test stand-in
+(`apps/mobile/src/test-support/react-native-mock.ts`) in the next ticket that touches it, so
+`allergies-screen.test.ts` can drop its per-file `vi.mock("react-native", ...)`. Left as-is for this
+merge, per the ruling.
