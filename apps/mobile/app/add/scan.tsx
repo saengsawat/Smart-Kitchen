@@ -30,7 +30,17 @@ import {
   type MemberNameResolver,
 } from "../../src/scan/allergen-copy";
 import { formatScannedCodeDisplay } from "../../src/scan/fixture-products";
-import { packageQuantityMicros } from "../../src/scan/quantity";
+import {
+  NUTRITION_BASIS_LABEL,
+  NUTRITION_NOT_ON_FILE_TEXT,
+  roundForDisplay,
+  selectNutritionProfile,
+} from "../../src/scan/nutrition";
+import {
+  LOOKUP_UPSTREAM_ERROR_MESSAGE,
+  messageForLookupError,
+} from "../../src/scan/product-lookup-errors";
+import { isCreateItemUnit, planScanQuantity } from "../../src/scan/quantity";
 import { recordRecentlyAdded } from "../../src/scan/recently-added";
 import { nextIdempotencyKey } from "../../src/api/idempotency";
 
@@ -99,6 +109,37 @@ export default function ScanScreen(): React.JSX.Element {
   // Incrementing this re-runs the fetch effect below — the "Try again" retry.
   const [householdRetryToken, setHouseholdRetryToken] = useState(0);
   const scanLockRef = useRef(false);
+  // The code the most recent lookup attempt used (typed or scanned), so a
+  // refusal's "Enter it manually" hand-off (M3-T4e Objective (a)) can retain
+  // it the same way S7's miss panel does — `typedCode` alone would miss a
+  // camera scan, which never touches that field.
+  const [lastAttemptedCode, setLastAttemptedCode] = useState("");
+  // M3-T4e Objective (f): one `createItem` idempotency key per confirm,
+  // held across retaps until success or an input change (the
+  // `app/add/manual.tsx` F3 pattern). Ref, not state: `handleAdd` reads and
+  // mints it synchronously, same reasoning as manual.tsx's own comment.
+  const heldIdempotencyKey = useRef<string | null>(null);
+  // Synchronous single-flight guard: two Add taps in the same frame both
+  // read `adding` (React state) as false before either commit lands, so
+  // state alone cannot stop a second `createItem` call (manual.tsx's
+  // `saveInFlight`, same shape).
+  const addInFlight = useRef(false);
+  const [adding, setAdding] = useState(false);
+
+  /** Any real change to what Add would send discards a held key (manual.tsx F3): a reused key needs the same body. */
+  function forgetHeldKey(): void {
+    heldIdempotencyKey.current = null;
+  }
+
+  function updateCount(updater: (prev: number) => number): void {
+    setCount(updater);
+    forgetHeldKey();
+  }
+
+  function updateLocation(loc: StorageLocationDto): void {
+    setLocation(loc);
+    forgetHeldKey();
+  }
 
   // Requests permission exactly once per screen instance: `.granted`/
   // `.canAskAgain` are plain booleans (unlike `.status`, a `PermissionStatus`
@@ -158,6 +199,7 @@ export default function ScanScreen(): React.JSX.Element {
     if (trimmed === "") {
       return;
     }
+    setLastAttemptedCode(trimmed);
     setLookupError(null);
     try {
       const result = await apiClient.lookupProduct(trimmed);
@@ -165,23 +207,28 @@ export default function ScanScreen(): React.JSX.Element {
         setPhase({ kind: "confirm", code: trimmed, product: result.product });
         setCount(1);
         setLocation("FRIDGE");
+        forgetHeldKey(); // a fresh scan never reuses a previous product's held key
       } else if (result.status === "not-found") {
         scanLockRef.current = false; // review F14: a miss must not permanently lock out further scans
         setPhase({ kind: "miss", code: trimmed });
       } else {
-        // Unreachable from this ticket's fixture/HttpApiClient paths (see
-        // ApiClient.lookupProduct's doc comment); kept for type parity with
-        // the real port's three-state result. Never renders the raw
-        // machine message, same rule as every other ledger-facing error.
+        // M3-T4e Objective (a): the source itself could not answer (rate
+        // limit, outage, timeout, an unreadable reply) — copy-deck.md §8's
+        // lookup-`error` string, never `result.message` (invariant: no
+        // server message ever reaches a screen).
         scanLockRef.current = false;
-        setLookupError(GENERIC_LEDGER_ERROR_MESSAGE);
+        setLookupError(LOOKUP_UPSTREAM_ERROR_MESSAGE);
       }
     } catch (error) {
       // Review F14: a lookup failure must not permanently lock the camera
       // out of further scans — without this, one transient error stranded
       // the user on a live (but now inert) camera view forever.
+      // M3-T4e Objective (a): a refused lookup (400 PLU_NOT_SUPPORTED,
+      // 400 BAD_REQUEST) gets its own copy-deck.md §8 sentence;
+      // 401/403/5xx/network failures fall through to the same generic
+      // fallback this catch has always shown.
       scanLockRef.current = false;
-      setLookupError(messageForLedgerError(error));
+      setLookupError(messageForLookupError(error));
     }
   }
 
@@ -193,6 +240,21 @@ export default function ScanScreen(): React.JSX.Element {
     router.push({ pathname: "/add/manual", params: { code } });
   }
 
+  /**
+   * M3-T4e Objective (a): every S7 refusal (PLU, bad request, an upstream
+   * `error` outcome, or the generic fallback) still offers "Enter it
+   * manually", the same hand-off the miss panel gives — a lookup refusal is
+   * not a dead end. Retains whatever code the refused attempt used, same as
+   * the miss panel, but only when there is one worth keeping.
+   */
+  function handleGoManualFromError(): void {
+    if (lastAttemptedCode) {
+      router.push({ pathname: "/add/manual", params: { code: lastAttemptedCode } });
+    } else {
+      router.push("/add/manual");
+    }
+  }
+
   async function handleAdd(product: ScannedProductDto): Promise<void> {
     // Review R4: a verdict without resolved member names is not acceptable
     // on a safety row, so Add is refused (not just visually disabled) until
@@ -202,22 +264,45 @@ export default function ScanScreen(): React.JSX.Element {
     if (!householdLoaded || householdError) {
       return;
     }
+    // M3-T4e Objective (f): two Add taps in the same frame both read
+    // `adding` (state) as false before either commit lands — the ref is the
+    // synchronous guard state cannot be.
+    if (addInFlight.current) {
+      return;
+    }
+    addInFlight.current = true;
+    setAdding(true);
     setAddError(null);
     try {
-      // M2-T4a: a source may give no package size that parses cleanly (never
-      // guessed). Then the item is recorded as the number of packages the
-      // user chose, in "each", which is exactly what they counted.
+      // M3-T4e Objectives (d)/(e): count whole packages of the record's own
+      // package size when it exists and its unit is one the ledger accepts;
+      // otherwise (no size at all, or a unit like "qt" the registry/ledger
+      // does not convert) the chosen count of packages, unit "each", tier
+      // Estimated — never an invented conversion (CLAUDE.md rule 7).
       const packageSize = product.packageSize;
-      const amountMicros = packageQuantityMicros(count, packageSize?.value.qty ?? "1");
+      const plan = planScanQuantity(
+        packageSize
+          ? {
+              qty: packageSize.value.qty,
+              unit: normalizePackageUnit(packageSize.value.unit),
+              tier: packageSize.provenance.tier,
+            }
+          : undefined,
+        count,
+      );
+      // M3-T4e Objective (f): reuse the key held from an earlier failed
+      // attempt on this exact payload; mint one only when none is held.
+      const idempotencyKey = heldIdempotencyKey.current ?? nextIdempotencyKey();
+      heldIdempotencyKey.current = idempotencyKey;
       const summary = await apiClient.createItem({
-        idempotencyKey: nextIdempotencyKey(),
+        idempotencyKey,
         source: "BARCODE",
         displayName: product.name.value,
         storageLocation: location,
-        unit: packageSize ? normalizePackageUnit(packageSize.value.unit) : "each",
-        amount: microsToAmountText(amountMicros),
+        unit: plan.unit,
+        amount: microsToAmountText(plan.amountMicros),
         quantityProvenance: {
-          tier: "KNOWN_FACT",
+          tier: plan.tier,
           source: "scanned barcode",
           confidence: null,
           recordedAt: null,
@@ -227,11 +312,21 @@ export default function ScanScreen(): React.JSX.Element {
         bestByDate: product.bestBy?.value ?? null,
         bestByProvenance: product.bestBy?.provenance ?? null,
       });
+      heldIdempotencyKey.current = null; // done: a later Add (a new scan) starts fresh
       recordRecentlyAdded(summary);
-      show(`Added ${count} × ${product.name.value} to ${LOCATION_LABELS[location]} · Known Fact`);
+      // M3-T4e Objective (d): the toast's tier word follows the quantity
+      // tier, not a hardcoded "Known Fact" — an Estimated package size (or
+      // an unsupported package unit) reads "Estimated" here.
+      const tierWord = plan.tier === "ESTIMATED" ? "Estimated" : "Known Fact";
+      show(`Added ${count} × ${product.name.value} to ${LOCATION_LABELS[location]} · ${tierWord}`);
       router.replace("/inventory");
     } catch (error) {
+      // The key stays held (not cleared): a retap with the same, unchanged
+      // inputs must replay under the same key, never mint a new one.
       setAddError(messageForLedgerError(error));
+    } finally {
+      addInFlight.current = false;
+      setAdding(false);
     }
   }
 
@@ -240,10 +335,11 @@ export default function ScanScreen(): React.JSX.Element {
       <ConfirmSheet
         product={phase.product}
         count={count}
-        setCount={setCount}
+        setCount={updateCount}
         location={location}
-        setLocation={setLocation}
+        setLocation={updateLocation}
         addError={addError}
+        adding={adding}
         householdLoaded={householdLoaded}
         householdError={householdError}
         onRetryHousehold={handleRetryHousehold}
@@ -348,6 +444,17 @@ export default function ScanScreen(): React.JSX.Element {
       {lookupError ? (
         <View style={styles.lookupErrorBox} accessibilityLiveRegion="assertive">
           <Text style={styles.lookupErrorText}>{lookupError}</Text>
+          {/* M3-T4e Objective (a): a refused lookup is not a dead end —
+              "Enter it manually" stays offered, the same hand-off the miss
+              panel gives. */}
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Enter it manually"
+            onPress={handleGoManualFromError}
+            style={styles.lookupErrorManualButton}
+          >
+            <Text style={styles.lookupErrorManualButtonText}>Enter it manually</Text>
+          </Pressable>
         </View>
       ) : null}
       <View style={styles.fallbackSheet}>
@@ -445,6 +552,7 @@ function ConfirmSheet({
   location,
   setLocation,
   addError,
+  adding,
   householdLoaded,
   householdError,
   onRetryHousehold,
@@ -458,6 +566,7 @@ function ConfirmSheet({
   location: StorageLocationDto;
   setLocation: (loc: StorageLocationDto) => void;
   addError: string | null;
+  adding: boolean;
   householdLoaded: boolean;
   householdError: boolean;
   onRetryHousehold: () => void;
@@ -467,14 +576,25 @@ function ConfirmSheet({
 }): React.JSX.Element {
   // Review R4: a verdict is never shown with unnamed members, and Add is
   // disabled the whole time the household hasn't loaded — whether that's
-  // still in flight or has failed outright.
-  const canAdd = householdLoaded && !householdError;
+  // still in flight or has failed outright. M3-T4e Objective (f): also
+  // disabled while a Save is already in flight (the held-key/single-flight
+  // guard's visible half; `handleAdd`'s ref is the synchronous half).
+  const canAdd = householdLoaded && !householdError && !adding;
   // M2-T4a: `null` when the server says screening did not run. The verdict
   // lines below render only from a result the server actually produced.
   const result = ranScreeningResult(product.screening);
   const blocked = result !== null && addCtaIsBlocked(result);
   const extraWarnings = result === null ? [] : extraWarningLines(result, resolveMemberName);
-  const nutrition = product.nutrition[0];
+  // M3-T4e Objective (b): one profile only, PER_SERVING when the record has
+  // it, else PER_100G, else none — never the record's own array order.
+  const nutritionProfile = selectNutritionProfile(product.nutrition);
+  // M3-T4e Objective (e): a package unit the ledger cannot accept (pt/qt/gal,
+  // anything unparsed) still shows the record's own size, but as "{count} ×
+  // {qty} {unit}" text rather than the unit S8 would otherwise imply this
+  // item is stored in — the item itself is recorded as a count of packages.
+  const packageUnitSupported = product.packageSize
+    ? isCreateItemUnit(normalizePackageUnit(product.packageSize.value.unit))
+    : true;
   const evidence = result?.evidence ?? [];
   const unknowns = result?.unknowns ?? [];
 
@@ -513,7 +633,9 @@ function ConfirmSheet({
             {product.packageSize ? (
               <>
                 <Text style={styles.productMeta}>
-                  {trimAmountText(product.packageSize.value.qty)} {product.packageSize.value.unit}
+                  {packageUnitSupported
+                    ? `${trimAmountText(product.packageSize.value.qty)} ${product.packageSize.value.unit}`
+                    : `${String(count)} × ${trimAmountText(product.packageSize.value.qty)} ${product.packageSize.value.unit}`}
                 </Text>
                 <TierChip tier={product.packageSize.provenance.tier} />
               </>
@@ -521,31 +643,51 @@ function ConfirmSheet({
           </View>
         ) : null}
 
-        {nutrition ? (
+        {nutritionProfile ? (
           <>
             <View style={styles.macrosRow}>
-              <Macro label="cal" value={nutrition.values.calories} />
-              <Macro label="protein" value={nutrition.values.proteinG} suffix="g" />
-              <Macro label="carbs" value={nutrition.values.carbsG} suffix="g" />
-              <Macro label="fat" value={nutrition.values.fatG} suffix="g" />
+              <Macro
+                label="cal"
+                value={roundForDisplay(nutritionProfile.values.calories, "kcal")}
+              />
+              <Macro
+                label="protein"
+                value={roundForDisplay(nutritionProfile.values.proteinG, "g")}
+                suffix="g"
+              />
+              <Macro
+                label="carbs"
+                value={roundForDisplay(nutritionProfile.values.carbsG, "g")}
+                suffix="g"
+              />
+              <Macro
+                label="fat"
+                value={roundForDisplay(nutritionProfile.values.fatG, "g")}
+                suffix="g"
+              />
             </View>
             {/* Review F4: the record's own tier chip, shown once for the
                 whole nutrition profile (every field in one
                 `NutritionProfileDto` shares one provenance — there is no
-                finer-grained per-macro tier in this record). */}
+                finer-grained per-macro tier in this record). M3-T4e
+                Objective (b): the basis ("per serving" / "per 100 g") is
+                named here too — never a number with no basis label. */}
             <View style={styles.nutritionTierRow}>
               <Text
                 style={styles.provChipSmall}
-                accessibilityLabel={chipAccessibilityLabel(nutrition.provenance.tier)}
+                accessibilityLabel={chipAccessibilityLabel(nutritionProfile.provenance.tier)}
               >
-                {ROW_CHIP_TEXT[nutrition.provenance.tier]}
+                {ROW_CHIP_TEXT[nutritionProfile.provenance.tier]}
               </Text>
               <Text style={styles.helperCaption}>
-                Nutrition & allergens: label data via Open Food Facts · tier shown per field
+                Nutrition ({NUTRITION_BASIS_LABEL[nutritionProfile.basis]}) via Open Food Facts ·
+                tier shown per field
               </Text>
             </View>
           </>
-        ) : null}
+        ) : (
+          <Text style={styles.helperCaption}>{NUTRITION_NOT_ON_FILE_TEXT}</Text>
+        )}
 
         {/* Review F3/F6/F7 ruling: one line per evidence entry and one line
             per unknown — never a single condensed "primary" pick. A product
@@ -862,8 +1004,24 @@ const styles = StyleSheet.create({
     backgroundColor: colors.paper,
     borderRadius: radius.sm,
     padding: spacing.sm,
+    gap: spacing.sm,
   },
   lookupErrorText: { color: colors.ink, fontSize: 13, fontFamily: fontFamily.body },
+  lookupErrorManualButton: {
+    alignSelf: "flex-start",
+    minHeight: minTouchTarget,
+    paddingHorizontal: spacing.md,
+    borderRadius: radius.sm,
+    backgroundColor: colors.espresso,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  lookupErrorManualButtonText: {
+    color: colors.cream,
+    fontSize: 13,
+    fontWeight: "700",
+    fontFamily: fontFamily.body,
+  },
   fallbackSheet: {
     backgroundColor: colors.paper,
     borderTopLeftRadius: radius.lg,

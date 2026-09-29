@@ -36,8 +36,13 @@ import {
 import { flushPending } from "../test-support/flush";
 import { ToastHost, ToastProvider } from "../inventory/Toast";
 import { colors } from "../design/tokens";
-import type { ProductLookupResultDto, ScannedProductDto } from "@smart-kitchen/contracts";
+import type {
+  CreateItemRequestDto,
+  ProductLookupResultDto,
+  ScannedProductDto,
+} from "@smart-kitchen/contracts";
 import { apiClient, FIXTURE_JOIN_CODE } from "../api/client";
+import { ProductLookupRefusedError } from "./product-lookup-errors";
 
 let pushed: unknown[] = [];
 let replaced: unknown[] = [];
@@ -60,6 +65,12 @@ afterEach(() => {
   pushed = [];
   replaced = [];
   __resetMockCameraPermission();
+  // M3-T4e: several new tests below use `vi.spyOn(apiClient, "createItem")`
+  // to count/inspect calls (the held-key/single-flight tests) — without
+  // this, an un-restored spy from one test leaks into the next test's own
+  // `vi.spyOn` call, compounding (manual-screen.test.ts's identical pattern
+  // already restores this way).
+  vi.restoreAllMocks();
 });
 
 async function renderScreen(): Promise<ReturnType<typeof render>> {
@@ -559,4 +570,326 @@ describe("S8 · NOT_RUN screening (M2-T4a, copy-deck §3.3)", () => {
       expect(result.queryByText("○")).toBeNull();
     },
   );
+});
+
+// ---------------------------------------------------------------------------
+// M3-T4e: nutrition strip, quantity tier + toast, unsupported package units,
+// held key + single-flight on Add, and the §8 product-lookup refusals.
+// ---------------------------------------------------------------------------
+
+function nutritionTestProduct(
+  nutrition: ScannedProductDto["nutrition"],
+  packageSize?: ScannedProductDto["packageSize"],
+): ScannedProductDto {
+  return {
+    productId: "096619555505",
+    codes: [{ codeType: "UPC_A", code: "096619555505" }],
+    name: { value: "Nutrition Test Product", provenance: OFF_PROVENANCE },
+    ...(packageSize ? { packageSize } : {}),
+    nutrition,
+    bestBy: null,
+    screening: { status: "NOT_RUN", reason: "HOUSEHOLD_RESTRICTIONS_NOT_STORED" },
+  };
+}
+
+describe("S8 · nutrition strip (M3-T4e Objective (b))", () => {
+  it("prefers PER_SERVING over PER_100G, labels the basis, and rounds for display", async () => {
+    const product = nutritionTestProduct([
+      {
+        basis: "PER_100G",
+        values: { calories: 562.5, proteinG: 12.5 },
+        provenance: OFF_PROVENANCE,
+      },
+      {
+        basis: "PER_SERVING",
+        values: { calories: 179.6, proteinG: 12.54 },
+        provenance: OFF_PROVENANCE,
+      },
+    ]);
+    await withLookup(product, async () => {
+      const result = await renderScreen();
+      await lookUp(result, "096619555505");
+
+      expect(result.getByText(/Nutrition \(per serving\) via Open Food Facts/)).toBeTruthy();
+      expect(result.getByText("180")).toBeTruthy(); // 179.6 rounded to a whole calorie
+      expect(result.getByText("12.5g")).toBeTruthy(); // 12.54 rounded to one decimal
+      expect(result.queryByText(/per 100 g/)).toBeNull();
+    });
+  });
+
+  it("falls back to PER_100G when there is no PER_SERVING", async () => {
+    const product = nutritionTestProduct([
+      { basis: "PER_100G", values: { calories: 100 }, provenance: OFF_PROVENANCE },
+    ]);
+    await withLookup(product, async () => {
+      const result = await renderScreen();
+      await lookUp(result, "096619555505");
+      expect(result.getByText(/Nutrition \(per 100 g\) via Open Food Facts/)).toBeTruthy();
+    });
+  });
+
+  it('shows "Nutrition not on file" with no numbers when there is no profile at all', async () => {
+    const product = nutritionTestProduct([]);
+    await withLookup(product, async () => {
+      const result = await renderScreen();
+      await lookUp(result, "096619555505");
+      expect(result.getByText("Nutrition not on file")).toBeTruthy();
+      expect(result.queryByText(/via Open Food Facts/)).toBeNull();
+    });
+  });
+});
+
+describe("S8 · quantity tier follows the lowest input, toast word follows it (M3-T4e Objective (d))", () => {
+  it("an Estimated (Open Food Facts) package size in a supported unit gives an Estimated quantity and toast", async () => {
+    await withLookup(notRunProduct(true), async () => {
+      const result = await renderScreen();
+      await lookUp(result, "096619555505");
+
+      fireEvent.press(result.getByLabelText("Add 1 to Fridge"));
+      await flushPending();
+      expect(replaced).toContain("/inventory");
+
+      const items = await apiClient.getInventoryItems();
+      const created = items.find((item) => item.displayName === "Organic Creamy Peanut Butter");
+      expect(created?.provenance.quantity?.tier).toBe("ESTIMATED");
+      expect(
+        result.queryByText("Added 1 × Organic Creamy Peanut Butter to Fridge · Estimated"),
+      ).toBeTruthy();
+    });
+  });
+
+  it("no package size at all keeps the quantity (and toast) Known Fact, same as before this ticket", async () => {
+    await withLookup(notRunProduct(false), async () => {
+      const result = await renderScreen();
+      await lookUp(result, "096619555505");
+
+      fireEvent.press(result.getByLabelText("Add 1 to Fridge"));
+      await flushPending();
+
+      const items = await apiClient.getInventoryItems();
+      const created = items.find((item) => item.displayName === "Organic Creamy Peanut Butter");
+      expect(created?.provenance.quantity?.tier).toBe("KNOWN_FACT");
+      expect(
+        result.queryByText("Added 1 × Organic Creamy Peanut Butter to Fridge · Known Fact"),
+      ).toBeTruthy();
+    });
+  });
+
+  it("the fixture corpus's Known Fact package sizes still add as Known Fact (no regression)", async () => {
+    const result = await renderScreen();
+    await lookUp(result, "060000100810"); // Stone-Ground Tahini, "manufacturer-label" Known Fact
+    fireEvent.press(result.getByLabelText("Add 1 to Fridge"));
+    await flushPending();
+    const items = await apiClient.getInventoryItems();
+    const created = items.find((item) => item.displayName === "Stone-Ground Tahini");
+    expect(created?.provenance.quantity?.tier).toBe("KNOWN_FACT");
+  });
+});
+
+describe("S8 · package units the ledger cannot accept (M3-T4e Objective (e))", () => {
+  function litreProduct(unit: string): ScannedProductDto {
+    return nutritionTestProduct([], {
+      value: { qty: "1", unit },
+      provenance: OFF_PROVENANCE,
+    });
+  }
+
+  it('a "qt" package size shows "N × 1 qt" as text, updates with the count, and adds as N each, Estimated', async () => {
+    await withLookup(litreProduct("qt"), async () => {
+      const result = await renderScreen();
+      await lookUp(result, "096619555505");
+
+      expect(result.getByText("1 × 1 qt")).toBeTruthy();
+      fireEvent.press(result.getByLabelText("Increase quantity"));
+      expect(result.getByText("2 × 1 qt")).toBeTruthy();
+      expect(result.queryByText("1 qt")).toBeNull(); // never the bare size alone
+
+      fireEvent.press(result.getByLabelText("Add 2 to Fridge"));
+      await flushPending();
+
+      const items = await apiClient.getInventoryItems();
+      const created = items.find((item) => item.displayName === "Nutrition Test Product");
+      expect(created?.quantity.amount).toBe("2");
+      expect(created?.quantity.unit).toBe("each");
+      expect(created?.provenance.quantity?.tier).toBe("ESTIMATED");
+      expect(
+        result.queryByText("Added 2 × Nutrition Test Product to Fridge · Estimated"),
+      ).toBeTruthy();
+    });
+  });
+
+  it.each(["pt", "gal", "fl oz"])(
+    "%s falls back the same way: each, Estimated, never an invented conversion",
+    async (unit) => {
+      await withLookup(litreProduct(unit), async () => {
+        const result = await renderScreen();
+        await lookUp(result, "096619555505");
+        fireEvent.press(result.getByLabelText("Add 1 to Fridge"));
+        await flushPending();
+        const items = await apiClient.getInventoryItems();
+        const created = items.find((item) => item.displayName === "Nutrition Test Product");
+        expect(created?.quantity.unit).toBe("each");
+        expect(created?.quantity.amount).toBe("1");
+        expect(created?.provenance.quantity?.tier).toBe("ESTIMATED");
+      });
+    },
+  );
+});
+
+describe("S8 · held idempotency key + single-flight guard on Add (M3-T4e Objective (f))", () => {
+  it("two Add taps in one frame produce exactly one createItem call, one key", async () => {
+    const result = await renderScreen();
+    await lookUp(result, "060000100810");
+
+    const calls: CreateItemRequestDto[] = [];
+    const original = apiClient.createItem.bind(apiClient);
+    vi.spyOn(apiClient, "createItem").mockImplementation(async (input) => {
+      calls.push(input);
+      return original(input);
+    });
+
+    const button = result.getByLabelText("Add 1 to Fridge");
+    // No `await`/`flushPending` between these two presses: the single-flight
+    // ref must already be set by the time the second press's synchronous
+    // handler body runs, same frame as the first.
+    fireEvent.press(button);
+    fireEvent.press(button);
+    await flushPending();
+
+    expect(calls).toHaveLength(1);
+    expect(replaced).toContain("/inventory");
+    const items = await apiClient.getInventoryItems();
+    expect(items.filter((item) => item.displayName === "Stone-Ground Tahini")).toHaveLength(1);
+  });
+
+  it("a failed Add reuses the same key on a retap; the retap succeeds and creates exactly one item", async () => {
+    const result = await renderScreen();
+    await lookUp(result, "060000100810");
+
+    const calls: CreateItemRequestDto[] = [];
+    const original = apiClient.createItem.bind(apiClient);
+    let attempt = 0;
+    vi.spyOn(apiClient, "createItem").mockImplementation(async (input) => {
+      calls.push(input);
+      attempt += 1;
+      if (attempt === 1) {
+        throw new Error("simulated network failure");
+      }
+      return original(input);
+    });
+
+    const button = result.getByLabelText("Add 1 to Fridge");
+    fireEvent.press(button);
+    await flushPending();
+    expect(replaced).toEqual([]);
+
+    fireEvent.press(button);
+    await flushPending();
+
+    expect(calls).toHaveLength(2);
+    expect(calls[0]?.idempotencyKey).toBe(calls[1]?.idempotencyKey);
+    expect(replaced).toContain("/inventory");
+    const items = await apiClient.getInventoryItems();
+    expect(items.filter((item) => item.displayName === "Stone-Ground Tahini")).toHaveLength(1);
+  });
+
+  it("changing the count after a failed Add discards the held key; the next Add mints a fresh one", async () => {
+    const result = await renderScreen();
+    await lookUp(result, "060000100810");
+
+    const calls: CreateItemRequestDto[] = [];
+    const original = apiClient.createItem.bind(apiClient);
+    let attempt = 0;
+    vi.spyOn(apiClient, "createItem").mockImplementation(async (input) => {
+      calls.push(input);
+      attempt += 1;
+      if (attempt === 1) {
+        throw new Error("simulated network failure");
+      }
+      return original(input);
+    });
+
+    fireEvent.press(result.getByLabelText("Add 1 to Fridge"));
+    await flushPending();
+
+    fireEvent.press(result.getByLabelText("Increase quantity"));
+    fireEvent.press(result.getByLabelText("Add 2 to Fridge"));
+    await flushPending();
+
+    expect(calls).toHaveLength(2);
+    expect(calls[0]?.idempotencyKey).not.toBe(calls[1]?.idempotencyKey);
+  });
+});
+
+describe("S7 · product-lookup refusals (M3-T4e Objective (a), copy-deck.md §8)", () => {
+  it("PLU_NOT_SUPPORTED renders its exact §8 string, with Enter it manually still offered", async () => {
+    const original = apiClient.lookupProduct.bind(apiClient);
+    apiClient.lookupProduct = () =>
+      Promise.reject(new ProductLookupRefusedError("PLU_NOT_SUPPORTED"));
+    try {
+      const result = await renderScreen();
+      await lookUp(result, "04061");
+      expect(
+        result.getByText("Produce codes can't be looked up by barcode yet. Add this item by hand."),
+      ).toBeTruthy();
+      const manualButton = result.getByLabelText("Enter it manually");
+      fireEvent.press(manualButton);
+      expect(pushed).toEqual([{ pathname: "/add/manual", params: { code: "04061" } }]);
+    } finally {
+      apiClient.lookupProduct = original;
+    }
+  });
+
+  it("BAD_REQUEST renders its exact §8 string", async () => {
+    const original = apiClient.lookupProduct.bind(apiClient);
+    apiClient.lookupProduct = () => Promise.reject(new ProductLookupRefusedError("BAD_REQUEST"));
+    try {
+      const result = await renderScreen();
+      await lookUp(result, "not-a-code");
+      expect(result.getByText("That isn't a barcode number we can look up.")).toBeTruthy();
+    } finally {
+      apiClient.lookupProduct = original;
+    }
+  });
+
+  it("a 200 error outcome (upstream trouble) renders its exact §8 string, never result.message", async () => {
+    const original = apiClient.lookupProduct.bind(apiClient);
+    apiClient.lookupProduct = (code: string) => {
+      const answer: ProductLookupResultDto = {
+        status: "error",
+        code,
+        message: "this exact sentence must never reach the screen",
+      };
+      return Promise.resolve(answer);
+    };
+    try {
+      const result = await renderScreen();
+      await lookUp(result, "060000100810");
+      expect(
+        result.getByText(
+          "The product database didn't answer. Try again in a moment, or add the item by hand.",
+        ),
+      ).toBeTruthy();
+      expect(result.queryByText(/this exact sentence/)).toBeNull();
+    } finally {
+      apiClient.lookupProduct = original;
+    }
+  });
+
+  it("a 401/403 (or any other refused lookup) renders the generic fallback, with Enter it manually still offered", async () => {
+    const original = apiClient.lookupProduct.bind(apiClient);
+    apiClient.lookupProduct = () => Promise.reject(new ProductLookupRefusedError("UNAUTHORIZED"));
+    try {
+      const result = await renderScreen();
+      await lookUp(result, "060000100810");
+      expect(
+        result.getByText(
+          "Something went wrong saving that. Try again, and tell us if it keeps happening.",
+        ),
+      ).toBeTruthy();
+      expect(result.getByLabelText("Enter it manually")).toBeTruthy();
+    } finally {
+      apiClient.lookupProduct = original;
+    }
+  });
 });

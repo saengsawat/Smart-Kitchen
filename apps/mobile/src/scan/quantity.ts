@@ -11,6 +11,7 @@
  * already-micros text.
  */
 
+import { CREATE_ITEM_UNITS_DTO, type ProvenanceTierDto } from "@smart-kitchen/contracts";
 import { MICROS_PER_UNIT } from "../inventory/quantity";
 
 /**
@@ -63,4 +64,77 @@ export function wholeUnitQuantityMicros(count: number): bigint {
     );
   }
   return BigInt(count) * MICROS_PER_UNIT;
+}
+
+/** A scanned product's package size, its unit already normalized (e.g. OFF/corpus "ct" -> this app's "each"). */
+export interface ScanPackageSizeInput {
+  readonly qty: string;
+  readonly unit: string;
+  readonly tier: ProvenanceTierDto;
+}
+
+/** S8's Add quantity plan: the exact micros to send, the unit to send it in, and the resulting quantity's tier. */
+export interface ScanQuantityPlan {
+  readonly amountMicros: bigint;
+  readonly unit: string;
+  readonly tier: "KNOWN_FACT" | "ESTIMATED";
+}
+
+/**
+ * Whether `POST /v1/inventory/items` accepts this (already-normalized) unit
+ * (BACKLOG.md M3-T4e Objective (e)). {@link CREATE_ITEM_UNITS_DTO} is the
+ * household-facing whitelist (`packages/contracts/src/units.ts`), a strict
+ * subset of the domain registry: `pt`, `qt` and `gal` resolve in the
+ * registry but are not on this list, and `fl oz` resolves in neither — both
+ * are "the registry refuses" in the ticket's shorthand for "this app's
+ * ledger cannot record it as its own unit". Never a registry lookup
+ * client-side (the client has no domain import, M3-T1/M3-T3 invariant);
+ * this list is the one client-visible source of truth for what a package's
+ * unit can become on the wire.
+ */
+export function isCreateItemUnit(unit: string): boolean {
+  return CREATE_ITEM_UNITS_DTO.includes(unit);
+}
+
+/**
+ * S8's item quantity (BACKLOG.md M3-T4e Objectives (d)/(e)): `count` whole
+ * packages of `packageSize` each, when a package size exists and its
+ * (already-normalized) unit is one `POST /v1/inventory/items` accepts
+ * ({@link CREATE_ITEM_UNITS_DTO} — a strict subset of the domain registry,
+ * so `pt`/`qt`/`gal` and anything unparsed by the source fall through here
+ * even though some of them resolve in the registry itself). The quantity's
+ * tier is the lowest tier among its inputs (rule: never raise a tier on the
+ * client): `count` is always Known Fact (the user physically counted whole
+ * packages), so the tier is `packageSize`'s own tier when its unit is used
+ * directly.
+ *
+ * When the unit cannot be used (present but not accepted, e.g. "qt"), the
+ * item is recorded as the chosen count of packages, unit `each` — never an
+ * invented conversion (CLAUDE.md rule 7) — and the quantity tier is fixed
+ * `ESTIMATED`, because the count of packages is honest but the record no
+ * longer states the item's real size, only how many of them there are.
+ * When there is no package size at all, the only input is `count` itself,
+ * so the quantity stays Known Fact, same as S9's manual entries.
+ */
+export function planScanQuantity(
+  packageSize: ScanPackageSizeInput | undefined,
+  count: number,
+): ScanQuantityPlan {
+  if (packageSize && isCreateItemUnit(packageSize.unit)) {
+    return {
+      amountMicros: packageQuantityMicros(count, packageSize.qty),
+      unit: packageSize.unit,
+      // AI_INTERPRETATION never reaches this path in practice (OFF and the
+      // fixture corpus only ever carry KNOWN_FACT/ESTIMATED package sizes,
+      // and createItem refuses AI_INTERPRETATION outright), but a defensive
+      // fallback to ESTIMATED is still correct if one ever did: never treat
+      // an unconfirmed AI figure as a Known Fact quantity.
+      tier: packageSize.tier === "KNOWN_FACT" ? "KNOWN_FACT" : "ESTIMATED",
+    };
+  }
+  return {
+    amountMicros: wholeUnitQuantityMicros(count),
+    unit: "each",
+    tier: packageSize ? "ESTIMATED" : "KNOWN_FACT",
+  };
 }
