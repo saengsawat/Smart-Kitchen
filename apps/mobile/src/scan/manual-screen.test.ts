@@ -176,10 +176,24 @@ describe("S9 · manual add", () => {
       expect(result.getByText("1")).toBeTruthy();
     });
 
-    it("falls back to a whole-unit default (1) for a non-integer or missing amount, never guessing a rounding rule", async () => {
-      searchParams = { name: "Weird item", amount: "0.75", unit: "lb" };
+    it("falls back to a whole-unit default (1) for a non-integer or missing amount, never guessing a rounding rule, while name/unit/location still prefill (review round 2 test gap)", async () => {
+      searchParams = { name: "Weird item", amount: "0.5", unit: "lb", location: "PANTRY" };
       const result = await renderScreen();
       expect(result.getByText("1")).toBeTruthy();
+      // A fractional amount only skips the count prefill; it must not also
+      // silently drop the other three (the earlier version of this test
+      // checked the count alone).
+      expect((result.getByLabelText("Item name").props as { value?: string }).value).toBe(
+        "Weird item",
+      );
+      const lbProps = result.getByLabelText("lb").props as {
+        accessibilityState?: { selected?: boolean };
+      };
+      expect(lbProps.accessibilityState?.selected).toBe(true);
+      const pantryProps = result.getByLabelText("Pantry").props as {
+        accessibilityState?: { selected?: boolean };
+      };
+      expect(pantryProps.accessibilityState?.selected).toBe(true);
     });
 
     it("never silently truncates a fraction into a same-shaped whole number (review round 1, F9)", async () => {
