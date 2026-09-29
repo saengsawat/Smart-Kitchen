@@ -1,7 +1,7 @@
 # Identity fixtures (M3-T1 / M2-T1)
 
 Synthetic sign-ins for the stubbed identity port (D-022: build against a stubbed identity first, no
-vendor, no signup, no cost). Two households, three people.
+vendor, no signup, no cost). Two households, four people, one of whom (M2-T3) has no household yet.
 
 The three token strings were written down here by M3-T1 first, because the mobile scaffold needed a
 token for its fixture `ApiClient` before this side existed. **M2-T1 adopts those exact strings**
@@ -10,8 +10,8 @@ this directory is the machine-readable version the API loads.
 
 ## These tokens are not secrets
 
-`fixture.dean.chen`, `fixture.maya.chen` and `fixture.owner.other` are literal, obviously fake
-strings. They are not credentials, they are not derived from a credential, and they authenticate
+`fixture.dean.chen`, `fixture.maya.chen`, `fixture.owner.other` and `fixture.new.user` are literal,
+obviously fake strings. They are not credentials, they are not derived from a credential, and they authenticate
 nothing outside this repo:
 
 - they are matched by an exact string comparison in an in-process adapter
@@ -35,9 +35,20 @@ Nothing here is real personal data, and nothing here is a secret (CLAUDE.md rule
 | `fixture.dean.chen` | Dean Chen | Chen household | `owner` | DC |
 | `fixture.maya.chen` | Maya Chen | Chen household | `member` | MC |
 | `fixture.owner.other` | Ada Okafor | Okafor household | `owner` | AO |
+| `fixture.new.user` | Noor Haddad | none (M2-T3) | none | NH |
 
 The second household exists for one reason: it is the household the tenancy tests try, and fail, to
 reach from a Chen session (INV-TENANT-1).
+
+`fixture.new.user` (M2-T3) is signed in but belongs to no household, so it is the identity that
+creates one (`POST /v1/households`) or joins one by code. Its entry in `sessions.json` has no
+`householdId` and no `role`; stating one without the other is refused as a half-written entry.
+
+**Memberships live in the database once the API runs against one (M2-T3).** The running API reads
+each caller's households from `household_memberships` on every request, so a household created or
+joined over HTTP takes effect on the next request. The `householdId`/`role` in `sessions.json` are
+what the seed writes, and what suites without a database use directly. With several memberships a
+request runs as the most recently joined household; `GET /v1/households/mine` lists them all.
 
 ## Household ids differ between the two sides, on purpose for now
 
@@ -62,27 +73,34 @@ SK_IDENTITY=fixture pnpm --filter api start
 curl -H "Authorization: Bearer fixture.dean.chen" http://localhost:3000/v1/inventory/items
 ```
 
-## Household join code (M3-T2)
+## Household join code (M3-T2, served by the API since M2-T3)
 
 S1's "Join with a code" form (`apps/mobile/app/onboarding/account.tsx`) goes through
-`FixtureApiClient.joinHousehold` (`apps/mobile/src/api/client.ts`), not this directory's
-`sessions.json` (there is no household-join endpoint yet; M2-T3 is the ticket that adds one behind
-the same client port). The mobile fixture accepts exactly one code:
+`FixtureApiClient.joinHousehold` (`apps/mobile/src/api/client.ts`). Since M2-T3 the API has the real
+endpoint, `POST /v1/households/join`, and the development seed issues `CHEN-482` to the Chen
+household so the two agree. The API stores only an HMAC of the code (never the plaintext), trims
+what was typed and ignores letter case (the mobile fixture compares exactly), and answers every bad
+code with the same 404. An owner rotating the code (`POST /v1/households/me/join-code`) makes
+`CHEN-482` stop working, and re-running the seed does not bring it back. The mobile fixture accepts
+exactly one code:
 
 | Code | Result |
 | --- | --- |
 | `CHEN-482` | Joins the Chen household (Dean owner, Maya member) with its existing inventory. |
 | Anything else | Rejected with the exact copy "That code didn't match a household. Check it with whoever invited you." |
 
-Like the tokens above, `CHEN-482` is a literal, obviously fake fixture string, not a secret: it
-authenticates nothing outside an in-memory, session-only comparison in
-`apps/mobile/src/api/client.ts`, and no `.env*` file carries it (CLAUDE.md rules 12 and 18).
+Like the tokens above, `CHEN-482` is a literal, obviously fake fixture string, not a secret: on the
+client it is an in-memory comparison in `apps/mobile/src/api/client.ts`, and on the API it is a
+row the seed writes only where the fixture identities may load, hashed under the public
+development pepper unless `SK_JOIN_CODE_PEPPER` is set. No `.env*` file carries it (CLAUDE.md
+rules 12 and 18).
 
 ## Shape of `sessions.json`
 
 `households[]` carries `householdId` and `name`. `sessions[]` carries `token`, `userId`,
 `householdId`, `role` (`owner` or `member`), `displayName`, `displayInitials` and `email`. Every
-field is required, every id must be a UUID, every token and every id must be unique, and every
+field is required except that a household-less sign-in omits both `householdId` and `role`
+(M2-T3); every id must be a UUID, every token and every id must be unique, and every
 `householdId` on a session must name a declared household. The loader validates all of that and
 refuses a malformed file rather than starting with a half-understood identity map.
 

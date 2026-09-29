@@ -190,8 +190,14 @@ export function registerHouseholdRoutes(app: FastifyInstance, deps: HouseholdRou
         householdId,
         role: "owner",
       });
-      await reply.code(201);
-      return { household: toSummary(row, caller.userId), joinCode: joinCodeDto(issued) };
+      // Sent explicitly: a Fastify reply is thenable, so `await reply.code(201)`
+      // on its own would wait for a response that has not been sent yet.
+      const created: CreateHouseholdResponseDto = {
+        household: toSummary(row, caller.userId),
+        joinCode: joinCodeDto(issued),
+      };
+      await reply.code(201).send(created);
+      return undefined;
     },
   );
 

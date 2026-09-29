@@ -116,9 +116,14 @@ is taken locally.
 ## Seeding a development database (M2-T2)
 
 `pnpm --filter api db:seed:fixture` fills a database with the synthetic
-sign-ins in `tests/fixtures/identity/` and the Chen household's inventory, the
-one the prototype draws. That is what turns the API from something that answers
-an empty list into something a phone can read and write for real.
+sign-ins in `tests/fixtures/identity/` (including `fixture.new.user`, who has no
+household yet), the Chen household's join code `CHEN-482` (stored as a hash,
+issued only while the household has no live code, so a code an owner rotated
+stays rotated) and the Chen household's inventory, the one the prototype draws.
+That is what turns the API from something that answers an empty list into
+something a phone can read and write for real. The seed and the API must see
+the same `SK_JOIN_CODE_PEPPER` (leave it unset for both in development) or the
+seeded code will not match.
 
 It runs the compiled entry point, so build first, and it needs a migrated
 database:

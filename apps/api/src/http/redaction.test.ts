@@ -13,6 +13,7 @@ import {
   normalizeKey,
   REDACTED,
   REDACTED_EMAIL,
+  REDACTED_JOIN_CODE,
   REDACTED_TOKEN,
   redactError,
   redactLogObject,
@@ -240,5 +241,37 @@ describe("redactLogRecord", () => {
 describe("redactLogObject", () => {
   it("always hands pino an object back", () => {
     expect(redactLogObject({ userId: "u1" })).toEqual({ userId: "u1" });
+  });
+});
+
+describe("M2-T3: household join codes never reach a log line", () => {
+  it.each([["code"], ["joinCode"], ["join_code"], ["plaintextJoinCode"], ["codeHash"], ["codes"]])(
+    "denies the key %s",
+    (key) => {
+      expect(isDeniedKey(key)).toBe(true);
+    },
+  );
+
+  it("still logs the ledger's refusal code and other code-suffixed keys", () => {
+    expect(isDeniedKey("ledgerCode")).toBe(false);
+    expect(isDeniedKey("statusCode")).toBe(false);
+  });
+
+  it("scrubs a code by shape inside free text, in either case", () => {
+    expect(redactString("tried CHEN-482 then chen-482")).toBe(
+      `tried ${REDACTED_JOIN_CODE} then ${REDACTED_JOIN_CODE}`,
+    );
+  });
+
+  it("leaves uuids and correlation ids alone", () => {
+    const id = "0199a3b2-7c1d-7e4f-9a2b-3c4d5e6f7a8b";
+    expect(redactString(id)).toBe(id);
+  });
+
+  it("redacts a code nested in a record", () => {
+    expect(redactLogRecord({ attempt: { joinCode: "CHEN-482" }, note: "CHEN-482" })).toEqual({
+      attempt: { joinCode: REDACTED },
+      note: REDACTED_JOIN_CODE,
+    });
   });
 });

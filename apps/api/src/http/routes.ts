@@ -295,8 +295,10 @@ export function registerRoutes(app: FastifyInstance, deps: RouteDeps): void {
           },
           "inventory.item.created",
         );
-        await reply.code(result.replayed ? 200 : 201);
-        return result.summary;
+        // Sent explicitly: a Fastify reply is thenable, so awaiting a bare
+        // `reply.code(...)` would wait for a response not yet sent.
+        await reply.code(result.replayed ? 200 : 201).send(result.summary);
+        return undefined;
       } catch (error) {
         return answerFailure(request, reply, error);
       }
