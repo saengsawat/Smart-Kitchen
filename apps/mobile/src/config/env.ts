@@ -39,3 +39,33 @@ export function getApiBaseUrl(): string | null {
   const trimmed = value.trim();
   return trimmed.length > 0 ? trimmed : null;
 }
+
+/**
+ * `HttpApiClient`'s fallback identity token (M3-T4d): restated, not
+ * imported from `src/api/client.ts`'s `FIXTURE_IDENTITY_TOKEN`, because that
+ * module already imports {@link getApiBaseUrl} from this one and a cycle
+ * back the other way would follow. `tests/fixtures/identity/README.md`'s
+ * Dean Chen entry is the single source of truth for the literal string
+ * itself; `src/api/client.ts/FixtureApiClient.getIdentityToken` keeps
+ * returning its own constant unconditionally (never reads this variable),
+ * so the fixture-backed app's identity is unaffected either way.
+ */
+const DEFAULT_IDENTITY_TOKEN = "fixture.dean.chen";
+
+/**
+ * The bearer token `HttpApiClient` authenticates every request with
+ * (M3-T4d Objective (e)): `EXPO_PUBLIC_IDENTITY_TOKEN` when set to a
+ * non-blank value, else {@link DEFAULT_IDENTITY_TOKEN}. Lets the app run as
+ * a different fixture identity (for example `fixture.new.user`, the one
+ * with no household yet, or `fixture.maya.chen`) without a code change,
+ * same trim/blank rule as {@link getApiBaseUrl}. Only `HttpApiClient` reads
+ * this; the value has no effect on the fixture-backed app.
+ */
+export function getIdentityToken(): string {
+  const value = process.env.EXPO_PUBLIC_IDENTITY_TOKEN;
+  if (value === undefined) {
+    return DEFAULT_IDENTITY_TOKEN;
+  }
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : DEFAULT_IDENTITY_TOKEN;
+}
