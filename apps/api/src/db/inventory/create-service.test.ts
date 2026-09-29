@@ -11,6 +11,7 @@ import { lookupUnit } from "@smart-kitchen/domain";
 import { describe, expect, it } from "vitest";
 import {
   BARCODE_SCAN_SOURCE,
+  canonicalBestBy,
   MANUAL_ENTRY_CREATE_SOURCE,
   planCreation,
   type CreateItemCommand,
@@ -142,6 +143,12 @@ describe("planCreation: refusals", () => {
     ["a best-by with no tier", { bestByProvenance: null }, "INVALID_FIELD"],
     ["a tier with no best-by", { bestByDate: null }, "INVALID_FIELD"],
     ["an unparseable best-by", { bestByDate: "next tuesday" }, "INVALID_TIMESTAMP"],
+    // Review F1: Date.parse accepted these and read them in the host's zone.
+    ["a bare number as best-by", { bestByDate: "1" }, "INVALID_TIMESTAMP"],
+    ["a month and day as best-by", { bestByDate: "March 7" }, "INVALID_TIMESTAMP"],
+    ["a local time with no offset", { bestByDate: "2026-10-12T00:00:00" }, "INVALID_TIMESTAMP"],
+    ["a date that does not exist", { bestByDate: "2026-02-30" }, "INVALID_TIMESTAMP"],
+    ["a slashed date", { bestByDate: "2026/10/12" }, "INVALID_TIMESTAMP"],
   ] as const)("refuses %s", (_case, override, code) => {
     const command: CreateItemCommand = { ...BASE, ...override };
     if ("productRef" in override && override.productRef === undefined) {
@@ -179,6 +186,24 @@ describe("planCreation: refusals", () => {
       field: "productRef",
     });
   });
+});
+
+describe("canonicalBestBy (review F1)", () => {
+  it("reads a bare date as UTC midnight, whatever the host's zone", () => {
+    expect(canonicalBestBy("2026-10-12")).toBe("2026-10-12T00:00:00.000Z");
+  });
+
+  it("canonicalises an instant with an offset to UTC", () => {
+    expect(canonicalBestBy("2026-10-12T02:00:00+02:00")).toBe("2026-10-12T00:00:00.000Z");
+    expect(canonicalBestBy("2026-10-12T00:00:00.000Z")).toBe("2026-10-12T00:00:00.000Z");
+  });
+
+  it.each([["1"], ["March 7"], ["2026-10-12T00:00:00"], ["2026-02-30"], [""], ["2026-13-01"]])(
+    "refuses %j",
+    (text) => {
+      expect(canonicalBestBy(text)).toBeUndefined();
+    },
+  );
 });
 
 describe("the create unit list against the domain registry", () => {

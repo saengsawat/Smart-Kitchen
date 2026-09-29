@@ -84,6 +84,42 @@ const CLIENT_KEY = /^[A-Za-z0-9._-]{1,128}$/;
 /** Control characters: never part of a name a person typed. */
 const CONTROL_CHARACTERS = /\p{Cc}/u;
 
+/**
+ * An ISO-8601 instant with an explicit offset: the domain ledger's own
+ * `ISO_INSTANT_RE` (`packages/domain/src/inventory/ledger.ts`), restated
+ * because the domain does not export it and this ticket's scope stops at the
+ * creation service.
+ */
+const ISO_INSTANT = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,9})?(?:Z|[+-]\d{2}:\d{2})$/;
+
+/** A calendar date with nothing else, read as UTC midnight (review F1). */
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+
+/**
+ * The canonical instant for a best-by, or `undefined` when the text is not
+ * exactly an ISO date or an ISO instant with an offset (M2-T3 review F1).
+ *
+ * `Date.parse` alone accepted `"1"` and `"March 7"` and read them in the
+ * server's own time zone, so the stored date depended on the host. Only two
+ * shapes are accepted now, and neither is read in local time: a bare
+ * `YYYY-MM-DD` is UTC midnight, and an instant must state its offset. A date
+ * that does not exist (`2026-02-30`) is refused rather than rolled over.
+ */
+export function canonicalBestBy(text: string): string | undefined {
+  if (ISO_DATE.test(text)) {
+    const millis = Date.parse(`${text}T00:00:00.000Z`);
+    if (Number.isNaN(millis)) return undefined;
+    const iso = new Date(millis).toISOString();
+    return iso.slice(0, 10) === text ? iso : undefined;
+  }
+  if (ISO_INSTANT.test(text)) {
+    const millis = Date.parse(text);
+    if (Number.isNaN(millis)) return undefined;
+    return canonicalizeInstant(text);
+  }
+  return undefined;
+}
+
 /** A provenance block as the request carries it. */
 export interface RequestProvenance {
   readonly tier: ProvenanceTierDto;
@@ -223,10 +259,15 @@ export function planCreation(command: CreateItemCommand): PlannedCreation {
   }
   let expiresAt: string | null = null;
   if (bestBy !== null) {
-    if (Number.isNaN(Date.parse(bestBy))) {
-      reject("INVALID_TIMESTAMP", "bestByDate must be an ISO-8601 date or instant", "bestByDate");
+    const canonical = canonicalBestBy(bestBy);
+    if (canonical === undefined) {
+      reject(
+        "INVALID_TIMESTAMP",
+        "bestByDate must be an ISO-8601 date (YYYY-MM-DD) or an instant with an offset",
+        "bestByDate",
+      );
     }
-    expiresAt = canonicalizeInstant(bestBy);
+    expiresAt = canonical;
   }
 
   return {
