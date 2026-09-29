@@ -28,7 +28,7 @@ Rationale: the scan button is the product's front door (P1) and owns the center;
 | S8 | Scan confirm | Product card w/ per-field provenance; nutrition strip; allergen row (household match check, P5); qty stepper; location chips | multi-source conflict display; allergen-match warning |
 | S9 | Manual add / completion | Prefill whatever any source returned, fields badged by provenance; unit picker (M1-T3 registry) | code-retained-for-enrichment note |
 | S10 | Recipes ("What can I make?") | Ranked cards: uses-from-inventory chips, missing count, match %, "Why this?" expander, allergen screen status; blocked-card pattern (never a choice, P5) | generating/async; zero-candidates; all-blocked |
-| S11 | Shopping list | BUY (gap math visible) / ALREADY HAVE; department groups; shared indicators (P7); check-off → add-to-inventory prompt (close the loop) | offline queue indicator; empty |
+| S11 | Shopping list | BUY (gap math visible) / ALREADY HAVE; department groups; shared indicators (P7); check-off → add-to-inventory prompt (close the loop; shown only for a check-off made this session, one Add per row, ruled at M3-T5 acceptance 2026-09-29) | offline queue indicator; empty |
 | S12 | Profile & household | Members, allergies (edit = S2 patterns), invite (fast-follow), sign-out | pending Q3 permission notes |
 
 **Shared components:** provenance badge (3 tiers), verdict/warning banners (allergen red exclusive), correction sheet, ledger-history row, quantity stepper, unit-aware amount display, confirmation list-row (receipt-ready), toast/undo, sync-state indicator.

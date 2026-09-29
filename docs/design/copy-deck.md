@@ -294,6 +294,12 @@ Per P8 (every screen designs its non-happy states first). Format: headline, one 
 - **Empty:** "Your shopping list is empty." / "Anything with a gap between what you need and what you have will show up here." / action **Browse recipes**.
 - **Offline queue banner:** "You're offline. Check-offs are saved and will sync when you're back online."
 - **Queued check-off row indicator:** a small "Queued" tag next to the checked row (icon + text, never a colour change alone, per P9).
+- **Added at M3-T5 acceptance (2026-09-29):**
+  - Loop bar after a check-off made this session (never for a row that arrived already done): "{Item} checked off · add it to the pantry?" with the action **Add**. Add succeeded on a tracked item: "{Item} added to {Location} · inventory updated". Add while offline, either row kind: the inline line "Add when you're back online." replaces the button (never a disabled button with no explanation). A row whose Add has landed is not offered Add again this session.
+  - Offline check-off queued (toast): "{Item} queued. It will sync when you're back online." (also fires on an offline uncheck).
+  - AI row declined (toast): "{Item} removed · AI suggestion declined". The AI row's origin line: "suggested to go with {recipe} · a proposal until you keep it"; checking it off keeps it.
+  - Origin line templates: menu with partial stock "need {need} · have {have}"; menu with none on hand "{recipe} · none on hand" (applies to every zero-stock menu row; the prototype's bare "yogurt parfait" form would be a DTO flag at M7, not client logic); member "added by {member} · not tied to a menu"; done rows "added and checked off by {member}" or "checked off by {member}"; skipped rows with enough on hand "sufficient".
+  - Load failure: "Couldn't load your shopping list." plus the §8 read fallback, action **Try again**.
 
 ---
 
@@ -302,6 +308,8 @@ Per P8 (every screen designs its non-happy states first). Format: headline, one 
 Every value of `LedgerErrorCode` (`packages/domain/src/inventory/errors.ts`), classified as user-facing (a normal action can plausibly trigger it, so it earns its own sentence) or internal-only (an invariant violation the client should have prevented; if it ever leaks through, show the generic fallback and never the raw `message`).
 
 **Generic fallback** (used for every internal-only code, if one ever reaches a screen): "Something went wrong saving that. Try again, and tell us if it keeps happening."
+
+**Generic read fallback (added at M3-T5 acceptance, 2026-09-29):** for a failed load rather than a failed save: "Something went wrong loading that. Try again, and tell us if it keeps happening." The S4 household-load failure listed in §7 should move to this string in its next ticket.
 
 **API-level refusals (not `LedgerErrorCode`s; added at M2-T2 acceptance, 2026-09-22):** `IDEMPOTENCY_KEY_CONFLICT` answers 409 and the client treats it as "already applied differently, do not retry": "That request was already used for a different change, so it was not applied again." `UNDO_NOT_POSSIBLE` answers 409 when the stock an entry added has since been used, so undoing it would overshoot: "That change can't be undone. The stock it added has already been used." An item the session cannot see answers 404 with "Not found." and is indistinguishable from an item that does not exist.
 
