@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { INVENTORY_ITEMS_PATH } from "@smart-kitchen/contracts";
+import { GENERIC_LEDGER_ERROR_MESSAGE, messageForLedgerError } from "../inventory/errors";
 import type {
   CreateItemRequestDto,
   InventoryItemDetailDto,
@@ -470,6 +471,68 @@ describe("FixtureApiClient.syncHouseholdFromServer (M3-T4d)", () => {
       members: [{ memberId: "mem-1", displayName: "AO", role: "owner" }],
     });
     expect(resynced.members.map((m) => m.memberId)).toEqual(["mem-1"]);
+  });
+});
+
+describe("HttpApiClient.clearHouseholdUntilServerSaysOtherwise (M3-T4d review F6, pinned)", () => {
+  const originalFetch = globalThis.fetch;
+  afterEach(() => {
+    globalThis.fetch = originalFetch;
+  });
+
+  it("saveMemberRestrictions on a fresh HttpApiClient, before any server read, rejects (never assumes a household)", async () => {
+    globalThis.fetch = () => {
+      throw new Error("must not call fetch");
+    };
+    const client = new HttpApiClient("http://localhost:4000");
+    await expect(
+      client.saveMemberRestrictions("mem-1", [], { noneConfirmed: true }),
+    ).rejects.toThrow();
+  });
+
+  it("savePreferences on a fresh HttpApiClient, before any server read, rejects the same way", async () => {
+    globalThis.fetch = () => {
+      throw new Error("must not call fetch");
+    };
+    const client = new HttpApiClient("http://localhost:4000");
+    await expect(client.savePreferences("mem-1", ["Vegetarian"])).rejects.toThrow();
+  });
+
+  it("saveMemberRestrictions and savePreferences never call fetch, on a fresh client or after a real household sync", async () => {
+    let fetchCalls = 0;
+    globalThis.fetch = () => {
+      fetchCalls += 1;
+      return Promise.resolve(
+        new Response(
+          JSON.stringify({
+            household: {
+              householdId: "hh-1",
+              name: "The Ostrowskis",
+              members: [
+                { memberId: "mem-1", displayInitials: "AO", role: "owner", isCaller: true },
+              ],
+            },
+            joinCode: { code: "ABCD-234", issuedAt: "2026-09-29T00:00:00.000Z" },
+          }),
+          { status: 201 },
+        ),
+      );
+    };
+    const client = new HttpApiClient("http://localhost:4000");
+
+    // A fresh client, no server read yet: rejects, no fetch call.
+    await expect(
+      client.saveMemberRestrictions("mem-1", [], { noneConfirmed: true }).catch(() => undefined),
+    ).resolves.toBeUndefined();
+    expect(fetchCalls).toBe(0);
+
+    // After a real household sync (one fetch call), the two restriction
+    // calls still make zero fetch calls of their own — purely local.
+    await client.createHousehold("The Ostrowskis");
+    expect(fetchCalls).toBe(1);
+    await client.saveMemberRestrictions("mem-1", [], { noneConfirmed: true });
+    await client.savePreferences("mem-1", ["Vegetarian"]);
+    expect(fetchCalls).toBe(1);
   });
 });
 
@@ -1058,7 +1121,7 @@ describe("lookupProduct / createItem (M3-T4b)", () => {
         await expect(client.createItem(SAMPLE_ITEM_INPUT)).rejects.toThrow();
       });
 
-      it("a 409 IDEMPOTENCY_KEY_CONFLICT throws LedgerRefusedError, never retried", async () => {
+      it("a 409 IDEMPOTENCY_KEY_CONFLICT throws LedgerRefusedError, never retried, rendering its §8 sentence (review F9)", async () => {
         let calls = 0;
         globalThis.fetch = () => {
           calls += 1;
@@ -1081,9 +1144,17 @@ describe("lookupProduct / createItem (M3-T4b)", () => {
           code: "IDEMPOTENCY_KEY_CONFLICT",
         });
         expect(calls).toBe(1);
+        try {
+          await client.createItem(SAMPLE_ITEM_INPUT);
+          expect.unreachable();
+        } catch (error) {
+          expect(messageForLedgerError(error)).toBe(
+            "That request was already used for a different change, so it was not applied again.",
+          );
+        }
       });
 
-      it("a 400 validation refusal (e.g. INVALID_FIELD) throws LedgerRefusedError, which renders the generic fallback", async () => {
+      it("a 400 validation refusal (e.g. INVALID_FIELD) throws LedgerRefusedError, rendering the generic fallback (review F9)", async () => {
         globalThis.fetch = () =>
           Promise.resolve(
             new Response(
@@ -1102,6 +1173,12 @@ describe("lookupProduct / createItem (M3-T4b)", () => {
         await expect(client.createItem(SAMPLE_ITEM_INPUT)).rejects.toMatchObject({
           code: "INVALID_FIELD",
         });
+        try {
+          await client.createItem(SAMPLE_ITEM_INPUT);
+          expect.unreachable();
+        } catch (error) {
+          expect(messageForLedgerError(error)).toBe(GENERIC_LEDGER_ERROR_MESSAGE);
+        }
       });
 
       it("rejects a malformed 2xx response body rather than returning garbage", async () => {
@@ -1297,6 +1374,20 @@ describe("lookupProduct / createItem (M3-T4b)", () => {
         globalThis.fetch = () => Promise.reject(new Error("network down"));
         const networkFailureResult = await client.joinHousehold("CHEN-482");
         expect(networkFailureResult.ok).toBe(false);
+      });
+
+      it("a malformed 2xx body resolves ok:false with the generic fallback, never an unhandled rejection (review F10)", async () => {
+        globalThis.fetch = () => Promise.resolve(new Response(JSON.stringify({}), { status: 200 }));
+        const client = new HttpApiClient("http://localhost:4000");
+        const result = await client.joinHousehold("CHEN-482");
+        expect(result).toEqual({ ok: false, message: GENERIC_LEDGER_ERROR_MESSAGE });
+      });
+
+      it("an unparsable 2xx body (not JSON at all) resolves ok:false the same way (review F10)", async () => {
+        globalThis.fetch = () => Promise.resolve(new Response("not json", { status: 200 }));
+        const client = new HttpApiClient("http://localhost:4000");
+        const result = await client.joinHousehold("CHEN-482");
+        expect(result).toEqual({ ok: false, message: GENERIC_LEDGER_ERROR_MESSAGE });
       });
     });
   });

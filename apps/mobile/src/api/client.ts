@@ -397,14 +397,18 @@ export interface ApiClient {
   signInWithEmail(): Promise<void>;
   /**
    * S1 "Create household": name must already be validated
-   * (`src/onboarding/validation.ts`). `joinCode` is present exactly once,
-   * on this call's own result (M3-T4d: `HttpApiClient` mints it fresh from
-   * `POST /v1/households`'s one-time `JoinCodeDto`; `FixtureApiClient`
-   * returns {@link FIXTURE_JOIN_CODE} for interface parity, since that is
-   * already the only code the fixture ever accepts). Nothing re-reads it
-   * later — the server itself only sends the plaintext once
-   * (household.ts's header, rule 3) — so a screen must capture it here or
-   * not at all.
+   * (`src/onboarding/validation.ts`). `joinCode` is `HttpApiClient`-only
+   * (M3-T4d review F1): it carries the wire's one-time `JoinCodeDto.code`
+   * from `POST /v1/households`, present exactly once, on this call's own
+   * result, never re-fetchable later — the server itself only sends the
+   * plaintext once (household.ts's header, rule 3), so `app/onboarding/
+   * account.tsx` must capture it here or not at all, and shows a one-time
+   * interstitial on that path only. `FixtureApiClient` never sets this
+   * field (`undefined`, not a stand-in code): the fixture path never showed
+   * a created household's code before this ticket, and the review corrected
+   * the ticket's original premise that it did (the prototype puts a
+   * household's code on S12/profile, not S1) — so the fixture path goes
+   * straight to S2 after create, exactly as it always has.
    */
   createHousehold(name: string): Promise<HouseholdDto & { readonly joinCode?: string }>;
   /** S1 "Join household": only {@link FIXTURE_JOIN_CODE} succeeds against the fixture. */
@@ -697,11 +701,15 @@ export class FixtureApiClient implements ApiClient {
     this.inventory = new Map();
     this.shoppingRows = buildFixtureShoppingRows();
     this.appliedShoppingWrites = new Map();
-    // M3-T4d: FIXTURE_JOIN_CODE for interface parity with HttpApiClient — it
-    // is already the only code this fixture ever accepts, so a household it
-    // creates being joinable by that same code is not a new fact, just a
-    // now-explicit one.
-    return Promise.resolve({ ...this.household, joinCode: FIXTURE_JOIN_CODE });
+    // M3-T4d review F1: no `joinCode` here. The ticket's original premise
+    // was wrong — the fixture path never showed a code after create
+    // (FIXTURE_JOIN_CODE/CHEN-482 is only ever the *join* card's example
+    // placeholder; the prototype puts a household's code on S12/profile,
+    // not S1). `undefined` (the field simply absent) is what tells
+    // `app/onboarding/account.tsx` to skip the post-create interstitial and
+    // go straight to S2, exactly like every fixture-path create before this
+    // ticket.
+    return Promise.resolve({ ...this.household });
   }
 
   joinHousehold(code: string): Promise<JoinHouseholdResult> {
@@ -1226,12 +1234,13 @@ export class HttpApiClient implements ApiClient {
   /**
    * `POST /v1/households/join` (M3-T4d Objective (b)). Unlike
    * {@link createHousehold}, every failure here (network, 404
-   * `JOIN_CODE_INVALID`, 429 `RATE_LIMITED`, anything else) resolves
-   * `{ ok: false }` rather than rejecting: `JoinHouseholdResult` already
-   * models "this didn't work, here is what to tell the person", and S1
-   * shows only the deck string, never a server message (invariant). A join
-   * carries no idempotency key either (same as create); a network failure
-   * is answered with the generic fallback rather than silently retried.
+   * `JOIN_CODE_INVALID`, 429 `RATE_LIMITED`, a malformed 2xx body — review
+   * F10 — anything else) resolves `{ ok: false }` rather than rejecting:
+   * `JoinHouseholdResult` already models "this didn't work, here is what to
+   * tell the person", and S1 shows only the deck string, never a server
+   * message (invariant) or an unhandled rejection. A join carries no
+   * idempotency key either (same as create); a network failure is answered
+   * with the generic fallback rather than silently retried.
    */
   async joinHousehold(code: string): Promise<JoinHouseholdResult> {
     let response: Response;
@@ -1256,9 +1265,14 @@ export class HttpApiClient implements ApiClient {
       }
       return { ok: false, message: GENERIC_LEDGER_ERROR_MESSAGE };
     }
-    const parsedBody: unknown = await response.json();
+    // Review F10: a malformed 2xx body (an unparsable body, an envelope
+    // change, a proxy's HTML) is a failure this typed result already knows
+    // how to carry — resolve it the same as every other unreachable-server
+    // case, never an unhandled rejection out of a nominally
+    // never-throws-on-a-known-outcome method.
+    const parsedBody: unknown = await response.json().catch(() => null);
     if (!isJoinHouseholdResponse(parsedBody)) {
-      throw new Error(`POST ${HOUSEHOLD_JOIN_PATH} returned an unexpected response body`);
+      return { ok: false, message: GENERIC_LEDGER_ERROR_MESSAGE };
     }
     const household = this.delegate.syncHouseholdFromServer(
       householdSyncInputFromSummary(parsedBody.household),
