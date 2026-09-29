@@ -304,8 +304,11 @@ describe("S11 review round 1 fixes", () => {
     await flushPending();
     fireEvent.press(result.getByLabelText("Chicken breast, not checked off")); // re-check
     await flushPending();
-    fireEvent.press(result.getByLabelText("Add Chicken breast to inventory"));
-    await flushPending();
+
+    // Review round 2, F14: a row whose Add already landed this session
+    // never offers Add again (the loop bar shows no Add for it), so there
+    // is nothing left to press a second time.
+    expect(result.queryByLabelText("Add Chicken breast to inventory")).toBeNull();
 
     const after = await apiClient.getInventoryItem("fixture-item-chicken");
     expect(after!.history.length).toBe(historyLengthAfterFirstAdd);
@@ -409,5 +412,140 @@ describe("S11 review round 1 fixes", () => {
     } finally {
       globalWithDev.__DEV__ = original;
     }
+  });
+});
+
+describe("S11 review round 2 fixes", () => {
+  it("R1: reconnecting while the screen is unmounted still gets replayed, on the next load, not just the next flap or tap", async () => {
+    const first = await renderScreen();
+    fireEvent.press(first.getByLabelText("Simulate offline"));
+    await flushPending();
+    fireEvent.press(first.getByLabelText("Chicken breast, not checked off"));
+    await flushPending();
+    expect(first.getByText("Queued")).toBeTruthy();
+
+    first.unmount();
+
+    // Reconnects while nothing is mounted to hear the connectivity event:
+    // no subscribeOffline listener is active, so this alone must not (and,
+    // being a plain client call, cannot) trigger a replay by itself.
+    if (hasDevOfflineToggle(apiClient)) {
+      apiClient.setOfflineForDev(false);
+    }
+
+    const checkOffSpy = vi.spyOn(apiClient, "checkOffShoppingRow");
+    const { default: ShoppingScreen } = await import("../../app/shopping");
+    const second = render(
+      React.createElement(
+        ToastProvider,
+        null,
+        React.createElement(ShoppingScreen),
+        React.createElement(ToastHost),
+      ),
+    );
+    await flushPending();
+
+    // The load itself (already online by the time it resolves) is what
+    // must trigger the replay now, not a connectivity event this remount
+    // never saw.
+    expect(checkOffSpy).toHaveBeenCalledTimes(1);
+    expect(second.queryByText("Queued")).toBeNull();
+    const after = await apiClient.getShoppingList();
+    expect(after.rows.find((r) => r.rowId === "row-chicken")?.status).toBe("done");
+
+    second.unmount();
+  });
+
+  it("R2: an entry queued while a replay triggered by going online is still in flight is not stranded until the next flap or tap", async () => {
+    const result = await renderScreen();
+    fireEvent.press(result.getByLabelText("Simulate offline"));
+    await flushPending();
+    fireEvent.press(result.getByLabelText("Chicken breast, not checked off")); // K1
+
+    // Hold K1's replay call open (never resolving on its own) so a second
+    // entry can be queued while that walk is still running.
+    let resolveFirstReplay: (() => void) | undefined;
+    vi.spyOn(apiClient, "checkOffShoppingRow").mockImplementationOnce(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveFirstReplay = resolve;
+        }),
+    );
+    fireEvent.press(result.getByLabelText("Simulate back online"));
+    await flushPending();
+    // K1's replay is in flight (held open by the mock above).
+
+    // A second row is checked off, offline no longer true, but the walk
+    // for K1 is still running: this must not wait for "the next flap or
+    // tap" (R2's residual) to be delivered.
+    fireEvent.press(result.getByLabelText("Broccoli, not checked off")); // K2
+    await flushPending();
+
+    resolveFirstReplay?.();
+    await flushPending();
+    await flushPending();
+
+    expect(result.queryByText("Queued")).toBeNull();
+    const after = await apiClient.getShoppingList();
+    expect(after.rows.find((r) => r.rowId === "row-broccoli")?.status).toBe("done");
+  });
+
+  it("R3: an entry for a row no longer in a fresh list is dropped on load, not retried forever", async () => {
+    const first = await renderScreen();
+    fireEvent.press(first.getByLabelText("Simulate offline"));
+    await flushPending();
+    fireEvent.press(first.getByLabelText("Garlic, not checked off"));
+    await flushPending();
+    expect(first.getByText("Queued")).toBeTruthy();
+    expect(sharedShoppingQueue.isQueued("row-garlic")).toBe(true);
+
+    // Garlic (an AI suggestion) is removed server-side while still queued
+    // (a plausible real sequence: Remove works without connectivity in
+    // this fixture) and this screen unmounts before reconnecting.
+    await apiClient.removeShoppingSuggestion("row-garlic");
+    first.unmount();
+    if (hasDevOfflineToggle(apiClient)) {
+      apiClient.setOfflineForDev(false);
+    }
+
+    const checkOffSpy = vi.spyOn(apiClient, "checkOffShoppingRow");
+    const { default: ShoppingScreen } = await import("../../app/shopping");
+    const second = render(
+      React.createElement(
+        ToastProvider,
+        null,
+        React.createElement(ShoppingScreen),
+        React.createElement(ToastHost),
+      ),
+    );
+    await flushPending();
+
+    // The fresh load (garlic already gone) must drop the stale entry
+    // rather than ever retrying it.
+    expect(second.queryByText("Garlic")).toBeNull();
+    expect(sharedShoppingQueue.isQueued("row-garlic")).toBe(false);
+    expect(checkOffSpy).not.toHaveBeenCalled();
+
+    second.unmount();
+  });
+
+  it("F14: once a row's Add has landed, re-checking it never reoffers Add, and the loop bar shows no Add action for it", async () => {
+    const result = await renderScreen();
+    fireEvent.press(result.getByLabelText("Chicken breast, not checked off"));
+    await flushPending();
+    fireEvent.press(result.getByLabelText("Add Chicken breast to inventory"));
+    await flushPending();
+    expect(result.getByText("Chicken breast added to Fridge · inventory updated")).toBeTruthy();
+
+    fireEvent.press(result.getByLabelText("Chicken breast, checked off")); // uncheck
+    await flushPending();
+    fireEvent.press(result.getByLabelText("Chicken breast, not checked off")); // re-check
+    await flushPending();
+
+    // The loop bar's headline still shows (a check-off happened this
+    // session), but with no Add action of any kind for a landed row.
+    expect(result.getByText("Chicken breast checked off · add it to the pantry?")).toBeTruthy();
+    expect(result.queryByLabelText("Add Chicken breast to inventory")).toBeNull();
+    expect(result.queryByText("Add when you're back online.")).toBeNull();
   });
 });

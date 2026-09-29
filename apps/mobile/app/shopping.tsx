@@ -112,6 +112,23 @@ function applyQueuedOverlay(list: ShoppingListDto): ShoppingListDto {
  * F10): it always needs the server (a no-`itemId` row's Add still saves
  * through S9), so it is refused inline ("Add when you're back online.")
  * for every row kind while offline, not just a tracked item's PURCHASE.
+ *
+ * ## Round 2 residuals (R1/R2/R3, F14)
+ *
+ * `load()` itself is also a connectivity signal now (R1): its success
+ * branch replays the queue whenever it resolves online with entries still
+ * pending, so reconnecting while this screen was unmounted is caught by
+ * the very next load rather than waiting for a flap or tap that might
+ * never come. `load()` also prunes the queue to whatever rowIds the fresh
+ * list actually has (R3): a row that disappeared between the tap and the
+ * next load stops being retried forever. `ShoppingCheckOffQueue.replay`
+ * itself now chains one collapsed follow-up walk after an in-flight one
+ * (R2), so an entry enqueued while a walk is already running is not
+ * stranded either. `landedRowIds` (F14) stops Add being reoffered for a
+ * row once it has landed this mount (an uncheck/re-check no longer shows
+ * an Add action for it), since the fixture's own per-row cache already
+ * makes a repeat Add a silent no-op and reoffering it only invited a
+ * redundant, misleading success toast.
  */
 export default function ShoppingScreen(): React.JSX.Element {
   const router = useRouter();
@@ -132,6 +149,16 @@ export default function ShoppingScreen(): React.JSX.Element {
   const [addKeyByRowId, setAddKeyByRowId] = useState<Readonly<Record<string, string>>>({});
   // Review F3: disables Add while its own request is in flight.
   const [addingRowId, setAddingRowId] = useState<string | null>(null);
+  // Review round 2, F14: rows whose Add has already landed this mount, so
+  // re-checking a row after Add succeeded (uncheck, re-check) never offers
+  // Add again (the fixture-level per-row cache in `addCheckedOffToInventory`
+  // already stops a second PURCHASE; this stops the redundant success toast
+  // that would otherwise fire from a second, harmless-but-misleading Add).
+  // Scoped to this mount only, same as `addKeyByRowId`/`addingRowId`: a
+  // remount can re-offer Add for an already-landed row, which would show
+  // one redundant toast but, per the fixture's own guard, never a second
+  // PURCHASE (flagged in the worker report, not a data-integrity risk).
+  const [landedRowIds, setLandedRowIds] = useState<ReadonlySet<string>>(new Set());
 
   const load = useCallback(() => {
     let cancelled = false;
@@ -139,8 +166,21 @@ export default function ShoppingScreen(): React.JSX.Element {
     void apiClient.getShoppingList().then(
       (result) => {
         if (!cancelled) {
+          // Review R3: a row that dropped out of a fresh list (removed, or
+          // simply no longer part of it) has nothing left to sync; retrying
+          // it forever would only ever fail. Pruned before the overlay so a
+          // gone row's stale entry never gets re-displayed either.
+          sharedShoppingQueue.pruneToKnownRows(new Set(result.rows.map((r) => r.rowId)));
           setList(applyQueuedOverlay(result));
           setQueuedRowIds(new Set(sharedShoppingQueue.queuedRowIds()));
+          // Review R1: a load is also a connectivity signal. Without this,
+          // an entry queued while this screen was unmounted, followed by
+          // reconnecting while still unmounted, sat until the next flap or
+          // tap once the screen came back, even though this very load just
+          // proved the client is online right now.
+          if (!apiClient.isOffline() && sharedShoppingQueue.size > 0) {
+            void replayQueue();
+          }
         }
       },
       () => {
@@ -192,7 +232,12 @@ export default function ShoppingScreen(): React.JSX.Element {
     }));
     if (checked) {
       setActiveLoopRowId(row.rowId);
-      setAddKeyByRowId((prev) => ({ ...prev, [row.rowId]: nextIdempotencyKey() }));
+      // No need to mint a fresh Add key for a row that already landed
+      // (F14): Add is never offered for it again, so the key would go
+      // unused.
+      if (!landedRowIds.has(row.rowId)) {
+        setAddKeyByRowId((prev) => ({ ...prev, [row.rowId]: nextIdempotencyKey() }));
+      }
     } else {
       setActiveLoopRowId((current) => (current === row.rowId ? null : current));
     }
@@ -280,6 +325,7 @@ export default function ShoppingScreen(): React.JSX.Element {
       () => {
         setAddingRowId(null);
         setActiveLoopRowId(null);
+        setLandedRowIds((prev) => new Set(prev).add(row.rowId));
         show(`${row.name} added to ${LOCATION_LABELS[row.defaultLocation]} · inventory updated`);
       },
       (error: unknown) => {
@@ -361,6 +407,7 @@ export default function ShoppingScreen(): React.JSX.Element {
           row={activeLoopRow}
           offline={offline}
           disabled={addingRowId === activeLoopRow.rowId}
+          landed={landedRowIds.has(activeLoopRow.rowId)}
           onAdd={() => handleLoopAdd(activeLoopRow)}
         />
       ) : null}
@@ -436,11 +483,13 @@ function LoopBar({
   row,
   offline,
   disabled,
+  landed,
   onAdd,
 }: {
   row: ShoppingRowDto;
   offline: boolean;
   disabled: boolean;
+  landed: boolean;
   onAdd: () => void;
 }): React.JSX.Element {
   const reducedMotion = useReducedMotion();
@@ -451,7 +500,7 @@ function LoopBar({
   return (
     <View style={styles.loop}>
       <Text style={styles.loopText}>{row.name} checked off · add it to the pantry?</Text>
-      {refusedInline ? (
+      {landed ? null : refusedInline ? (
         <Text style={styles.loopRefused}>Add when you're back online.</Text>
       ) : (
         <Pressable
