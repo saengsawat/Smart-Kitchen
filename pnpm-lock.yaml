@@ -145,6 +145,9 @@ importers:
 
   apps/api:
     dependencies:
+      '@smart-kitchen/adapters':
+        specifier: workspace:*
+        version: link:../../packages/adapters
       '@smart-kitchen/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts

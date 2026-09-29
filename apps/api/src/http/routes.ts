@@ -55,6 +55,7 @@ import {
 } from "../db/inventory/write-service.js";
 import { householdRoute, publicRoute, requireSession } from "./authorization.js";
 import { registerHouseholdRoutes, type HouseholdRouteDeps } from "./household-routes.js";
+import { registerProductRoutes, type ProductRouteDeps } from "./product-routes.js";
 import {
   ledgerErrorResponse,
   notVisibleResponse,
@@ -70,6 +71,12 @@ export interface RouteDeps {
    * root always supplies it.
    */
   readonly households?: Omit<HouseholdRouteDeps, "tenantSession">;
+  /**
+   * Product lookup (M2-T4a). Optional for the same reason: a suite that does
+   * not exercise it need not build a lookup port; the composition root always
+   * supplies it.
+   */
+  readonly products?: ProductRouteDeps;
 }
 
 /** Path parameters are `uuid` columns; anything else names no row. */
@@ -388,5 +395,9 @@ export function registerRoutes(app: FastifyInstance, deps: RouteDeps): void {
 
   if (deps.households !== undefined) {
     registerHouseholdRoutes(app, { ...deps.households, tenantSession: deps.tenantSession });
+  }
+
+  if (deps.products !== undefined) {
+    registerProductRoutes(app, deps.products);
   }
 }

@@ -1,0 +1,345 @@
+/**
+ * `GET /v1/products/{code}` over HTTP (M2-T4a (c)), without a database: the
+ * route reads no table, so the whole matrix runs on every machine.
+ *
+ * The lookup port is the real `OpenFoodFactsProductLookupPort` with a stub
+ * `fetch` that replays the responses recorded in `tests/fixtures/off/` (or
+ * simulates a failure). Nothing here opens a network connection.
+ */
+
+import { readFileSync } from "node:fs";
+import path from "node:path";
+import {
+  OpenFoodFactsProductLookupPort,
+  type FetchLike,
+  type ProductLookupPort,
+} from "@smart-kitchen/adapters";
+import {
+  productLookupPath,
+  type ApiErrorBodyDto,
+  type ProductLookupResultDto,
+  type ScreeningOutcomeDto,
+} from "@smart-kitchen/contracts";
+import type { FastifyInstance } from "fastify";
+import { afterEach, beforeAll, describe, expect, it } from "vitest";
+import { buildApp } from "../app.js";
+import type { TenantSessionRunner } from "../http/tenant-session.js";
+import {
+  createFixtureIdentityPort,
+  loadFixtureIdentityData,
+  REPO_ROOT,
+  type FixtureIdentityData,
+  type Session,
+} from "../identity/index.js";
+import { LOOKUP_ERROR_MESSAGE, type ProductScreeningStep } from "./lookup-service.js";
+
+const DEAN = "fixture.dean.chen";
+const MAYA = "fixture.maya.chen";
+const ADA = "fixture.owner.other";
+const NEW = "fixture.new.user";
+
+const PEANUT_BUTTER = "096619555505";
+const MISSING = "481293740567";
+
+interface Recorded {
+  readonly capture: { readonly httpStatus: number };
+  readonly body: unknown;
+}
+
+function recorded(file: string): { status: number; body: string } {
+  const parsed = JSON.parse(
+    readFileSync(path.join(REPO_ROOT, "tests", "fixtures", "off", file), "utf8"),
+  ) as Recorded;
+  return { status: parsed.capture.httpStatus, body: JSON.stringify(parsed.body) };
+}
+
+/** Replays a recording per code; anything else is OFF's miss for that code. */
+function replayingFetch(): { fetch: FetchLike; sent: string[] } {
+  const byCode: Record<string, string> = {
+    [PEANUT_BUTTER]: "full-peanut-butter.json",
+    "0096619555505": "full-peanut-butter.json",
+    [MISSING]: "not-found.json",
+  };
+  const sent: string[] = [];
+  const fetch: FetchLike = (url) => {
+    sent.push(url);
+    const code = /product\/(\d+)\.json/.exec(url)?.[1] ?? "";
+    const file = byCode[code];
+    const answer = file
+      ? recorded(file)
+      : {
+          status: 404,
+          body: JSON.stringify({ code, status: 0, status_verbose: "product not found" }),
+        };
+    return Promise.resolve({ status: answer.status, text: () => Promise.resolve(answer.body) });
+  };
+  return { fetch, sent };
+}
+
+let identityData: FixtureIdentityData;
+
+beforeAll(async () => {
+  identityData = await loadFixtureIdentityData();
+});
+
+const open: FastifyInstance[] = [];
+
+afterEach(async () => {
+  await Promise.all(open.splice(0).map((app) => app.close()));
+});
+
+interface Harness {
+  readonly app: FastifyInstance;
+  readonly logLines: string[];
+  readonly scoped: Session[];
+}
+
+function harness(lookup: ProductLookupPort, screening?: ProductScreeningStep): Harness {
+  const logLines: string[] = [];
+  const scoped: Session[] = [];
+  const refuse = <T>(session: Session): Promise<T> => {
+    scoped.push(session);
+    return Promise.reject(new Error("the product route must not open a tenant session"));
+  };
+  const tenantSession: TenantSessionRunner = { read: refuse, write: refuse };
+  const app = buildApp({
+    identity: createFixtureIdentityPort(identityData),
+    tenantSession,
+    products: { lookup, ...(screening === undefined ? {} : { screening }) },
+    logging: {
+      level: "info",
+      destination: {
+        write(line: string): void {
+          logLines.push(line);
+        },
+      },
+    },
+  });
+  open.push(app);
+  return { app, logLines, scoped };
+}
+
+async function get<T>(
+  app: FastifyInstance,
+  code: string,
+  token: string | undefined,
+): Promise<{ statusCode: number; body: T }> {
+  const response = await app.inject({
+    method: "GET",
+    url: productLookupPath(code),
+    headers: token === undefined ? {} : { authorization: `Bearer ${token}` },
+  });
+  return { statusCode: response.statusCode, body: response.json<T>() };
+}
+
+describe("HTTP matrix across the four fixture tokens", () => {
+  it("every household member gets the product; a caller with no household is 403; no or unknown token is 401", async () => {
+    const { fetch } = replayingFetch();
+    const { app, scoped } = harness(new OpenFoodFactsProductLookupPort({ fetch }));
+
+    for (const token of [DEAN, MAYA, ADA]) {
+      const answer = await get<ProductLookupResultDto>(app, PEANUT_BUTTER, token);
+      expect(answer.statusCode, token).toBe(200);
+      expect(answer.body.status, token).toBe("hit");
+    }
+    const newcomer = await get<ApiErrorBodyDto>(app, PEANUT_BUTTER, NEW);
+    expect(newcomer.statusCode).toBe(403);
+    expect(newcomer.body.error.code).toBe("FORBIDDEN");
+
+    for (const token of [undefined, "fixture.nobody"]) {
+      const denied = await get<ApiErrorBodyDto>(app, PEANUT_BUTTER, token);
+      expect(denied.statusCode, String(token)).toBe(401);
+      expect(denied.body.error.code).toBe("UNAUTHENTICATED");
+    }
+    expect(scoped).toEqual([]);
+  });
+});
+
+describe("response shape", () => {
+  it("a hit is a ScannedProductDto: identity by code, every label field ESTIMATED from OFF, screening NOT_RUN", async () => {
+    const { fetch } = replayingFetch();
+    const { app } = harness(new OpenFoodFactsProductLookupPort({ fetch }));
+    const { statusCode, body } = await get<ProductLookupResultDto>(app, PEANUT_BUTTER, DEAN);
+
+    expect(statusCode).toBe(200);
+    expect(body.status).toBe("hit");
+    if (body.status !== "hit") return;
+    expect(body.code).toBe(PEANUT_BUTTER);
+    const product = body.product;
+    expect(Object.keys(product).sort()).toEqual(
+      [
+        "bestBy",
+        "brand",
+        "codes",
+        "ingredientsText",
+        "name",
+        "nutrition",
+        "packageSize",
+        "productId",
+        "screening",
+      ].sort(),
+    );
+    expect(product.productId).toBe(PEANUT_BUTTER);
+    expect(product.codes).toEqual([{ codeType: "UPC_A", code: PEANUT_BUTTER }]);
+    expect(product.name.value).toBe("Organic Creamy Peanut Butter");
+    expect(product.packageSize?.value).toEqual({ qty: "793.8", unit: "g" });
+    expect(product.bestBy).toBeNull();
+    expect(product.screening).toEqual({
+      status: "NOT_RUN",
+      reason: "HOUSEHOLD_RESTRICTIONS_NOT_STORED",
+    });
+
+    const provenances = [
+      product.name.provenance,
+      product.brand?.provenance,
+      product.packageSize?.provenance,
+      product.ingredientsText?.provenance,
+      ...product.nutrition.map((n) => n.provenance),
+    ];
+    for (const p of provenances) {
+      expect(p).toEqual({
+        tier: "ESTIMATED",
+        source: "open-food-facts",
+        confidence: null,
+        recordedAt: "2026-09-29T13:02:12.000Z", // last_modified_t 1790686932
+      });
+    }
+    // Nothing on the wire claims Known Fact: the identity chip on S8 is the code match itself.
+    expect(JSON.stringify(body)).not.toContain("KNOWN_FACT");
+  });
+
+  it("an unknown code is not-found with the code kept", async () => {
+    const { fetch } = replayingFetch();
+    const { app } = harness(new OpenFoodFactsProductLookupPort({ fetch }));
+    const { statusCode, body } = await get<ProductLookupResultDto>(app, MISSING, MAYA);
+    expect(statusCode).toBe(200);
+    expect(body).toEqual({ status: "not-found", code: MISSING });
+  });
+
+  it("the screening step is where M2-T4 plugs in: whatever it decides is what the response carries", async () => {
+    const { fetch } = replayingFetch();
+    const seen: string[] = [];
+    const ran: ScreeningOutcomeDto = {
+      status: "RUN",
+      result: {
+        subjectKind: "PRODUCT",
+        subjectId: PEANUT_BUTTER,
+        verdict: "BLOCKED",
+        members: [],
+        evidence: [],
+        unknowns: [],
+        warnings: [],
+      },
+    };
+    const step: ProductScreeningStep = {
+      screen: (product, session) => {
+        seen.push(`${product.id}:${session.householdId}`);
+        return Promise.resolve(ran);
+      },
+    };
+    const { app } = harness(new OpenFoodFactsProductLookupPort({ fetch }), step);
+    const { body } = await get<ProductLookupResultDto>(app, PEANUT_BUTTER, DEAN);
+    expect(body.status === "hit" && body.product.screening).toEqual(ran);
+    expect(seen).toEqual([`${PEANUT_BUTTER}:f1c70000-0000-4000-8000-000000000001`]);
+  });
+});
+
+describe("source failures are error, never not-found", () => {
+  it("a 429 from OFF answers error", async () => {
+    const fetch: FetchLike = () =>
+      Promise.resolve({ status: 429, text: () => Promise.resolve("Too Many Requests") });
+    const { app } = harness(new OpenFoodFactsProductLookupPort({ fetch }));
+    const { statusCode, body } = await get<ProductLookupResultDto>(app, PEANUT_BUTTER, DEAN);
+    expect(statusCode).toBe(200);
+    expect(body).toEqual({ status: "error", code: PEANUT_BUTTER, message: LOOKUP_ERROR_MESSAGE });
+  });
+
+  it("a timeout answers error", async () => {
+    const fetch: FetchLike = (_url, init) =>
+      new Promise((_resolve, reject) => {
+        init.signal.addEventListener("abort", () => {
+          reject(new DOMException("aborted", "AbortError"));
+        });
+      });
+    const { app, logLines } = harness(new OpenFoodFactsProductLookupPort({ fetch, timeoutMs: 20 }));
+    const { body } = await get<ProductLookupResultDto>(app, PEANUT_BUTTER, DEAN);
+    expect(body).toEqual({ status: "error", code: PEANUT_BUTTER, message: LOOKUP_ERROR_MESSAGE });
+    expect(logLines.join("\n")).toContain('"lookupError":"UPSTREAM_TIMEOUT"');
+  });
+
+  it("a 500 and a network failure answer error", async () => {
+    for (const fetch of [
+      (() => Promise.resolve({ status: 500, text: () => Promise.resolve("oops") })) as FetchLike,
+      (() => Promise.reject(new TypeError("fetch failed"))) as FetchLike,
+    ]) {
+      const { app } = harness(new OpenFoodFactsProductLookupPort({ fetch }));
+      const { body } = await get<ProductLookupResultDto>(app, PEANUT_BUTTER, DEAN);
+      expect(body.status).toBe("error");
+    }
+  });
+});
+
+describe("codes that never reach the source", () => {
+  it.each(["4011", "94011", "3082"])(
+    "PLU %s is 400 PLU_NOT_SUPPORTED and nothing is sent",
+    async (plu) => {
+      const { fetch, sent } = replayingFetch();
+      const { app } = harness(new OpenFoodFactsProductLookupPort({ fetch }));
+      const { statusCode, body } = await get<ApiErrorBodyDto>(app, plu, DEAN);
+      expect(statusCode).toBe(400);
+      expect(body.error.code).toBe("PLU_NOT_SUPPORTED");
+      expect(sent).toEqual([]);
+    },
+  );
+
+  it.each([
+    ["letters", "abc"],
+    ["too short", "123"],
+    ["an odd length", "123456789"],
+    ["a bad check digit", "096619555504"],
+    ["15 digits", "000096619555505"],
+    ["a case-level GTIN-14", "10096619555502"],
+    ["a sign", "-96619555505"],
+  ])("%s is 400 BAD_REQUEST and nothing is sent", async (_label, code) => {
+    const { fetch, sent } = replayingFetch();
+    const { app } = harness(new OpenFoodFactsProductLookupPort({ fetch }));
+    const { statusCode, body } = await get<ApiErrorBodyDto>(app, code, DEAN);
+    expect(statusCode).toBe(400);
+    expect(body.error.code).toBe("BAD_REQUEST");
+    expect(sent).toEqual([]);
+  });
+
+  it("a GTIN-14 with indicator 0 is looked up as its EAN-13, and the response echoes the code asked", async () => {
+    const { fetch, sent } = replayingFetch();
+    const { app } = harness(new OpenFoodFactsProductLookupPort({ fetch }));
+    const { body } = await get<ProductLookupResultDto>(app, "00096619555505", DEAN);
+    expect(sent).toHaveLength(1);
+    expect(sent[0]).toContain("/api/v2/product/0096619555505.json");
+    expect(body.status).toBe("hit");
+    expect(body.code).toBe("00096619555505");
+  });
+
+  it("an 8 and a 13 digit code are accepted", async () => {
+    const { fetch, sent } = replayingFetch();
+    const { app } = harness(new OpenFoodFactsProductLookupPort({ fetch }));
+    expect((await get<ProductLookupResultDto>(app, "96385074", DEAN)).statusCode).toBe(200);
+    expect((await get<ProductLookupResultDto>(app, "3017620422003", DEAN)).statusCode).toBe(200);
+    expect(sent).toHaveLength(2);
+  });
+});
+
+describe("logging", () => {
+  it("logs the code and the outcome, never the response body or the token", async () => {
+    const { fetch } = replayingFetch();
+    const { app, logLines } = harness(new OpenFoodFactsProductLookupPort({ fetch }));
+    await get<ProductLookupResultDto>(app, PEANUT_BUTTER, DEAN);
+    const lookupLines = logLines.filter((line) => line.includes('"product.lookup"'));
+    expect(lookupLines).toHaveLength(1);
+    expect(lookupLines[0]).toContain(`"productCode":"${PEANUT_BUTTER}"`);
+    expect(lookupLines[0]).toContain('"outcome":"hit"');
+    const all = logLines.join("\n");
+    expect(all).not.toContain("Dry roasted organic peanuts");
+    expect(all).not.toContain("Organic Creamy Peanut Butter");
+    expect(all).not.toContain(DEAN);
+  });
+});

@@ -19,6 +19,7 @@
  * No port is bound here. `server.ts` owns the process.
  */
 
+import { OpenFoodFactsProductLookupPort, offConfigFromEnvironment } from "@smart-kitchen/adapters";
 import type { ApiErrorBodyDto } from "@smart-kitchen/contracts";
 import Fastify, { type FastifyError, type FastifyInstance } from "fastify";
 import { Pool } from "pg";
@@ -50,6 +51,8 @@ export interface AppDependencies {
   readonly tenantSession: TenantSessionRunner;
   /** Household endpoints (M2-T3); the composition root always supplies them. */
   readonly households?: RouteDeps["households"];
+  /** Product lookup (M2-T4a); the composition root always supplies it. */
+  readonly products?: RouteDeps["products"];
   readonly logging?: LoggingOptions;
   /** Correlation-id generator; defaults to the shared UUIDv7 generator. */
   readonly correlationId?: () => string;
@@ -113,6 +116,7 @@ export function buildApp(deps: AppDependencies): FastifyInstance {
   registerRoutes(app, {
     tenantSession: deps.tenantSession,
     ...(deps.households === undefined ? {} : { households: deps.households }),
+    ...(deps.products === undefined ? {} : { products: deps.products }),
   });
 
   return app;
@@ -147,6 +151,13 @@ export async function createAppFromEnvironment(env: EnvironmentLike): Promise<Ru
     );
   }
   const joinCodes = createJoinCodeHasher(resolveJoinCodePepper(env));
+  // M2-T4a: live barcode lookups go to Open Food Facts from here and only
+  // from here (D-025: server side only, the phone never calls OFF). A bad
+  // SK_OFF_BASE_URL or SK_OFF_USER_AGENT refuses to start, like a bad pepper.
+  const offConfig = offConfigFromEnvironment({
+    SK_OFF_BASE_URL: env["SK_OFF_BASE_URL"],
+    SK_OFF_USER_AGENT: env["SK_OFF_USER_AGENT"],
+  });
 
   const pool = new Pool({ connectionString });
   // M2-T3: memberships come from the database, so a household created or
@@ -162,6 +173,7 @@ export async function createAppFromEnvironment(env: EnvironmentLike): Promise<Ru
       joinCodes,
       joinLimiter: createJoinAttemptLimiter(),
     },
+    products: { lookup: new OpenFoodFactsProductLookupPort(offConfig) },
   });
   return { app, pool };
 }
