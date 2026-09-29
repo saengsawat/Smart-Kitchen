@@ -172,6 +172,38 @@ M2-T2 also added the endpoints behind those fixture-only writes:
 
 Unset the variable (or leave it unset) to go back to the fixture client.
 
+## Running barcode lookups against the API (M2-T4a)
+
+The API answers `GET /v1/products/{code}` by asking Open Food Facts, server
+side (D-025). The phone never talks to OFF. Until M3-T4e wires
+`HttpApiClient.lookupProduct` to that endpoint, the app's scan screen still
+uses the four fixture barcodes, so try the endpoint itself with curl:
+
+```powershell
+# API running as in CONTRIBUTING.md, with SK_IDENTITY=fixture and DATABASE_URL.
+# Optional: $env:SK_OFF_BASE_URL = "https://world.openfoodfacts.net"  # OFF staging
+curl.exe -s -H "Authorization: Bearer fixture.dean.chen" http://localhost:4000/v1/products/3017620422003
+```
+
+What comes back:
+
+- `hit` with the product: identity is the barcode match; every label field
+  (name, brand, size, nutrition, ingredients) is Estimated, source
+  `open-food-facts`; `screening` is `{"status":"NOT_RUN"}` because the server
+  does not store the household's allergies yet (M2-T4). S8 renders that as
+  "Allergens not checked", never as a verdict.
+- `not-found` when OFF does not know the code; the code is kept.
+- `error` when OFF could not answer (rate limited, down, slow, unreadable).
+  That is never reported as `not-found`.
+- 400 `PLU_NOT_SUPPORTED` for a 4 or 5 digit produce code: those are never
+  sent to OFF.
+
+OFF allows 15 product reads per minute per IP; the API keeps itself to 12
+and caches answers in memory for 30 minutes (misses for 5), so repeat scans
+are free. After a 429 or 503 from OFF it sends nothing for a minute and
+answers `error`. `SK_OFF_BASE_URL` and `SK_OFF_USER_AGENT` are in
+`.env.example`.
+
 ## Typecheck / lint / test
 
 These run as part of the root `pnpm lint` / `pnpm typecheck` / `pnpm test`

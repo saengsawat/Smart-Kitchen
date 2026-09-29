@@ -23,6 +23,9 @@ import {
   evidenceLine,
   evidenceTier,
   extraWarningLines,
+  ranScreeningResult,
+  SCAN_SHEET_NOT_RUN_GLYPH,
+  SCAN_SHEET_NOT_RUN_LINE,
   unknownLine,
   type MemberNameResolver,
 } from "../../src/scan/allergen-copy";
@@ -201,13 +204,17 @@ export default function ScanScreen(): React.JSX.Element {
     }
     setAddError(null);
     try {
-      const amountMicros = packageQuantityMicros(count, product.packageSize.value.qty);
+      // M2-T4a: a source may give no package size that parses cleanly (never
+      // guessed). Then the item is recorded as the number of packages the
+      // user chose, in "each", which is exactly what they counted.
+      const packageSize = product.packageSize;
+      const amountMicros = packageQuantityMicros(count, packageSize?.value.qty ?? "1");
       const summary = await apiClient.createItem({
         idempotencyKey: nextIdempotencyKey(),
         source: "BARCODE",
         displayName: product.name.value,
         storageLocation: location,
-        unit: normalizePackageUnit(product.packageSize.value.unit),
+        unit: packageSize ? normalizePackageUnit(packageSize.value.unit) : "each",
         amount: microsToAmountText(amountMicros),
         quantityProvenance: {
           tier: "KNOWN_FACT",
@@ -462,10 +469,14 @@ function ConfirmSheet({
   // disabled the whole time the household hasn't loaded — whether that's
   // still in flight or has failed outright.
   const canAdd = householdLoaded && !householdError;
-  const blocked = addCtaIsBlocked(product.screening);
-  const extraWarnings = extraWarningLines(product.screening, resolveMemberName);
+  // M2-T4a: `null` when the server says screening did not run. The verdict
+  // lines below render only from a result the server actually produced.
+  const result = ranScreeningResult(product.screening);
+  const blocked = result !== null && addCtaIsBlocked(result);
+  const extraWarnings = result === null ? [] : extraWarningLines(result, resolveMemberName);
   const nutrition = product.nutrition[0];
-  const { evidence, unknowns } = product.screening;
+  const evidence = result?.evidence ?? [];
+  const unknowns = result?.unknowns ?? [];
 
   return (
     <View style={styles.screen}>
@@ -483,11 +494,32 @@ function ConfirmSheet({
           </Text>
           <Text style={styles.identityCaption}>product identity · barcode match</Text>
         </View>
-        <Text style={styles.productName}>{product.name.value}</Text>
-        <Text style={styles.productMeta}>
-          {product.brand?.value ? `${product.brand.value} · ` : ""}
-          {trimAmountText(product.packageSize.value.qty)} {product.packageSize.value.unit}
-        </Text>
+        {/* M2-T4a: every label field wears its own tier chip (P2, copy-deck
+            §4). From the fixture corpus that reads "✓ Fact"; from Open Food
+            Facts every field is Estimated (D-025), while the identity chip
+            above stays Known Fact because it is the code match itself. */}
+        <View style={styles.fieldRow}>
+          <Text style={styles.productName}>{product.name.value}</Text>
+          <TierChip tier={product.name.provenance.tier} />
+        </View>
+        {product.brand?.value || product.packageSize ? (
+          <View style={styles.fieldRow}>
+            {product.brand?.value ? (
+              <>
+                <Text style={styles.productMeta}>{product.brand.value}</Text>
+                <TierChip tier={product.brand.provenance.tier} />
+              </>
+            ) : null}
+            {product.packageSize ? (
+              <>
+                <Text style={styles.productMeta}>
+                  {trimAmountText(product.packageSize.value.qty)} {product.packageSize.value.unit}
+                </Text>
+                <TierChip tier={product.packageSize.provenance.tier} />
+              </>
+            ) : null}
+          </View>
+        ) : null}
 
         {nutrition ? (
           <>
@@ -542,11 +574,23 @@ function ConfirmSheet({
                 <Text style={styles.tryAgainButtonText}>Try again</Text>
               </Pressable>
             </View>
+          ) : result === null ? (
+            // M2-T4a: copy-deck §3.3 NOT_RUN, verbatim, neutral glyph and ink,
+            // never the allergen red or amber and never green. It names no
+            // member, so it does not wait for the household (the loading line
+            // would claim a check is in progress, which is not true). Add
+            // keeps its normal style and its normal household gate.
+            <View style={styles.allergenLineRow} accessibilityLabel={SCAN_SHEET_NOT_RUN_LINE}>
+              <Text style={styles.notRunGlyph} importantForAccessibility="no">
+                {SCAN_SHEET_NOT_RUN_GLYPH}
+              </Text>
+              <Text style={styles.allergenLine}>{SCAN_SHEET_NOT_RUN_LINE}</Text>
+            </View>
           ) : !householdLoaded ? (
             <Text style={styles.allergenLoadingText}>
               Checking allergen data for your household.
             </Text>
-          ) : product.screening.verdict === "ALLOWED" ? (
+          ) : result.verdict === "ALLOWED" ? (
             <Text style={styles.allergenLine} accessibilityLabel={allowedLine()}>
               {allowedLine()}
             </Text>
@@ -679,6 +723,15 @@ function ConfirmSheet({
         </Pressable>
       </View>
     </View>
+  );
+}
+
+/** One field's compact tier chip, with the full tier name as its accessibility label (copy-deck §4). */
+function TierChip({ tier }: { tier: ProvenanceTierDto }): React.JSX.Element {
+  return (
+    <Text style={styles.provChipSmall} accessibilityLabel={chipAccessibilityLabel(tier)}>
+      {ROW_CHIP_TEXT[tier]}
+    </Text>
   );
 }
 
@@ -940,6 +993,8 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   allergenLineBlocked: { color: colors.danger, fontWeight: "700" },
+  notRunGlyph: { fontSize: 13, lineHeight: 18, color: colors.ink2, fontFamily: fontFamily.body },
+  fieldRow: { flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: spacing.sm },
   allergenLineUnknown: { color: colors.amber, fontWeight: "700" },
   allergenLoadingText: { fontSize: 13, color: colors.ink2, fontFamily: fontFamily.body },
   allergenErrorBox: {

@@ -36,6 +36,7 @@ import {
 import { flushPending } from "../test-support/flush";
 import { ToastHost, ToastProvider } from "../inventory/Toast";
 import { colors } from "../design/tokens";
+import type { ProductLookupResultDto, ScannedProductDto } from "@smart-kitchen/contracts";
 import { apiClient, FIXTURE_JOIN_CODE } from "../api/client";
 
 let pushed: unknown[] = [];
@@ -397,4 +398,165 @@ describe("S8 · scan confirm sheet — engine-generated verdicts (review F1/F2/F
     expect(created?.quantity.amount).toBe("1.500000"); // exact six-place decimal text, never re-derived through a float
     expect(created?.quantity.micros).toBe("1500000");
   });
+});
+
+// ---------------------------------------------------------------------------
+// M2-T4a: the NOT_RUN row. The product below is a hand-built literal in the
+// exact shape `GET /v1/products/{code}` answers for the recorded Open Food
+// Facts peanut-butter response (apps/api/src/products/product-routes.test.ts
+// asserts that shape against the real adapter). It is injected through
+// `apiClient.lookupProduct` because the HTTP client is not wired to the
+// endpoint until M3-T4e.
+// ---------------------------------------------------------------------------
+
+const NOT_RUN_LINE =
+  "Allergens not checked · this household's allergies are not on the server yet · read the label · not a safety guarantee";
+
+const OFF_PROVENANCE = {
+  tier: "ESTIMATED",
+  source: "open-food-facts",
+  confidence: null,
+  recordedAt: "2026-09-29T13:02:12.000Z",
+} as const;
+
+function notRunProduct(withPackageSize: boolean): ScannedProductDto {
+  return {
+    productId: "096619555505",
+    codes: [{ codeType: "UPC_A", code: "096619555505" }],
+    name: { value: "Organic Creamy Peanut Butter", provenance: OFF_PROVENANCE },
+    brand: { value: "Kirkland", provenance: OFF_PROVENANCE },
+    ...(withPackageSize
+      ? { packageSize: { value: { qty: "793.8", unit: "g" }, provenance: OFF_PROVENANCE } }
+      : {}),
+    nutrition: [
+      {
+        basis: "PER_100G",
+        values: { calories: 562.5, proteinG: 12.5, carbsG: 10.94, fatG: 23.44 },
+        provenance: OFF_PROVENANCE,
+      },
+    ],
+    ingredientsText: { value: "Dry roasted organic peanuts, sea salt", provenance: OFF_PROVENANCE },
+    bestBy: null,
+    screening: { status: "NOT_RUN", reason: "HOUSEHOLD_RESTRICTIONS_NOT_STORED" },
+  };
+}
+
+async function withLookup(product: ScannedProductDto, run: () => Promise<void>): Promise<void> {
+  const original = apiClient.lookupProduct.bind(apiClient);
+  apiClient.lookupProduct = (code: string) => {
+    const answer: ProductLookupResultDto = { status: "hit", code, product };
+    return Promise.resolve(answer);
+  };
+  try {
+    await run();
+  } finally {
+    apiClient.lookupProduct = original;
+  }
+}
+
+describe("S8 · NOT_RUN screening (M2-T4a, copy-deck §3.3)", () => {
+  it("renders the §3.3 NOT_RUN string verbatim, in neutral ink, with no verdict line", async () => {
+    await withLookup(notRunProduct(true), async () => {
+      const result = await renderScreen();
+      await lookUp(result, "096619555505");
+
+      const line = result.getByText(NOT_RUN_LINE);
+      const lineColor = flattenStyle(line.props.style).color;
+      expect(lineColor).toBe(colors.ink);
+      for (const verdictColour of [colors.danger, colors.amber, colors.green, colors.rose]) {
+        expect(lineColor).not.toBe(verdictColour);
+      }
+      const glyph = result.getByText("○");
+      expect(flattenStyle(glyph.props.style).color).toBe(colors.ink2);
+
+      // Nothing on the sheet reads as a verdict.
+      expect(result.queryByText(/blocked for/)).toBeNull();
+      expect(result.queryByText(/No known household match/)).toBeNull();
+      expect(result.queryByText(/not blocked, not cleared/)).toBeNull();
+      expect(result.queryByText(/unresolved/)).toBeNull();
+      expect(result.queryByText(/Checking allergen data/)).toBeNull();
+      expect(result.queryByText(/stated by the manufacturer/)).toBeNull();
+      expect(result.queryByText("✓")).toBeNull();
+    });
+  });
+
+  it("keeps Add present, enabled once the household loads, and in its normal (not blocked) style", async () => {
+    await withLookup(notRunProduct(true), async () => {
+      const result = await renderScreen();
+      await lookUp(result, "096619555505");
+
+      const add = result.getByLabelText("Add 1 to Fridge");
+      const props = add.props as { accessibilityState?: { disabled?: boolean }; style: unknown };
+      expect(props.accessibilityState?.disabled).toBe(false);
+      expect(flattenStyle(props.style).backgroundColor).toBe(colors.brandDeep);
+    });
+  });
+
+  it("chips every label field Estimated while identity stays Known fact", async () => {
+    await withLookup(notRunProduct(true), async () => {
+      const result = await renderScreen();
+      await lookUp(result, "096619555505");
+
+      expect(result.getByText("✓ Known fact")).toBeTruthy();
+      // name, brand, package size, nutrition profile
+      expect(result.getAllByText("≈ Est.")).toHaveLength(4);
+      expect(result.queryByText("✓ Fact")).toBeNull();
+    });
+  });
+
+  it("does not wait for the household to show the row, since it names nobody and claims no check", async () => {
+    const originalGetOnboardingState = apiClient.getOnboardingState.bind(apiClient);
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    apiClient.getOnboardingState = async () => {
+      await gate;
+      return originalGetOnboardingState();
+    };
+    try {
+      await withLookup(notRunProduct(true), async () => {
+        const result = await renderScreen();
+        await lookUp(result, "096619555505");
+        expect(result.getByText(NOT_RUN_LINE)).toBeTruthy();
+        expect(result.queryByText("Checking allergen data for your household.")).toBeNull();
+        // Add keeps its household gate, unchanged.
+        const add = result.getByLabelText("Add 1 to Fridge");
+        const props = add.props as { accessibilityState?: { disabled?: boolean } };
+        expect(props.accessibilityState?.disabled).toBe(true);
+        release();
+        await flushPending();
+      });
+    } finally {
+      apiClient.getOnboardingState = originalGetOnboardingState;
+    }
+  });
+
+  it("a product with no package size adds the chosen count in each", async () => {
+    await withLookup(notRunProduct(false), async () => {
+      const result = await renderScreen();
+      await lookUp(result, "096619555505");
+      expect(result.queryByText(/793\.8/)).toBeNull();
+
+      fireEvent.press(result.getByLabelText("Increase quantity"));
+      fireEvent.press(result.getByLabelText("Add 2 to Fridge"));
+      await flushPending();
+
+      const items = await apiClient.getInventoryItems();
+      const created = items.find((item) => item.displayName === "Organic Creamy Peanut Butter");
+      expect(created?.quantity.amount).toBe("2");
+      expect(created?.quantity.unit).toBe("each");
+    });
+  });
+
+  it.each(["060000100810", "060000100070", "060000100100"])(
+    "engine-run fixture %s never shows the NOT_RUN row (the client never decides a check did not run)",
+    async (code) => {
+      const result = await renderScreen();
+      await lookUp(result, code);
+      expect(result.getByText("✓ Known fact")).toBeTruthy();
+      expect(result.queryByText(NOT_RUN_LINE)).toBeNull();
+      expect(result.queryByText("○")).toBeNull();
+    },
+  );
 });
