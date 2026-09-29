@@ -20,23 +20,22 @@
  *
  * `itemId` references the exact fixture item ids `src/inventory/
  * fixture-household.ts` already seeds (`fixture-item-chicken`,
- * `fixture-item-rice`, `fixture-item-olive-oil`), so a chicken-breast Add
- * lands a PURCHASE on the same item S4/S5 show (BACKLOG.md M3-T5 Objective
- * (h): "the same item ids S4 shows so the PURCHASE lands on the real
- * fixture item").
+ * `fixture-item-rice`), so a chicken-breast Add lands a PURCHASE on the same
+ * item S4/S5 show (BACKLOG.md M3-T5 Objective (h): "the same item ids S4
+ * shows so the PURCHASE lands on the real fixture item").
  *
- * **Deviation, flagged in the worker report:** `row-olive-oil`'s `unit` is
- * `"each"`, not the real `fixture-item-olive-oil`'s `"bottle"` (a unit the
- * M1-T3 domain registry does not resolve at all — `lookupUnit("bottle")`
- * fails, which would break the gap-drift test's `neededQuantity` call for
- * every row, since a registry-resolvable unit is required there). This is
- * safe only because the row arrives `status: "done"` and this ticket never
- * offers Add for a row that starts already checked off (see
- * `apps/mobile/app/shopping.tsx`'s doc comment on the close-the-loop prompt),
- * so no code path ever calls `addCheckedOffToInventory("row-olive-oil", ...)`
- * with this row's unit. If a later ticket makes Add reachable for a
- * pre-done row, this must change to `"bottle"` plus a registry follow-up
- * (or the row must stop naming a real `itemId`).
+ * **`row-olive-oil` has no `itemId` (review round 1, F7).** It originally
+ * named `fixture-item-olive-oil` with `needMicros === haveMicros` (implying
+ * "already fully stocked, nothing to buy", `buyMicros: "0"`) — wrong framing
+ * for a row that represents a gap Dean already went and bought: every other
+ * row's `buyMicros` is a fixed snapshot of the gap that existed at list-load
+ * time, unaffected by its own `status`, and olive oil's real inventory unit
+ * (`"bottle"`) is not a domain-registry unit at all (`lookupUnit("bottle")`
+ * fails), which would break the gap-drift test's `neededQuantity` call.
+ * `haveMicros: "0"`, `buyMicros: "1000000"` now matches every other row's
+ * convention, and `itemId: null` means an uncheck/re-check on this row opens
+ * S9 prefilled (like broccoli/garlic/granola/paper towels), never a
+ * `ZeroDeltaError` from appending a zero-amount `PURCHASE`.
  */
 
 import type { ShoppingListDto, ShoppingMemberDto, ShoppingRowDto } from "@smart-kitchen/contracts";

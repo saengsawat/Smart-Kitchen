@@ -96,11 +96,11 @@
         "displayName": "Dean Chen"
       },
       "needMicros": "1000000",
-      "haveMicros": "1000000",
-      "haveTier": "KNOWN_FACT",
-      "buyMicros": "0",
+      "haveMicros": "0",
+      "haveTier": null,
+      "buyMicros": "1000000",
       "unit": "each",
-      "itemId": "fixture-item-olive-oil",
+      "itemId": null,
       "status": "done",
       "checkedOffBy": "DC",
       "defaultLocation": "PANTRY"
