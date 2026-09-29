@@ -1024,6 +1024,77 @@ describe.skipIf(!dbTestsEnabled)(SUITE, () => {
     });
   });
 
+  describe("the remaining cells of the matrix (run last: they move sessions)", () => {
+    it("rotation across the four tokens: owners of their current household only", async () => {
+      const chenLiveBefore = await db.pool.query<{ code_hash: string }>(
+        "SELECT code_hash FROM household_join_codes WHERE household_id = $1 AND revoked_at IS NULL",
+        [chenId],
+      );
+      const ada = await call<RotateJoinCodeResponseDto>(app, "POST", HOUSEHOLD_JOIN_CODE_PATH, ADA);
+      expect(ada.statusCode).toBe(200);
+      remember(ada.body.joinCode.code);
+      // Ada's rotation issued Okafor's code and left Chen's live code alone.
+      expect(
+        await count(
+          "SELECT count(*)::text AS count FROM household_join_codes WHERE household_id = $1 AND revoked_at IS NULL",
+          [okaforId],
+        ),
+      ).toBe(1);
+      const chenLiveAfter = await db.pool.query<{ code_hash: string }>(
+        "SELECT code_hash FROM household_join_codes WHERE household_id = $1 AND revoked_at IS NULL",
+        [chenId],
+      );
+      expect(chenLiveAfter.rows).toEqual(chenLiveBefore.rows);
+
+      expect((await call<unknown>(app, "POST", HOUSEHOLD_JOIN_CODE_PATH, MAYA)).statusCode).toBe(
+        403,
+      );
+      expect((await call<unknown>(app, "POST", HOUSEHOLD_JOIN_CODE_PATH, NEW)).statusCode).toBe(
+        403,
+      );
+      const dean = await call<RotateJoinCodeResponseDto>(
+        app,
+        "POST",
+        HOUSEHOLD_JOIN_CODE_PATH,
+        DEAN,
+      );
+      expect(dean.statusCode).toBe(200);
+      currentChenCode = remember(dean.body.joinCode.code);
+    });
+
+    it("an owner who creates a second household runs as it next, and still lists both", async () => {
+      const created = await call<CreateHouseholdResponseDto>(app, "POST", HOUSEHOLDS_PATH, ADA, {
+        name: "Okafor cabin",
+      });
+      expect(created.statusCode).toBe(201);
+      remember(created.body.joinCode.code);
+      const cabinId = created.body.household.householdId;
+
+      const me = await call<HouseholdSummaryDto>(app, "GET", HOUSEHOLD_ME_PATH, ADA);
+      expect(me.body.householdId).toBe(cabinId);
+      const mine = await call<HouseholdMembershipsResponseDto>(
+        app,
+        "GET",
+        HOUSEHOLD_MINE_PATH,
+        ADA,
+      );
+      expect(mine.body.households.map((h) => [h.householdId, h.role, h.current])).toEqual([
+        [cabinId, "owner", true],
+        [okaforId, "owner", false],
+      ]);
+      // The cabin is empty: the Okafor household's item stays in the Okafor household.
+      const items = await call<InventoryItemsResponseDto>(app, "GET", INVENTORY_ITEMS_PATH, ADA);
+      expect(items.body.items).toEqual([]);
+    });
+
+    it("Dean and Maya are unaffected by everyone else's moves", async () => {
+      for (const token of [DEAN, MAYA]) {
+        const me = await call<HouseholdSummaryDto>(app, "GET", HOUSEHOLD_ME_PATH, token);
+        expect(me.body.householdId, token).toBe(chenId);
+      }
+    });
+  });
+
   describe("no code in any log line", () => {
     it("never logs a plaintext code or a code hash", () => {
       expect(issuedCodes.length).toBeGreaterThanOrEqual(3);
