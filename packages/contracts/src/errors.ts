@@ -41,6 +41,17 @@ export const API_ERROR_CODES = [
   "UNDO_NOT_POSSIBLE",
   /** Anything else. Never carries internal detail. */
   "INTERNAL",
+  /**
+   * 404 from `POST /v1/households/join` (M2-T3). One code, one message, for a
+   * code that never existed, one that was rotated away, and one that is not
+   * even well formed: telling them apart would tell a guesser which guesses
+   * were close.
+   */
+  "JOIN_CODE_INVALID",
+  /** 429: too many attempts in the window (M2-T3: 10 join attempts per user per 10 minutes). */
+  "RATE_LIMITED",
+  /** 403 from an owner-only household action attempted by a member (M2-T3: rotating the join code). */
+  "NOT_OWNER",
 ] as const;
 
 export type ApiErrorCode = (typeof API_ERROR_CODES)[number];

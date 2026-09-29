@@ -98,3 +98,105 @@ export interface HouseholdDto {
 export interface OnboardingStateDto {
   readonly household: HouseholdDto | null;
 }
+
+// ---------------------------------------------------------------------------
+// M2-T3: household endpoints (create, join by code, members, rotate code).
+//
+// Three rules shape these types.
+//
+// 1. **No allergy data on the wire yet.** {@link MemberDto} carries
+//    `restrictions` and `noneConfirmed` as required fields, and the server has
+//    nowhere to read them from until the household permissions decision (A3)
+//    lands with M2-T4. Returning `[]` and `false` would be a lie a screen
+//    could mistake for "no known allergies", so the server answers the
+//    smaller {@link HouseholdMemberSummaryDto} instead, which simply does not
+//    have those fields. `MemberDto` stays as the client's onboarding type.
+// 2. **Initials, not names, and never an email.** A member is shown on the
+//    wire as display initials and a role. `memberId` is the membership's own
+//    id, never the user's id.
+// 3. **The join code travels once.** The plaintext code is in the response
+//    that created it (household creation, rotation) and nowhere else; the
+//    server stores only a hash and cannot show it again. An owner who has
+//    lost it rotates it.
+// ---------------------------------------------------------------------------
+
+/** Longest household name the server accepts, after trimming, in characters. */
+export const HOUSEHOLD_NAME_MAX_LENGTH = 60;
+
+/** One member, as the household endpoints report it (see rule 1 above). */
+export interface HouseholdMemberSummaryDto {
+  /** The membership's id. Not a user id. */
+  readonly memberId: string;
+  /** Two-letter-style initials for the member chip; `"?"` when no name is on file. */
+  readonly displayInitials: string;
+  readonly role: HouseholdRoleDto;
+  /** True on the caller's own row, so a screen can say "you" without knowing a user id. */
+  readonly isCaller: boolean;
+}
+
+/** A household with its members, for S1/S12 (no restrictions until M2-T4). */
+export interface HouseholdSummaryDto {
+  readonly householdId: string;
+  readonly name: string;
+  /** Owners first, then members, each in the order they joined. */
+  readonly members: readonly HouseholdMemberSummaryDto[];
+}
+
+/** A freshly issued join code. The only time the plaintext is ever sent. */
+export interface JoinCodeDto {
+  /** `XXXX-NNN`, letters without I/O and digits 2 to 9. */
+  readonly code: string;
+  readonly issuedAt: string;
+}
+
+/** Body of `POST /v1/households`. */
+export interface CreateHouseholdRequestDto {
+  /** Trimmed by the server; 1 to {@link HOUSEHOLD_NAME_MAX_LENGTH} characters after trimming. */
+  readonly name: string;
+}
+
+/** Response of `POST /v1/households`: the new household (caller as owner) and its first code. */
+export interface CreateHouseholdResponseDto {
+  readonly household: HouseholdSummaryDto;
+  readonly joinCode: JoinCodeDto;
+}
+
+/** Body of `POST /v1/households/join`. */
+export interface JoinHouseholdRequestDto {
+  /** As typed; the server trims it and ignores letter case. */
+  readonly code: string;
+}
+
+/** Response of `POST /v1/households/join`. */
+export interface JoinHouseholdResponseDto {
+  readonly household: HouseholdSummaryDto;
+  /** True when the caller already belonged, so nothing was added (idempotent join). */
+  readonly alreadyMember: boolean;
+}
+
+/** One household the caller belongs to, for `GET /v1/households/mine`. */
+export interface HouseholdMembershipDto {
+  readonly householdId: string;
+  readonly name: string;
+  readonly role: HouseholdRoleDto;
+  readonly joinedAt: string;
+  /** True on the household requests currently run as (the most recently joined). */
+  readonly current: boolean;
+}
+
+/** Response of `GET /v1/households/mine`. Empty for a signed-in person with no household yet. */
+export interface HouseholdMembershipsResponseDto {
+  readonly households: readonly HouseholdMembershipDto[];
+}
+
+/** Response of `POST /v1/households/me/join-code` (owner only): the new code. */
+export interface RotateJoinCodeResponseDto {
+  readonly joinCode: JoinCodeDto;
+}
+
+/** Paths of the household endpoints, shared so the client and the routes cannot drift. */
+export const HOUSEHOLDS_PATH = "/v1/households";
+export const HOUSEHOLD_JOIN_PATH = "/v1/households/join";
+export const HOUSEHOLD_ME_PATH = "/v1/households/me";
+export const HOUSEHOLD_MINE_PATH = "/v1/households/mine";
+export const HOUSEHOLD_JOIN_CODE_PATH = "/v1/households/me/join-code";

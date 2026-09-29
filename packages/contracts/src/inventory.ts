@@ -28,6 +28,8 @@
  * friends) now that a real screen consumes the `…Dto` shapes end to end.
  */
 
+import { UNITS_BY_KIND_DTO } from "./units.js";
+
 /** Confidence tier of a stored value (domain `ProvenanceTier`, migration 0003). */
 export type ProvenanceTierDto = "KNOWN_FACT" | "ESTIMATED" | "AI_INTERPRETATION";
 
@@ -354,15 +356,32 @@ export function inventoryTransactionUndoPath(itemId: string, transactionId: stri
 export type CreateItemSourceDto = "BARCODE" | "MANUAL";
 
 /**
- * Body of the not-yet-built `POST /v1/inventory/items` (M2-T3). Until then,
- * `apps/mobile`'s fixture `ApiClient` implements {@link CreateItemRequestDto}
- * against its in-memory ledger (`src/inventory/ledger.ts`) so S8/S9 have a
- * real create path to call; `HttpApiClient.createItem` throws a clear
- * "not available yet" error (BACKLOG.md M3-T4b Objective (e)).
+ * Body of `POST /v1/inventory/items` (built in M2-T3; M3-T4b wrote the
+ * shape first). `apps/mobile`'s fixture `ApiClient` implements the same
+ * request against its in-memory ledger (`src/inventory/ledger.ts`), and
+ * `HttpApiClient.createItem` is wired to the endpoint by a client ticket.
  *
  * Exact quantities travel as decimal text, never a JSON number (this file's
  * header, rule 2): {@link amount} is in {@link unit}, the same form as
  * {@link QuantityDto.amount}.
+ *
+ * What the server does with each field (M2-T3):
+ *
+ * - `source: "BARCODE"` writes a `PURCHASE` row and requires `productRef`;
+ *   `source: "MANUAL"` writes `INITIAL_STOCK` and refuses a `productRef`.
+ * - `unit` must be one of {@link CREATE_ITEM_UNITS_DTO}; it is stored as sent.
+ * - `quantityProvenance.tier` is recorded on the row; `AI_INTERPRETATION` is
+ *   refused (AI output reaches the ledger only through a confirmation flow).
+ *   The row's provenance `source` is the server's own stable identifier for
+ *   the path (`barcode-scan` or `manual-entry`), not the request's text, so a
+ *   client cannot label its own row as, say, a receipt parse.
+ *   `quantityProvenance.confidence` and `recordedAt` must be `null`: the
+ *   server records when it recorded.
+ * - `bestByDate` and `bestByProvenance` come together or not at all; the
+ *   lot's expiry tier is `bestByProvenance.tier`, passed through, never
+ *   invented.
+ * - Replaying the same `idempotencyKey` with the same body returns the same
+ *   item and appends nothing; the same key with a different body is 409.
  */
 export interface CreateItemRequestDto {
   /** Client-generated key, same replay-safety contract as {@link InventoryWriteRequestDto.idempotencyKey}. */
@@ -382,3 +401,18 @@ export interface CreateItemRequestDto {
   readonly bestByDate?: string | null;
   readonly bestByProvenance?: FieldProvenanceDto | null;
 }
+
+/**
+ * The units `POST /v1/inventory/items` accepts (M2-T3): every unit S9's
+ * picker offers, in the same order, and nothing else. A unit outside this
+ * list is refused with `INVALID_FIELD` on `unit`, even when the domain
+ * registry would resolve it, so the server never stores an item in a unit no
+ * screen can offer or convert from. The consistency suite in
+ * `packages/adapters/src/contracts-consistency/` proves every entry resolves
+ * in the domain's unit registry.
+ */
+export const CREATE_ITEM_UNITS_DTO: readonly string[] = Object.freeze([
+  ...UNITS_BY_KIND_DTO.MASS,
+  ...UNITS_BY_KIND_DTO.VOLUME,
+  ...UNITS_BY_KIND_DTO.COUNT,
+]);
