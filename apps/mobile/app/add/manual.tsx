@@ -48,19 +48,32 @@ function unitKindForUnit(unit: string | undefined): UnitKindDto | null {
 
 /**
  * A prefilled whole-unit count from S11's close-the-loop Add (M3-T5
- * Objective (d)): S11 only ever prefills a whole amount (its no-`itemId`
- * rows are all whole counts/pounds — broccoli, granola, paper towels), and
- * S9's stepper is whole-unit-only regardless of source (review F17: it
- * floors at zero, never offers a fraction), so a non-integer or missing
- * prefill falls back to S9's own default of 1 rather than guessing a
- * rounding rule this ticket does not own.
+ * Objective (d); tightened at review round 1, F9). S9's stepper is
+ * whole-unit-only regardless of source (review F17: it floors at zero,
+ * never offers a fraction), so a fractional gap (e.g. 0.5 lb) cannot be
+ * represented at all: this leaves the stepper at S9's own default of 1
+ * rather than silently rounding it, which is exactly the client-side
+ * quantity change CLAUDE.md rules 6/7 forbid (a 1.5 lb gap silently
+ * becoming "1" would look like a legitimate whole-number prefill, not a
+ * lossy one, if this parsed with `Number.parseInt`/`Math.floor` — both
+ * truncate a fraction into a same-shaped integer instead of rejecting it).
+ * `amount` must therefore already be the caller's *exact* decimal text
+ * (never re-derived or rounded before reaching here — see
+ * `app/shopping.tsx`'s own doc comment on how it builds this string), and
+ * this function only ever *recognises* a whole value, never rounds one:
+ * `/^\d+$/` matches a bare non-negative integer string and nothing else,
+ * so "1.5", "1.0" and "-1" all correctly fall through to the default.
  */
 function prefillCount(amount: string | undefined): number {
-  if (!amount) {
+  if (!amount || !/^\d+$/.test(amount)) {
     return 1;
   }
+  // Small enough (a shopping-list quantity) to safely fit `Number` here —
+  // this is only ever a UI stepper's *initial* value, never a quantity
+  // written to the ledger (S9's own save still goes through
+  // `wholeUnitQuantityMicros` -> `BigInt` for the actual write).
   const parsed = Number.parseInt(amount, 10);
-  return Number.isInteger(parsed) && parsed > 0 ? parsed : 1;
+  return parsed > 0 ? parsed : 1;
 }
 
 /**

@@ -182,6 +182,18 @@ describe("S9 · manual add", () => {
       expect(result.getByText("1")).toBeTruthy();
     });
 
+    it("never silently truncates a fraction into a same-shaped whole number (review round 1, F9)", async () => {
+      // A naive `Number.parseInt("2.5", 10)` returns 2 — a *different*,
+      // silently wrong whole number, not a fallback to the default. This
+      // is the exact bug the review caught (a fractional gap "looked
+      // whole" after truncation): the fix must recognise "2.5" as
+      // fractional and fall back to 1, never accept the truncated "2".
+      searchParams = { name: "Fractional item", amount: "2.5", unit: "lb" };
+      const result = await renderScreen();
+      expect(result.getByText("1")).toBeTruthy();
+      expect(result.queryByText("2")).toBeNull();
+    });
+
     it("ignores an unrecognised unit, falling back to Mass's first unit", async () => {
       searchParams = { name: "Mystery", amount: "1", unit: "not-a-real-unit" };
       const result = await renderScreen();
