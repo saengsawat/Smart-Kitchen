@@ -156,8 +156,8 @@ write M2-T2 exposes (corrections, removals, undo) over real `fetch` calls,
 wired in M3-T4a. M3-T4d (this ticket) added household create/join/read
 (`POST /v1/households`, `POST /v1/households/join`, `GET /v1/households/me`,
 the household half of S1's onboarding state) and manual item creation
-(`POST /v1/inventory/items`, S9). The *restrictions half* of onboarding state
-— each member's allergies/preferences — stays entirely client-local even
+(`POST /v1/inventory/items`, S9). The *restrictions half* of onboarding
+state (each member's allergies/preferences) stays entirely client-local even
 against a real API: the server stores none of it until M2-T4 (A3 household
 permissions), so it keeps running through the same in-memory mechanism the
 fixture path always used, just attached to the real member ids the server
@@ -168,12 +168,40 @@ fixture: those wait on further endpoints. Leave `EXPO_PUBLIC_API_URL` unset
 (the default) and every call, reads and writes alike, stays fixture-backed:
 in-memory, no network, nothing persists across a restart.
 
+**Starting the local API (review F7).** The steps above assume something is
+already listening at `EXPO_PUBLIC_API_URL`; this is how to get one, migrated
+and seeded, on the same machine. From the repo root, with a Postgres 17
+database reachable (CONTRIBUTING.md's throwaway-cluster recipe if you do not
+already have one running):
+
+```powershell
+$env:DATABASE_URL = "postgres://postgres@localhost:5432/postgres"
+pnpm --filter api db:migrate
+pnpm --filter api build
+pnpm --filter api db:seed:fixture
+$env:SK_IDENTITY = "fixture"
+$env:NODE_ENV = "development"
+node apps/api/dist/server.js
+```
+
+No `$env:PORT` above: the server's own default is `3000`
+(`apps/api/src/server.ts`'s `DEFAULT_PORT`), so `EXPO_PUBLIC_API_URL` in
+every example on this page (`http://localhost:4000`) assumes you *did* set
+`$env:PORT = "4000"` before starting it: set both to the same port, or drop
+`$env:PORT` here and use `http://localhost:3000` above instead. The server
+binds `0.0.0.0` and logs every address it is listening on at startup,
+including a LAN one (e.g. `http://192.168.1.23:3000`); for a phone on Expo
+Go (same Wi-Fi, see "Run it on Dean's phone" below) set
+`EXPO_PUBLIC_API_URL` to that LAN address, never `localhost`, the same
+"pick the LAN, not a relay" rule that section already states for Expo's own
+URL.
+
 **Running as a fresh user (M3-T4d).** `EXPO_PUBLIC_IDENTITY_TOKEN` picks
 which fixture identity `HttpApiClient` authenticates as
 (`tests/fixtures/identity/README.md`); the API's dev seed
-(`pnpm --filter api db:seed:fixture`) writes all four. Leave it unset for
-Dean Chen (owner of the seeded Chen household, the default), or set it to
-try the create/join flow from S1 as someone with no household yet:
+(`pnpm --filter api db:seed:fixture`, above) writes all four. Leave it unset
+for Dean Chen (owner of the seeded Chen household, the default), or set it
+to try the create/join flow from S1 as someone with no household yet:
 
 ```powershell
 $env:EXPO_PUBLIC_API_URL = "http://localhost:4000"
@@ -193,11 +221,12 @@ member" path (`CHEN-482` again resolves the same household, no new row).
 
 **Giving a local API something to show (M2-T2).** A freshly migrated database
 holds no inventory, so the list arrives empty. `pnpm --filter api db:seed:fixture`
-writes the fixture identities and the Chen household's inventory, the same nine
-items the prototype draws, so S4 shows real rows read over the network. It needs
-`DATABASE_URL`, refuses to run unless `NODE_ENV` is unset, `development` or
-`test`, and can be re-run as often as you like: a second run changes nothing.
-Full instructions are in [CONTRIBUTING.md](../../CONTRIBUTING.md#seeding-a-development-database-m2-t2).
+(part of "Starting the local API" above) writes the fixture identities and
+the Chen household's inventory, the same nine items the prototype draws, so
+S4 shows real rows read over the network. It needs `DATABASE_URL`, refuses to
+run unless `NODE_ENV` is unset, `development` or `test`, and can be re-run as
+often as you like: a second run changes nothing. Full instructions are in
+[CONTRIBUTING.md](../../CONTRIBUTING.md#seeding-a-development-database-m2-t2).
 
 M2-T2 added the endpoints behind the inventory writes above:
 `POST /v1/inventory/items/{itemId}/transactions` (corrections and removals),
