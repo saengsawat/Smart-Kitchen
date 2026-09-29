@@ -91,6 +91,7 @@ import {
   inventoryItemPath,
   inventoryItemTransactionsPath,
   inventoryTransactionUndoPath,
+  productLookupPath,
 } from "@smart-kitchen/contracts";
 import { getApiBaseUrl, getIdentityToken as resolveIdentityToken } from "../config/env";
 import { fixtureChenMembers } from "../household/fixture-restrictions";
@@ -110,6 +111,7 @@ import {
 import { GENERIC_LEDGER_ERROR_MESSAGE, LedgerRefusedError } from "../inventory/errors";
 import { microsToAmountText, parseMicros } from "../inventory/quantity";
 import { fixtureLookupProduct } from "../scan/fixture-products";
+import { ProductLookupRefusedError } from "../scan/product-lookup-errors";
 import { decimalAmountToMicros } from "../scan/quantity";
 import {
   buildFixtureShoppingRows,
@@ -327,6 +329,29 @@ export function householdSyncInputFromSummary(summary: HouseholdSummaryDto): {
 }
 
 /**
+ * Same shallow-shape-guard rule as {@link isInventoryItemsResponse} (M3-T4e),
+ * for `GET /v1/products/{code}`'s body: a discriminated union, so this only
+ * checks `status` is one of the three the wire ever sends and that each
+ * variant's own required field is present — never a deep validation of
+ * `product` (the server already built it from a typed `ScannedProductDto`;
+ * this guard exists for the same "an error page/proxy body is not this
+ * shape" reason every other guard in this file does).
+ */
+function isProductLookupResult(body: unknown): body is ProductLookupResultDto {
+  if (typeof body !== "object" || body === null) {
+    return false;
+  }
+  const candidate = body as { status?: unknown; code?: unknown; product?: unknown };
+  if (typeof candidate.code !== "string") {
+    return false;
+  }
+  if (candidate.status === "hit") {
+    return typeof candidate.product === "object" && candidate.product !== null;
+  }
+  return candidate.status === "not-found" || candidate.status === "error";
+}
+
+/**
  * Pulls the code a refused write's body carries: `ledgerCode` when present
  * (a coded `LedgerErrorCodeDto` refusal, including the 409 conflict path,
  * whose `ledgerCode` is `IDEMPOTENCY_KEY_CONFLICT`), else the top-level
@@ -473,10 +498,12 @@ export interface ApiClient {
   /**
    * S7/S8: resolves a scanned or typed code to a product plus its household
    * allergen screening (M3-T4b). The fixture maps a handful of codes to
-   * hand-authored literals (`src/scan/fixture-products.ts`); `HttpApiClient`
-   * rejects until M2-T3 supplies the real endpoint, and S7/S8 show the
-   * copy-deck.md §8 generic fallback for that rejection, same as any other
-   * write failure.
+   * hand-authored literals (`src/scan/fixture-products.ts`);
+   * `HttpApiClient` calls `GET /v1/products/{code}` (M3-T4e): `hit`/
+   * `not-found`/`error` pass through unchanged, and a refused lookup (400
+   * `PLU_NOT_SUPPORTED`/`BAD_REQUEST`, 401/403, anything else) throws a
+   * `ProductLookupRefusedError` S7 renders through
+   * `src/scan/product-lookup-errors.ts`'s `messageForLookupError`.
    */
   lookupProduct(code: string): Promise<ProductLookupResultDto>;
   /**
@@ -1353,15 +1380,32 @@ export class HttpApiClient implements ApiClient {
   }
 
   /**
-   * No endpoint exists yet (M2-T3). A clear, typed rejection rather than a
-   * silent fixture fallback, per BACKLOG.md M3-T4b Objective (e): S7/S8
-   * catch this the same way every other write failure is caught
-   * (`messageForLedgerError`), rendering copy-deck.md §8's generic fallback.
+   * `GET /v1/products/{code}` (M3-T4e). `hit`/`not-found`/200 `error` pass
+   * through unchanged (`ScreeningOutcomeDto` included — never re-derived
+   * client-side, M2-T4a (e)): S7 renders its own copy for the `error` case
+   * (copy-deck.md §8), never `result.message` (invariant: no server message
+   * ever reaches a screen). A 400 (`PLU_NOT_SUPPORTED`, `BAD_REQUEST`) or any
+   * other non-2xx (401/403/5xx) throws a {@link ProductLookupRefusedError}
+   * carrying only the wire code, same discipline as {@link LedgerRefusedError}
+   * — `messageForLookupError` (src/scan/product-lookup-errors.ts) picks the
+   * screen's sentence from the code, never from the thrown error's own
+   * `.message`. No retry: a lookup is idempotent to repeat by hand (the user
+   * just scans again), so there is no idempotency key to protect here the
+   * way {@link createItem}'s write does.
    */
-  lookupProduct(code: string): Promise<ProductLookupResultDto> {
-    return Promise.reject(
-      new Error(`lookupProduct(${code}) is not available yet: the real endpoint lands in M2-T3.`),
-    );
+  async lookupProduct(code: string): Promise<ProductLookupResultDto> {
+    const response = await fetch(`${this.baseUrl}${productLookupPath(code)}`, {
+      headers: this.authHeaders(),
+    });
+    if (!response.ok) {
+      const errorBody: unknown = await response.json().catch(() => null);
+      throw new ProductLookupRefusedError(extractErrorCode(errorBody) ?? "INTERNAL");
+    }
+    const parsedBody: unknown = await response.json();
+    if (!isProductLookupResult(parsedBody)) {
+      throw new Error(`GET ${productLookupPath(code)} returned an unexpected response body`);
+    }
+    return parsedBody;
   }
 
   /**

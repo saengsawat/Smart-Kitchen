@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { INVENTORY_ITEMS_PATH } from "@smart-kitchen/contracts";
 import { GENERIC_LEDGER_ERROR_MESSAGE, messageForLedgerError } from "../inventory/errors";
+import { messageForLookupError, ProductLookupRefusedError } from "../scan/product-lookup-errors";
 import type {
   CreateItemRequestDto,
   InventoryItemDetailDto,
@@ -8,6 +9,8 @@ import type {
   InventoryItemSummaryDto,
   InventoryWriteRequestDto,
   InventoryWriteResponseDto,
+  ProductLookupResultDto,
+  ScannedProductDto,
   UndoRequestDto,
 } from "@smart-kitchen/contracts";
 import {
@@ -1053,9 +1056,179 @@ describe("lookupProduct / createItem (M3-T4b)", () => {
       globalThis.fetch = originalFetch;
     });
 
-    it("lookupProduct rejects clearly (no endpoint until M2-T4a/M3-T4e)", async () => {
-      const client = new HttpApiClient("http://localhost:4000");
-      await expect(client.lookupProduct("060000100025")).rejects.toThrow(/not available yet/);
+    describe("lookupProduct (M3-T4e: real GET /v1/products/{code})", () => {
+      const SAMPLE_PRODUCT: ScannedProductDto = {
+        productId: "096619555505",
+        codes: [{ codeType: "UPC_A", code: "096619555505" }],
+        name: {
+          value: "Organic Creamy Peanut Butter",
+          provenance: {
+            tier: "ESTIMATED",
+            source: "open-food-facts",
+            confidence: null,
+            recordedAt: "2026-09-29T13:02:12.000Z",
+          },
+        },
+        nutrition: [],
+        bestBy: null,
+        screening: { status: "NOT_RUN", reason: "HOUSEHOLD_RESTRICTIONS_NOT_STORED" },
+      };
+
+      it("GETs the product-lookup path with the fixture bearer token, and a hit passes through unchanged", async () => {
+        let capturedUrl: string | undefined;
+        let capturedInit: RequestInit | undefined;
+        globalThis.fetch = ((url: string, init?: RequestInit) => {
+          capturedUrl = url;
+          capturedInit = init;
+          const answer: ProductLookupResultDto = {
+            status: "hit",
+            code: "096619555505",
+            product: SAMPLE_PRODUCT,
+          };
+          return Promise.resolve(new Response(JSON.stringify(answer), { status: 200 }));
+        }) as typeof fetch;
+
+        const client = new HttpApiClient("http://localhost:4000");
+        const result = await client.lookupProduct("096619555505");
+
+        expect(capturedUrl).toBe("http://localhost:4000/v1/products/096619555505");
+        expect((capturedInit?.headers as Record<string, string>).Authorization).toBe(
+          `Bearer ${FIXTURE_IDENTITY_TOKEN}`,
+        );
+        expect(result).toEqual({
+          status: "hit",
+          code: "096619555505",
+          product: SAMPLE_PRODUCT,
+        });
+      });
+
+      it("screening passes through exactly as the server sent it, never re-derived (NOT_RUN case)", async () => {
+        globalThis.fetch = () => {
+          const answer: ProductLookupResultDto = {
+            status: "hit",
+            code: "096619555505",
+            product: SAMPLE_PRODUCT,
+          };
+          return Promise.resolve(new Response(JSON.stringify(answer), { status: 200 }));
+        };
+        const client = new HttpApiClient("http://localhost:4000");
+        const result = await client.lookupProduct("096619555505");
+        expect(result.status === "hit" && result.product.screening).toEqual({
+          status: "NOT_RUN",
+          reason: "HOUSEHOLD_RESTRICTIONS_NOT_STORED",
+        });
+      });
+
+      it("a not-found outcome passes through unchanged", async () => {
+        globalThis.fetch = () => {
+          const answer: ProductLookupResultDto = { status: "not-found", code: "000000000000" };
+          return Promise.resolve(new Response(JSON.stringify(answer), { status: 200 }));
+        };
+        const client = new HttpApiClient("http://localhost:4000");
+        const result = await client.lookupProduct("000000000000");
+        expect(result).toEqual({ status: "not-found", code: "000000000000" });
+      });
+
+      it("a 200 error outcome passes through with its own code/message fields (the screen never shows .message)", async () => {
+        globalThis.fetch = () => {
+          const answer: ProductLookupResultDto = {
+            status: "error",
+            code: "096619555505",
+            message: "this exact sentence must never reach the screen",
+          };
+          return Promise.resolve(new Response(JSON.stringify(answer), { status: 200 }));
+        };
+        const client = new HttpApiClient("http://localhost:4000");
+        const result = await client.lookupProduct("096619555505");
+        expect(result.status).toBe("error");
+      });
+
+      it("a 400 PLU_NOT_SUPPORTED throws ProductLookupRefusedError with that code, never the server message", async () => {
+        globalThis.fetch = () =>
+          Promise.resolve(
+            new Response(
+              JSON.stringify({
+                error: {
+                  code: "PLU_NOT_SUPPORTED",
+                  message: "this exact sentence must never reach the screen",
+                  correlationId: "c1",
+                },
+              }),
+              { status: 400 },
+            ),
+          );
+        const client = new HttpApiClient("http://localhost:4000");
+        await expect(client.lookupProduct("04061")).rejects.toMatchObject({
+          code: "PLU_NOT_SUPPORTED",
+        });
+        try {
+          await client.lookupProduct("04061");
+          expect.unreachable();
+        } catch (error) {
+          expect(messageForLookupError(error)).toBe(
+            "Produce codes can't be looked up by barcode yet. Add this item by hand.",
+          );
+        }
+      });
+
+      it("a 400 BAD_REQUEST throws ProductLookupRefusedError with that code", async () => {
+        globalThis.fetch = () =>
+          Promise.resolve(
+            new Response(
+              JSON.stringify({
+                error: { code: "BAD_REQUEST", message: "bad", correlationId: "c1" },
+              }),
+              { status: 400 },
+            ),
+          );
+        const client = new HttpApiClient("http://localhost:4000");
+        try {
+          await client.lookupProduct("not-a-code");
+          expect.unreachable();
+        } catch (error) {
+          expect(messageForLookupError(error)).toBe("That isn't a barcode number we can look up.");
+        }
+      });
+
+      it("a 401 throws ProductLookupRefusedError rendering the generic fallback", async () => {
+        globalThis.fetch = () =>
+          Promise.resolve(
+            new Response(
+              JSON.stringify({ error: { code: "UNAUTHORIZED", message: "no session" } }),
+              { status: 401 },
+            ),
+          );
+        const client = new HttpApiClient("http://localhost:4000");
+        try {
+          await client.lookupProduct("096619555505");
+          expect.unreachable();
+        } catch (error) {
+          expect(error).toBeInstanceOf(ProductLookupRefusedError);
+          expect(messageForLookupError(error)).toBe(GENERIC_LEDGER_ERROR_MESSAGE);
+        }
+      });
+
+      it("a 500 throws ProductLookupRefusedError rendering the generic fallback", async () => {
+        globalThis.fetch = () =>
+          Promise.resolve(
+            new Response(JSON.stringify({ error: { code: "INTERNAL", message: "boom" } }), {
+              status: 500,
+            }),
+          );
+        const client = new HttpApiClient("http://localhost:4000");
+        try {
+          await client.lookupProduct("096619555505");
+          expect.unreachable();
+        } catch (error) {
+          expect(messageForLookupError(error)).toBe(GENERIC_LEDGER_ERROR_MESSAGE);
+        }
+      });
+
+      it("rejects a malformed 2xx response body rather than returning garbage", async () => {
+        globalThis.fetch = () => Promise.resolve(new Response(JSON.stringify({}), { status: 200 }));
+        const client = new HttpApiClient("http://localhost:4000");
+        await expect(client.lookupProduct("096619555505")).rejects.toThrow();
+      });
     });
 
     const SAMPLE_ITEM_INPUT: CreateItemRequestDto = {
