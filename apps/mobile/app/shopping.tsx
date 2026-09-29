@@ -1,8 +1,753 @@
-import { PlaceholderScreen } from "../src/screens/PlaceholderScreen";
-import { TAB_ORDER } from "../src/navigation/tabs";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { useRouter } from "expo-router";
+import type { ShoppingListDto, ShoppingRowDto } from "@smart-kitchen/contracts";
+import { apiClient, hasDevOfflineToggle } from "../src/api/client";
+import { nextIdempotencyKey } from "../src/api/idempotency";
+import { colors, fontFamily, minTouchTarget, radius, spacing } from "../src/design/tokens";
+import { GENERIC_LEDGER_ERROR_MESSAGE, messageForLedgerError } from "../src/inventory/errors";
+import { LOCATION_LABELS } from "../src/inventory/list-view";
+import { useReducedMotion, pressScaleStyle } from "../src/inventory/motion";
+import { chipAccessibilityLabel, ROW_CHIP_TEXT } from "../src/inventory/provenance";
+import { useToast } from "../src/inventory/Toast";
+import {
+  aiOriginText,
+  doneRowStatusText,
+  formatShoppingAmount,
+  memberOriginText,
+  menuOriginText,
+  skipRowAmountText,
+} from "../src/shopping/format";
+import { buildShoppingListView } from "../src/shopping/list-view";
+import { ShoppingCheckOffQueue } from "../src/shopping/queue";
 
-const tab = TAB_ORDER[3]!;
-
+/**
+ * S11 · Shopping list (M3-T5), prototype v4 `#scr-shopping`.
+ *
+ * ## Close-the-loop, and why the loop bar never appears on load
+ *
+ * The loop bar (Objective (d)) is tied to *this session's own* check-off
+ * action, tracked in `activeLoopRowId` state, never derived from a row that
+ * merely arrives `status: "done"` from the fixture (the seeded "Olive oil,
+ * added and checked off by Dean" row): that row represents something that
+ * already happened before this screen ever loaded, with nothing for this
+ * session to "close the loop" on. This is a judgment call flagged in the
+ * worker report — the ticket's prose ("after a check-off the loop bar
+ * appears") reads naturally as session-scoped, but the static prototype
+ * mockup happens to also show the bar for that pre-seeded row, which this
+ * screen deliberately does not reproduce.
+ *
+ * ## Offline
+ *
+ * `apiClient.isOffline()`/`subscribeOffline` (ADR-010 option C) drive the
+ * banner. A check-off made offline updates its row optimistically (so the
+ * screen always feels instant) and, only when offline, also enqueues the
+ * same call in `ShoppingCheckOffQueue` under the tap's own idempotency key;
+ * reconnecting replays the queue in order and clears each row's "Queued" tag
+ * as its entry confirms. The loop bar's Add is never queued (Objective (f)):
+ * it needs a real ledger write, so while offline it shows the inline "Add
+ * when you're back online." line instead of a button, for any row whose
+ * `itemId` names an existing inventory item; a row with no `itemId` still
+ * opens S9 regardless of connectivity, since that path is local navigation,
+ * not a network write.
+ */
 export default function ShoppingScreen(): React.JSX.Element {
-  return <PlaceholderScreen title={tab.label} subtitle={tab.placeholder} />;
+  const router = useRouter();
+  const reducedMotion = useReducedMotion();
+  const { show } = useToast();
+
+  const [list, setList] = useState<ShoppingListDto | null>(null);
+  const [loadError, setLoadError] = useState(false);
+  const [offline, setOffline] = useState(() => apiClient.isOffline());
+  const [queuedRowIds, setQueuedRowIds] = useState<ReadonlySet<string>>(new Set());
+  const [activeLoopRowId, setActiveLoopRowId] = useState<string | null>(null);
+  const queueRef = useRef<ShoppingCheckOffQueue>(new ShoppingCheckOffQueue());
+
+  const load = useCallback(() => {
+    let cancelled = false;
+    setLoadError(false);
+    void apiClient.getShoppingList().then(
+      (result) => {
+        if (!cancelled) {
+          setList(result);
+        }
+      },
+      () => {
+        if (!cancelled) {
+          setLoadError(true);
+        }
+      },
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => load(), [load]);
+
+  useEffect(() => {
+    return apiClient.subscribeOffline((value) => {
+      setOffline(value);
+      if (!value) {
+        void queueRef.current
+          .replay((entry) =>
+            apiClient.checkOffShoppingRow(entry.rowId, entry.checked, entry.idempotencyKey),
+          )
+          .then(() => {
+            setQueuedRowIds(new Set(queueRef.current.queuedRowIds()));
+          });
+      }
+    });
+  }, []);
+
+  function updateRow(rowId: string, update: (row: ShoppingRowDto) => ShoppingRowDto): void {
+    setList((prev) =>
+      prev ? { ...prev, rows: prev.rows.map((r) => (r.rowId === rowId ? update(r) : r)) } : prev,
+    );
+  }
+
+  async function handleToggleCheck(row: ShoppingRowDto): Promise<void> {
+    const checked = row.status !== "done";
+    const key = nextIdempotencyKey();
+    // The fixture identity is always Dean (D-022: one fixed session
+    // identity throughout the app); a real multi-member session gets this
+    // from the caller's own session, same as every other actor this port
+    // records (src/api/client.ts's DEAN_ACTOR).
+    const initials = "DC";
+
+    updateRow(row.rowId, (r) => ({
+      ...r,
+      status: checked ? "done" : "open",
+      checkedOffBy: checked ? initials : null,
+    }));
+    if (checked) {
+      setActiveLoopRowId(row.rowId);
+    } else {
+      setActiveLoopRowId((current) => (current === row.rowId ? null : current));
+    }
+
+    if (apiClient.isOffline()) {
+      queueRef.current.enqueue({ rowId: row.rowId, checked, idempotencyKey: key });
+      setQueuedRowIds(new Set(queueRef.current.queuedRowIds()));
+      show(`${row.name} queued. It will sync when you're back online.`);
+      return;
+    }
+    try {
+      await apiClient.checkOffShoppingRow(row.rowId, checked, key);
+    } catch (error) {
+      // Revert the optimistic update; the ledger/fixture never applied it.
+      updateRow(row.rowId, (r) => ({
+        ...r,
+        status: checked ? "open" : "done",
+        checkedOffBy: checked ? null : r.checkedOffBy,
+      }));
+      if (checked) {
+        setActiveLoopRowId((current) => (current === row.rowId ? null : current));
+      }
+      show(messageForLedgerError(error));
+    }
+  }
+
+  async function handleRemove(row: ShoppingRowDto): Promise<void> {
+    try {
+      await apiClient.removeShoppingSuggestion(row.rowId);
+      setList((prev) =>
+        prev ? { ...prev, rows: prev.rows.filter((r) => r.rowId !== row.rowId) } : prev,
+      );
+      show(`${row.name} removed · AI suggestion declined`);
+    } catch (error) {
+      show(messageForLedgerError(error));
+    }
+  }
+
+  function handleLoopAdd(row: ShoppingRowDto): void {
+    if (row.itemId === null) {
+      setActiveLoopRowId(null);
+      router.push({
+        pathname: "/add/manual",
+        params: {
+          name: row.name,
+          amount: formatMicrosAsPlainAmount(row.buyMicros),
+          unit: row.unit,
+          location: row.defaultLocation,
+        },
+      });
+      return;
+    }
+    if (apiClient.isOffline()) {
+      // Refused inline, never queued (module doc comment / Objective (f)).
+      return;
+    }
+    const key = nextIdempotencyKey();
+    apiClient.addCheckedOffToInventory(row.rowId, key).then(
+      () => {
+        setActiveLoopRowId(null);
+        show(`${row.name} added to ${LOCATION_LABELS[row.defaultLocation]} · inventory updated`);
+      },
+      (error: unknown) => {
+        show(messageForLedgerError(error));
+      },
+    );
+  }
+
+  if (list === null) {
+    if (loadError) {
+      return (
+        <View style={styles.screen}>
+          <View style={styles.emptyWrap} accessibilityLiveRegion="assertive">
+            <Text style={styles.emptyTitle}>Couldn't load your shopping list.</Text>
+            <Text style={styles.emptyBody}>{GENERIC_LEDGER_ERROR_MESSAGE}</Text>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Try again"
+              onPress={load}
+              style={({ pressed }) => [
+                styles.primaryButton,
+                pressScaleStyle(pressed, reducedMotion),
+              ]}
+            >
+              <Text style={styles.primaryButtonText}>Try again</Text>
+            </Pressable>
+          </View>
+        </View>
+      );
+    }
+    return <View style={styles.screen} />;
+  }
+
+  const view = buildShoppingListView(list);
+  const activeLoopRow = list.rows.find((r) => r.rowId === activeLoopRowId) ?? null;
+
+  return (
+    <View style={styles.screen}>
+      <View style={styles.header}>
+        <View style={styles.headerText}>
+          <Text style={styles.title}>Shopping</Text>
+          <Text style={styles.sub}>
+            shared · <Text style={styles.subStrong}>{view.buyCount}</Text> to buy · each item shows
+            where it came from: a menu gap, an AI suggestion, or the member who added it
+          </Text>
+        </View>
+        <MemberAvatars members={list.members} />
+      </View>
+
+      {hasDevOfflineToggle(apiClient) ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={offline ? "Simulate back online" : "Simulate offline"}
+          onPress={() => {
+            if (hasDevOfflineToggle(apiClient)) {
+              apiClient.setOfflineForDev(!offline);
+            }
+          }}
+          style={({ pressed }) => [styles.devToggle, pressScaleStyle(pressed, reducedMotion)]}
+        >
+          <Text style={styles.devToggleText}>
+            {offline ? "Simulate online" : "Simulate offline"}
+          </Text>
+        </Pressable>
+      ) : null}
+
+      {offline ? (
+        <View style={styles.banner} accessibilityLiveRegion="polite">
+          <Text style={styles.bannerText}>
+            <Text style={styles.bannerStrong}>You're offline.</Text> Check-offs are saved and will
+            sync when you're back online.
+          </Text>
+        </View>
+      ) : null}
+
+      {activeLoopRow ? (
+        <LoopBar row={activeLoopRow} offline={offline} onAdd={() => handleLoopAdd(activeLoopRow)} />
+      ) : null}
+
+      {view.isEmpty ? (
+        <View style={styles.emptyWrap}>
+          <Text style={styles.emptyTitle}>Your shopping list is empty.</Text>
+          <Text style={styles.emptyBody}>
+            Anything with a gap between what you need and what you have will show up here.
+          </Text>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Browse recipes"
+            onPress={() => router.push("/menu")}
+            style={({ pressed }) => [styles.primaryButton, pressScaleStyle(pressed, reducedMotion)]}
+          >
+            <Text style={styles.primaryButtonText}>Browse recipes</Text>
+          </Pressable>
+        </View>
+      ) : (
+        <ScrollView contentContainerStyle={styles.content}>
+          {view.groups.map((group, index) => (
+            <View key={`${group.group}-${String(index)}`}>
+              <View style={styles.groupHeader}>
+                <Text style={styles.groupTitle}>{group.group}</Text>
+              </View>
+              {group.rows.map((row) => (
+                <ShoppingRow
+                  key={row.rowId}
+                  row={row}
+                  members={list.members}
+                  reducedMotion={reducedMotion}
+                  isQueued={queuedRowIds.has(row.rowId)}
+                  onToggle={() => void handleToggleCheck(row)}
+                  onRemove={() => void handleRemove(row)}
+                />
+              ))}
+            </View>
+          ))}
+
+          {view.skipped.length > 0 ? (
+            <View>
+              <View style={styles.groupHeader}>
+                <Text style={styles.groupTitle}>Already have · skipped</Text>
+              </View>
+              {view.skipped.map((row) => (
+                <SkipRow key={row.rowId} row={row} />
+              ))}
+            </View>
+          ) : null}
+        </ScrollView>
+      )}
+    </View>
+  );
 }
+
+/**
+ * S11 never computes an amount: `row.buyMicros` is already the domain's
+ * exact gap, so this only formats it for S9's `amount` search param (the
+ * exact same decimal text S9's own save path converts back with
+ * `decimalAmountToMicros`/`wholeUnitQuantityMicros`), never a re-derived or
+ * rounded value.
+ */
+function formatMicrosAsPlainAmount(micros: string): string {
+  const value = BigInt(micros);
+  const whole = value / 1_000_000n;
+  return whole.toString();
+}
+
+function MemberAvatars({ members }: { members: ShoppingListDto["members"] }): React.JSX.Element {
+  return (
+    <View style={styles.avatarRow}>
+      {members.map((member, index) => (
+        <View
+          key={member.memberId}
+          style={[styles.avatar, index > 0 ? styles.avatarOverlap : null]}
+        >
+          <Text style={styles.avatarText}>{member.initials}</Text>
+        </View>
+      ))}
+    </View>
+  );
+}
+
+function LoopBar({
+  row,
+  offline,
+  onAdd,
+}: {
+  row: ShoppingRowDto;
+  offline: boolean;
+  onAdd: () => void;
+}): React.JSX.Element {
+  const reducedMotion = useReducedMotion();
+  const refusedInline = offline && row.itemId !== null;
+  return (
+    <View style={styles.loop}>
+      <Text style={styles.loopText}>{row.name} checked off · add it to the pantry?</Text>
+      {refusedInline ? (
+        <Text style={styles.loopRefused}>Add when you're back online.</Text>
+      ) : (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={`Add ${row.name} to inventory`}
+          hitSlop={5}
+          onPress={onAdd}
+          style={({ pressed }) => [styles.loopButton, pressScaleStyle(pressed, reducedMotion)]}
+        >
+          <Text style={styles.loopButtonText}>Add</Text>
+        </Pressable>
+      )}
+    </View>
+  );
+}
+
+function ShoppingRow({
+  row,
+  members,
+  reducedMotion,
+  isQueued,
+  onToggle,
+  onRemove,
+}: {
+  row: ShoppingRowDto;
+  members: ShoppingListDto["members"];
+  reducedMotion: boolean;
+  isQueued: boolean;
+  onToggle: () => void;
+  onRemove: () => void;
+}): React.JSX.Element {
+  const checked = row.status === "done";
+  const statusText = doneRowStatusText(row, members);
+  const isAiSuggestion = row.origin.kind === "ai" && !checked;
+
+  return (
+    <View style={[styles.row, isAiSuggestion ? styles.rowAiSuggestion : null]}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={`${row.name}, ${checked ? "checked off" : "not checked off"}`}
+        hitSlop={9}
+        onPress={onToggle}
+        style={[styles.chk, checked ? styles.chkDone : null]}
+      >
+        {checked ? <Text style={styles.chkGlyph}>{"✓"}</Text> : null}
+      </Pressable>
+      <View style={styles.rowMeta}>
+        <Text style={[styles.rowName, checked ? styles.rowNameDone : null]}>{row.name}</Text>
+        {statusText ? (
+          <View style={styles.rowSubRow}>
+            <Text style={styles.rowSubMuted}>{statusText}</Text>
+            {isQueued ? <QueuedTag /> : null}
+          </View>
+        ) : (
+          <View style={styles.rowSubRow}>
+            <OriginPrefix row={row} />
+            <Text style={styles.rowSub}>{originSuffixText(row)}</Text>
+            {isQueued ? <QueuedTag /> : null}
+          </View>
+        )}
+      </View>
+      <View style={styles.rowTrailing}>
+        <Text style={[styles.amt, checked ? styles.amtDone : null]}>
+          {formatShoppingAmount(row.buyMicros, row.unit, null)}
+        </Text>
+        {isAiSuggestion ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`Remove ${row.name}`}
+            hitSlop={6}
+            onPress={onRemove}
+            style={({ pressed }) => [styles.removeButton, pressScaleStyle(pressed, reducedMotion)]}
+          >
+            <Text style={styles.removeButtonText}>Remove</Text>
+          </Pressable>
+        ) : null}
+      </View>
+    </View>
+  );
+}
+
+function OriginPrefix({ row }: { row: ShoppingRowDto }): React.JSX.Element | null {
+  if (row.origin.kind === "menu") {
+    return <Text style={styles.msrc}>{row.origin.label}</Text>;
+  }
+  if (row.origin.kind === "ai") {
+    return (
+      <Text style={styles.aiChip} accessibilityLabel="AI">
+        AI
+      </Text>
+    );
+  }
+  return <Text style={styles.mchip}>{row.origin.initials}</Text>;
+}
+
+function originSuffixText(row: ShoppingRowDto): string {
+  switch (row.origin.kind) {
+    case "menu":
+      return menuOriginText(row.origin, row.needMicros, row.haveMicros, row.unit);
+    case "ai":
+      return aiOriginText(row.origin);
+    case "member":
+      return memberOriginText(row.origin);
+  }
+}
+
+/**
+ * copy-deck.md §7 S11: "icon + text, never a colour change alone" (P9). The
+ * glyph is decorative (`accessibilityElementsHidden`/`importantForAccessibility`
+ * so a screen reader announces "Queued" once, not the glyph plus the word).
+ */
+function QueuedTag(): React.JSX.Element {
+  return (
+    <View style={styles.queuedTag}>
+      <Text
+        style={styles.queuedTagGlyph}
+        accessibilityElementsHidden
+        importantForAccessibility="no-hide-descendants"
+      >
+        {"↻"}
+      </Text>
+      <Text style={styles.queuedTagText}>Queued</Text>
+    </View>
+  );
+}
+
+function SkipRow({ row }: { row: ShoppingRowDto }): React.JSX.Element {
+  const amountText = skipRowAmountText(row);
+  return (
+    <View style={styles.skipRow}>
+      <Text style={styles.skipCheck}>{"✓"}</Text>
+      <Text style={styles.skipName}>{row.name}</Text>
+      <View style={styles.skipTrailing}>
+        <Text style={styles.skipAmount}>{amountText}</Text>
+        {row.haveTier ? (
+          <Text style={styles.provChip} accessibilityLabel={chipAccessibilityLabel(row.haveTier)}>
+            {ROW_CHIP_TEXT[row.haveTier]}
+          </Text>
+        ) : null}
+      </View>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  screen: { flex: 1, backgroundColor: colors.sand },
+  header: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.xl,
+    paddingBottom: spacing.sm,
+    gap: spacing.sm,
+  },
+  headerText: { flex: 1, gap: 2 },
+  title: { fontSize: 28, fontFamily: fontFamily.display, fontWeight: "600", color: colors.ink },
+  sub: { fontSize: 12.5, color: colors.ink2, fontFamily: fontFamily.body, lineHeight: 17 },
+  subStrong: { color: colors.ink, fontWeight: "700" },
+  avatarRow: { flexDirection: "row" },
+  avatar: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: colors.sand2,
+    borderWidth: 1,
+    borderColor: colors.paper,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  avatarOverlap: { marginLeft: -8 },
+  avatarText: { fontSize: 11, fontWeight: "700", color: colors.ink2, fontFamily: fontFamily.body },
+  devToggle: {
+    marginHorizontal: spacing.lg,
+    marginBottom: spacing.sm,
+    minHeight: minTouchTarget,
+    paddingHorizontal: spacing.md,
+    borderRadius: radius.sm,
+    borderWidth: 1,
+    borderColor: colors.line,
+    backgroundColor: colors.paper,
+    alignItems: "center",
+    justifyContent: "center",
+    alignSelf: "flex-start",
+  },
+  devToggleText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: colors.ink2,
+    fontFamily: fontFamily.body,
+  },
+  banner: {
+    marginHorizontal: spacing.lg,
+    marginBottom: spacing.sm,
+    padding: spacing.sm,
+    borderRadius: radius.sm,
+    backgroundColor: colors.sand2,
+    borderWidth: 1,
+    borderColor: colors.line,
+  },
+  bannerText: { fontSize: 12.5, color: colors.ink2, fontFamily: fontFamily.body, lineHeight: 17 },
+  bannerStrong: { color: colors.ink, fontWeight: "700" },
+  loop: {
+    marginHorizontal: spacing.lg,
+    marginBottom: spacing.sm,
+    backgroundColor: colors.brandTint,
+    borderWidth: 1,
+    borderColor: colors.line,
+    borderRadius: radius.md,
+    padding: spacing.md,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+  },
+  loopText: {
+    flex: 1,
+    fontSize: 13.5,
+    fontWeight: "700",
+    color: colors.brandOnTint,
+    fontFamily: fontFamily.body,
+  },
+  loopButton: {
+    height: 34,
+    paddingHorizontal: spacing.md,
+    borderRadius: radius.sm,
+    borderWidth: 1,
+    borderColor: colors.line,
+    backgroundColor: colors.paper,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  loopButtonText: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: colors.ink,
+    fontFamily: fontFamily.body,
+  },
+  loopRefused: { fontSize: 12, color: colors.ink3, fontFamily: fontFamily.body },
+  content: {
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.xxl * 2,
+  },
+  groupHeader: { paddingTop: spacing.md, paddingBottom: spacing.xs },
+  groupTitle: {
+    fontSize: 12,
+    fontWeight: "700",
+    letterSpacing: 0.4,
+    textTransform: "uppercase",
+    color: colors.ink3,
+    fontFamily: fontFamily.body,
+  },
+  row: {
+    backgroundColor: colors.paper,
+    borderWidth: 1,
+    borderColor: colors.line,
+    borderRadius: radius.md,
+    padding: spacing.md,
+    marginBottom: spacing.sm,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+  },
+  rowAiSuggestion: { borderColor: colors.ai, backgroundColor: colors.aiBg },
+  chk: {
+    width: 26,
+    height: 26,
+    borderRadius: 9,
+    borderWidth: 2,
+    borderColor: colors.line,
+    backgroundColor: colors.paper,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  chkDone: { backgroundColor: colors.green, borderColor: colors.green },
+  chkGlyph: { color: colors.white, fontSize: 13, fontWeight: "700" },
+  rowMeta: { flex: 1, gap: 2 },
+  rowName: { fontSize: 15, fontWeight: "600", color: colors.ink, fontFamily: fontFamily.body },
+  rowNameDone: { textDecorationLine: "line-through", color: colors.ink3 },
+  rowSubRow: { flexDirection: "row", alignItems: "center", gap: 6, flexWrap: "wrap" },
+  rowSub: { fontSize: 12, color: colors.ink3, fontFamily: fontFamily.body },
+  rowSubMuted: { fontSize: 12, color: colors.ink3, fontFamily: fontFamily.body },
+  msrc: {
+    fontSize: 10.5,
+    fontWeight: "800",
+    letterSpacing: 0.3,
+    textTransform: "uppercase",
+    color: colors.brandOnTint,
+    backgroundColor: colors.brandTint,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  aiChip: {
+    fontSize: 10,
+    fontWeight: "800",
+    color: colors.ai,
+    backgroundColor: colors.aiBg,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  mchip: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    fontSize: 10,
+    fontWeight: "800",
+    color: colors.ink2,
+    backgroundColor: colors.sand2,
+    textAlign: "center",
+    textAlignVertical: "center",
+    overflow: "hidden",
+  },
+  rowTrailing: { alignItems: "flex-end", gap: 4 },
+  amt: { fontSize: 15, fontWeight: "800", color: colors.ink, fontFamily: fontFamily.body },
+  amtDone: { color: colors.ink3 },
+  removeButton: {
+    height: 24,
+    paddingHorizontal: 8,
+    borderRadius: radius.sm,
+    borderWidth: 1,
+    borderColor: colors.ai,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  removeButtonText: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: colors.ai,
+    fontFamily: fontFamily.body,
+  },
+  queuedTag: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 3,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: radius.pill,
+    backgroundColor: colors.sand2,
+  },
+  queuedTagGlyph: { fontSize: 11, color: colors.ink3 },
+  queuedTagText: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: colors.ink3,
+    fontFamily: fontFamily.body,
+  },
+  skipRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    marginBottom: spacing.sm,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderStyle: "dashed",
+    borderColor: colors.line,
+  },
+  skipCheck: { color: colors.green, fontSize: 14, fontWeight: "700" },
+  skipName: { flex: 1, fontSize: 14, color: colors.ink2, fontFamily: fontFamily.body },
+  skipTrailing: { flexDirection: "row", alignItems: "center", gap: 6 },
+  skipAmount: { fontSize: 12.5, color: colors.ink2, fontFamily: fontFamily.body },
+  provChip: { fontSize: 11, fontWeight: "700", color: colors.ink2, fontFamily: fontFamily.body },
+  emptyWrap: {
+    alignItems: "center",
+    gap: spacing.sm,
+    paddingHorizontal: spacing.xl,
+    paddingTop: spacing.xxl,
+  },
+  emptyTitle: {
+    fontSize: 19,
+    fontFamily: fontFamily.display,
+    fontWeight: "600",
+    color: colors.ink,
+    textAlign: "center",
+  },
+  emptyBody: { fontSize: 13, color: colors.ink2, fontFamily: fontFamily.body, textAlign: "center" },
+  primaryButton: {
+    minHeight: minTouchTarget,
+    paddingHorizontal: spacing.lg,
+    borderRadius: 14,
+    backgroundColor: colors.brandDeep,
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: spacing.sm,
+  },
+  primaryButtonText: {
+    color: colors.cream,
+    fontSize: 15,
+    fontWeight: "700",
+    fontFamily: fontFamily.body,
+  },
+});
