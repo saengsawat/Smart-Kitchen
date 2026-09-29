@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { getLiveApiTestBaseUrl, isLiveApiTestEnabled } from "../config/env";
 import { HttpApiClient, JOIN_CODE_ERROR_MESSAGE } from "./client";
 
 /**
@@ -18,8 +19,8 @@ import { HttpApiClient, JOIN_CODE_ERROR_MESSAGE } from "./client";
  * step needs and restores it in `afterEach`, so no persona leaks into the
  * next step.
  */
-const LIVE = process.env.SK_LIVE_API_TEST === "1";
-const BASE_URL = process.env.SK_LIVE_API_BASE_URL ?? "http://localhost:3000";
+const LIVE = isLiveApiTestEnabled();
+const BASE_URL = getLiveApiTestBaseUrl();
 
 afterEach(() => {
   vi.unstubAllEnvs();
