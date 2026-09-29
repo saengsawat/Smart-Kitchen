@@ -201,4 +201,64 @@ describe("ShoppingCheckOffQueue (M3-T5 Objective (f))", () => {
     expect(applyCalls.map((e) => e.rowId)).toEqual(["row-a", "row-b"]);
     expect(queue.isQueued("row-b")).toBe(false);
   });
+
+  it("R2b: an entry enqueued while the follow-up walk itself is running is delivered via a next-level follow-up, exactly once", async () => {
+    const queue = new ShoppingCheckOffQueue();
+    queue.enqueue(entry({ rowId: "row-a", idempotencyKey: "key-a" }));
+
+    const applyCalls: string[] = [];
+    const resolvers: Partial<Record<string, () => void>> = {};
+    // Resolves once `apply(rowId)` has actually been *called* (not once its
+    // returned promise settles), so the test can wait for the real
+    // asynchronous milestone it cares about instead of guessing a number of
+    // microtask ticks.
+    const waiters: Partial<Record<string, () => void>> = {};
+    function waitFor(rowId: string): Promise<void> {
+      return new Promise<void>((resolve) => {
+        waiters[rowId] = resolve;
+      });
+    }
+    const apply = (e: QueuedCheckOff): Promise<void> => {
+      applyCalls.push(e.rowId);
+      waiters[e.rowId]?.();
+      return new Promise<void>((resolve) => {
+        resolvers[e.rowId] = resolve;
+      });
+    };
+
+    const rowAApplied = waitFor("row-a");
+    const walk1 = queue.replay(apply); // starts, calls apply(row-a)
+    await rowAApplied;
+
+    // row-b is enqueued, and a replay requested, while row-a's walk is
+    // still in flight: schedules the (first-level) follow-up walk.
+    const rowBApplied = waitFor("row-b");
+    queue.enqueue(entry({ rowId: "row-b", idempotencyKey: "key-b" }));
+    const walk2 = queue.replay(apply);
+
+    resolvers["row-a"]?.();
+    await rowBApplied;
+    expect(applyCalls).toEqual(["row-a", "row-b"]);
+
+    // row-c is enqueued, and a replay requested, while the *follow-up*
+    // walk (row-b's) is itself still running: this is the exact gap R2b
+    // closed (the pending-follow-up slot used to stay set for the whole
+    // time the follow-up walk ran, so this call would previously just
+    // rejoin that already-running, too-late walk instead of scheduling a
+    // genuine next-level follow-up).
+    const rowCApplied = waitFor("row-c");
+    queue.enqueue(entry({ rowId: "row-c", idempotencyKey: "key-c" }));
+    const walk3 = queue.replay(apply);
+
+    resolvers["row-b"]?.();
+    await rowCApplied;
+    resolvers["row-c"]?.();
+
+    await walk1;
+    await walk2;
+    await walk3;
+
+    expect(applyCalls).toEqual(["row-a", "row-b", "row-c"]);
+    expect(queue.size).toBe(0);
+  });
 });

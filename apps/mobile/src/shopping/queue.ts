@@ -34,20 +34,25 @@
  *   and a confirmed entry is deleted before any later tap could enqueue a
  *   new one, `apply` is never called twice for the same tap.
  * - **At most one replay walk in flight, plus one collapsed follow-up
- *   (review round 1 F4, tightened at round 2 R2).** A `replay` call while a
- *   walk is already running does not just return that walk's promise (F4
- *   alone): the walk's own snapshot (taken when *it* started) cannot see an
- *   entry `enqueue`d after that, so a naive "share the in-flight promise"
- *   fix left such an entry stranded until the next flap or tap (round 1
- *   left it there; round 2 R2 closes it). Instead, the *first* `replay`
- *   call made while a walk is running schedules exactly one follow-up walk
- *   to run immediately after the current one finishes; every other
- *   `replay` call made before that follow-up starts collapses into the
- *   same pending follow-up rather than scheduling another one. This still
- *   guarantees at most one delivery per entry per settled state (F4's
- *   promise): the follow-up is a genuinely new walk, snapshotting
- *   `entries` fresh when *it* starts, so it only ever redelivers an entry
- *   the first walk did not already confirm.
+ *   (review round 1 F4, tightened at round 2 R2 and R2b).** A `replay` call
+ *   while a walk is already running does not just return that walk's
+ *   promise (F4 alone): the walk's own snapshot (taken when *it* started)
+ *   cannot see an entry `enqueue`d after that, so a naive "share the
+ *   in-flight promise" fix left such an entry stranded until the next flap
+ *   or tap (round 1 left it there; round 2 R2 closes it). Instead, the
+ *   *first* `replay` call made while a walk is running schedules exactly
+ *   one follow-up walk to run immediately after the current one finishes;
+ *   every other `replay` call made before that follow-up *starts*
+ *   collapses into the same pending follow-up rather than scheduling
+ *   another one. This still guarantees at most one delivery per entry per
+ *   settled state (F4's promise): the follow-up is a genuinely new walk,
+ *   snapshotting `entries` fresh when *it* starts, so it only ever
+ *   redelivers an entry the first walk did not already confirm. R2b: the
+ *   pending-follow-up slot is cleared *before* that follow-up walk starts
+ *   running, not only once its result later settles, so a call arriving
+ *   while the follow-up walk itself is under way correctly schedules a
+ *   next-level follow-up instead of joining a walk whose snapshot already
+ *   missed it too.
  */
 
 export interface QueuedCheckOff {
@@ -129,16 +134,26 @@ export class ShoppingCheckOffQueue {
    * rest of the walk. A call made while a walk is already running schedules
    * (or joins) exactly one follow-up walk immediately after the current one
    * finishes (module doc comment, F4/R2), so an entry queued mid-walk is
-   * never stranded until the next flap or tap.
+   * never stranded until the next flap or tap. Round 2's own fix left one
+   * gap (R2b): `followUpReplay` used to stay set for the whole time the
+   * follow-up walk itself ran (it was only cleared once that walk's own
+   * result settled), so a *third* `replay()` call arriving during the
+   * follow-up walk just got handed that already-running walk's promise,
+   * whose snapshot could not see an entry queued after *it* started either
+   * — stranding it exactly like the original R2 bug, one level later. The
+   * slot is now cleared *before* starting the follow-up walk (inside the
+   * `.then`, not in a trailing `.finally`), so a call arriving once the
+   * follow-up walk is under way correctly finds the slot empty and
+   * schedules a genuine next-level follow-up instead of joining a walk
+   * that can never see it.
    */
   replay(apply: ApplyQueuedCheckOff): Promise<ReplayResult> {
     if (this.replayInFlight) {
       if (!this.followUpReplay) {
-        this.followUpReplay = this.replayInFlight
-          .then(() => this.replay(apply))
-          .finally(() => {
-            this.followUpReplay = null;
-          });
+        this.followUpReplay = this.replayInFlight.then(() => {
+          this.followUpReplay = null;
+          return this.replay(apply);
+        });
       }
       return this.followUpReplay;
     }
