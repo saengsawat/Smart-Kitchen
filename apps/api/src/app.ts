@@ -22,7 +22,13 @@
 import type { ApiErrorBodyDto } from "@smart-kitchen/contracts";
 import Fastify, { type FastifyError, type FastifyInstance } from "fastify";
 import { Pool } from "pg";
-import { selectIdentityPort, type EnvironmentLike, type IdentityPort } from "./identity/index.js";
+import { createJoinCodeHasher, resolveJoinCodePepper } from "./db/households/join-code.js";
+import {
+  chooseIdentityAdapter,
+  selectIdentityPort,
+  type EnvironmentLike,
+  type IdentityPort,
+} from "./identity/index.js";
 import { registerAuthorization } from "./http/authorization.js";
 import {
   buildLogController,
@@ -31,12 +37,19 @@ import {
   logRequestCompleted,
   type LoggingOptions,
 } from "./http/logging.js";
-import { registerRoutes } from "./http/routes.js";
+import {
+  createMembershipSessionRunner,
+  createPostgresMembershipDirectory,
+} from "./http/membership-session.js";
+import { createJoinAttemptLimiter } from "./http/rate-limit.js";
+import { registerRoutes, type RouteDeps } from "./http/routes.js";
 import { createTenantSessionRunner, type TenantSessionRunner } from "./http/tenant-session.js";
 
 export interface AppDependencies {
   readonly identity: IdentityPort;
   readonly tenantSession: TenantSessionRunner;
+  /** Household endpoints (M2-T3); the composition root always supplies them. */
+  readonly households?: RouteDeps["households"];
   readonly logging?: LoggingOptions;
   /** Correlation-id generator; defaults to the shared UUIDv7 generator. */
   readonly correlationId?: () => string;
@@ -97,7 +110,10 @@ export function buildApp(deps: AppDependencies): FastifyInstance {
     return reply.code(statusCode >= 400 ? statusCode : 500).send(body);
   });
 
-  registerRoutes(app, { tenantSession: deps.tenantSession });
+  registerRoutes(app, {
+    tenantSession: deps.tenantSession,
+    ...(deps.households === undefined ? {} : { households: deps.households }),
+  });
 
   return app;
 }
@@ -120,7 +136,9 @@ export class DatabaseConfigurationError extends Error {
  * safely, and returns the wired app together with the pool it owns.
  */
 export async function createAppFromEnvironment(env: EnvironmentLike): Promise<RunningApp> {
-  const identity = await selectIdentityPort(env);
+  // The identity refusal comes first, before anything else is read, so the
+  // production message is never masked by a missing database (M2-T1).
+  chooseIdentityAdapter(env);
 
   const connectionString = env["DATABASE_URL"];
   if (connectionString === undefined || connectionString.trim() === "") {
@@ -128,8 +146,22 @@ export async function createAppFromEnvironment(env: EnvironmentLike): Promise<Ru
       "DATABASE_URL is not set, so there is no database to serve inventory from. See .env.example.",
     );
   }
+  const joinCodes = createJoinCodeHasher(resolveJoinCodePepper(env));
 
   const pool = new Pool({ connectionString });
-  const app = buildApp({ identity, tenantSession: createTenantSessionRunner(pool) });
+  // M2-T3: memberships come from the database, so a household created or
+  // joined over HTTP takes effect on the caller's next request.
+  const identity = await selectIdentityPort(env, {
+    memberships: createPostgresMembershipDirectory(pool),
+  });
+  const app = buildApp({
+    identity,
+    tenantSession: createTenantSessionRunner(pool),
+    households: {
+      memberships: createMembershipSessionRunner(pool),
+      joinCodes,
+      joinLimiter: createJoinAttemptLimiter(),
+    },
+  });
   return { app, pool };
 }

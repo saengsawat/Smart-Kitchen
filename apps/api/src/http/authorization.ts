@@ -34,6 +34,8 @@ import {
 } from "@smart-kitchen/contracts";
 import {
   HOUSEHOLD_ROLES,
+  sessionFor,
+  type Caller,
   type HouseholdRole,
   type IdentityPort,
   type Session,
@@ -44,17 +46,47 @@ import { logAuthorizationDenied, type DenialReason } from "./logging.js";
  * What a route requires of its caller.
  *
  * `public` carries a mandatory `reason` so that opening a route to the world is
- * a sentence somebody wrote, not a default somebody forgot.
+ * a sentence somebody wrote, not a default somebody forgot. So does `user`
+ * (M2-T3): a route a signed-in person may reach before they belong to any
+ * household is narrower than `public` but wider than `household`, and the
+ * sentence says why it has to be.
  */
 export type AuthorizationDeclaration =
   | { readonly kind: "public"; readonly reason: string }
-  | { readonly kind: "household"; readonly roles: readonly HouseholdRole[] };
+  | {
+      readonly kind: "household";
+      readonly roles: readonly HouseholdRole[];
+      /**
+       * The code a role refusal answers with. `FORBIDDEN` unless the route
+       * names a more specific one (M2-T3: `NOT_OWNER` on owner-only actions,
+       * so a member's screen can say why rather than "no access").
+       */
+      readonly roleDeniedCode?: RoleDeniedCode;
+    }
+  | { readonly kind: "user"; readonly reason: string };
+
+/** Codes a role refusal may answer with. Both are 403. */
+export type RoleDeniedCode = Extract<ApiErrorCode, "FORBIDDEN" | "NOT_OWNER">;
 
 /** Any member of the caller's household may use this route. */
 export function householdRoute(
   roles: readonly HouseholdRole[] = HOUSEHOLD_ROLES,
 ): AuthorizationDeclaration {
   return { kind: "household", roles };
+}
+
+/** Only the household's owner may use this route; a member is refused with `NOT_OWNER`. */
+export function ownerRoute(): AuthorizationDeclaration {
+  return { kind: "household", roles: ["owner"], roleDeniedCode: "NOT_OWNER" };
+}
+
+/**
+ * Any signed-in caller, with or without a household (M2-T3). The handler gets
+ * the {@link Caller}, and the session too when the caller has a household.
+ * Say why the route cannot require a household.
+ */
+export function userRoute(reason: string): AuthorizationDeclaration {
+  return { kind: "user", reason };
 }
 
 /** This route is deliberately open; say why. */
@@ -69,8 +101,10 @@ declare module "fastify" {
   }
 
   interface FastifyRequest {
-    /** Set by the authorization hook once a bearer token has resolved. */
+    /** Set by the authorization hook once a bearer token has resolved to a household. */
     session?: Session;
+    /** Set by the authorization hook once a bearer token has resolved (M2-T3). */
+    caller?: Caller;
   }
 }
 
@@ -105,6 +139,13 @@ export function requireSession(request: FastifyRequest): Session {
   return session;
 }
 
+/** The signed-in caller, for a handler on a `userRoute()` or `householdRoute()`. */
+export function requireCaller(request: FastifyRequest): Caller {
+  const caller = request.caller;
+  if (caller === undefined) throw new NoSessionOnRequestError();
+  return caller;
+}
+
 function errorBody(code: ApiErrorCode, message: string, correlationId: string): ApiErrorBodyDto {
   return { error: { code, message, correlationId } };
 }
@@ -122,10 +163,16 @@ async function deny(
   reply: FastifyReply,
   statusCode: 401 | 403,
   reason: DenialReason,
+  roleDeniedCode: RoleDeniedCode = "FORBIDDEN",
 ): Promise<void> {
   logAuthorizationDenied(request, statusCode, reason);
-  const code: ApiErrorCode = statusCode === 401 ? "UNAUTHENTICATED" : "FORBIDDEN";
-  const message = statusCode === 401 ? "Sign in to continue." : "You do not have access to that.";
+  const code: ApiErrorCode = statusCode === 401 ? "UNAUTHENTICATED" : roleDeniedCode;
+  const message =
+    statusCode === 401
+      ? "Sign in to continue."
+      : code === "NOT_OWNER"
+        ? "Only the household owner can do that."
+        : "You do not have access to that.";
   await reply.code(statusCode).send(errorBody(code, message, request.id));
 }
 
@@ -182,16 +229,30 @@ export function createAuthorizationHook(
       return;
     }
 
-    const session = await deps.identity.resolveSession(token);
-    if (session === null) {
+    const caller = await deps.identity.resolveCaller(token);
+    if (caller === null) {
       await deny(request, reply, 401, "unknown-token");
+      return;
+    }
+    request.caller = caller;
+    // The household the request runs as is chosen from the port's own set
+    // (OQ-E1) and from nothing the request carries.
+    const session = sessionFor(caller);
+
+    if (declaration.kind === "user") {
+      if (session !== null) request.session = session;
+      return;
+    }
+
+    if (session === null) {
+      await deny(request, reply, 403, "no-household");
       return;
     }
 
     if (!declaration.roles.includes(session.role)) {
       // Attached first so the denial log names the actor (ARCHITECTURE.md §7.10).
       request.session = session;
-      await deny(request, reply, 403, "role-not-permitted");
+      await deny(request, reply, 403, "role-not-permitted", declaration.roleDeniedCode);
       return;
     }
 

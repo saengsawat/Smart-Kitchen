@@ -211,7 +211,7 @@ describe.skipIf(!dbTestsEnabled)(SUITE, () => {
       expect(rows.rows[0]?.count).toBe("3");
     });
 
-    it("both fixture households and all three users exist as rows", async () => {
+    it("both fixture households and all four users exist as rows", async () => {
       const households = await db.pool.query<{ count: string }>(
         `SELECT count(*)::text AS count FROM households`,
       );
@@ -222,7 +222,8 @@ describe.skipIf(!dbTestsEnabled)(SUITE, () => {
         `SELECT count(*)::text AS count FROM household_memberships`,
       );
       expect(households.rows[0]?.count).toBe("2");
-      expect(users.rows[0]?.count).toBe("3");
+      // Four users since M2-T3: fixture.new.user is a users row with no membership.
+      expect(users.rows[0]?.count).toBe("4");
       expect(memberships.rows[0]?.count).toBe("3");
     });
   });

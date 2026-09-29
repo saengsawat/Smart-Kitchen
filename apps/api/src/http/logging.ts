@@ -128,15 +128,42 @@ export function requestLogFields(request: FastifyRequest, statusCode: number): R
 /** One line per completed request. */
 export function logRequestCompleted(request: FastifyRequest, reply: FastifyReply): void {
   const session = request.session;
+  const caller = request.caller;
   request.log.info(
     {
       ...requestLogFields(request, reply.statusCode),
       durationMs: Math.round(reply.elapsedTime),
       ...(session === undefined
-        ? {}
+        ? caller === undefined
+          ? {}
+          : { userId: caller.userId }
         : { userId: session.userId, householdId: session.householdId, role: session.role }),
     },
     "request.completed",
+  );
+}
+
+/**
+ * One line per membership change (M2-T3, ARCHITECTURE.md §7.10): who, which
+ * household, what kind of change. Ids only, never a name, never the code.
+ */
+export type MembershipChange = "household-created" | "joined-by-code" | "join-code-rotated";
+
+export function logMembershipChange(
+  request: FastifyRequest,
+  change: MembershipChange,
+  fields: { readonly actorUserId: string; readonly householdId: string; readonly role?: string },
+): void {
+  request.log.info(
+    {
+      audit: "membership",
+      change,
+      correlationId: request.id,
+      actorUserId: fields.actorUserId,
+      householdId: fields.householdId,
+      ...(fields.role === undefined ? {} : { role: fields.role }),
+    },
+    "household.membership.changed",
   );
 }
 
@@ -153,6 +180,7 @@ export type DenialReason =
   | "missing-authorization-header"
   | "malformed-authorization-header"
   | "unknown-token"
+  | "no-household"
   | "role-not-permitted";
 
 export function logAuthorizationDenied(
@@ -161,12 +189,15 @@ export function logAuthorizationDenied(
   reason: DenialReason,
 ): void {
   const session = request.session;
+  const caller = request.caller;
   request.log.warn(
     {
       ...requestLogFields(request, statusCode),
       reason,
       ...(session === undefined
-        ? {}
+        ? caller === undefined
+          ? {}
+          : { userId: caller.userId }
         : { userId: session.userId, householdId: session.householdId, role: session.role }),
     },
     "authorization.denied",
