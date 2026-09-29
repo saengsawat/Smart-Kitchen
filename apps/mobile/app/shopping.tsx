@@ -1,14 +1,15 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useRouter } from "expo-router";
 import type { ShoppingListDto, ShoppingRowDto } from "@smart-kitchen/contracts";
 import { apiClient, hasDevOfflineToggle } from "../src/api/client";
 import { nextIdempotencyKey } from "../src/api/idempotency";
 import { colors, fontFamily, minTouchTarget, radius, spacing } from "../src/design/tokens";
-import { GENERIC_LEDGER_ERROR_MESSAGE, messageForLedgerError } from "../src/inventory/errors";
+import { GENERIC_READ_ERROR_MESSAGE, messageForLedgerError } from "../src/inventory/errors";
 import { LOCATION_LABELS } from "../src/inventory/list-view";
 import { useReducedMotion, pressScaleStyle } from "../src/inventory/motion";
 import { chipAccessibilityLabel, ROW_CHIP_TEXT } from "../src/inventory/provenance";
+import { microsToAmountText, parseMicros, trimAmountText } from "../src/inventory/quantity";
 import { useToast } from "../src/inventory/Toast";
 import {
   aiOriginText,
@@ -19,7 +20,62 @@ import {
   skipRowAmountText,
 } from "../src/shopping/format";
 import { buildShoppingListView } from "../src/shopping/list-view";
-import { ShoppingCheckOffQueue } from "../src/shopping/queue";
+import type { QueuedCheckOff } from "../src/shopping/queue";
+import { sharedShoppingQueue } from "../src/shopping/shared-queue";
+
+/**
+ * RN/Metro's dev-mode global (review round 1, F11): the "Simulate offline"
+ * dev toggle must never ship in a release bundle, regardless of which
+ * `ApiClient` is active. Declared locally (same pattern as
+ * `src/config/env.ts`'s `process`): apps/mobile's tsconfig sets `"types":
+ * []`, and this identifier genuinely does not exist at all under vitest (no
+ * Metro) — confirmed empirically by `test-support/expo-crypto-mock.ts`'s own
+ * doc comment ("a bare `import 'expo-crypto'`... throws `ReferenceError:
+ * __DEV__ is not defined`") — so `typeof __DEV__` (never a bare reference)
+ * is the only safe way to read it. `test-support/vitest-setup.ts` sets it
+ * to `true` for the whole test run (the closest test-environment analogue
+ * of "a dev build"), which is what lets this screen's own component tests
+ * exercise the toggle at all.
+ */
+declare const __DEV__: boolean;
+
+function isDevBuild(): boolean {
+  return typeof __DEV__ !== "undefined" && __DEV__ === true;
+}
+
+/** The fixture identity this session always checks off/adds as (D-022). */
+const SESSION_INITIALS = "DC";
+
+/**
+ * Reapplies every still-pending queue entry's desired state onto a freshly
+ * fetched list (review round 1, F1): a queued check-off made offline never
+ * reached the port, so a plain refetch would otherwise show that row back
+ * at its pre-check-off state with no "Queued" tag, the exact "never lost
+ * silently" violation the blocker finding reproduced (offline check, route
+ * away and back, refetch shows it open again). The queue itself is a module
+ * singleton (`shared-queue.ts`) that outlives this component, so the entry
+ * is still there to reapply after a remount; this function is what actually
+ * makes the *rendered* row agree with it again.
+ */
+function applyQueuedOverlay(list: ShoppingListDto): ShoppingListDto {
+  if (sharedShoppingQueue.size === 0) {
+    return list;
+  }
+  return {
+    ...list,
+    rows: list.rows.map((row) => {
+      const entry = sharedShoppingQueue.get(row.rowId);
+      if (!entry) {
+        return row;
+      }
+      return {
+        ...row,
+        status: entry.checked ? "done" : "open",
+        checkedOffBy: entry.checked ? SESSION_INITIALS : null,
+      };
+    }),
+  };
+}
 
 /**
  * S11 · Shopping list (M3-T5), prototype v4 `#scr-shopping`.
@@ -35,21 +91,27 @@ import { ShoppingCheckOffQueue } from "../src/shopping/queue";
  * worker report — the ticket's prose ("after a check-off the loop bar
  * appears") reads naturally as session-scoped, but the static prototype
  * mockup happens to also show the bar for that pre-seeded row, which this
- * screen deliberately does not reproduce.
+ * screen deliberately does not reproduce. Review round 1 accepted this call.
  *
- * ## Offline
+ * ## Offline and the queue (review round 1, F1/F2/F4 fixes)
  *
  * `apiClient.isOffline()`/`subscribeOffline` (ADR-010 option C) drive the
- * banner. A check-off made offline updates its row optimistically (so the
- * screen always feels instant) and, only when offline, also enqueues the
- * same call in `ShoppingCheckOffQueue` under the tap's own idempotency key;
- * reconnecting replays the queue in order and clears each row's "Queued" tag
- * as its entry confirms. The loop bar's Add is never queued (Objective (f)):
- * it needs a real ledger write, so while offline it shows the inline "Add
- * when you're back online." line instead of a button, for any row whose
- * `itemId` names an existing inventory item; a row with no `itemId` still
- * opens S9 regardless of connectivity, since that path is local navigation,
- * not a network write.
+ * banner. `sharedShoppingQueue` (a module singleton, `shared-queue.ts`) —
+ * not a `useRef` — holds the in-session offline queue so it survives this
+ * screen unmounting on a route change; `applyQueuedOverlay` (above)
+ * reapplies its still-pending entries on every load, including after a
+ * remount. A check-off updates its row optimistically first; if this
+ * client is offline, **or if this row already has a pending queue entry**
+ * (a stale/failed one from an earlier tap), the new tap is enqueued too
+ * (replacing that stale entry, never bypassing it — review F2) rather than
+ * calling the port directly, and, if online, replayed immediately so it
+ * does not wait for the next connectivity flap. `ShoppingCheckOffQueue`
+ * itself now also collapses two overlapping `replay` calls into one walk
+ * (F4), so a flap while a replay is already running cannot double-apply an
+ * entry. The loop bar's Add is never queued (Objective (f), widened at
+ * F10): it always needs the server (a no-`itemId` row's Add still saves
+ * through S9), so it is refused inline ("Add when you're back online.")
+ * for every row kind while offline, not just a tracked item's PURCHASE.
  */
 export default function ShoppingScreen(): React.JSX.Element {
   const router = useRouter();
@@ -59,9 +121,17 @@ export default function ShoppingScreen(): React.JSX.Element {
   const [list, setList] = useState<ShoppingListDto | null>(null);
   const [loadError, setLoadError] = useState(false);
   const [offline, setOffline] = useState(() => apiClient.isOffline());
-  const [queuedRowIds, setQueuedRowIds] = useState<ReadonlySet<string>>(new Set());
+  const [queuedRowIds, setQueuedRowIds] = useState<ReadonlySet<string>>(
+    () => new Set(sharedShoppingQueue.queuedRowIds()),
+  );
   const [activeLoopRowId, setActiveLoopRowId] = useState<string | null>(null);
-  const queueRef = useRef<ShoppingCheckOffQueue>(new ShoppingCheckOffQueue());
+  // Review F3: one Add idempotency key per loop-bar-open event, minted when
+  // the row is checked off and reused for every Add press on that same
+  // opening (never re-minted per press, so a double-tap before the first
+  // press settles cannot mint two different keys for the same intent).
+  const [addKeyByRowId, setAddKeyByRowId] = useState<Readonly<Record<string, string>>>({});
+  // Review F3: disables Add while its own request is in flight.
+  const [addingRowId, setAddingRowId] = useState<string | null>(null);
 
   const load = useCallback(() => {
     let cancelled = false;
@@ -69,7 +139,8 @@ export default function ShoppingScreen(): React.JSX.Element {
     void apiClient.getShoppingList().then(
       (result) => {
         if (!cancelled) {
-          setList(result);
+          setList(applyQueuedOverlay(result));
+          setQueuedRowIds(new Set(sharedShoppingQueue.queuedRowIds()));
         }
       },
       () => {
@@ -89,16 +160,20 @@ export default function ShoppingScreen(): React.JSX.Element {
     return apiClient.subscribeOffline((value) => {
       setOffline(value);
       if (!value) {
-        void queueRef.current
-          .replay((entry) =>
-            apiClient.checkOffShoppingRow(entry.rowId, entry.checked, entry.idempotencyKey),
-          )
-          .then(() => {
-            setQueuedRowIds(new Set(queueRef.current.queuedRowIds()));
-          });
+        void replayQueue();
       }
     });
   }, []);
+
+  function replayQueue(): Promise<void> {
+    return sharedShoppingQueue
+      .replay((entry) =>
+        apiClient.checkOffShoppingRow(entry.rowId, entry.checked, entry.idempotencyKey),
+      )
+      .then(() => {
+        setQueuedRowIds(new Set(sharedShoppingQueue.queuedRowIds()));
+      });
+  }
 
   function updateRow(rowId: string, update: (row: ShoppingRowDto) => ShoppingRowDto): void {
     setList((prev) =>
@@ -109,29 +184,39 @@ export default function ShoppingScreen(): React.JSX.Element {
   async function handleToggleCheck(row: ShoppingRowDto): Promise<void> {
     const checked = row.status !== "done";
     const key = nextIdempotencyKey();
-    // The fixture identity is always Dean (D-022: one fixed session
-    // identity throughout the app); a real multi-member session gets this
-    // from the caller's own session, same as every other actor this port
-    // records (src/api/client.ts's DEAN_ACTOR).
-    const initials = "DC";
 
     updateRow(row.rowId, (r) => ({
       ...r,
       status: checked ? "done" : "open",
-      checkedOffBy: checked ? initials : null,
+      checkedOffBy: checked ? SESSION_INITIALS : null,
     }));
     if (checked) {
       setActiveLoopRowId(row.rowId);
+      setAddKeyByRowId((prev) => ({ ...prev, [row.rowId]: nextIdempotencyKey() }));
     } else {
       setActiveLoopRowId((current) => (current === row.rowId ? null : current));
     }
 
-    if (apiClient.isOffline()) {
-      queueRef.current.enqueue({ rowId: row.rowId, checked, idempotencyKey: key });
-      setQueuedRowIds(new Set(queueRef.current.queuedRowIds()));
-      show(`${row.name} queued. It will sync when you're back online.`);
+    const offlineNow = apiClient.isOffline();
+    const hasPendingEntry = sharedShoppingQueue.isQueued(row.rowId);
+
+    if (offlineNow || hasPendingEntry) {
+      // Offline: queue it, plain and simple. Online but a stale/failed
+      // entry is still pending for this row (review F2): route the new tap
+      // through the queue too, replacing that stale entry, rather than
+      // bypassing it with a direct call that would leave the stale entry
+      // free to resurrect this row's old state on a later replay.
+      const entry: QueuedCheckOff = { rowId: row.rowId, checked, idempotencyKey: key };
+      sharedShoppingQueue.enqueue(entry);
+      setQueuedRowIds(new Set(sharedShoppingQueue.queuedRowIds()));
+      if (offlineNow) {
+        show(`${row.name} queued. It will sync when you're back online.`);
+        return;
+      }
+      await replayQueue();
       return;
     }
+
     try {
       await apiClient.checkOffShoppingRow(row.rowId, checked, key);
     } catch (error) {
@@ -161,30 +246,44 @@ export default function ShoppingScreen(): React.JSX.Element {
   }
 
   function handleLoopAdd(row: ShoppingRowDto): void {
+    if (apiClient.isOffline()) {
+      // Refused inline for every row kind (review F10): a no-`itemId` row's
+      // Add still saves through S9, a real write, just as much as a
+      // tracked item's PURCHASE needs the server.
+      return;
+    }
+    if (addingRowId === row.rowId) {
+      return; // already in flight for this row (review F3)
+    }
     if (row.itemId === null) {
       setActiveLoopRowId(null);
       router.push({
         pathname: "/add/manual",
         params: {
           name: row.name,
-          amount: formatMicrosAsPlainAmount(row.buyMicros),
+          // Exact decimal text, never re-derived or rounded (review F9;
+          // S9's own `prefillCount` is what decides whether this is whole
+          // enough to prefill the stepper at all).
+          amount: trimAmountText(microsToAmountText(parseMicros(row.buyMicros))),
           unit: row.unit,
           location: row.defaultLocation,
         },
       });
       return;
     }
-    if (apiClient.isOffline()) {
-      // Refused inline, never queued (module doc comment / Objective (f)).
-      return;
-    }
-    const key = nextIdempotencyKey();
+    // Reuses the key minted when the loop bar opened for this row (review
+    // F3); falls back to a fresh one only if this Add is somehow reached
+    // without that (defensive, not expected in practice).
+    const key = addKeyByRowId[row.rowId] ?? nextIdempotencyKey();
+    setAddingRowId(row.rowId);
     apiClient.addCheckedOffToInventory(row.rowId, key).then(
       () => {
+        setAddingRowId(null);
         setActiveLoopRowId(null);
         show(`${row.name} added to ${LOCATION_LABELS[row.defaultLocation]} · inventory updated`);
       },
       (error: unknown) => {
+        setAddingRowId(null);
         show(messageForLedgerError(error));
       },
     );
@@ -196,7 +295,7 @@ export default function ShoppingScreen(): React.JSX.Element {
         <View style={styles.screen}>
           <View style={styles.emptyWrap} accessibilityLiveRegion="assertive">
             <Text style={styles.emptyTitle}>Couldn't load your shopping list.</Text>
-            <Text style={styles.emptyBody}>{GENERIC_LEDGER_ERROR_MESSAGE}</Text>
+            <Text style={styles.emptyBody}>{GENERIC_READ_ERROR_MESSAGE}</Text>
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="Try again"
@@ -231,7 +330,7 @@ export default function ShoppingScreen(): React.JSX.Element {
         <MemberAvatars members={list.members} />
       </View>
 
-      {hasDevOfflineToggle(apiClient) ? (
+      {isDevBuild() && hasDevOfflineToggle(apiClient) ? (
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={offline ? "Simulate back online" : "Simulate offline"}
@@ -258,7 +357,12 @@ export default function ShoppingScreen(): React.JSX.Element {
       ) : null}
 
       {activeLoopRow ? (
-        <LoopBar row={activeLoopRow} offline={offline} onAdd={() => handleLoopAdd(activeLoopRow)} />
+        <LoopBar
+          row={activeLoopRow}
+          offline={offline}
+          disabled={addingRowId === activeLoopRow.rowId}
+          onAdd={() => handleLoopAdd(activeLoopRow)}
+        />
       ) : null}
 
       {view.isEmpty ? (
@@ -313,19 +417,6 @@ export default function ShoppingScreen(): React.JSX.Element {
   );
 }
 
-/**
- * S11 never computes an amount: `row.buyMicros` is already the domain's
- * exact gap, so this only formats it for S9's `amount` search param (the
- * exact same decimal text S9's own save path converts back with
- * `decimalAmountToMicros`/`wholeUnitQuantityMicros`), never a re-derived or
- * rounded value.
- */
-function formatMicrosAsPlainAmount(micros: string): string {
-  const value = BigInt(micros);
-  const whole = value / 1_000_000n;
-  return whole.toString();
-}
-
 function MemberAvatars({ members }: { members: ShoppingListDto["members"] }): React.JSX.Element {
   return (
     <View style={styles.avatarRow}>
@@ -344,14 +435,19 @@ function MemberAvatars({ members }: { members: ShoppingListDto["members"] }): Re
 function LoopBar({
   row,
   offline,
+  disabled,
   onAdd,
 }: {
   row: ShoppingRowDto;
   offline: boolean;
+  disabled: boolean;
   onAdd: () => void;
 }): React.JSX.Element {
   const reducedMotion = useReducedMotion();
-  const refusedInline = offline && row.itemId !== null;
+  // Review F10: refused inline for every row kind while offline, not just a
+  // tracked item's PURCHASE — a no-itemId row's Add still saves through S9,
+  // a real server write.
+  const refusedInline = offline;
   return (
     <View style={styles.loop}>
       <Text style={styles.loopText}>{row.name} checked off · add it to the pantry?</Text>
@@ -361,9 +457,15 @@ function LoopBar({
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={`Add ${row.name} to inventory`}
+          accessibilityState={{ disabled }}
+          disabled={disabled}
           hitSlop={5}
           onPress={onAdd}
-          style={({ pressed }) => [styles.loopButton, pressScaleStyle(pressed, reducedMotion)]}
+          style={({ pressed }) => [
+            styles.loopButton,
+            disabled ? styles.loopButtonDisabled : null,
+            pressScaleStyle(pressed, reducedMotion),
+          ]}
         >
           <Text style={styles.loopButtonText}>Add</Text>
         </Pressable>
@@ -425,7 +527,10 @@ function ShoppingRow({
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={`Remove ${row.name}`}
-            hitSlop={6}
+            // tokens.md §5 formula: ceil((44 - 24) / 2) = 10, not 6 — the
+            // Remove control's rendered height is 24px, not the 32px the
+            // deck's own `.okbtn` table entry assumes (review F8).
+            hitSlop={10}
             onPress={onRemove}
             style={({ pressed }) => [styles.removeButton, pressScaleStyle(pressed, reducedMotion)]}
           >
@@ -587,6 +692,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  loopButtonDisabled: { opacity: 0.5 },
   loopButtonText: {
     fontSize: 13,
     fontWeight: "700",
