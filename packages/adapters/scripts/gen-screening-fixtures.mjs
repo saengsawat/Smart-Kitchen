@@ -237,7 +237,9 @@ export function generateScreeningFixtures(products = FIXTURE_PRODUCTS) {
       ...(record.ingredientsText
         ? { ingredientsText: provenancedDto(record.ingredientsText) }
         : {}),
-      screening: toScreeningResultDto(screened.value),
+      // M2-T4a: `ScannedProductDto.screening` is a `ScreeningOutcomeDto`. This
+      // script runs the engine, so every product it writes is `RUN`.
+      screening: { status: "RUN", result: toScreeningResultDto(screened.value) },
     };
   }
   return out;

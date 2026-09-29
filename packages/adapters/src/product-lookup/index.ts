@@ -12,6 +12,9 @@
 export { FixtureProductLookupPort } from "./fixture-product-lookup-port.js";
 export { FixtureNutritionSourcePort } from "./fixture-nutrition-source-port.js";
 
+// M2-T4a: the live Open Food Facts adapter (server side only).
+export * from "./open-food-facts/index.js";
+
 export { codeKey, loadFixtureCatalog, resetFixtureCatalogCache } from "./fixture-loader.js";
 export type { FixtureCatalog } from "./fixture-loader.js";
 
