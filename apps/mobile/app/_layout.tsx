@@ -10,7 +10,11 @@ import { colors, fontFamily, minTouchTarget, spacing } from "../src/design/token
 import { GENERIC_READ_ERROR_MESSAGE } from "../src/inventory/errors";
 import { ToastHost, ToastProvider } from "../src/inventory/Toast";
 import { TabBar } from "../src/navigation/TabBar";
-import { resolveLayoutRedirectForRead, type OnboardingStateRead } from "../src/onboarding/route";
+import {
+  resolveLayoutRedirectForRead,
+  resolveOnboardingRoute,
+  type OnboardingStateRead,
+} from "../src/onboarding/route";
 
 // expo-router boots the splash screen and expects the app to signal it's
 // ready; without a real splash-hide sequence configured (out of scope for a
@@ -117,6 +121,28 @@ export default function RootLayout(): React.JSX.Element | null {
 
   if (!read) {
     return null;
+  }
+
+  // M3-T4d review round 2, F2: the pending window. `read` can be non-null
+  // but *stale* (tagged for an earlier pathname) while this pathname's own
+  // fresh read is still in flight — that is exactly the M3-T2 review F18
+  // case, whose fix is to render the current screen for that one frame
+  // rather than compute a redirect from stale data (`resolveLayoutRedirectForRead`
+  // returns `null` on a pathname mismatch, below). F18's own scenario is
+  // safe to fall through on: the stale route was already "home", so
+  // showing Slot while a fresh confirmation is in flight risks nothing.
+  // But when the stale route was NOT "home" (it called for S1/S2) and the
+  // current pathname is not already under "/onboarding", falling through
+  // would render Slot (real content) for as long as the fresh read takes,
+  // unbounded over a real network, exactly the bypass F2 closes for a
+  // *rejected* read; a *pending* read is the same bypass, just not failed
+  // yet. Hold (render nothing) until the fresh read for this pathname
+  // lands: a hold never redirects either, so F18's fix still holds too.
+  if (read.pathname !== pathname && !pathname.startsWith("/onboarding")) {
+    const staleRoute = resolveOnboardingRoute(read.state);
+    if (staleRoute !== "home") {
+      return null;
+    }
   }
 
   // M3-T2 review F2: this is the ONE gate every route in the app goes

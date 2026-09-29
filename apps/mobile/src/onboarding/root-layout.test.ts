@@ -90,6 +90,63 @@ describe("app/_layout.tsx (component, review F2 fail-closed)", () => {
     expect(result.getByText("Couldn't load your household.")).toBeTruthy();
   });
 
+  it("a never-resolving read after an S1-routed read holds (no Slot, no redirect) for as long as it is pending (review round 2, F2)", async () => {
+    // First render: a successful read for "/", household null -> S1 redirect
+    // (the stale read's own route is "s1", not "home").
+    vi.spyOn(apiClient, "getOnboardingState").mockResolvedValueOnce({ household: null });
+    const result = await renderLayout();
+    expect(result.getByText(/^REDIRECT_RENDERED:\/onboarding\/account$/)).toBeTruthy();
+
+    // A deep link straight at /inventory whose own read never settles
+    // (never resolves, never rejects) — the M3-T2 F18 "render the
+    // destination for one frame" tolerance must not become an unbounded
+    // window while this is in flight.
+    mockPathname = "/inventory";
+    vi.spyOn(apiClient, "getOnboardingState").mockImplementationOnce(() => new Promise(() => {}));
+    const { default: RootLayout } = await import("../../app/_layout");
+    result.rerender(React.createElement(RootLayout));
+    await flushPending();
+
+    expect(result.queryByText("SLOT_RENDERED")).toBeNull();
+    expect(result.queryByText(/^REDIRECT_RENDERED/)).toBeNull();
+    expect(result.queryByText("Couldn't load your household.")).toBeNull(); // held, not a read failure
+  });
+
+  it("a still-pending read whose stale route was already home still renders Slot for that one frame (F18 preserved)", async () => {
+    // First render: a successful read for "/", household fully onboarded
+    // -> route "home", no redirect, Slot renders.
+    vi.spyOn(apiClient, "getOnboardingState").mockResolvedValueOnce({
+      household: {
+        householdId: "hh-1",
+        name: "The Ostrowskis",
+        members: [
+          {
+            memberId: "mem-1",
+            displayName: "Ada",
+            role: "owner",
+            restrictions: [],
+            noneConfirmed: true,
+            preferences: [],
+          },
+        ],
+      },
+    });
+    const result = await renderLayout();
+    expect(result.getByText("SLOT_RENDERED")).toBeTruthy();
+
+    // Navigate to another tab whose own read is still pending: the stale
+    // route was already "home", so this is exactly F18's safe case and
+    // must keep rendering Slot, not hold.
+    mockPathname = "/inventory";
+    vi.spyOn(apiClient, "getOnboardingState").mockImplementationOnce(() => new Promise(() => {}));
+    const { default: RootLayout } = await import("../../app/_layout");
+    result.rerender(React.createElement(RootLayout));
+    await flushPending();
+
+    expect(result.getByText("SLOT_RENDERED")).toBeTruthy();
+    expect(result.queryByText(/^REDIRECT_RENDERED/)).toBeNull();
+  });
+
   it("Try again re-reads and, on success, renders the destination", async () => {
     vi.spyOn(apiClient, "getOnboardingState").mockRejectedValueOnce(new Error("network down"));
     const result = await renderLayout();
