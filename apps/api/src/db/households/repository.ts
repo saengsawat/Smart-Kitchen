@@ -99,9 +99,17 @@ export async function issueJoinCode(
 ): Promise<IssuedJoinCode> {
   for (let attempt = 0; attempt < MAX_CODE_ATTEMPTS; attempt += 1) {
     const code = random === undefined ? generateJoinCode() : generateJoinCode(random);
+    // `created_at` is stamped with clock_timestamp(), the statement's own
+    // time, not the column DEFAULT now(). now() is the time the *transaction*
+    // started, and rotation serialises on an advisory lock taken after BEGIN:
+    // a transaction that began earlier but got the lock later would stamp an
+    // older time than the code it is about to revoke, and
+    // `revoked_after_created` would reject it (M2-T3a, CI failure on main).
+    // Taken while the lock is held, statement times are ordered across lock
+    // holders, which is the ordering the constraint is about.
     const inserted = await client.query<{ created_at: Date }>(
-      `INSERT INTO household_join_codes (code_hash, household_id, created_by)
-       VALUES ($1, $2, $3)
+      `INSERT INTO household_join_codes (code_hash, household_id, created_by, created_at)
+       VALUES ($1, $2, $3, clock_timestamp())
        ON CONFLICT (code_hash) DO NOTHING
        RETURNING created_at`,
       [hasher.hash(code), householdId, createdBy],
@@ -179,8 +187,11 @@ export async function rotateJoinCode(
   await client.query("SELECT pg_advisory_xact_lock(hashtextextended($1, 0))", [
     `household-join-code:${householdId}`,
   ]);
+  // clock_timestamp(), not now(): see `issueJoinCode`. now() is this
+  // transaction's start, which can precede the created_at another lock holder
+  // stamped on the live code after this transaction began (M2-T3a).
   await client.query(
-    `UPDATE household_join_codes SET revoked_at = now()
+    `UPDATE household_join_codes SET revoked_at = clock_timestamp()
       WHERE household_id = $1 AND revoked_at IS NULL`,
     [householdId],
   );
