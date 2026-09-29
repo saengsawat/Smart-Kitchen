@@ -134,6 +134,13 @@ Owners: `PO` = product owner (Dean), `ENG` = engineering.
 - **Consequences if accepted:** D-002 becomes DECIDED as the current build plus the MVP adds; the held Menu and Home tickets (D-020, OQ-D9, D-023) are written; M7 and M3-T5 tickets inherit rows 5, 10, 11, 13. Nothing here adds cash cost.
 - **Alternatives:** take the whole list into MVP (rejected: rows 4, 12, 14 need vision or LLM vendors and metered spend); take none (rejected: rows 1, 8, 15 are cheap and clearly wanted).
 
+## D-025 — Live product lookup over Open Food Facts, unbundled from A3
+- **Date:** 2026-09-29 · **Status:** DECIDED (PO Andy, in chat, after the first on-device test showed every real barcode missing) · **Owner:** Andy (PO), architect
+- **Context:** the scan screen knew only the four fixture barcodes, so a real product always fell to the typed fallback and manual add, and over HTTP manual add was also refused (client wiring pending). The product lookup endpoint had been bundled into M2-T4 with restrictions storage and server-side screening, which chained product data to the A3 household-permissions decision.
+- **Decision:** (1) the API calls **Open Food Facts** live for barcode lookups (rule 17 approval): server-side only, the phone never calls OFF; production host for development traffic within OFF's published limits and with a descriptive User-Agent; OFF's staging host for manual developer testing; the automated test suite never calls OFF (recorded fixtures only, rule 18). (2) **USDA FoodData Central stays out** for now: it needs an API key signup, R-1 could not validate it (rate-limited on every attempt), and it carries no allergen field. (3) **No persisted product catalog**: an in-memory per-process TTL cache only, so the ODbL share-alike question (R-4) stays untouched. (4) The lookup endpoint is **unbundled from A3** as ticket M2-T4a; until M2-T4 stores restrictions, the lookup response carries an explicit `NOT_RUN` screening state that the scan sheet renders as "not checked", never as a verdict.
+- **Consequences:** ADR-006 gains a PROPOSED provenance-tier policy for OFF data (identity match KNOWN_FACT; every OFF label field ESTIMATED with source `open-food-facts`; OFF can never license the absence of an allergen, so `ALLOWED` cannot come from OFF data alone, consistent with D-017); copy-deck §3.3 gains the `NOT_RUN` row; M3-T4d wires the client to the M2-T3 endpoints in parallel; M3-T4e wires lookup once M2-T4a lands.
+- **Alternatives:** wait for A3 (rejected: blocks the one flow a fridge test exercises); call OFF from the phone (rejected: no rate control, no provenance stamping, the API is the data boundary); FDC alongside OFF (rejected for now, see above).
+
 ---
 
 ## Open product-owner questions (not yet decisions)

@@ -1,6 +1,6 @@
 # ADR-006: Food/product data sources
 
-**Status:** PROPOSED (R-1 evidence from M1-T5, 2026-09-09; FDC arm still unmeasured — see findings) · Target decision point: M4 (barcode enrichment)
+**Status:** PROPOSED (R-1 evidence from M1-T5, 2026-09-09; FDC arm still unmeasured — see findings) · Target decision point: M4 (barcode enrichment) · **Partial adoption 2026-09-29 (D-025):** the OFF arm goes live server-side in M2-T4a; FDC stays out; the OFF provenance-tier policy is recorded at M2-T4a acceptance
 
 ## R-1 findings (measured 2026-09-09 — [docs/research/food-data-coverage.md](../research/food-data-coverage.md))
 
