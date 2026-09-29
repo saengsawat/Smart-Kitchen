@@ -103,4 +103,47 @@ describe("S1 · account + household, fixture path (component)", () => {
     expect(createCalls).toBe(0); // the in-flight join guard refused it
     expect(pushed).toEqual(["/onboarding/allergies"]); // the join itself still succeeded
   });
+
+  it("review round 2 (F4/F11 pin): two Join-household taps in one frame produce exactly one joinHousehold call", async () => {
+    const result = await renderScreen();
+    fireEvent.changeText(result.getByLabelText("Join code"), "CHEN-482");
+
+    let calls = 0;
+    const original = apiClient.joinHousehold.bind(apiClient);
+    vi.spyOn(apiClient, "joinHousehold").mockImplementation(async (code) => {
+      calls += 1;
+      return original(code);
+    });
+
+    const button = result.getByLabelText("Join household");
+    // No `await`/`flushPending` between these two: same reasoning as the
+    // create-side pin above, but exercising `handleJoinHousehold`'s own
+    // `requestInFlight` check, not create's.
+    fireEvent.press(button);
+    fireEvent.press(button);
+    await flushPending();
+
+    expect(calls).toBe(1);
+    expect(pushed).toEqual(["/onboarding/allergies"]);
+  });
+
+  it("review round 2 (F4/F11 pin): a Join-household tap while a create is in flight is refused", async () => {
+    const result = await renderScreen();
+    fireEvent.changeText(result.getByLabelText("Join code"), "CHEN-482");
+    fireEvent.changeText(result.getByLabelText("Household name"), "The Ostrowskis");
+
+    let joinCalls = 0;
+    const originalJoin = apiClient.joinHousehold.bind(apiClient);
+    vi.spyOn(apiClient, "joinHousehold").mockImplementation(async (code) => {
+      joinCalls += 1;
+      return originalJoin(code);
+    });
+
+    fireEvent.press(result.getByLabelText("Create household"));
+    fireEvent.press(result.getByLabelText("Join household")); // same frame as the create tap
+    await flushPending();
+
+    expect(joinCalls).toBe(0); // the in-flight create guard refused it
+    expect(pushed).toEqual(["/onboarding/allergies"]); // the create itself still succeeded
+  });
 });

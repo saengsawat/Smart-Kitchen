@@ -485,8 +485,18 @@ describe("HttpApiClient.clearHouseholdUntilServerSaysOtherwise (M3-T4d review F6
       throw new Error("must not call fetch");
     };
     const client = new HttpApiClient("http://localhost:4000");
+    // Review round 2 pin: "member-dean" (tests/fixtures/identity/README.md),
+    // not an arbitrary id like "mem-1" — the internal delegate starts from
+    // `FixtureApiClient.returningUser()` (kept only for `confirmAiProposal`'s
+    // inventory, see the module doc comment), whose *un-cleared* household
+    // really does have a "member-dean". A made-up id would reject either
+    // way (an "unknown memberId" refusal, same as a cleared household's "no
+    // household yet" one), so it cannot tell "the household was cleared"
+    // apart from "the id doesn't exist"; deleting
+    // `clearHouseholdUntilServerSaysOtherwise()` must make this one resolve
+    // instead of reject.
     await expect(
-      client.saveMemberRestrictions("mem-1", [], { noneConfirmed: true }),
+      client.saveMemberRestrictions("member-dean", [], { noneConfirmed: true }),
     ).rejects.toThrow();
   });
 
@@ -495,7 +505,8 @@ describe("HttpApiClient.clearHouseholdUntilServerSaysOtherwise (M3-T4d review F6
       throw new Error("must not call fetch");
     };
     const client = new HttpApiClient("http://localhost:4000");
-    await expect(client.savePreferences("mem-1", ["Vegetarian"])).rejects.toThrow();
+    // Same "member-dean", same reasoning as the test above.
+    await expect(client.savePreferences("member-dean", ["Vegetarian"])).rejects.toThrow();
   });
 
   it("saveMemberRestrictions and savePreferences never call fetch, on a fresh client or after a real household sync", async () => {
