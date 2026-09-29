@@ -33,12 +33,21 @@
  * - **No duplicate delivery.** Because there is at most one entry per row,
  *   and a confirmed entry is deleted before any later tap could enqueue a
  *   new one, `apply` is never called twice for the same tap.
- * - **At most one replay walk in flight (review round 1, F4).** Two
- *   overlapping `replay` calls (e.g. two connectivity flaps close together)
- *   share the same in-flight walk rather than each starting an independent
- *   one: a second call while a walk is running gets the *same* promise the
- *   first call is already awaiting, so a queued entry is never handed to
- *   `apply` twice just because `replay` was invoked twice.
+ * - **At most one replay walk in flight, plus one collapsed follow-up
+ *   (review round 1 F4, tightened at round 2 R2).** A `replay` call while a
+ *   walk is already running does not just return that walk's promise (F4
+ *   alone): the walk's own snapshot (taken when *it* started) cannot see an
+ *   entry `enqueue`d after that, so a naive "share the in-flight promise"
+ *   fix left such an entry stranded until the next flap or tap (round 1
+ *   left it there; round 2 R2 closes it). Instead, the *first* `replay`
+ *   call made while a walk is running schedules exactly one follow-up walk
+ *   to run immediately after the current one finishes; every other
+ *   `replay` call made before that follow-up starts collapses into the
+ *   same pending follow-up rather than scheduling another one. This still
+ *   guarantees at most one delivery per entry per settled state (F4's
+ *   promise): the follow-up is a genuinely new walk, snapshotting
+ *   `entries` fresh when *it* starts, so it only ever redelivers an entry
+ *   the first walk did not already confirm.
  */
 
 export interface QueuedCheckOff {
@@ -60,6 +69,7 @@ export interface ReplayResult {
 export class ShoppingCheckOffQueue {
   private readonly entries = new Map<string, QueuedCheckOff>();
   private replayInFlight: Promise<ReplayResult> | null = null;
+  private followUpReplay: Promise<ReplayResult> | null = null;
 
   /** Queues (or replaces the still-pending entry for) one row. */
   enqueue(entry: QueuedCheckOff): void {
@@ -96,16 +106,41 @@ export class ShoppingCheckOffQueue {
   }
 
   /**
+   * Drops every pending entry whose `rowId` is not in `validRowIds` (review
+   * round 2, R3): a row that disappeared from a fresh load (removed, or
+   * simply no longer part of the list) has nothing left to sync, and
+   * retrying it forever would only ever fail every replay from then on.
+   * No confirmation/failure is reported for a dropped entry: there is
+   * nothing left for the user to act on, so no toast either (the caller
+   * decides that; this just stops the entry from being replayed again).
+   */
+  pruneToKnownRows(validRowIds: ReadonlySet<string>): void {
+    for (const rowId of this.entries.keys()) {
+      if (!validRowIds.has(rowId)) {
+        this.entries.delete(rowId);
+      }
+    }
+  }
+
+  /**
    * Replays every queued entry, in order, via `apply`. A confirmed entry is
    * removed; a failed one stays queued (module doc comment). Never throws:
    * a rejected `apply` is caught per entry so one failure does not abort the
-   * rest of the walk. Two overlapping calls share one walk (F4): a second
-   * call made while a walk is already running returns that same walk's
-   * promise instead of starting a second, concurrent one.
+   * rest of the walk. A call made while a walk is already running schedules
+   * (or joins) exactly one follow-up walk immediately after the current one
+   * finishes (module doc comment, F4/R2), so an entry queued mid-walk is
+   * never stranded until the next flap or tap.
    */
   replay(apply: ApplyQueuedCheckOff): Promise<ReplayResult> {
     if (this.replayInFlight) {
-      return this.replayInFlight;
+      if (!this.followUpReplay) {
+        this.followUpReplay = this.replayInFlight
+          .then(() => this.replay(apply))
+          .finally(() => {
+            this.followUpReplay = null;
+          });
+      }
+      return this.followUpReplay;
     }
     const walk = this.runReplay(apply).finally(() => {
       this.replayInFlight = null;

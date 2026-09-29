@@ -104,6 +104,17 @@ describe("ShoppingCheckOffQueue (M3-T5 Objective (f))", () => {
     expect(queue.queuedRowIds()).toEqual(["row-a", "row-b"]);
   });
 
+  it("R3: pruneToKnownRows drops an entry whose row is no longer in a fresh list, keeps the rest", () => {
+    const queue = new ShoppingCheckOffQueue();
+    queue.enqueue(entry({ rowId: "row-gone" }));
+    queue.enqueue(entry({ rowId: "row-still-here" }));
+
+    queue.pruneToKnownRows(new Set(["row-still-here"]));
+
+    expect(queue.isQueued("row-gone")).toBe(false);
+    expect(queue.isQueued("row-still-here")).toBe(true);
+  });
+
   it("a fresh tap queued mid-replay is not clobbered by the in-flight (stale) replay call for the same row", async () => {
     const queue = new ShoppingCheckOffQueue();
     queue.enqueue(entry({ rowId: "row-1", idempotencyKey: "key-old" }));
@@ -151,5 +162,43 @@ describe("ShoppingCheckOffQueue (M3-T5 Objective (f))", () => {
 
     expect(applyCalls).toHaveLength(1);
     expect(queue.isQueued("row-1")).toBe(false);
+  });
+
+  it("R2: an entry enqueued while a walk is in flight is delivered via a collapsed follow-up walk, exactly once", async () => {
+    const queue = new ShoppingCheckOffQueue();
+    queue.enqueue(entry({ rowId: "row-a", idempotencyKey: "key-a" }));
+
+    const applyCalls: QueuedCheckOff[] = [];
+    let resolveFirstApply: (() => void) | undefined;
+    const apply = (e: QueuedCheckOff): Promise<void> => {
+      applyCalls.push(e);
+      if (e.rowId === "row-a" && !resolveFirstApply) {
+        return new Promise<void>((resolve) => {
+          resolveFirstApply = resolve;
+        });
+      }
+      return Promise.resolve();
+    };
+
+    const walk1 = queue.replay(apply); // starts, calls apply(row-a), awaits it
+
+    // row-b is enqueued, and a replay requested, while the first walk is
+    // still in flight (row-a's apply call has not resolved yet). This must
+    // not be lost until "the next flap or tap" (round 1's residual, R2):
+    // it should ride a single collapsed follow-up walk that runs right
+    // after the current one finishes.
+    queue.enqueue(entry({ rowId: "row-b", idempotencyKey: "key-b" }));
+    const walk2 = queue.replay(apply);
+    // A third call in the same window collapses into the same follow-up,
+    // never a third walk.
+    const walk3 = queue.replay(apply);
+    expect(walk2).toBe(walk3);
+
+    resolveFirstApply?.();
+    await walk1;
+    await walk2;
+
+    expect(applyCalls.map((e) => e.rowId)).toEqual(["row-a", "row-b"]);
+    expect(queue.isQueued("row-b")).toBe(false);
   });
 });
