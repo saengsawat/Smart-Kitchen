@@ -20,8 +20,15 @@ added, removed or edited.
 | `no-allergen-fields-almond-breeze.json` | 041570056189 | Blue Diamond Almond Breeze | requested with a field list that omits `allergens_tags` and `traces_tags`, so the real response has no allergen field |
 | `sparse-sandwich.json` | 0999999999993 | a store sandwich | meant as a not-found probe, but OFF had it: no quantity, no ingredients, no categories |
 | `not-found.json` | 481293740567 | none | HTTP 404 with `status: 0` |
+| `liquid-per-100ml-ripple.json` | 855643006045 | Ripple Dairy-Free Milk | M3-T4e: the same product as `unparseable-quantity-ripple.json`, re-captured from staging with `nutrition_data_per` added to the field list; its real value is `"100ml"`, proving the adapter emits no `PER_100G` profile for a genuine per-100-ml liquid record |
 
 Nine requests went to OFF in total while preparing these (one staging probe,
 one production search to pick candidates, seven product reads), all
 sequential and several seconds apart. To add a recording, capture it the same
 way, label it, and never hand-edit the body.
+
+**M3-T4e addition (2026-09-29):** two more requests to the staging host, both
+within the ticket's "at most two" budget: one throwaway connectivity check
+(`fields=code` only, not saved as a fixture) and one real capture of
+`liquid-per-100ml-ripple.json` above, with the updated field list that now
+includes `nutrition_data_per`.

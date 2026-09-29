@@ -187,7 +187,7 @@ export function mapOffProduct(
     ...(category === undefined ? {} : { category: estimated(category) }),
     ...(packageSize === undefined ? {} : { packageSize: estimated(packageSize) }),
     ...(servingSize === undefined ? {} : { servingSize: estimated(servingSize) }),
-    nutrition: nutritionProfiles(product["nutriments"], provenance),
+    nutrition: nutritionProfiles(product["nutriments"], provenance, product["nutrition_data_per"]),
     ...(ingredientsText === undefined ? {} : { ingredientsText: estimated(ingredientsText) }),
     allergens,
     ...(imageRef === undefined ? {} : { imageRef: estimated(imageRef) }),
@@ -244,13 +244,30 @@ const NUTRIENT_KEYS: readonly (readonly [keyof NutritionValues, string, "g" | "m
   ["sodiumMg", "sodium", "mg"],
 ];
 
-function nutritionProfiles(value: unknown, provenance: FieldProvenance): NutritionProfile[] {
+/**
+ * M3-T4e (c), ADR-006 open item: OFF reuses the `_100g` nutriment suffix for
+ * both mass-based and volume-based products, so `_100g`'s values are per
+ * 100 ml, not per 100 g, whenever `nutrition_data_per` says so. Until the
+ * contracts basis enum grows a `PER_100ML` (out of this ticket's scope,
+ * `packages/contracts/src/products.ts`), a per-100-ml record gets no
+ * `PER_100G` profile at all — absence is honest, a wrong label is not. Only
+ * an exact `"100g"` licenses the `PER_100G` profile; anything else
+ * (`"100ml"`, `"serving"`, an unrecognised value, or the field being absent
+ * entirely) suppresses it. `_serving` values are never ambiguous this way
+ * (a serving is a fixed amount in the record's own unit) and are unaffected.
+ */
+function nutritionProfiles(
+  value: unknown,
+  provenance: FieldProvenance,
+  nutritionDataPer: unknown,
+): NutritionProfile[] {
   if (!isPlainObject(value)) return [];
   const profiles: NutritionProfile[] = [];
   for (const [basis, suffix] of [
     ["PER_100G", "_100g"],
     ["PER_SERVING", "_serving"],
   ] as const) {
+    if (basis === "PER_100G" && nutritionDataPer !== "100g") continue;
     const values: { -readonly [K in keyof NutritionValues]?: number } = {};
     let any = false;
     for (const [field, nutrient, unit] of NUTRIENT_KEYS) {

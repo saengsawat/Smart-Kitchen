@@ -102,18 +102,16 @@ describe("full record (Kirkland organic peanut butter, US, recorded from product
     expect(item.servingSize?.value).toEqual({ qty: 32, unit: "g" });
   });
 
-  it("maps per-100 g and per-serving nutrition from OFF's normalized keys, sodium in mg", () => {
-    expect(item.nutrition.map((n) => n.basis)).toEqual(["PER_100G", "PER_SERVING"]);
+  it("maps per-serving nutrition from OFF's normalized keys, sodium in mg", () => {
+    // M3-T4e: this fixture predates `nutrition_data_per` joining the field
+    // list, so the field is absent from the recorded body. Absent is not
+    // "100g" (mapping.ts's nutritionProfiles doc comment), so no PER_100G
+    // profile is emitted here even though the product is a solid, not a
+    // liquid — this is exactly the fixture that exercises "absent emits
+    // nothing" (BACKLOG.md M3-T4e "Tests required"). PER_SERVING is
+    // unaffected by the field either way.
+    expect(item.nutrition.map((n) => n.basis)).toEqual(["PER_SERVING"]);
     expect(item.nutrition[0]?.values).toEqual({
-      calories: 562.5,
-      proteinG: 12.5,
-      carbsG: 10.94,
-      fatG: 23.44,
-      fiberG: 4.69,
-      sugarG: 1.56,
-      sodiumMg: 0.203125,
-    });
-    expect(item.nutrition[1]?.values).toEqual({
       calories: 180,
       proteinG: 4,
       carbsG: 3.5,
@@ -212,6 +210,25 @@ describe("record with an unparseable quantity (Ripple, '48 fl oz')", () => {
     expect(loadRecorded("unparseable-quantity-ripple.json").body).toMatchObject({
       product: { quantity: "48 fl oz" },
     });
+    expect(item.packageSize).toBeUndefined();
+  });
+});
+
+describe("record with a real nutrition_data_per: 100ml (Ripple Dairy-Free Milk, M3-T4e, recorded from staging)", () => {
+  const item = hit("liquid-per-100ml-ripple.json");
+
+  it("emits no PER_100G profile: OFF's own nutrition_data_per says these _100g figures are per 100 ml, not per 100 g", () => {
+    expect(item.nutrition.map((n) => n.basis)).toEqual(["PER_SERVING"]);
+  });
+
+  it("still maps the per-serving profile (a serving is a fixed amount, never ambiguous)", () => {
+    expect(item.nutrition[0]).toMatchObject({
+      basis: "PER_SERVING",
+      values: expect.objectContaining({ calories: 70 }) as unknown,
+    });
+  });
+
+  it("the same 48 fl oz quantity remains unparseable, same as the earlier capture of this product", () => {
     expect(item.packageSize).toBeUndefined();
   });
 });
@@ -338,6 +355,7 @@ describe("outcome mapping", () => {
         status: 1,
         product: {
           product_name: "P",
+          nutrition_data_per: "100g",
           nutriments: { "energy-kcal_100g": "120", fat_100g: -1, proteins_100g: 3 },
         },
       }),
@@ -345,6 +363,48 @@ describe("outcome mapping", () => {
     expect(outcome.status === "hit" && outcome.product.nutrition).toEqual([
       expect.objectContaining({ basis: "PER_100G", values: { proteinG: 3 } }),
     ]);
+  });
+
+  describe("nutrition_data_per gates the PER_100G profile (M3-T4e (c), ADR-006 open item)", () => {
+    const body = (nutritionDataPer: unknown): string =>
+      JSON.stringify({
+        status: 1,
+        product: {
+          product_name: "P",
+          ...(nutritionDataPer === undefined ? {} : { nutrition_data_per: nutritionDataPer }),
+          nutriments: { "energy-kcal_100g": 100, "energy-kcal_serving": 50 },
+        },
+      });
+
+    it('"100g" emits the PER_100G profile', () => {
+      const outcome = answer(200, body("100g"));
+      expect(outcome.status === "hit" && outcome.product.nutrition.map((n) => n.basis)).toContain(
+        "PER_100G",
+      );
+    });
+
+    it('"100ml" (a liquid) emits no PER_100G profile, so it is never mislabelled per 100 g', () => {
+      const outcome = answer(200, body("100ml"));
+      expect(outcome.status === "hit" && outcome.product.nutrition.map((n) => n.basis)).toEqual([
+        "PER_SERVING",
+      ]);
+    });
+
+    it("absent emits no PER_100G profile either (absence is honest, never assumed to be 100g)", () => {
+      const outcome = answer(200, body(undefined));
+      expect(outcome.status === "hit" && outcome.product.nutrition.map((n) => n.basis)).toEqual([
+        "PER_SERVING",
+      ]);
+    });
+
+    it("PER_SERVING is unaffected by nutrition_data_per in every case", () => {
+      for (const value of ["100g", "100ml", undefined]) {
+        const outcome = answer(200, body(value));
+        expect(outcome.status === "hit" && outcome.product.nutrition.map((n) => n.basis)).toContain(
+          "PER_SERVING",
+        );
+      }
+    });
   });
 
   it("observedAt falls back to the fetch time when last_modified_t is missing", () => {

@@ -33,6 +33,7 @@ export const RECORDED_OFF_FILES = [
   "traces-only-granola.json",
   "unmapped-tags-bread.json",
   "unparseable-quantity-ripple.json",
+  "liquid-per-100ml-ripple.json",
   "no-allergen-fields-almond-breeze.json",
   "sparse-sandwich.json",
   "not-found.json",
