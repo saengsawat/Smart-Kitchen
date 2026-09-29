@@ -529,7 +529,7 @@ describe("S11 review round 2 fixes", () => {
     second.unmount();
   });
 
-  it("F14: once a row's Add has landed, re-checking it never reoffers Add, and the loop bar shows no Add action for it", async () => {
+  it("F14: once a row's Add has landed, re-checking it never reopens the loop bar at all (review round 3: not just 'no Add action')", async () => {
     const result = await renderScreen();
     fireEvent.press(result.getByLabelText("Chicken breast, not checked off"));
     await flushPending();
@@ -542,9 +542,10 @@ describe("S11 review round 2 fixes", () => {
     fireEvent.press(result.getByLabelText("Chicken breast, not checked off")); // re-check
     await flushPending();
 
-    // The loop bar's headline still shows (a check-off happened this
-    // session), but with no Add action of any kind for a landed row.
-    expect(result.getByText("Chicken breast checked off · add it to the pantry?")).toBeTruthy();
+    // Round 2's first pass still showed the bare headline with nothing
+    // under it (read as broken); round 3 skips opening the loop bar for a
+    // landed row altogether, so none of it renders any more.
+    expect(result.queryByText("Chicken breast checked off · add it to the pantry?")).toBeNull();
     expect(result.queryByLabelText("Add Chicken breast to inventory")).toBeNull();
     expect(result.queryByText("Add when you're back online.")).toBeNull();
   });

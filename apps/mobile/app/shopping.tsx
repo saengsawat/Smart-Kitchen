@@ -123,10 +123,12 @@ function applyQueuedOverlay(list: ShoppingListDto): ShoppingListDto {
  * list actually has (R3): a row that disappeared between the tap and the
  * next load stops being retried forever. `ShoppingCheckOffQueue.replay`
  * itself now chains one collapsed follow-up walk after an in-flight one
- * (R2), so an entry enqueued while a walk is already running is not
- * stranded either. `landedRowIds` (F14) stops Add being reoffered for a
- * row once it has landed this mount (an uncheck/re-check no longer shows
- * an Add action for it), since the fixture's own per-row cache already
+ * (R2, tightened again at R2b for a follow-up walk's own follow-up), so an
+ * entry enqueued while a walk is already running is not stranded either.
+ * `landedRowIds` (F14) stops the loop bar reopening at all for a row once
+ * its Add has landed this mount (round 2's first pass still opened a bare,
+ * action-less headline for it, which read as broken; round 3 skips
+ * opening it altogether), since the fixture's own per-row cache already
  * makes a repeat Add a silent no-op and reoffering it only invited a
  * redundant, misleading success toast.
  */
@@ -231,11 +233,13 @@ export default function ShoppingScreen(): React.JSX.Element {
       checkedOffBy: checked ? SESSION_INITIALS : null,
     }));
     if (checked) {
-      setActiveLoopRowId(row.rowId);
-      // No need to mint a fresh Add key for a row that already landed
-      // (F14): Add is never offered for it again, so the key would go
-      // unused.
+      // Review round 3, F14 copy: a row whose Add already landed this
+      // mount never reopens the loop bar at all (not just "with no Add
+      // action" — round 2's fix still showed the bare headline with
+      // nothing under it, which read as broken, not as "already done").
+      // There is nothing left to close the loop on for it.
       if (!landedRowIds.has(row.rowId)) {
+        setActiveLoopRowId(row.rowId);
         setAddKeyByRowId((prev) => ({ ...prev, [row.rowId]: nextIdempotencyKey() }));
       }
     } else {
@@ -407,7 +411,6 @@ export default function ShoppingScreen(): React.JSX.Element {
           row={activeLoopRow}
           offline={offline}
           disabled={addingRowId === activeLoopRow.rowId}
-          landed={landedRowIds.has(activeLoopRow.rowId)}
           onAdd={() => handleLoopAdd(activeLoopRow)}
         />
       ) : null}
@@ -483,13 +486,11 @@ function LoopBar({
   row,
   offline,
   disabled,
-  landed,
   onAdd,
 }: {
   row: ShoppingRowDto;
   offline: boolean;
   disabled: boolean;
-  landed: boolean;
   onAdd: () => void;
 }): React.JSX.Element {
   const reducedMotion = useReducedMotion();
@@ -500,7 +501,7 @@ function LoopBar({
   return (
     <View style={styles.loop}>
       <Text style={styles.loopText}>{row.name} checked off · add it to the pantry?</Text>
-      {landed ? null : refusedInline ? (
+      {refusedInline ? (
         <Text style={styles.loopRefused}>Add when you're back online.</Text>
       ) : (
         <Pressable
