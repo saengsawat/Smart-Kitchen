@@ -12,6 +12,7 @@ import {
   FIXTURE_IDENTITY_TOKEN,
   FIXTURE_JOIN_CODE,
   FixtureApiClient,
+  hasDevOfflineToggle,
   HttpApiClient,
   JOIN_CODE_ERROR_MESSAGE,
 } from "./client";
@@ -875,5 +876,170 @@ describe("lookupProduct / createItem (M3-T4b)", () => {
         }),
       ).rejects.toThrow(/not available yet/);
     });
+  });
+});
+
+describe("FixtureApiClient shopping methods (M3-T5)", () => {
+  it("getShoppingList returns the fixture Chen list, grouped and ordered as the JSON authors it", async () => {
+    const client = FixtureApiClient.returningUser();
+    const list = await client.getShoppingList();
+    expect(list.rows.map((r) => r.rowId)).toEqual([
+      "row-chicken",
+      "row-broccoli",
+      "row-garlic",
+      "row-granola",
+      "row-paper-towels",
+      "row-olive-oil",
+      "row-rice",
+      "row-soy-sauce",
+    ]);
+    expect(list.members.map((m) => m.initials)).toEqual(["DC", "MC"]);
+  });
+
+  it("checkOffShoppingRow(true) marks a row done and records the checker's initials", async () => {
+    const client = FixtureApiClient.returningUser();
+    await client.checkOffShoppingRow("row-chicken", true, "key-1");
+    const list = await client.getShoppingList();
+    const row = list.rows.find((r) => r.rowId === "row-chicken")!;
+    expect(row.status).toBe("done");
+    expect(row.checkedOffBy).toBe("DC");
+  });
+
+  it("checkOffShoppingRow(false) reopens a row and clears checkedOffBy", async () => {
+    const client = FixtureApiClient.returningUser();
+    await client.checkOffShoppingRow("row-chicken", true, "key-1");
+    await client.checkOffShoppingRow("row-chicken", false, "key-2");
+    const list = await client.getShoppingList();
+    const row = list.rows.find((r) => r.rowId === "row-chicken")!;
+    expect(row.status).toBe("open");
+    expect(row.checkedOffBy).toBeNull();
+  });
+
+  it("checkOffShoppingRow rejects an unknown rowId", async () => {
+    const client = FixtureApiClient.returningUser();
+    await expect(client.checkOffShoppingRow("not-a-row", true, "key-1")).rejects.toThrow();
+  });
+
+  it("removeShoppingSuggestion deletes the row entirely", async () => {
+    const client = FixtureApiClient.returningUser();
+    await client.removeShoppingSuggestion("row-garlic");
+    const list = await client.getShoppingList();
+    expect(list.rows.some((r) => r.rowId === "row-garlic")).toBe(false);
+  });
+
+  it("removeShoppingSuggestion rejects an unknown rowId", async () => {
+    const client = FixtureApiClient.returningUser();
+    await expect(client.removeShoppingSuggestion("not-a-row")).rejects.toThrow();
+  });
+
+  it("addCheckedOffToInventory appends exactly one PURCHASE of buyMicros to the linked item", async () => {
+    const client = FixtureApiClient.returningUser();
+    const before = await client.getInventoryItem("fixture-item-chicken");
+    const beforeMicros = before!.summary.quantity.micros;
+
+    const result = await client.addCheckedOffToInventory("row-chicken", "key-add-1");
+    const after = await client.getInventoryItem("fixture-item-chicken");
+
+    expect(after?.summary.quantity.micros).toBe((BigInt(beforeMicros) + 750_000n).toString());
+    const appended = after!.history.at(-1)!;
+    expect(appended.type).toBe("PURCHASE");
+    expect(appended.deltaMicros).toBe("750000");
+    expect(result.transactionId).toBe(appended.transactionId);
+  });
+
+  it("addCheckedOffToInventory replayed with the same idempotency key does not append a second PURCHASE (CLAUDE.md rule 10)", async () => {
+    const client = FixtureApiClient.returningUser();
+    const first = await client.addCheckedOffToInventory("row-chicken", "same-key");
+    const before = await client.getInventoryItem("fixture-item-chicken");
+    const historyLengthBefore = before!.history.length;
+
+    const second = await client.addCheckedOffToInventory("row-chicken", "same-key");
+    const after = await client.getInventoryItem("fixture-item-chicken");
+
+    expect(second.transactionId).toBe(first.transactionId);
+    expect(after!.history.length).toBe(historyLengthBefore);
+  });
+
+  it("addCheckedOffToInventory with a different idempotency key on a second, distinct tap does append again", async () => {
+    const client = FixtureApiClient.returningUser();
+    await client.addCheckedOffToInventory("row-chicken", "key-a");
+    const before = await client.getInventoryItem("fixture-item-chicken");
+    const historyLengthBefore = before!.history.length;
+
+    await client.addCheckedOffToInventory("row-chicken", "key-b");
+    const after = await client.getInventoryItem("fixture-item-chicken");
+    expect(after!.history.length).toBe(historyLengthBefore + 1);
+  });
+
+  it("addCheckedOffToInventory rejects a row with no itemId (must route through S9 instead)", async () => {
+    const client = FixtureApiClient.returningUser();
+    await expect(client.addCheckedOffToInventory("row-broccoli", "key-1")).rejects.toThrow();
+  });
+
+  it("isOffline starts false and setOfflineForDev flips it, notifying subscribers exactly once per change", () => {
+    const client = FixtureApiClient.returningUser();
+    expect(client.isOffline()).toBe(false);
+
+    const seen: boolean[] = [];
+    const unsubscribe = client.subscribeOffline((value) => seen.push(value));
+
+    client.setOfflineForDev(true);
+    client.setOfflineForDev(true); // no-op: already offline, must not notify again
+    client.setOfflineForDev(false);
+
+    expect(seen).toEqual([true, false]);
+    unsubscribe();
+    client.setOfflineForDev(true);
+    expect(seen).toEqual([true, false]); // no further notification after unsubscribe
+  });
+});
+
+describe("HttpApiClient shopping methods (M3-T5): all four reject, M7 not built yet", () => {
+  it("getShoppingList rejects with the established not-available-yet pattern", async () => {
+    const client = new HttpApiClient("http://localhost:4000");
+    await expect(client.getShoppingList()).rejects.toThrow(/not available yet/);
+  });
+
+  it("checkOffShoppingRow rejects", async () => {
+    const client = new HttpApiClient("http://localhost:4000");
+    await expect(client.checkOffShoppingRow("row-1", true, "key-1")).rejects.toThrow(
+      /not available yet/,
+    );
+  });
+
+  it("removeShoppingSuggestion rejects", async () => {
+    const client = new HttpApiClient("http://localhost:4000");
+    await expect(client.removeShoppingSuggestion("row-1")).rejects.toThrow(/not available yet/);
+  });
+
+  it("addCheckedOffToInventory rejects", async () => {
+    const client = new HttpApiClient("http://localhost:4000");
+    await expect(client.addCheckedOffToInventory("row-1", "key-1")).rejects.toThrow(
+      /not available yet/,
+    );
+  });
+
+  it("isOffline reuses the same signal isInventoryStale tracks", async () => {
+    const client = new HttpApiClient("http://localhost:4000");
+    expect(client.isOffline()).toBe(false);
+
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = () =>
+      Promise.resolve(new Response(JSON.stringify({ items: [] }), { status: 200 }));
+    await client.getInventoryItems();
+    expect(client.isOffline()).toBe(false);
+
+    globalThis.fetch = () => Promise.reject(new Error("network down"));
+    await client.getInventoryItems();
+    expect(client.isOffline()).toBe(true);
+
+    globalThis.fetch = originalFetch;
+  });
+});
+
+describe("hasDevOfflineToggle (M3-T5)", () => {
+  it("is true for FixtureApiClient, false for HttpApiClient", () => {
+    expect(hasDevOfflineToggle(FixtureApiClient.returningUser())).toBe(true);
+    expect(hasDevOfflineToggle(new HttpApiClient("http://localhost:4000"))).toBe(false);
   });
 });

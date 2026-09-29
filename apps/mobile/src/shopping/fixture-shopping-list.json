@@ -1,0 +1,139 @@
+{
+  "syncedAt": "2026-09-29T12:00:00.000Z",
+  "members": [
+    { "memberId": "member-dean", "initials": "DC", "displayName": "Dean Chen" },
+    { "memberId": "member-maya", "initials": "MC", "displayName": "Maya Chen" }
+  ],
+  "rows": [
+    {
+      "rowId": "row-chicken",
+      "name": "Chicken breast",
+      "group": "Meat & seafood",
+      "origin": { "kind": "menu", "label": "Tonight", "recipeName": null },
+      "needMicros": "2000000",
+      "haveMicros": "1250000",
+      "haveTier": "KNOWN_FACT",
+      "buyMicros": "750000",
+      "unit": "lb",
+      "itemId": "fixture-item-chicken",
+      "status": "open",
+      "checkedOffBy": null,
+      "defaultLocation": "FRIDGE"
+    },
+    {
+      "rowId": "row-broccoli",
+      "name": "Broccoli",
+      "group": "Produce",
+      "origin": { "kind": "menu", "label": "Weekend menu", "recipeName": "miso salmon" },
+      "needMicros": "2000000",
+      "haveMicros": "0",
+      "haveTier": null,
+      "buyMicros": "2000000",
+      "unit": "lb",
+      "itemId": null,
+      "status": "open",
+      "checkedOffBy": null,
+      "defaultLocation": "FRIDGE"
+    },
+    {
+      "rowId": "row-garlic",
+      "name": "Garlic",
+      "group": "Produce",
+      "origin": { "kind": "ai", "recipeName": "the stir-fry" },
+      "needMicros": "1000000",
+      "haveMicros": "0",
+      "haveTier": null,
+      "buyMicros": "1000000",
+      "unit": "each",
+      "itemId": null,
+      "status": "open",
+      "checkedOffBy": null,
+      "defaultLocation": "PANTRY"
+    },
+    {
+      "rowId": "row-granola",
+      "name": "Granola",
+      "group": "Pantry",
+      "origin": { "kind": "menu", "label": "Weekend menu", "recipeName": "yogurt parfait" },
+      "needMicros": "1000000",
+      "haveMicros": "0",
+      "haveTier": null,
+      "buyMicros": "1000000",
+      "unit": "each",
+      "itemId": null,
+      "status": "open",
+      "checkedOffBy": null,
+      "defaultLocation": "PANTRY"
+    },
+    {
+      "rowId": "row-paper-towels",
+      "name": "Paper towels",
+      "group": "Pantry",
+      "origin": {
+        "kind": "member",
+        "memberId": "member-maya",
+        "initials": "MC",
+        "displayName": "Maya Chen"
+      },
+      "needMicros": "1000000",
+      "haveMicros": "0",
+      "haveTier": null,
+      "buyMicros": "1000000",
+      "unit": "each",
+      "itemId": null,
+      "status": "open",
+      "checkedOffBy": null,
+      "defaultLocation": "PANTRY"
+    },
+    {
+      "rowId": "row-olive-oil",
+      "name": "Olive oil",
+      "group": "Pantry",
+      "origin": {
+        "kind": "member",
+        "memberId": "member-dean",
+        "initials": "DC",
+        "displayName": "Dean Chen"
+      },
+      "needMicros": "1000000",
+      "haveMicros": "1000000",
+      "haveTier": "KNOWN_FACT",
+      "buyMicros": "0",
+      "unit": "each",
+      "itemId": "fixture-item-olive-oil",
+      "status": "done",
+      "checkedOffBy": "DC",
+      "defaultLocation": "PANTRY"
+    },
+    {
+      "rowId": "row-rice",
+      "name": "Basmati rice",
+      "group": "Pantry",
+      "origin": { "kind": "menu", "label": "This week", "recipeName": null },
+      "needMicros": "3000000",
+      "haveMicros": "4000000",
+      "haveTier": "ESTIMATED",
+      "buyMicros": "0",
+      "unit": "cup",
+      "itemId": "fixture-item-rice",
+      "status": "skipped",
+      "checkedOffBy": null,
+      "defaultLocation": "PANTRY"
+    },
+    {
+      "rowId": "row-soy-sauce",
+      "name": "Soy sauce",
+      "group": "Pantry",
+      "origin": { "kind": "menu", "label": "This week", "recipeName": null },
+      "needMicros": "8000000",
+      "haveMicros": "24000000",
+      "haveTier": null,
+      "buyMicros": "0",
+      "unit": "tbsp",
+      "itemId": null,
+      "status": "skipped",
+      "checkedOffBy": null,
+      "defaultLocation": "PANTRY"
+    }
+  ]
+}
