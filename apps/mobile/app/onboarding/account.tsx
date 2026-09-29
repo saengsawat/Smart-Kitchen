@@ -11,14 +11,24 @@ import {
 import { useRouter } from "expo-router";
 import { apiClient } from "../../src/api/client";
 import { colors, fontFamily, minTouchTarget, radius, spacing } from "../../src/design/tokens";
+import { messageForLedgerError } from "../../src/inventory/errors";
 import { validateHouseholdName } from "../../src/onboarding/validation";
 
 /**
- * S1 · account + household (M3-T2). Copy is prototype v4's `#scr-account`
- * word for word (docs/design/mockups/smart-kitchen-prototype.html lines
- * 958-977), plus new copy this ticket requires beyond the prototype's binding
- * behaviour (household-name validation messages, the Google phase label/
- * explanation) — both proposed for copy-deck.md §11 in the worker report.
+ * S1 · account + household (M3-T2, extended M3-T4d). Copy is prototype v4's
+ * `#scr-account` word for word (docs/design/mockups/smart-kitchen-prototype.html
+ * lines 958-977), plus new copy this ticket requires beyond the prototype's
+ * binding behaviour (household-name validation messages, the Google phase
+ * label/explanation, the create-household failure notice and the one-time
+ * join-code confirmation below) — all proposed for copy-deck.md §11 in the
+ * worker report.
+ *
+ * M3-T4d mapping-forced change: `apiClient.createHousehold` can now
+ * genuinely reject (a real network call, BACKLOG.md M3-T4d Objective (a)),
+ * where the fixture path never did, and it now resolves the household's
+ * one-time join code alongside the household itself. Neither has anywhere
+ * to go without touching this screen, so both are handled here rather than
+ * silently dropped.
  */
 export default function AccountScreen(): React.JSX.Element {
   const router = useRouter();
@@ -26,6 +36,8 @@ export default function AccountScreen(): React.JSX.Element {
   const [googleExplained, setGoogleExplained] = useState(false);
   const [householdName, setHouseholdName] = useState("");
   const [householdNameError, setHouseholdNameError] = useState<string | null>(null);
+  const [householdBusy, setHouseholdBusy] = useState(false);
+  const [createdJoinCode, setCreatedJoinCode] = useState<string | null>(null);
   const [joinCode, setJoinCode] = useState("");
   const [joinError, setJoinError] = useState<string | null>(null);
   const [joinBusy, setJoinBusy] = useState(false);
@@ -55,7 +67,27 @@ export default function AccountScreen(): React.JSX.Element {
       return;
     }
     setHouseholdNameError(null);
-    await apiClient.createHousehold(validated.name);
+    setHouseholdBusy(true);
+    try {
+      const created = await apiClient.createHousehold(validated.name);
+      if (created.joinCode) {
+        // M3-T4d: the plaintext join code is on this response and nowhere
+        // else (household.ts's header, rule 3), so it is shown once, here,
+        // before moving on, rather than navigated past and lost.
+        setCreatedJoinCode(created.joinCode);
+        return;
+      }
+      router.push("/onboarding/allergies");
+    } catch (error) {
+      const message = messageForLedgerError(error);
+      setHouseholdNameError(message);
+      AccessibilityInfo.announceForAccessibility(message);
+    } finally {
+      setHouseholdBusy(false);
+    }
+  }
+
+  function handleContinueAfterCreate(): void {
     router.push("/onboarding/allergies");
   }
 
@@ -126,29 +158,52 @@ export default function AccountScreen(): React.JSX.Element {
 
         <View style={styles.card}>
           <Text style={styles.cardLabel}>Create a new household</Text>
-          <TextInput
-            accessibilityLabel="Household name"
-            placeholder="Household name, for example The Chens"
-            placeholderTextColor={colors.ink3}
-            value={householdName}
-            onChangeText={setHouseholdName}
-            style={styles.input}
-            maxLength={200}
-          />
-          {householdNameError ? (
-            <View style={styles.noticeBox} accessibilityLiveRegion="assertive">
-              <Text style={styles.noticeIcon}>{"⚠"}</Text>
-              <Text style={styles.noticeText}>{householdNameError}</Text>
-            </View>
-          ) : null}
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Create household"
-            onPress={() => void handleCreateHousehold()}
-            style={[styles.button, styles.buttonPrimary]}
-          >
-            <Text style={styles.buttonTextOnDark}>Create household</Text>
-          </Pressable>
+          {createdJoinCode ? (
+            <>
+              <View style={styles.noticeBox}>
+                <Text style={styles.noticeIcon}>{"✓"}</Text>
+                <Text style={styles.noticeText}>
+                  {`Household created. Your join code: ${createdJoinCode}. Save it to invite others.`}
+                </Text>
+              </View>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Continue"
+                onPress={handleContinueAfterCreate}
+                style={[styles.button, styles.buttonPrimary]}
+              >
+                <Text style={styles.buttonTextOnDark}>Continue</Text>
+              </Pressable>
+            </>
+          ) : (
+            <>
+              <TextInput
+                accessibilityLabel="Household name"
+                placeholder="Household name, for example The Chens"
+                placeholderTextColor={colors.ink3}
+                value={householdName}
+                onChangeText={setHouseholdName}
+                style={styles.input}
+                maxLength={200}
+                editable={!householdBusy}
+              />
+              {householdNameError ? (
+                <View style={styles.noticeBox} accessibilityLiveRegion="assertive">
+                  <Text style={styles.noticeIcon}>{"⚠"}</Text>
+                  <Text style={styles.noticeText}>{householdNameError}</Text>
+                </View>
+              ) : null}
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Create household"
+                onPress={() => void handleCreateHousehold()}
+                disabled={householdBusy}
+                style={[styles.button, styles.buttonPrimary]}
+              >
+                <Text style={styles.buttonTextOnDark}>Create household</Text>
+              </Pressable>
+            </>
+          )}
         </View>
 
         <View style={styles.card}>
