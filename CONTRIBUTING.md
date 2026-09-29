@@ -113,6 +113,10 @@ directory — it is an independent, disposable cluster on its own port, gone
 with the scratch directory. Pick a port that is not already in use if `55432`
 is taken locally.
 
+## Secret scanning and example commands
+
+CI runs gitleaks over every pushed commit. It flags the *shape* of a secret, not only real ones: a curl example with a literal `Authorization: Bearer <token>` header trips its `curl-auth-header` rule even when the token is a published fixture value. Put tokens in a variable in docs and scripts (`$token = "fixture.dean.chen"` then `-H "Authorization: Bearer $token"`). To check locally before pushing, download the gitleaks release binary and run `gitleaks git --log-opts="origin/main..HEAD"` in the repo (M2-T4a acceptance, 2026-09-29).
+
 ## Seeding a development database (M2-T2)
 
 `pnpm --filter api db:seed:fixture` fills a database with the synthetic
