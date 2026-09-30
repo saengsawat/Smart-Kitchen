@@ -1,0 +1,79 @@
+{
+  "generatedAt": "2026-09-30T04:16:30.841Z",
+  "localCorpus": {
+    "productFixtureCount": 102,
+    "productsByCategory": {
+      "baking": 5,
+      "condiments": 9,
+      "dairy": 13,
+      "pantry": 24,
+      "meat": 11,
+      "frozen": 10,
+      "produce": 15,
+      "snacks": 10,
+      "beverages": 5
+    },
+    "chenItemCount": 9,
+    "chenItems": [
+      {
+        "key": "strawberries",
+        "displayName": "Strawberries",
+        "storageLocation": "FRIDGE",
+        "mappingCategory": "produce"
+      },
+      {
+        "key": "chicken",
+        "displayName": "Chicken breast",
+        "storageLocation": "FRIDGE",
+        "mappingCategory": "meat"
+      },
+      {
+        "key": "spinach",
+        "displayName": "Spinach",
+        "storageLocation": "FRIDGE",
+        "mappingCategory": "produce"
+      },
+      {
+        "key": "mushrooms",
+        "displayName": "Mushrooms",
+        "storageLocation": "FRIDGE",
+        "mappingCategory": "produce"
+      },
+      {
+        "key": "yogurt",
+        "displayName": "Greek yogurt",
+        "storageLocation": "FRIDGE",
+        "mappingCategory": "dairy"
+      },
+      {
+        "key": "eggs",
+        "displayName": "Eggs",
+        "storageLocation": "FRIDGE",
+        "mappingCategory": "dairy"
+      },
+      {
+        "key": "salmon",
+        "displayName": "Salmon fillets",
+        "storageLocation": "FREEZER",
+        "mappingCategory": "meat"
+      },
+      {
+        "key": "rice",
+        "displayName": "Basmati rice",
+        "storageLocation": "PANTRY",
+        "mappingCategory": "pantry"
+      },
+      {
+        "key": "olive-oil",
+        "displayName": "Olive oil",
+        "storageLocation": "PANTRY",
+        "mappingCategory": "pantry"
+      }
+    ]
+  },
+  "foodKeeper": {
+    "status": "blocked",
+    "reason": "raw file not present",
+    "results": []
+  }
+}
