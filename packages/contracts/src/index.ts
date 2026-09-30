@@ -115,3 +115,14 @@ export {
   type ScreeningNotRunReasonDto,
   type ScreeningOutcomeDto,
 } from "./products.js";
+export {
+  SHOPPING_PATH,
+  SHOPPING_ROW_ADD_TO_INVENTORY_ROUTE,
+  SHOPPING_ROW_CHECK_ROUTE,
+  SHOPPING_ROW_REMOVE_ROUTE,
+  shoppingRowAddToInventoryPath,
+  shoppingRowCheckPath,
+  shoppingRowRemovePath,
+  type AddShoppingRowToInventoryRequestDto,
+  type CheckShoppingRowRequestDto,
+} from "./shopping.js";

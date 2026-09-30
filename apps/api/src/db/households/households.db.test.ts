@@ -511,8 +511,9 @@ describe.skipIf(!dbTestsEnabled)(SUITE, () => {
         };
         expect(await objects()).toEqual({ table: 1, functions: 4 });
 
-        const reverted = await migrateDown(scratch.url, 1);
-        expect(reverted).toEqual(["0008_household_join_codes"]);
+        // M7-T1's 0009 is rolled back first, so 0008 is the last one reverted.
+        const reverted = await migrateDown(scratch.url, 2);
+        expect(reverted).toEqual(["0009_shopping_rows", "0008_household_join_codes"]);
         expect(await objects()).toEqual({ table: 0, functions: 0 });
         const households = await scratch.pool.query(
           "SELECT 1 FROM pg_class WHERE relname = 'household_memberships'",
@@ -520,7 +521,7 @@ describe.skipIf(!dbTestsEnabled)(SUITE, () => {
         expect(households.rowCount).toBe(1);
 
         const applied = await migrateUp(scratch.url);
-        expect(applied).toEqual(["0008_household_join_codes"]);
+        expect(applied).toEqual(["0008_household_join_codes", "0009_shopping_rows"]);
         expect(await objects()).toEqual({ table: 1, functions: 4 });
       } finally {
         await scratch.drop();

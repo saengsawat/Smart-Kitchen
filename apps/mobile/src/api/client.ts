@@ -60,7 +60,9 @@
  */
 
 import type {
+  AddShoppingRowToInventoryRequestDto,
   ApiErrorBodyDto,
+  CheckShoppingRowRequestDto,
   CreateHouseholdRequestDto,
   CreateHouseholdResponseDto,
   CreateItemRequestDto,
@@ -92,6 +94,10 @@ import {
   inventoryItemTransactionsPath,
   inventoryTransactionUndoPath,
   productLookupPath,
+  SHOPPING_PATH,
+  shoppingRowAddToInventoryPath,
+  shoppingRowCheckPath,
+  shoppingRowRemovePath,
 } from "@smart-kitchen/contracts";
 import { getApiBaseUrl, getIdentityToken as resolveIdentityToken } from "../config/env";
 import { fixtureChenMembers } from "../household/fixture-restrictions";
@@ -530,7 +536,7 @@ export interface ApiClient {
    * change (S11 reads {@link isOffline} directly for the initial render).
    */
   subscribeOffline(listener: (offline: boolean) => void): () => void;
-  /** S11's list (M3-T5). Fixture only until M7; `HttpApiClient` rejects with the established "not available yet" pattern. */
+  /** S11's list (M3-T5): the fixture list, or `GET /v1/shopping` on `HttpApiClient` (M7-T1). */
   getShoppingList(): Promise<ShoppingListDto>;
   /**
    * S11's check control, toggling one row `open`/`done`. `idempotencyKey` is
@@ -541,7 +547,7 @@ export interface ApiClient {
    * before that decision is made.
    */
   checkOffShoppingRow(rowId: string, checked: boolean, idempotencyKey: string): Promise<void>;
-  /** S11's AI-row Remove (decline): deletes the suggestion row. Fixture only until M7. */
+  /** S11's Remove: the fixture deletes the row; `HttpApiClient` marks it removed on the server (M7-T1, never a delete). */
   removeShoppingSuggestion(rowId: string): Promise<void>;
   /**
    * S11's close-the-loop Add: appends one `PURCHASE` of the row's
@@ -1451,46 +1457,179 @@ export class HttpApiClient implements ApiClient {
   }
 
   /**
-   * No shopping endpoint exists yet (M7). Same "not available yet"
-   * rejection as {@link lookupProduct}; S11 shows copy-deck.md §8's generic
-   * fallback with Try again for all four shopping methods below (BACKLOG.md
-   * M3-T5 Objective (h)).
+   * Shopping (M7-T1 (g)): the four port methods over `GET /v1/shopping` and
+   * the three row writes. Three rules shared by all four, stated once:
+   *
+   * - **Keys are the caller's.** `checkOffShoppingRow` and
+   *   `addCheckedOffToInventory` send exactly the key S11 minted at tap time
+   *   (the queue replays with the same key), and the one internal retry on a
+   *   network failure reuses it. The server makes Add land once per row
+   *   whatever the key; the key keeps a retried tap from being a second
+   *   change.
+   * - **Connectivity.** A request that never reached the server marks the
+   *   client offline and any answer from the server marks it online, through
+   *   the same `setStale` signal S4's banner uses, so S11's queue and banner
+   *   work over HTTP. Only S4's own read decides what S4 shows
+   *   (`isInventoryStale` is read right after `getInventoryItems`), so a
+   *   shopping request flipping the flag cannot mislabel S4's list.
+   * - **Refusals.** A write refusal becomes a `LedgerRefusedError` carrying
+   *   `IDEMPOTENCY_KEY_CONFLICT` when that is the code (copy-deck.md §8 has
+   *   its sentence) and `INTERNAL` otherwise, so every other refusal renders
+   *   §8's generic save fallback. Passing a code like `ZERO_DELTA` through
+   *   would render "Enter an amount to record a change.", which is S5 copy
+   *   and wrong on S11. A failed list read rejects, and S11 renders the read
+   *   fallback. The server's message is never shown.
    */
-  getShoppingList(): Promise<ShoppingListDto> {
-    return Promise.reject(
-      new Error("getShoppingList is not available yet: the real endpoint lands in M7."),
+  private async shoppingRequest(url: string, init: RequestInit, retry: boolean): Promise<Response> {
+    let attempt = 0;
+    for (;;) {
+      try {
+        const response = await fetch(url, init);
+        this.setStale(false);
+        return response;
+      } catch (networkError) {
+        if (!retry || attempt >= MAX_NETWORK_RETRIES) {
+          this.setStale(true);
+          throw toError(networkError);
+        }
+        attempt += 1;
+      }
+    }
+  }
+
+  /** The {@link LedgerRefusedError} a shopping write refusal becomes (see {@link shoppingRequest}). */
+  private async shoppingRefusal(response: Response): Promise<LedgerRefusedError> {
+    const errorBody: unknown = await response.json().catch(() => null);
+    const code = extractErrorCode(errorBody);
+    return new LedgerRefusedError(
+      code === "IDEMPOTENCY_KEY_CONFLICT" ? "IDEMPOTENCY_KEY_CONFLICT" : "INTERNAL",
     );
   }
 
-  /** Same "not available yet" rejection as {@link getShoppingList}. */
-  checkOffShoppingRow(rowId: string, checked: boolean, idempotencyKey: string): Promise<void> {
-    void rowId;
-    void checked;
-    void idempotencyKey;
-    return Promise.reject(
-      new Error("checkOffShoppingRow is not available yet: the real endpoint lands in M7."),
+  private shoppingPost(url: string, body: unknown): Promise<Response> {
+    return this.shoppingRequest(
+      url,
+      {
+        method: "POST",
+        headers: { ...this.authHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      },
+      true,
     );
   }
 
-  /** Same "not available yet" rejection as {@link getShoppingList}. */
-  removeShoppingSuggestion(rowId: string): Promise<void> {
-    void rowId;
-    return Promise.reject(
-      new Error("removeShoppingSuggestion is not available yet: the real endpoint lands in M7."),
+  /**
+   * `GET /v1/shopping` (M7-T1). The rows, gaps and tiers are the server's,
+   * passed through unchanged: the client never recomputes `buyMicros`
+   * (INV-SHOP-1). A shape this client does not recognise rejects, like a
+   * failed request, so S11 shows the read fallback rather than a half-drawn
+   * list. Not retried: the screen's Try again is the retry.
+   */
+  async getShoppingList(): Promise<ShoppingListDto> {
+    const response = await this.shoppingRequest(
+      `${this.baseUrl}${SHOPPING_PATH}`,
+      { headers: this.authHeaders() },
+      false,
     );
+    if (!response.ok) {
+      throw new Error(`GET ${SHOPPING_PATH} failed with status ${String(response.status)}`);
+    }
+    const body: unknown = await response.json();
+    if (!isShoppingListResponse(body)) {
+      throw new Error(`GET ${SHOPPING_PATH} returned an unexpected response body`);
+    }
+    return body;
   }
 
-  /** Same "not available yet" rejection as {@link getShoppingList}. */
-  addCheckedOffToInventory(
+  /** `POST /v1/shopping/rows/{rowId}/check` (M7-T1): set-state, the caller's key. */
+  async checkOffShoppingRow(
+    rowId: string,
+    checked: boolean,
+    idempotencyKey: string,
+  ): Promise<void> {
+    const body: CheckShoppingRowRequestDto = { checked, idempotencyKey };
+    const response = await this.shoppingPost(`${this.baseUrl}${shoppingRowCheckPath(rowId)}`, body);
+    if (!response.ok) {
+      throw await this.shoppingRefusal(response);
+    }
+  }
+
+  /**
+   * `POST /v1/shopping/rows/{rowId}/remove` (M7-T1). No key: removal is
+   * set-state on the server (a repeat answers 204 and changes nothing), so
+   * the one network retry cannot remove twice.
+   */
+  async removeShoppingSuggestion(rowId: string): Promise<void> {
+    const response = await this.shoppingPost(`${this.baseUrl}${shoppingRowRemovePath(rowId)}`, {});
+    if (!response.ok) {
+      throw await this.shoppingRefusal(response);
+    }
+  }
+
+  /**
+   * `POST /v1/shopping/rows/{rowId}/add-to-inventory` (M7-T1). 201 (appended)
+   * and 200 (the row's PURCHASE already landed) resolve the same way: the
+   * row's one PURCHASE, which S5's history then shows.
+   */
+  async addCheckedOffToInventory(
     rowId: string,
     idempotencyKey: string,
   ): Promise<{ readonly transactionId: string }> {
-    void rowId;
-    void idempotencyKey;
-    return Promise.reject(
-      new Error("addCheckedOffToInventory is not available yet: the real endpoint lands in M7."),
-    );
+    const body: AddShoppingRowToInventoryRequestDto = { idempotencyKey };
+    const url = `${this.baseUrl}${shoppingRowAddToInventoryPath(rowId)}`;
+    const response = await this.shoppingPost(url, body);
+    if (!response.ok) {
+      throw await this.shoppingRefusal(response);
+    }
+    const parsedBody: unknown = await response.json();
+    const transactionId = isInventoryWriteResponse(parsedBody)
+      ? parsedBody.transactions[0]?.transactionId
+      : undefined;
+    if (transactionId === undefined) {
+      throw new Error(`POST ${url} returned an unexpected response body`);
+    }
+    return { transactionId };
   }
+}
+
+/**
+ * Shape check for `GET /v1/shopping` (M7-T1), the same discipline as the
+ * inventory read's guard: `response.json()` is `unknown` whatever the type
+ * says. Checks every field S11 reads off a row, including that the three
+ * quantities are decimal-text micros, since S11 parses them with `BigInt`.
+ */
+function isShoppingListResponse(body: unknown): body is ShoppingListDto {
+  if (typeof body !== "object" || body === null) return false;
+  const candidate = body as Partial<Record<keyof ShoppingListDto, unknown>>;
+  return (
+    Array.isArray(candidate.rows) &&
+    candidate.rows.every(isShoppingRow) &&
+    Array.isArray(candidate.members) &&
+    typeof candidate.syncedAt === "string"
+  );
+}
+
+const MICROS_TEXT = /^\d+$/;
+const SHOPPING_STATUSES: ReadonlySet<unknown> = new Set(["open", "done", "skipped"]);
+
+function isShoppingRow(value: unknown): value is ShoppingRowDto {
+  if (typeof value !== "object" || value === null) return false;
+  const row = value as Partial<Record<keyof ShoppingRowDto, unknown>>;
+  const micros = (field: unknown): boolean => typeof field === "string" && MICROS_TEXT.test(field);
+  return (
+    typeof row.rowId === "string" &&
+    typeof row.name === "string" &&
+    typeof row.group === "string" &&
+    typeof row.origin === "object" &&
+    row.origin !== null &&
+    micros(row.needMicros) &&
+    micros(row.haveMicros) &&
+    micros(row.buyMicros) &&
+    typeof row.unit === "string" &&
+    (row.itemId === null || typeof row.itemId === "string") &&
+    SHOPPING_STATUSES.has(row.status) &&
+    typeof row.defaultLocation === "string"
+  );
 }
 
 /** Builds the client this app should use: `HttpApiClient` when a base URL is configured, the fixture client otherwise. */

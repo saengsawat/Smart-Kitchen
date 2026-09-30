@@ -59,6 +59,12 @@ export const API_ERROR_CODES = [
    * clean miss (ADR-006, R-1). Produce gets its own curated table in M4.
    */
   "PLU_NOT_SUPPORTED",
+  /**
+   * 409 from `POST /v1/shopping/rows/{rowId}/add-to-inventory` for a row
+   * that names no inventory item (M7-T1). There is nothing to append a
+   * PURCHASE to; the client hands such a row to S9's manual add instead.
+   */
+  "ROW_HAS_NO_ITEM",
 ] as const;
 
 export type ApiErrorCode = (typeof API_ERROR_CODES)[number];

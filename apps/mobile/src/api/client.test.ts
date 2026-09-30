@@ -1,12 +1,22 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { INVENTORY_ITEMS_PATH } from "@smart-kitchen/contracts";
+import {
+  INVENTORY_ITEMS_PATH,
+  SHOPPING_PATH,
+  shoppingRowAddToInventoryPath,
+  shoppingRowCheckPath,
+  shoppingRowRemovePath,
+} from "@smart-kitchen/contracts";
 import {
   GENERIC_LEDGER_ERROR_MESSAGE,
   GENERIC_READ_ERROR_MESSAGE,
+  LedgerRefusedError,
   messageForLedgerError,
 } from "../inventory/errors";
+import { ShoppingCheckOffQueue } from "../shopping/queue";
 import { messageForLookupError, ProductLookupRefusedError } from "../scan/product-lookup-errors";
 import type {
+  AddShoppingRowToInventoryRequestDto,
+  CheckShoppingRowRequestDto,
   CreateItemRequestDto,
   InventoryItemDetailDto,
   InventoryItemsResponseDto,
@@ -15,6 +25,7 @@ import type {
   InventoryWriteResponseDto,
   ProductLookupResultDto,
   ScannedProductDto,
+  ShoppingListDto,
   UndoRequestDto,
 } from "@smart-kitchen/contracts";
 import {
@@ -1740,46 +1751,283 @@ describe("FixtureApiClient shopping methods (M3-T5)", () => {
   });
 });
 
-describe("HttpApiClient shopping methods (M3-T5): all four reject, M7 not built yet", () => {
-  it("getShoppingList rejects with the established not-available-yet pattern", async () => {
-    const client = new HttpApiClient("http://localhost:4000");
-    await expect(client.getShoppingList()).rejects.toThrow(/not available yet/);
+describe("HttpApiClient shopping methods (M7-T1, fake fetch, no real network)", () => {
+  const originalFetch = globalThis.fetch;
+  const BASE = "http://localhost:4000";
+  const ROW_ID = "0190f0a0-0000-7000-8000-000000000001";
+
+  afterEach(() => {
+    globalThis.fetch = originalFetch;
   });
 
-  it("checkOffShoppingRow rejects", async () => {
-    const client = new HttpApiClient("http://localhost:4000");
-    await expect(client.checkOffShoppingRow("row-1", true, "key-1")).rejects.toThrow(
-      /not available yet/,
+  interface Captured {
+    readonly url: string;
+    readonly init: RequestInit | undefined;
+  }
+
+  /** Fake fetch answering each call from `answers` in order; records every request. */
+  function fakeFetch(answers: ReadonlyArray<() => Promise<Response>>): Captured[] {
+    const calls: Captured[] = [];
+    globalThis.fetch = ((url: string, init?: RequestInit) => {
+      calls.push({ url, init });
+      const answer = answers[calls.length - 1];
+      if (answer === undefined) throw new Error(`unexpected fetch #${String(calls.length)}`);
+      return answer();
+    }) as typeof fetch;
+    return calls;
+  }
+
+  const ok =
+    (body: unknown, status = 200) =>
+    () =>
+      Promise.resolve(new Response(JSON.stringify(body), { status }));
+  const refused = (status: number, code: string, ledgerCode?: string) => () =>
+    Promise.resolve(
+      new Response(
+        JSON.stringify({
+          error: {
+            code,
+            message: "a server sentence that must never reach a screen",
+            correlationId: "c-1",
+            ...(ledgerCode === undefined ? {} : { ledgerCode }),
+          },
+        }),
+        { status },
+      ),
+    );
+  const networkDown = () => Promise.reject(new Error("network down"));
+  const noContent = () => Promise.resolve(new Response(null, { status: 204 }));
+
+  const LIST: ShoppingListDto = {
+    rows: [
+      {
+        rowId: ROW_ID,
+        name: "Chicken breast",
+        group: "Meat & seafood",
+        origin: { kind: "member", memberId: "m-dean", initials: "DC", displayName: "Dean Chen" },
+        needMicros: "2000000",
+        haveMicros: "1250000",
+        haveTier: "KNOWN_FACT",
+        buyMicros: "750000",
+        unit: "lb",
+        itemId: "item-chicken",
+        status: "open",
+        checkedOffBy: null,
+        defaultLocation: "FRIDGE",
+      },
+    ],
+    members: [{ memberId: "m-dean", initials: "DC", displayName: "Dean Chen" }],
+    syncedAt: "2026-09-29T12:00:00.000Z",
+  };
+
+  const PURCHASE = {
+    transactionId: "tx-purchase",
+    type: "PURCHASE",
+    deltaMicros: "750000",
+    amount: "0.750000",
+    recordedAt: "2026-09-29T12:00:00.000Z",
+    actor: { kind: "user", displayInitials: "DC" },
+    provenance: {
+      tier: "KNOWN_FACT",
+      source: "shopping-check-off",
+      confidence: null,
+      recordedAt: "2026-09-29T12:00:00.000Z",
+    },
+    reason: null,
+  };
+  const ADD_RESPONSE = {
+    transactions: [PURCHASE],
+    item: { summary: {}, history: [PURCHASE] },
+    replayed: false,
+  };
+
+  it("getShoppingList GETs /v1/shopping with the bearer token and passes the server's rows through, buy included", async () => {
+    const calls = fakeFetch([ok(LIST)]);
+    const client = new HttpApiClient(BASE);
+    const list = await client.getShoppingList();
+    expect(calls).toHaveLength(1);
+    expect(calls[0]?.url).toBe(`${BASE}${SHOPPING_PATH}`);
+    expect(calls[0]?.init?.headers).toEqual({ Authorization: `Bearer ${FIXTURE_IDENTITY_TOKEN}` });
+    expect(list).toEqual(LIST);
+  });
+
+  it("getShoppingList never recomputes the buy: a server buy that is not need minus have comes back as sent", async () => {
+    const odd: ShoppingListDto = {
+      ...LIST,
+      rows: [{ ...LIST.rows[0]!, buyMicros: "1000000" }],
+    };
+    fakeFetch([ok(odd)]);
+    const list = await new HttpApiClient(BASE).getShoppingList();
+    expect(list.rows[0]?.buyMicros).toBe("1000000");
+  });
+
+  it.each([
+    ["a non-2xx status", refused(500, "INTERNAL")],
+    ["a malformed body", ok({ rows: "nope" })],
+    [
+      "a row whose micros are not decimal text",
+      ok({ ...LIST, rows: [{ ...LIST.rows[0]!, buyMicros: 0.75 }] }),
+    ],
+    [
+      "a row with an unknown status",
+      ok({ ...LIST, rows: [{ ...LIST.rows[0]!, status: "bought" }] }),
+    ],
+    ["a network failure", networkDown],
+  ])("getShoppingList rejects on %s, so S11 shows the read fallback", async (_label, answer) => {
+    const calls = fakeFetch([answer]);
+    await expect(new HttpApiClient(BASE).getShoppingList()).rejects.toThrow();
+    // A read is never retried by the client; S11's Try again is the retry.
+    expect(calls).toHaveLength(1);
+  });
+
+  it("checkOffShoppingRow POSTs { checked, idempotencyKey } to the row's check path with the caller's key", async () => {
+    const calls = fakeFetch([ok(LIST.rows[0])]);
+    await new HttpApiClient(BASE).checkOffShoppingRow(ROW_ID, true, "k-tap-1");
+    expect(calls[0]?.url).toBe(`${BASE}${shoppingRowCheckPath(ROW_ID)}`);
+    expect(calls[0]?.init?.method).toBe("POST");
+    expect(parsedBody<CheckShoppingRowRequestDto>(calls[0]?.init)).toEqual({
+      checked: true,
+      idempotencyKey: "k-tap-1",
+    });
+  });
+
+  it("checkOffShoppingRow retries a lost request once with the same key, never a new one", async () => {
+    const calls = fakeFetch([networkDown, ok(LIST.rows[0])]);
+    await new HttpApiClient(BASE).checkOffShoppingRow(ROW_ID, false, "k-tap-2");
+    expect(calls).toHaveLength(2);
+    const keys = calls.map((call) => parsedBody<CheckShoppingRowRequestDto>(call.init));
+    expect(keys).toEqual([
+      { checked: false, idempotencyKey: "k-tap-2" },
+      { checked: false, idempotencyKey: "k-tap-2" },
+    ]);
+  });
+
+  it("the in-session queue replays through the real endpoint with the key minted at tap time", async () => {
+    const queue = new ShoppingCheckOffQueue();
+    queue.enqueue({ rowId: ROW_ID, checked: true, idempotencyKey: "k-offline-1" });
+    const calls = fakeFetch([ok(LIST.rows[0])]);
+    const client = new HttpApiClient(BASE);
+    await queue.replay((entry) =>
+      client.checkOffShoppingRow(entry.rowId, entry.checked, entry.idempotencyKey),
+    );
+    expect(queue.size).toBe(0);
+    expect(calls).toHaveLength(1);
+    expect(parsedBody<CheckShoppingRowRequestDto>(calls[0]?.init).idempotencyKey).toBe(
+      "k-offline-1",
     );
   });
 
-  it("removeShoppingSuggestion rejects", async () => {
-    const client = new HttpApiClient("http://localhost:4000");
-    await expect(client.removeShoppingSuggestion("row-1")).rejects.toThrow(/not available yet/);
-  });
-
-  it("addCheckedOffToInventory rejects", async () => {
-    const client = new HttpApiClient("http://localhost:4000");
-    await expect(client.addCheckedOffToInventory("row-1", "key-1")).rejects.toThrow(
-      /not available yet/,
+  it("a 409 IDEMPOTENCY_KEY_CONFLICT renders its §8 sentence, never the server's message", async () => {
+    fakeFetch([refused(409, "CONFLICT", "IDEMPOTENCY_KEY_CONFLICT")]);
+    const error: unknown = await new HttpApiClient(BASE)
+      .checkOffShoppingRow(ROW_ID, true, "k-1")
+      .catch((caught: unknown) => caught);
+    expect(error).toBeInstanceOf(LedgerRefusedError);
+    expect((error as LedgerRefusedError).code).toBe("IDEMPOTENCY_KEY_CONFLICT");
+    expect(messageForLedgerError(error)).toBe(
+      "That request was already used for a different change, so it was not applied again.",
     );
   });
 
-  it("isOffline reuses the same signal isInventoryStale tracks", async () => {
-    const client = new HttpApiClient("http://localhost:4000");
+  it.each([
+    ["404 NOT_FOUND", refused(404, "NOT_FOUND")],
+    ["409 ROW_HAS_NO_ITEM", refused(409, "ROW_HAS_NO_ITEM")],
+    [
+      "400 ZERO_DELTA (S5's sentence would be wrong here)",
+      refused(400, "BAD_REQUEST", "ZERO_DELTA"),
+    ],
+    ["400 MIXED_UNITS", refused(400, "BAD_REQUEST", "MIXED_UNITS")],
+    ["500 with an HTML body", () => Promise.resolve(new Response("<html>", { status: 500 }))],
+  ])("any other write refusal (%s) renders the generic save fallback", async (_label, answer) => {
+    fakeFetch([answer]);
+    const error: unknown = await new HttpApiClient(BASE)
+      .addCheckedOffToInventory(ROW_ID, "k-add")
+      .catch((caught: unknown) => caught);
+    expect(error).toBeInstanceOf(LedgerRefusedError);
+    expect(messageForLedgerError(error)).toBe(GENERIC_LEDGER_ERROR_MESSAGE);
+  });
+
+  it("addCheckedOffToInventory POSTs the caller's key and resolves the row's PURCHASE id, for 201 and 200 alike", async () => {
+    const calls = fakeFetch([ok(ADD_RESPONSE, 201), ok({ ...ADD_RESPONSE, replayed: true })]);
+    const client = new HttpApiClient(BASE);
+    const first = await client.addCheckedOffToInventory(ROW_ID, "k-bar-1");
+    const second = await client.addCheckedOffToInventory(ROW_ID, "k-bar-1");
+    expect(first).toEqual({ transactionId: "tx-purchase" });
+    expect(second).toEqual({ transactionId: "tx-purchase" });
+    expect(calls[0]?.url).toBe(`${BASE}${shoppingRowAddToInventoryPath(ROW_ID)}`);
+    expect(parsedBody<AddShoppingRowToInventoryRequestDto>(calls[0]?.init)).toEqual({
+      idempotencyKey: "k-bar-1",
+    });
+    expect(parsedBody<AddShoppingRowToInventoryRequestDto>(calls[1]?.init)).toEqual({
+      idempotencyKey: "k-bar-1",
+    });
+  });
+
+  it("addCheckedOffToInventory retries a lost request once with the same key", async () => {
+    const calls = fakeFetch([networkDown, ok(ADD_RESPONSE, 201)]);
+    await new HttpApiClient(BASE).addCheckedOffToInventory(ROW_ID, "k-bar-2");
+    expect(calls.map((call) => parsedBody<{ idempotencyKey: string }>(call.init))).toEqual([
+      { idempotencyKey: "k-bar-2" },
+      { idempotencyKey: "k-bar-2" },
+    ]);
+  });
+
+  it("addCheckedOffToInventory rejects a 2xx body with no transaction rather than inventing an id", async () => {
+    fakeFetch([ok({ ...ADD_RESPONSE, transactions: [] })]);
+    await expect(new HttpApiClient(BASE).addCheckedOffToInventory(ROW_ID, "k")).rejects.toThrow(
+      /unexpected response body/,
+    );
+  });
+
+  it("removeShoppingSuggestion POSTs an empty body to the row's remove path and accepts 204", async () => {
+    const calls = fakeFetch([noContent]);
+    await new HttpApiClient(BASE).removeShoppingSuggestion(ROW_ID);
+    expect(calls[0]?.url).toBe(`${BASE}${shoppingRowRemovePath(ROW_ID)}`);
+    expect(parsedBody<Record<string, never>>(calls[0]?.init)).toEqual({});
+  });
+
+  it("removeShoppingSuggestion maps a refusal to the generic fallback", async () => {
+    fakeFetch([refused(404, "NOT_FOUND")]);
+    const error: unknown = await new HttpApiClient(BASE)
+      .removeShoppingSuggestion(ROW_ID)
+      .catch((caught: unknown) => caught);
+    expect(messageForLedgerError(error)).toBe(GENERIC_LEDGER_ERROR_MESSAGE);
+  });
+
+  it("shopping requests feed the connectivity signal: unreachable marks offline, any answer marks online", async () => {
+    const client = new HttpApiClient(BASE);
+    const seen: boolean[] = [];
+    client.subscribeOffline((value) => seen.push(value));
+
+    fakeFetch([networkDown, networkDown]);
+    await expect(client.checkOffShoppingRow(ROW_ID, true, "k-1")).rejects.toThrow();
+    expect(client.isOffline()).toBe(true);
+
+    // A refusal is still an answer from the server: online.
+    fakeFetch([refused(409, "CONFLICT", "IDEMPOTENCY_KEY_CONFLICT")]);
+    await expect(client.checkOffShoppingRow(ROW_ID, true, "k-1")).rejects.toThrow();
     expect(client.isOffline()).toBe(false);
 
-    const originalFetch = globalThis.fetch;
+    fakeFetch([networkDown]);
+    await expect(client.getShoppingList()).rejects.toThrow();
+    expect(client.isOffline()).toBe(true);
+    fakeFetch([ok(LIST)]);
+    await client.getShoppingList();
+    expect(client.isOffline()).toBe(false);
+
+    expect(seen).toEqual([true, false, true, false]);
+  });
+
+  it("isOffline still reuses the same signal isInventoryStale tracks", async () => {
+    const client = new HttpApiClient(BASE);
+    expect(client.isOffline()).toBe(false);
     globalThis.fetch = () =>
       Promise.resolve(new Response(JSON.stringify({ items: [] }), { status: 200 }));
     await client.getInventoryItems();
     expect(client.isOffline()).toBe(false);
-
     globalThis.fetch = () => Promise.reject(new Error("network down"));
     await client.getInventoryItems();
     expect(client.isOffline()).toBe(true);
-
-    globalThis.fetch = originalFetch;
   });
 });
 

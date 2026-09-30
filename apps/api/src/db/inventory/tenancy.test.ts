@@ -391,6 +391,8 @@ describe.skipIf(!dbTestsEnabled)(SUITE, () => {
         "inventory_items",
         "inventory_lots",
         "inventory_transactions",
+        "shopping_row_writes",
+        "shopping_rows",
         "users",
       ]);
     });

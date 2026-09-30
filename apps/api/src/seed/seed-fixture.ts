@@ -21,9 +21,10 @@
  * derived, so "already wrote" is decidable). M2-T3 adds the household-less
  * `fixture.new.user` (a `users` row, no membership) and the Chen household's
  * join code `CHEN-482`, stored as a hash and written only while the household
- * has no live code (`fixture-join-code.ts`). Rows belonging to anything other
- * than the fixture households are never read, updated or deleted; the seed only
- * ever inserts.
+ * has no live code (`fixture-join-code.ts`). M7-T1 adds the Chen household's
+ * three member-origin shopping rows (`fixture-shopping.ts`). Rows belonging to
+ * anything other than the fixture households are never read, updated or
+ * deleted; the seed only ever inserts.
  *
  * `runFixtureSeed` returns an exit code instead of calling `process.exit`, so
  * the refusals are testable without spawning a process. The module tail is the
@@ -43,6 +44,7 @@ import {
 import { seedFixtureIdentities } from "../identity/test-support/seed-fixture-identities.js";
 import { seedChenInventory } from "./fixture-inventory.js";
 import { seedChenJoinCode } from "./fixture-join-code.js";
+import { seedChenShopping } from "./fixture-shopping.js";
 
 /** Where the seed reports. Injected so tests never write to the real console. */
 export interface SeedIo {
@@ -64,6 +66,9 @@ const CHEN_HOUSEHOLD_NAME = "Chen household";
 
 /** The member every seeded chicken-breast row is attributed to. */
 const CHEN_OWNER_TOKEN = "fixture.dean.chen";
+
+/** The member the seeded paper-towels shopping row comes from (M7-T1). */
+const CHEN_MEMBER_TOKEN = "fixture.maya.chen";
 
 /**
  * Seeds, and returns a process exit code: `0` on success, `1` after writing one
@@ -95,10 +100,12 @@ export async function runFixtureSeed(
   const data = await loadFixtureIdentityData();
   const household = data.households.find((entry) => entry.name === CHEN_HOUSEHOLD_NAME);
   const owner = data.sessions.find((entry) => entry.token === CHEN_OWNER_TOKEN);
-  if (household === undefined || owner === undefined) {
+  const member = data.sessions.find((entry) => entry.token === CHEN_MEMBER_TOKEN);
+  if (household === undefined || owner === undefined || member === undefined) {
     io.error(
-      `smart-kitchen seed: the identity fixture no longer contains ${CHEN_HOUSEHOLD_NAME} ` +
-        `and ${CHEN_OWNER_TOKEN}, which the seeded inventory is attributed to.`,
+      `smart-kitchen seed: the identity fixture no longer contains ${CHEN_HOUSEHOLD_NAME}, ` +
+        `${CHEN_OWNER_TOKEN} and ${CHEN_MEMBER_TOKEN}, which the seeded inventory and ` +
+        `shopping list are attributed to.`,
     );
     return 1;
   }
@@ -116,12 +123,18 @@ export async function runFixtureSeed(
     await seedFixtureIdentities(pool, data);
     const joinCode = await seedChenJoinCode(pool, household.householdId, owner.userId, hasher);
     const summary = await seedChenInventory(pool, household.householdId, owner.userId);
+    // After the inventory: the chicken row names the seeded chicken item.
+    const shopping = await seedChenShopping(pool, household.householdId, {
+      deanUserId: owner.userId,
+      mayaUserId: member.userId,
+    });
     // Never the code itself, even this public one: no output path prints a code.
     io.out(
       `smart-kitchen seed: identities ready; join code ` +
         `${joinCode.issued ? "issued" : "already present or rotated"}; inventory items created ` +
         `${String(summary.itemsCreated)}, already present ${String(summary.itemsAlreadyPresent)}, ` +
-        `ledger rows appended ${String(summary.rowsAppended)}.`,
+        `ledger rows appended ${String(summary.rowsAppended)}; shopping rows created ` +
+        `${String(shopping.rowsCreated)}, already present ${String(shopping.rowsAlreadyPresent)}.`,
     );
     return 0;
   } catch (error) {

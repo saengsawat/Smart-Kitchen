@@ -1,8 +1,8 @@
 /**
  * Shopping-list read/write contracts (M3-T5).
  *
- * The wire shape S11 needs, shared by the API (M7, not built yet) and the
- * M3 client so the two cannot drift once the real endpoint lands.
+ * The wire shape S11 needs, shared by the API (M7-T1: `GET /v1/shopping`
+ * and the three row writes below) and the M3 client so the two cannot drift.
  *
  * Three rules carried over from `inventory.ts` (same reasoning, restated
  * here rather than assumed):
@@ -57,6 +57,14 @@ export interface ShoppingRowDto {
    * Confidence tier of {@link haveMicros}, or `null` when the row is a
    * "sufficient" skip row that does not license quantifying the on-hand
    * amount at all (copy-deck.md §7 S11: "sufficient", no number shown).
+   *
+   * The convention, stated once (M7-T1): `haveTier: null` with a non-zero
+   * `haveMicros` means "sufficient, do not quantify"; `haveTier: null` with
+   * `haveMicros: "0"` means nothing on hand is counted against this row (no
+   * item, or an item in a different unit, which is never converted). The
+   * M7-T1 server always returns the item snapshot's own tier when it counts
+   * an on-hand amount, so it never emits the "sufficient" form today; the
+   * form stays reserved for rows whose source does not license a number.
    */
   readonly haveTier: ProvenanceTierDto | null;
   /** Exact decimal-text micros to buy: `max(needMicros - haveMicros, 0)` in {@link unit}, the domain's `neededQuantity`. Never recomputed client-side. */
@@ -79,10 +87,73 @@ export interface ShoppingMemberDto {
   readonly displayName: string;
 }
 
-/** Response body of the (M7) shopping-list read. */
+/** Response body of `GET /v1/shopping` ({@link SHOPPING_PATH}). */
 export interface ShoppingListDto {
   readonly rows: readonly ShoppingRowDto[];
   readonly members: readonly ShoppingMemberDto[];
   /** ISO timestamp of the last successful sync (S11's offline banner references this once persistence lands in M7; not rendered by this ticket's in-session-only banner). */
   readonly syncedAt: string;
+}
+
+/** `GET /v1/shopping`: the household's one shopping list (M7-T1). */
+export const SHOPPING_PATH = "/v1/shopping";
+
+/** `POST`: set one row's checked state (M7-T1). Body {@link CheckShoppingRowRequestDto}, answer {@link ShoppingRowDto}. */
+export const SHOPPING_ROW_CHECK_ROUTE = "/v1/shopping/rows/:rowId/check";
+
+/**
+ * `POST`: append the checked-off row's PURCHASE to its inventory item, once
+ * per row and generation (M7-T1). Body
+ * {@link AddShoppingRowToInventoryRequestDto}; answer the inventory write
+ * response (`InventoryWriteResponseDto`) whose single transaction is that
+ * PURCHASE, the same one on every later call for the row.
+ */
+export const SHOPPING_ROW_ADD_TO_INVENTORY_ROUTE = "/v1/shopping/rows/:rowId/add-to-inventory";
+
+/** `POST`, no body: take a member-origin row off the list (M7-T1). Answers 204. */
+export const SHOPPING_ROW_REMOVE_ROUTE = "/v1/shopping/rows/:rowId/remove";
+
+function shoppingRowPath(rowId: string): string {
+  return `${SHOPPING_PATH}/rows/${encodeURIComponent(rowId)}`;
+}
+
+/** The URL a client sends for {@link SHOPPING_ROW_CHECK_ROUTE}. */
+export function shoppingRowCheckPath(rowId: string): string {
+  return `${shoppingRowPath(rowId)}/check`;
+}
+
+/** The URL a client sends for {@link SHOPPING_ROW_ADD_TO_INVENTORY_ROUTE}. */
+export function shoppingRowAddToInventoryPath(rowId: string): string {
+  return `${shoppingRowPath(rowId)}/add-to-inventory`;
+}
+
+/** The URL a client sends for {@link SHOPPING_ROW_REMOVE_ROUTE}. */
+export function shoppingRowRemovePath(rowId: string): string {
+  return `${shoppingRowPath(rowId)}/remove`;
+}
+
+/**
+ * Body of {@link SHOPPING_ROW_CHECK_ROUTE}.
+ *
+ * Set-state, not toggle: `checked` says what the row should be afterwards,
+ * so checking a row that is already done is a no-op. The key is minted once
+ * per tap by the client and reused on every retry and queue replay of that
+ * tap; the same key with a different `checked`, row or caller is 409
+ * `IDEMPOTENCY_KEY_CONFLICT`. Keys are 1 to 128 characters of letters,
+ * digits, dot, underscore or hyphen, the M2-T2 convention.
+ */
+export interface CheckShoppingRowRequestDto {
+  readonly checked: boolean;
+  readonly idempotencyKey: string;
+}
+
+/**
+ * Body of {@link SHOPPING_ROW_ADD_TO_INVENTORY_ROUTE}.
+ *
+ * The key is for retry safety only. What makes the PURCHASE land once is the
+ * row itself: a second call for the same row and generation answers the
+ * original transaction whatever key it carries.
+ */
+export interface AddShoppingRowToInventoryRequestDto {
+  readonly idempotencyKey: string;
 }
