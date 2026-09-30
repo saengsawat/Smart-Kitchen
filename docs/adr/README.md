@@ -16,10 +16,10 @@ ADRs capture decisions that are expensive to reverse or that future contributors
 | [ADR-001](ADR-001-client-platform.md) | Client platform | DECIDED (2026-09-21: Expo/React Native, managed workflow) |
 | [ADR-002](ADR-002-backend-runtime.md) | Backend runtime & framework | DECIDED (2026-09-03: Node/TypeScript + Fastify) |
 | [ADR-003](ADR-003-database.md) | Primary database | DECIDED (2026-09-10: PostgreSQL + RLS; managed provider open) |
-| [ADR-004](ADR-004-authentication.md) | Authentication | PROPOSED (managed provider; vendor open) |
+| [ADR-004](ADR-004-authentication.md) | Authentication | PROPOSED (managed provider; vendor open; M2/M3 built on a stubbed identity port, D-022) |
 | [ADR-005](ADR-005-ai-provider-abstraction.md) | AI provider abstraction | PROPOSED (ports + evals; no vendor pick) |
-| [ADR-006](ADR-006-food-data-sources.md) | Food/product data sources | PROPOSED (R-1 measured, 2026-09-09; FDC arm pending) |
+| [ADR-006](ADR-006-food-data-sources.md) | Food/product data sources | PROPOSED (R-1 measured 2026-09-09; OFF arm live since M2-T4a under D-025; FDC out for now) |
 | [ADR-007](ADR-007-receipt-ocr-pipeline.md) | Receipt/OCR pipeline | OPEN (fast-follow feature) |
 | [ADR-008](ADR-008-inventory-ledger.md) | Inventory ledger model | DECIDED (2026-09-08) |
 | [ADR-009](ADR-009-image-object-storage.md) | Image/object storage | OPEN (deferred until receipts) |
-| [ADR-010](ADR-010-offline-sync.md) | Offline & synchronization strategy | OPEN (online-first MVP proposed) |
+| [ADR-010](ADR-010-offline-sync.md) | Offline & synchronization strategy | OPEN (online-first MVP proposed; in-session shopping queue built M3-T5/M7-T1; persistence is M7-T3) |

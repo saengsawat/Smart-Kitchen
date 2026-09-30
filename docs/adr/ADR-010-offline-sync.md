@@ -1,6 +1,6 @@
 # ADR-010: Offline & synchronization strategy
 
-**Status:** OPEN (online-first MVP is PROPOSED; full offline is the open part) · Target decision point: shopping-list cache at M3/M7; full offline only on user evidence
+**Status:** OPEN (online-first MVP is PROPOSED; full offline is the open part) · Target decision point: shopping-list cache at M3/M7; full offline only on user evidence · **Progress note (2026-09-30):** option C's in-session queue for shopping check-offs was built in M3-T5 (module-level queue, keys held across retries and replays, replayed once per entry) and its server side in M7-T1; persistence of the list and the queue across restarts plus a real connectivity probe is ticket M7-T3.
 
 ## Context
 Brief requires multi-device household sync (§1, §12, §13) and specifically an **offline-available shopping list** (§6) — you're in a supermarket with bad reception. It does not require full offline editing of inventory. Full offline-first sync (conflict resolution, local DB, sync protocol) is one of the most expensive architectural commitments an app can make; adopting it "just in case" is a classic dead end. Conversely, retrofitting it later is hard — which is why this stays a tracked OPEN decision, not a silent default.

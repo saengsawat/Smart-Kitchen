@@ -552,7 +552,8 @@ Expo app (ADR-001 finalize): auth, household join, inventory list by location, m
 - **Out of scope:** anything not in the list; refactors beyond the consolidation named.
 - **DoD:** rule 26; the report maps each item to its commit and test.
 
-#### M9-D1 — Architecture documentation pass (architect, docs only)
+#### M9-D1 — Architecture documentation pass (architect, docs only) ✅ DONE 2026-09-30
+*Applied by the architect: ARCHITECTURE status line, §2 heading and shape, §3 table rows for client, backend and database, §7 item 3; ADR-004 target line; ADR-010 progress note; ADR README statuses. No decision changed.*
 ARCHITECTURE.md: the top status line (three ADRs are DECIDED), §2 shape (Expo and Node/Fastify decided), the §3 technology table rows for client, backend and database, §7 item 3 ("candidate Postgres RLS" is real since M1-T2). ADR-004: a note that D-022 built the stubbed identity port in front of it. ADR-010: M3-T5 built the in-session queue that option C describes; persistence across restarts is M7-T3. ADR README status table re-synced. No decisions change; rule 15 housekeeping. Owner: architect, after the batch A merges.
 
 ### M4 — Barcode/product enrichment

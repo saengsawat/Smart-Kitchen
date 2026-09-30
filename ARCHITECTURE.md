@@ -1,6 +1,6 @@
 # ARCHITECTURE.md
 
-**Status:** PROPOSED overall; individual choices tracked in [docs/adr/](docs/adr/README.md) and [DECISIONS.md](DECISIONS.md). Nothing here is DECIDED until its ADR says so.
+**Status:** the shape below is built and running (Milestones 0 and 1 complete; M2 and M3 in build since 2026-09-22). Individual choices are tracked in [docs/adr/](docs/adr/README.md) and [DECISIONS.md](DECISIONS.md): client platform (ADR-001), backend runtime (ADR-002), database with RLS (ADR-003) and the inventory ledger (ADR-008) are DECIDED; authentication, AI provider, food data, receipts, object storage and offline sync remain PROPOSED or OPEN. Nothing is DECIDED until its ADR says so. (Docs pass M9-D1, 2026-09-30.)
 
 Companion detail docs:
 [system-context.md](docs/architecture/system-context.md) ·
@@ -21,12 +21,12 @@ Companion detail docs:
 6. **Inventory accuracy is the product.** The correction-rate metric shapes design priorities more than feature count (brief §18C).
 7. **Cost-aware from day 1.** Every AI/OCR/lookup call is metered and attributable.
 
-## 2. Proposed shape
+## 2. Shape (as built)
 
 ```
 apps/
-  mobile/        client app (ADR-001: Expo/React Native proposed vs PWA)
-  api/           modular monolith backend (ADR-002: Node/TypeScript proposed)
+  mobile/        client app (ADR-001 DECIDED: Expo/React Native, managed workflow)
+  api/           modular monolith backend (ADR-002 DECIDED: Node/TypeScript + Fastify)
 packages/
   domain/        pure domain logic: ledger, allergen rules, gap math, ranking,
                  units. Zero I/O, zero vendor imports. The most-tested code.
@@ -41,11 +41,11 @@ Module rule: modules talk through exported interfaces; `inventory` never imports
 
 ## 3. Technology evaluation (facts / recommendation / open)
 
-| Area | Options weighed | Recommendation (PROPOSED) | Why / lock-in notes | ADR |
+| Area | Options weighed | Recommendation (DECIDED where the ADR says so, else PROPOSED) | Why / lock-in notes | ADR |
 |---|---|---|---|---|
-| Client | Expo/React Native · PWA · native ×2 | **Expo/RN** | Camera+barcode need native APIs (PWA camera/barcode support is uneven, esp. iOS); one TS codebase; small team. Native ×2 doubles cost; PWA is the cheap fallback if camera constraints relax. Lock-in: moderate, mitigated by thin client / server-owned logic | [ADR-001](docs/adr/ADR-001-client-platform.md) |
-| Backend | Node/TS (Fastify or Nest) · Python (FastAPI) · Go | **Node/TypeScript** | One language across client/server/contracts; typed domain package shared; team-size leverage. Python remains an option later for ML-heavy workers behind the same ports — not now. Framework choice inside ADR-002 | [ADR-002](docs/adr/ADR-002-backend-runtime.md) |
-| Database | PostgreSQL · MySQL · Firestore/Dynamo · SQLite/Turso | **PostgreSQL** (strong lean) | Relational fits ledger + catalog joins; RLS option for tenancy; JSONB for observations; boring, portable, cheap at MVP scale. Document stores make ledger invariants and cross-entity queries harder | [ADR-003](docs/adr/ADR-003-database.md) |
+| Client | Expo/React Native · PWA · native ×2 | **Expo/RN** (DECIDED 2026-09-21, D-005; a web target exists since M3-T4c) | Camera+barcode need native APIs (PWA camera/barcode support is uneven, esp. iOS); one TS codebase; small team. Native ×2 doubles cost; PWA is the cheap fallback if camera constraints relax. Lock-in: moderate, mitigated by thin client / server-owned logic | [ADR-001](docs/adr/ADR-001-client-platform.md) |
+| Backend | Node/TS (Fastify or Nest) · Python (FastAPI) · Go | **Node/TypeScript + Fastify** (DECIDED 2026-09-03) | One language across client/server/contracts; typed domain package shared; team-size leverage. Python remains an option later for ML-heavy workers behind the same ports — not now. Framework choice inside ADR-002 | [ADR-002](docs/adr/ADR-002-backend-runtime.md) |
+| Database | PostgreSQL · MySQL · Firestore/Dynamo · SQLite/Turso | **PostgreSQL with RLS** (DECIDED 2026-09-10; managed provider open) | Relational fits ledger + catalog joins; RLS option for tenancy; JSONB for observations; boring, portable, cheap at MVP scale. Document stores make ledger invariants and cross-entity queries harder | [ADR-003](docs/adr/ADR-003-database.md) |
 | Auth | Managed (Clerk/Auth0/Supabase/Cognito) · self-hosted (Keycloak) · roll-own | **Managed provider** | Auth bugs are existential; small team shouldn't own password/OTP infra. Lock-in real but bounded: only `platform/identity` touches it; users exportable. Vendor pick inside ADR-004 | [ADR-004](docs/adr/ADR-004-authentication.md) |
 | LLM | Anthropic · OpenAI · Google · open-weights | No vendor pick now | Port + eval suite make the choice swappable and testable; pick per-capability by eval + cost when M6 nears | [ADR-005](docs/adr/ADR-005-ai-provider-abstraction.md) |
 | Food data | Open Food Facts · USDA FDC · commercial UPC APIs | Cascade: OFF + FDC first, commercial only if coverage demands | RESEARCH REQUIRED: measured coverage on a real shopping basket (ticket M1-T5) | [ADR-006](docs/adr/ADR-006-food-data-sources.md) |
@@ -82,7 +82,7 @@ Data held: identity, age/sex/height/weight, health-adjacent goals and **allergie
 
 1. **Authentication:** an `IdentityPort` (`resolveSession(bearerToken) -> { userId, householdId, role } | null`) is the only source of identity; no header, query or body field may name a user or household (M2-T1). Production provider per ADR-004 (vendor open); MFA available; tokens short-lived; refresh rotation. Until the vendor lands, a fixture adapter serves development and tests (D-022): it is selected only when `SK_IDENTITY=fixture` and `NODE_ENV` is `development`, `test` or unset (allowlist, trimmed and lowercased); any other value, or an unset `SK_IDENTITY`, refuses to start. The refusal is asserted by a spawn test against the compiled server. Since M2-T3 the port also answers `resolveCaller(token) -> { userId, memberships }`, the full set of households the caller may act in, read from `household_memberships` on every request. The session's household is the most recently joined membership; a caller with none has no session and reaches only `userRoute` endpoints (create, join, list mine).
 2. **Authorization:** every request resolved to (user, household, role); default-deny, enforced twice (M2-T1): an `onRoute` guard refuses to register a route that carries no explicit authorization declaration (a plugin-registered route without one surfaces as a boot exception rather than the composition root's one-line refusal, still fail-closed), and an `onRequest` hook answers 401 for a missing, malformed or unknown token, 403 for an undeclared route or a role outside the declaration. Handlers receive a tenant-scoped session runner, never the pool, so every statement runs inside `withHouseholdTransaction` with the role pinned. The authz matrix is a permanent HTTP-level test suite (INV-TENANT-1) that also proves each layer holds when the other is removed. Writes (M2-T2) use the same pipeline with one addition: the handler is given a retried transaction (`TenantSessionRunner.write`, M1-T9) rather than a plain one, because a ledger append can lose a race with a concurrent append to the same item, and re-running the whole request is safe only because every write is idempotent under its key. A write addressed to an item outside the caller's household is answered 404, identically to an item that does not exist, on POST, undo and GET; the refusal is produced by row-level security (the locking `SELECT ... FOR UPDATE` returns no row), which the suite proves by removing every application-layer household predicate and watching the write still fail with nothing appended. Two more declaration kinds (M2-T3): `userRoute(reason)` for a signed-in caller who may have no household (the reason is mandatory, like `publicRoute`), and `ownerRoute()`, which refuses a member with 403 `NOT_OWNER`. A `userRoute` handler may also see `request.session` when the caller has one, and must not use it to act in a household without a role check (today none do).
-3. **Household isolation:** app-layer mandatory household context + candidate Postgres RLS as defense in depth ([data-model.md §5](docs/architecture/data-model.md#5-tenancy-isolation--sensitive-data)).
+3. **Household isolation:** app-layer mandatory household context plus Postgres RLS as defense in depth, real since M1-T2 and mutation-tested on every household table (the policy is removed in a test and the write must still fail) ([data-model.md §5](docs/architecture/data-model.md#5-tenancy-isolation--sensitive-data)).
 4. **Least privilege:** app DB role has no UPDATE/DELETE on ledger tables; no superuser in app path; provider API keys scoped per capability. The write path (M2-T2) adds no privilege: `sk_app` holds only INSERT and SELECT on `inventory_transactions`, so a correction, a removal and an undo are all appends. The development seed runs its inventory half as `sk_app` and its identity half as the owner role that ran the migrations (it inserts users and households, which `sk_app` may only read); it refuses to run outside the development allowlist.
 5. **Encryption:** TLS everywhere in transit; at-rest via platform (DB + object storage); no custom crypto.
 6. **Secrets:** never in repo (gitignore + secret scanning in CI baseline); injected via environment/platform secret store; `.env.example` documents names only.
