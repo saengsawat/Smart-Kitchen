@@ -1903,6 +1903,24 @@ describe("HttpApiClient.getCallerSummary / signOut / rotateJoinCode (M3-T6)", ()
         client.saveMemberRestrictions("mem-dean", [], { noneConfirmed: true }),
       ).rejects.toThrow(/no household yet/);
     });
+
+    it("drops the cached inventory read too (review round 1, F3): a failed read after sign-out never serves the previous household's items", async () => {
+      const client = new HttpApiClient("http://localhost:4000");
+      globalThis.fetch = () =>
+        Promise.resolve(new Response(JSON.stringify(SAMPLE_RESPONSE), { status: 200 }));
+      await client.getInventoryItems();
+      expect(client.isInventoryStale()).toBe(false);
+
+      await client.signOut();
+
+      // Before any post-sign-out read, the stale flag must already read
+      // false (a fresh client's own starting value), not whatever the
+      // previous household's last successful read left it at.
+      expect(client.isInventoryStale()).toBe(false);
+
+      globalThis.fetch = () => Promise.reject(new Error("network down"));
+      await expect(client.getInventoryItems()).rejects.toThrow("network down");
+    });
   });
 
   describe("rotateJoinCode", () => {

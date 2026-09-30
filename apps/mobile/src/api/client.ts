@@ -1448,14 +1448,20 @@ export class HttpApiClient implements ApiClient {
   /**
    * BACKLOG.md M3-T6 Objective (e): the delegate's own `signOut` already
    * returns it to a brand-new-user's client-local state (no household, no
-   * inventory); this client's own addition on top is forgetting the caller
-   * identity {@link syncCaller} cached, so a later {@link getCallerSummary}
+   * inventory); this client's own additions on top are forgetting the caller
+   * identity {@link syncCaller} cached (so a later {@link getCallerSummary}
    * before any fresh household read answers `null`, never a stale identity
-   * from the account that just signed out.
+   * from the account that just signed out) and dropping the cached inventory
+   * read (review round 1, F3): without this, a failed `getInventoryItems`
+   * right after sign-out would serve the previous household's cached items
+   * as if they were this (fresh) session's stale-offline fallback, which
+   * they are not.
    */
   async signOut(): Promise<void> {
     await this.delegate.signOut();
     this.caller = null;
+    this.cachedItems = null;
+    this.setStale(false);
   }
 
   /**
