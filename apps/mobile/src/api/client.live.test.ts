@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { getLiveApiTestBaseUrl, isLiveApiTestEnabled } from "../config/env";
-import { HttpApiClient, JOIN_CODE_ERROR_MESSAGE } from "./client";
+import { HttpApiClient, JOIN_CODE_ERROR_MESSAGE, NOT_OWNER_MESSAGE } from "./client";
 
 /**
  * M3-T4d live verification: exercises `HttpApiClient` against a *real*
@@ -126,5 +126,45 @@ describe.runIf(LIVE)("HttpApiClient against a real running API (M3-T4d)", () => 
     expect(detail?.summary.itemId).toBe(summary.itemId);
     expect(detail?.history).toHaveLength(1);
     expect(detail?.history[0]?.type).toBe("INITIAL_STOCK");
+  });
+
+  /**
+   * M3-T6 live verification (BACKLOG.md M3-T6): the owner-only join-code
+   * rotation this ticket adds, run in sequence against the seeded Chen
+   * household (the M2-T3 seed's `CHEN-482`, still live at the start of this
+   * file's run): Dean rotates once and gets a new code; the old code then
+   * genuinely stops working; Maya (a member, not the owner) is refused with
+   * `NOT_OWNER`.
+   */
+  let rotatedCode: string | undefined;
+
+  it("fixture.dean.chen (owner) rotates the join code and gets a new one-time code", async () => {
+    vi.stubEnv("EXPO_PUBLIC_IDENTITY_TOKEN", "fixture.dean.chen");
+    const client = new HttpApiClient(BASE_URL);
+
+    const result = await client.rotateJoinCode();
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.code).toMatch(/^[A-Z0-9]{4}-[0-9]{3}$/);
+      expect(result.code).not.toBe("CHEN-482");
+      rotatedCode = result.code;
+    }
+  });
+
+  it("CHEN-482 (now revoked) no longer joins, even for an already-affiliated caller", async () => {
+    expect(rotatedCode).toBeDefined(); // depends on the rotation above having run
+    vi.stubEnv("EXPO_PUBLIC_IDENTITY_TOKEN", "fixture.maya.chen");
+    const client = new HttpApiClient(BASE_URL);
+
+    const result = await client.joinHousehold("CHEN-482");
+    expect(result).toEqual({ ok: false, message: JOIN_CODE_ERROR_MESSAGE });
+  });
+
+  it("fixture.maya.chen (a member, not the owner) is refused NOT_OWNER on rotate", async () => {
+    vi.stubEnv("EXPO_PUBLIC_IDENTITY_TOKEN", "fixture.maya.chen");
+    const client = new HttpApiClient(BASE_URL);
+
+    const result = await client.rotateJoinCode();
+    expect(result).toEqual({ ok: false, message: NOT_OWNER_MESSAGE });
   });
 });
