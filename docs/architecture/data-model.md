@@ -94,16 +94,22 @@ recommendations      (id, household_id, recipe_id FK, shown_at, context JSONB,
                       response ENUM(none,accepted,rejected,cooked), responded_at NULL)
 meal_logs            (id, household_id, recipe_id NULL, logged_by FK, eaten_at,
                       servings, notes)       -- ingredient decrements = ledger txns w/ correlation
-shopping_lists       (id, household_id, status ENUM(active,archived), created_at)
-shopping_list_items  (id, list_id FK, household_id, ingredient_id NULL, product_id NULL,
-                      free_text NULL, required_qty NULL, on_hand_qty_at_gen NULL,
-                      needed_qty NULL, unit NULL, department NULL,
-                      status ENUM(to_buy,already_have,checked_off,removed),
-                      idempotency_key UNIQUE NULL)
+shopping_rows        (id, household_id, name, group_label, origin_kind CHECK(member),
+                      origin_member_id FK(household_id, membership), need_micros BIGINT > 0,
+                      unit CHECK(contract units), item_id NULL FK(household_id, item),
+                      default_location, status CHECK(open, done, skipped),
+                      checked_off_by NULL, checked_off_at NULL, added_transaction_id NULL,
+                      generation DEFAULT 1, removed_at NULL, removed_by NULL,
+                      created_by FK users, created_at, updated_at)       -- REAL since M7-T1 (0009)
+shopping_row_writes  (household_id, idempotency_key, row_id, kind CHECK(check, add), checked NULL,
+                      generation, actor_member_id, transaction_id NULL, recorded_at,
+                      PRIMARY KEY(household_id, idempotency_key))         -- insert-only
 ai_observations      (id, household_id, kind ENUM(barcode_photo,receipt_line,vision_item),
                       payload JSONB, confidence, model_ref,
                       status ENUM(proposed,confirmed,rejected,expired), created_at)
 ```
+
+**Shopping rows (M7-T1, 2026-09-30).** One list per household is implicit; `shopping_lists` waits for named lists. The amount to buy is never stored: every read computes it with the domain's `neededQuantity` over `need_micros` and the item's snapshot, counting the snapshot only when its unit is the row's unit (never a conversion), with the snapshot's own tier. Stored `skipped` means removed; "already have enough" is a read-time status. Add-to-inventory appends one PURCHASE per row and generation under the ledger key `shopping-row/<rowId>/generation/<n>`, in the transaction that sets the write-once `added_transaction_id`; unchecking never reverses it. Menu and AI origins arrive with later migrations (the `origin_kind` CHECK grows then).
 
 ## 3. Snapshot maintenance & reconciliation
 
@@ -135,7 +141,7 @@ confirmed_by      UUID NULL     -- user who confirmed, where confirmation applie
 | Any inventory transaction | client-generated `idempotency_key` (UNIQUE) — retries no-op |
 | Receipt upload | `content_hash` per household — duplicate scan returns existing receipt |
 | Meal log → decrements | one key per (meal_log, ingredient) — retrying a meal log can't double-consume |
-| Shopping check-off → purchase | key per shopping_list_item transition |
+| Shopping check-off → purchase | the client key per tap in `shopping_row_writes` (household-scoped), plus one PURCHASE per row and generation under a derived ledger key (M7-T1) |
 | External API calls | request-level dedupe/caching in adapters; never auto-retry non-idempotent provider ops |
 
 **Idempotency rejections are savepoint-scoped (M1-T11, 2026-09-16).** The database's idempotency index is household-scoped, so a key already used elsewhere in the household is refused by the index rather than by the domain. `appendTransactionToDb` wraps its insert block in `SAVEPOINT ledger_append` and, on `23505` / `inventory_transactions_idempotency_key`, issues `ROLLBACK TO SAVEPOINT` before returning the typed `IDEMPOTENCY_KEY_CONFLICT` rejection. A rejected append therefore costs the caller exactly its own candidate rows and nothing else: sibling writes earlier in the same transaction stay valid and the transaction remains usable. Every other database error propagates with the transaction left aborted, for the session wrapper to roll back or the retry helper (M1-T9) to re-run.
