@@ -11,10 +11,7 @@
   "body": {
     "code": "0044000004637",
     "product": {
-      "allergens_tags": [
-        "en:gluten",
-        "en:soybeans"
-      ],
+      "allergens_tags": ["en:gluten", "en:soybeans"],
       "brands": "Honey Maid",
       "categories_tags": [
         "en:snacks",
