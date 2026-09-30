@@ -123,7 +123,11 @@ CI runs gitleaks over every pushed commit. It flags the *shape* of a secret, not
 sign-ins in `tests/fixtures/identity/` (including `fixture.new.user`, who has no
 household yet), the Chen household's join code `CHEN-482` (stored as a hash,
 issued only while the household has no live code, so a code an owner rotated
-stays rotated) and the Chen household's inventory, the one the prototype draws.
+stays rotated), the Chen household's inventory, the one the prototype draws,
+and its shopping list (M7-T1): three member-origin rows, chicken breast tied to
+the seeded chicken item with a need of 2 lb (so the list shows 0.75 lb to buy,
+computed from the ledger's 1.25 lb on every read, never stored), paper towels
+added by Maya, and olive oil added and checked off by Dean.
 That is what turns the API from something that answers an empty list into
 something a phone can read and write for real. The seed and the API must see
 the same `SK_JOIN_CODE_PEPPER` (leave it unset for both in development) or the
@@ -146,9 +150,10 @@ Things worth knowing:
   identities it writes are public strings committed to this repository, so
   seeding them into a real deployment would be handing out accounts.
 - **It refuses without `DATABASE_URL`.** There is no default connection string.
-- **Re-running it changes nothing.** Item ids are derived from names, so the
-  second run finds everything already there and writes nothing. Run it as often
-  as you like.
+- **Re-running it changes nothing.** Item and shopping-row ids are derived from
+  names, so the second run finds everything already there and writes nothing,
+  and a shopping row you have since checked off, added or removed stays exactly
+  as you left it. Run it as often as you like.
 - **It only inserts.** No row it did not create is read, updated or deleted, and
   no household other than the two fixture ones is touched.
 - **Connect as the role that ran the migrations** (the owner, or a superuser).
