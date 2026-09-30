@@ -129,38 +129,63 @@ describe.runIf(LIVE)("HttpApiClient against a real running API (M3-T4d)", () => 
   });
 
   /**
-   * M3-T6 live verification (BACKLOG.md M3-T6): the owner-only join-code
-   * rotation this ticket adds, run in sequence against the seeded Chen
-   * household (the M2-T3 seed's `CHEN-482`, still live at the start of this
-   * file's run): Dean rotates once and gets a new code; the old code then
-   * genuinely stops working; Maya (a member, not the owner) is refused with
-   * `NOT_OWNER`.
+   * M3-T6 live verification, revised at review round 1 (F5): the original
+   * version of this test rotated the *seeded* Chen household's own
+   * `CHEN-482`, permanently revoking it server-side with no way for a
+   * reseed to restore it (the seed only ever issues a code "while the
+   * household has no live code" — CONTRIBUTING.md), so a second run of this
+   * file against the same database failed at
+   * `fixture.maya.chen joins the seeded Chen household with CHEN-482`
+   * above. This version creates its own throwaway household (under
+   * `fixture.new.user`, who already creates one earlier in this file, so a
+   * second create for the same caller is exactly the already-verified
+   * round trip) and rotates *that* household's own code instead — CHEN-482
+   * itself is never touched by anything below.
+   *
+   * `fixture.dean.chen` (never used for a join anywhere else in this file,
+   * so this never interacts with the rate-limit test's own budget on
+   * `fixture.owner.other`) both proves the old code dead and joins with the
+   * new one, which also exercises rotate's own AC ("CHEN-482 then fails to
+   * join" — the general shape, not that literal code) without leaving any
+   * of this suite's other fixture personas or seeded data changed.
    */
-  let rotatedCode: string | undefined;
-
-  it("fixture.dean.chen (owner) rotates the join code and gets a new one-time code", async () => {
-    vi.stubEnv("EXPO_PUBLIC_IDENTITY_TOKEN", "fixture.dean.chen");
+  it("fixture.new.user creates a household, rotates its own code, and the old code stops working while the new one succeeds", async () => {
+    vi.stubEnv("EXPO_PUBLIC_IDENTITY_TOKEN", "fixture.new.user");
     const client = new HttpApiClient(BASE_URL);
 
-    const result = await client.rotateJoinCode();
-    expect(result.ok).toBe(true);
-    if (result.ok) {
-      expect(result.code).toMatch(/^[A-Z0-9]{4}-[0-9]{3}$/);
-      expect(result.code).not.toBe("CHEN-482");
-      rotatedCode = result.code;
+    const created = await client.createHousehold(
+      `Live rotate test household ${String(Date.now())}`,
+    );
+    expect(typeof created.joinCode).toBe("string");
+    const originalCode = created.joinCode as string;
+
+    const rotated = await client.rotateJoinCode();
+    expect(rotated.ok).toBe(true);
+    if (!rotated.ok) {
+      return;
+    }
+    expect(rotated.code).toMatch(/^[A-Z0-9]{4}-[0-9]{3}$/);
+    expect(rotated.code).not.toBe(originalCode);
+
+    vi.stubEnv("EXPO_PUBLIC_IDENTITY_TOKEN", "fixture.dean.chen");
+    const deanClient = new HttpApiClient(BASE_URL);
+
+    const oldCodeAttempt = await deanClient.joinHousehold(originalCode);
+    expect(oldCodeAttempt).toEqual({ ok: false, message: JOIN_CODE_ERROR_MESSAGE });
+
+    const firstJoin = await deanClient.joinHousehold(rotated.code);
+    expect(firstJoin.ok).toBe(true);
+    if (firstJoin.ok) {
+      expect(firstJoin.alreadyMember).toBe(false);
+    }
+    const secondJoin = await deanClient.joinHousehold(rotated.code);
+    expect(secondJoin.ok).toBe(true);
+    if (secondJoin.ok) {
+      expect(secondJoin.alreadyMember).toBe(true);
     }
   });
 
-  it("CHEN-482 (now revoked) no longer joins, even for an already-affiliated caller", async () => {
-    expect(rotatedCode).toBeDefined(); // depends on the rotation above having run
-    vi.stubEnv("EXPO_PUBLIC_IDENTITY_TOKEN", "fixture.maya.chen");
-    const client = new HttpApiClient(BASE_URL);
-
-    const result = await client.joinHousehold("CHEN-482");
-    expect(result).toEqual({ ok: false, message: JOIN_CODE_ERROR_MESSAGE });
-  });
-
-  it("fixture.maya.chen (a member, not the owner) is refused NOT_OWNER on rotate", async () => {
+  it("fixture.maya.chen (a member, not the owner, of the seeded Chen household) is refused NOT_OWNER on rotate", async () => {
     vi.stubEnv("EXPO_PUBLIC_IDENTITY_TOKEN", "fixture.maya.chen");
     const client = new HttpApiClient(BASE_URL);
 
