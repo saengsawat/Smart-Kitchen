@@ -78,12 +78,14 @@ import type {
   MemberRestrictionDto,
   OnboardingStateDto,
   ProductLookupResultDto,
+  RotateJoinCodeResponseDto,
   ShoppingListDto,
   ShoppingRowDto,
   TransactionActorDto,
   UndoRequestDto,
 } from "@smart-kitchen/contracts";
 import {
+  HOUSEHOLD_JOIN_CODE_PATH,
   HOUSEHOLD_JOIN_PATH,
   HOUSEHOLD_ME_PATH,
   HOUSEHOLDS_PATH,
@@ -124,6 +126,14 @@ import { nextIdempotencyKey } from "./idempotency";
 /** The Dean-Chen fixture token (tests/fixtures/identity/README.md). Obviously fake, not a secret. */
 export const FIXTURE_IDENTITY_TOKEN = "fixture.dean.chen";
 
+/**
+ * The one fixture identity's email (D-022; prototype v4's S1 toast, "Signed
+ * in as dean@example.com"). S12's identity card shows it on the fixture path
+ * only (BACKLOG.md M3-T6 Objective (b)) — the HTTP path never has an email to
+ * show (M2-T3 sends initials and a role, never an email or a name).
+ */
+export const FIXTURE_IDENTITY_EMAIL = "dean@example.com";
+
 /** The one join code the fixture accepts (tests/fixtures/identity/README.md, BACKLOG.md M3-T2). */
 export const FIXTURE_JOIN_CODE = "CHEN-482";
 
@@ -138,6 +148,15 @@ export const JOIN_CODE_ERROR_MESSAGE =
  * attempt counter), so only `HttpApiClient` ever returns this.
  */
 export const RATE_LIMITED_MESSAGE = "Too many tries. Wait a few minutes and try again.";
+
+/**
+ * copy-deck.md §8 "Household refusals", `NOT_OWNER` row, verbatim
+ * (BACKLOG.md M3-T6): the 403 a member gets for the one owner-only action
+ * this client exposes, {@link HouseholdCallerActions.rotateJoinCode}. The
+ * client already refuses to show that action to a non-owner (invariant), so
+ * this is defence in depth for a 403 that reaches here anyway.
+ */
+export const NOT_OWNER_MESSAGE = "Only the household owner can do that.";
 
 const CHEN_HOUSEHOLD_ID = "hh-fixture-chen";
 
@@ -298,6 +317,21 @@ function isJoinHouseholdResponse(body: unknown): body is JoinHouseholdResponseDt
   return isHouseholdSummary(candidate.household) && typeof candidate.alreadyMember === "boolean";
 }
 
+/** Same shallow-shape-guard rule (M3-T6), for `POST /v1/households/me/join-code`'s `{ joinCode }` body. */
+function isRotateJoinCodeResponse(body: unknown): body is RotateJoinCodeResponseDto {
+  if (typeof body !== "object" || body === null) {
+    return false;
+  }
+  const joinCode = (body as { joinCode?: unknown }).joinCode as
+    { code?: unknown; issuedAt?: unknown } | undefined;
+  return (
+    typeof joinCode === "object" &&
+    joinCode !== null &&
+    typeof joinCode.code === "string" &&
+    typeof joinCode.issuedAt === "string"
+  );
+}
+
 /**
  * Maps the wire's `HouseholdSummaryDto` (M2-T3: `memberId`,
  * `displayInitials`, `role`, `isCaller`, never a full name or any
@@ -390,6 +424,10 @@ export type JoinHouseholdResult =
     }
   | { readonly ok: false; readonly message: string };
 
+/** {@link HouseholdCallerActions.rotateJoinCode}'s result: the new one-time code, or a §8 string to render. */
+export type RotateJoinCodeResult =
+  { readonly ok: true; readonly code: string } | { readonly ok: false; readonly message: string };
+
 /** `removeQuantity`'s `action` (copy-deck.md §5), re-exported so a screen can import it from either module. */
 export type { RemovalAction };
 
@@ -438,6 +476,20 @@ export interface ApiClient {
   createHousehold(name: string): Promise<HouseholdDto & { readonly joinCode?: string }>;
   /** S1 "Join household": only {@link FIXTURE_JOIN_CODE} succeeds against the fixture. */
   joinHousehold(code: string): Promise<JoinHouseholdResult>;
+  /**
+   * S12 "Sign out" (M3-T6): clears every household/restriction/preference
+   * state this client holds, the same "never assume a household it did not
+   * get from the server" invariant as {@link createHousehold}/
+   * {@link joinHousehold} run in reverse. Both implementations return to
+   * exactly their own brand-new-user starting point (`FixtureApiClient`:
+   * `newUser()`'s state; `HttpApiClient`: its delegate cleared the same way
+   * its constructor already clears it once, plus this client's own cached
+   * caller identity). The screen navigates to S1 itself afterward; this
+   * call only ever clears local state. The identity token remains fixed by
+   * env (D-022, no auth vendor yet): signing back in lands as the same
+   * fixture/env persona, not a different one.
+   */
+  signOut(): Promise<void>;
   /**
    * S2 Continue: persists one member's final restriction list. `noneConfirmed`
    * is the explicit declaration itself (architect ruling, M3-T2 review F9):
@@ -565,6 +617,52 @@ export interface ApiClient {
  */
 export interface DevOfflineToggle {
   setOfflineForDev(offline: boolean): void;
+}
+
+/**
+ * `HttpApiClient`-only additions for S12 (M3-T6): the caller's own wire
+ * identity and the owner-only join-code rotation. Neither has a meaningful
+ * fixture answer — `FixtureApiClient`'s household is entirely client-local
+ * (never a server-issued join code to rotate), and its one fixture identity
+ * (D-022) is always the owner it built the household with, directly readable
+ * off `household.members` without a separate call. Feature-detected the same
+ * way {@link DevOfflineToggle} is, rather than a dummy implementation on
+ * `FixtureApiClient` for a capability its own path never needs (BACKLOG.md
+ * M3-T6 Objective (b)/(d): the fixture path renders the identity card from
+ * the owner member directly and shows the static "share the join code" row
+ * instead of Invite).
+ */
+export interface HouseholdCallerActions {
+  /**
+   * The caller's own row from the most recent household read/create/join
+   * (M2-T3's `HouseholdSummaryDto.members[].isCaller`), which
+   * `householdSyncInputFromSummary` deliberately has nowhere to carry once a
+   * household is folded into the client-local `HouseholdDto` (that shape has
+   * no `isCaller` field). `null` before any household read has landed yet.
+   */
+  getCallerSummary(): { readonly displayInitials: string; readonly role: HouseholdRoleDto } | null;
+  /**
+   * S12 owner-only "Get new code": `POST /v1/households/me/join-code`
+   * (M2-T3). Never retried on a network failure, same reasoning as
+   * {@link ApiClient.createHousehold}: rotation carries no idempotency key,
+   * and a blind retry risks rotating twice, silently invalidating the code
+   * the first, actually-successful request already returned. A 403
+   * `NOT_OWNER` and every other failure each resolve `{ ok: false }` with
+   * their own §8 string, same pattern as {@link ApiClient.joinHousehold} —
+   * never a server message, never an unhandled rejection.
+   */
+  rotateJoinCode(): Promise<RotateJoinCodeResult>;
+}
+
+/** Feature-detects {@link HouseholdCallerActions}, same pattern as {@link hasDevOfflineToggle}. */
+export function hasHouseholdCallerActions(
+  client: ApiClient,
+): client is ApiClient & HouseholdCallerActions {
+  const candidate = client as Partial<HouseholdCallerActions>;
+  return (
+    typeof candidate.getCallerSummary === "function" &&
+    typeof candidate.rotateJoinCode === "function"
+  );
 }
 
 /** Narrows `client` to {@link DevOfflineToggle} when it actually has the dev toggle (today, only {@link FixtureApiClient}). */
@@ -748,6 +846,20 @@ export class FixtureApiClient implements ApiClient {
     this.shoppingRows = buildFixtureShoppingRows();
     this.appliedShoppingWrites = new Map();
     return Promise.resolve({ ok: true, household: this.household });
+  }
+
+  /**
+   * BACKLOG.md M3-T6 Objective (e): back to exactly {@link newUser}'s
+   * starting state (no household, no inventory, a fresh shopping fixture) —
+   * "a fresh user" per the ticket's own acceptance criterion, not merely a
+   * cleared household.
+   */
+  signOut(): Promise<void> {
+    this.household = null;
+    this.inventory = new Map();
+    this.shoppingRows = buildFixtureShoppingRows();
+    this.appliedShoppingWrites = new Map();
+    return Promise.resolve();
   }
 
   // try/catch so a synchronous updateMember/validation throw (unknown
@@ -1053,6 +1165,9 @@ export class HttpApiClient implements ApiClient {
   private cachedItems: readonly InventoryItemSummaryDto[] | null = null;
   private stale = false;
   private offlineListeners: Array<(offline: boolean) => void> = [];
+  /** M3-T6: the caller's own wire row, kept only for {@link getCallerSummary} (see its doc comment). */
+  private caller: { readonly displayInitials: string; readonly role: HouseholdRoleDto } | null =
+    null;
 
   constructor(baseUrl: string) {
     this.baseUrl = baseUrl;
@@ -1218,8 +1333,29 @@ export class HttpApiClient implements ApiClient {
     if (!isHouseholdSummary(body)) {
       throw new Error(`GET ${HOUSEHOLD_ME_PATH} returned an unexpected response body`);
     }
+    this.syncCaller(body);
     this.delegate.syncHouseholdFromServer(householdSyncInputFromSummary(body));
     return this.delegate.getOnboardingState();
+  }
+
+  /**
+   * S12's identity card and Invite gating (M3-T6) need to know which member
+   * *is* the caller, a bit `householdSyncInputFromSummary` has nowhere to
+   * carry once a household is folded into the client-local `HouseholdDto`
+   * (see {@link HouseholdCallerActions.getCallerSummary}'s doc comment) — so
+   * this reads `isCaller` off the raw wire summary directly, before that
+   * mapping drops it, and keeps just the two fields {@link getCallerSummary}
+   * answers.
+   */
+  private syncCaller(summary: HouseholdSummaryDto): void {
+    const callerRow = summary.members.find((member) => member.isCaller);
+    this.caller = callerRow
+      ? { displayInitials: callerRow.displayInitials, role: callerRow.role }
+      : null;
+  }
+
+  getCallerSummary(): { readonly displayInitials: string; readonly role: HouseholdRoleDto } | null {
+    return this.caller;
   }
 
   signInWithEmail(): Promise<void> {
@@ -1250,6 +1386,7 @@ export class HttpApiClient implements ApiClient {
     if (!isCreateHouseholdResponse(parsedBody)) {
       throw new Error(`POST ${HOUSEHOLDS_PATH} returned an unexpected response body`);
     }
+    this.syncCaller(parsedBody.household);
     const household = this.delegate.syncHouseholdFromServer(
       householdSyncInputFromSummary(parsedBody.household),
     );
@@ -1301,10 +1438,56 @@ export class HttpApiClient implements ApiClient {
     if (!isJoinHouseholdResponse(parsedBody)) {
       return { ok: false, message: GENERIC_LEDGER_ERROR_MESSAGE };
     }
+    this.syncCaller(parsedBody.household);
     const household = this.delegate.syncHouseholdFromServer(
       householdSyncInputFromSummary(parsedBody.household),
     );
     return { ok: true, household, alreadyMember: parsedBody.alreadyMember };
+  }
+
+  /**
+   * BACKLOG.md M3-T6 Objective (e): the delegate's own `signOut` already
+   * returns it to a brand-new-user's client-local state (no household, no
+   * inventory); this client's own addition on top is forgetting the caller
+   * identity {@link syncCaller} cached, so a later {@link getCallerSummary}
+   * before any fresh household read answers `null`, never a stale identity
+   * from the account that just signed out.
+   */
+  async signOut(): Promise<void> {
+    await this.delegate.signOut();
+    this.caller = null;
+  }
+
+  /**
+   * `POST /v1/households/me/join-code` (M3-T6, owner only). No request body
+   * (the route needs nothing beyond the session's own household/caller). A
+   * 403 `NOT_OWNER` and every other failure each resolve `{ ok: false }`
+   * with their own string, same shape as {@link joinHousehold} — this method
+   * never throws on a well-formed refusal.
+   */
+  async rotateJoinCode(): Promise<RotateJoinCodeResult> {
+    let response: Response;
+    try {
+      response = await fetch(`${this.baseUrl}${HOUSEHOLD_JOIN_CODE_PATH}`, {
+        method: "POST",
+        headers: this.authHeaders(),
+      });
+    } catch {
+      return { ok: false, message: GENERIC_LEDGER_ERROR_MESSAGE };
+    }
+    if (!response.ok) {
+      const errorBody: unknown = await response.json().catch(() => null);
+      const errorCode = extractErrorCode(errorBody);
+      if (errorCode === "NOT_OWNER") {
+        return { ok: false, message: NOT_OWNER_MESSAGE };
+      }
+      return { ok: false, message: GENERIC_LEDGER_ERROR_MESSAGE };
+    }
+    const parsedBody: unknown = await response.json().catch(() => null);
+    if (!isRotateJoinCodeResponse(parsedBody)) {
+      return { ok: false, message: GENERIC_LEDGER_ERROR_MESSAGE };
+    }
+    return { ok: true, code: parsedBody.joinCode.code };
   }
 
   saveMemberRestrictions(
