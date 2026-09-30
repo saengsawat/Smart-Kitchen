@@ -56,6 +56,7 @@ import {
 import { householdRoute, publicRoute, requireSession } from "./authorization.js";
 import { registerHouseholdRoutes, type HouseholdRouteDeps } from "./household-routes.js";
 import { registerProductRoutes, type ProductRouteDeps } from "./product-routes.js";
+import { registerShoppingRoutes } from "./shopping-routes.js";
 import {
   ledgerErrorResponse,
   notVisibleResponse,
@@ -392,6 +393,10 @@ export function registerRoutes(app: FastifyInstance, deps: RouteDeps): void {
       }
     },
   );
+
+  // M7-T1: always registered, like the inventory routes; they need nothing
+  // beyond the tenant session.
+  registerShoppingRoutes(app, { tenantSession: deps.tenantSession });
 
   if (deps.households !== undefined) {
     registerHouseholdRoutes(app, { ...deps.households, tenantSession: deps.tenantSession });
