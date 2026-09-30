@@ -18,11 +18,12 @@ vi.mock("../api/client", async (importOriginal) => {
 });
 
 let pushed: unknown[] = [];
+let replaced: unknown[] = [];
 
 vi.mock("expo-router", () => ({
   useRouter: () => ({
     push: (href: unknown) => pushed.push(href),
-    replace: () => {},
+    replace: (href: unknown) => replaced.push(href),
     canGoBack: () => false,
     back: () => {},
   }),
@@ -33,6 +34,7 @@ const originalFetch = globalThis.fetch;
 afterEach(() => {
   cleanup();
   pushed = [];
+  replaced = [];
   globalThis.fetch = originalFetch;
 });
 
@@ -69,10 +71,50 @@ describe("S1 · account + household, HTTP path (component)", () => {
   });
 
   it("review F5: 'Signed in as Dean Chen.' never renders on the HTTP path", async () => {
+    // 403 "no household" (`getOnboardingState`'s own documented reading of
+    // that status): the affiliation check this file's F2 tests exercise
+    // resolves to "no household", same as a genuinely fresh caller.
+    globalThis.fetch = () => Promise.resolve(new Response(null, { status: 403 }));
     const result = await renderScreen();
     fireEvent.press(result.getByLabelText("Continue with email"));
     await flushPending();
     expect(result.queryByText("Signed in as Dean Chen.")).toBeNull();
+  });
+
+  it("review round 1, F2: an already-affiliated caller is routed straight to '/' on Continue with email, never shown the household cards", async () => {
+    globalThis.fetch = () =>
+      Promise.resolve(
+        new Response(
+          JSON.stringify({
+            householdId: "hh-existing",
+            name: "The Ostrowskis",
+            members: [{ memberId: "mem-1", displayInitials: "AO", role: "owner", isCaller: true }],
+          }),
+          { status: 200 },
+        ),
+      );
+    const result = await renderScreen();
+    fireEvent.press(result.getByLabelText("Continue with email"));
+    await flushPending();
+
+    expect(replaced).toEqual(["/"]);
+    expect(pushed).toEqual([]);
+    expect(result.queryByText("Signed in as Dean Chen.")).toBeNull();
+  });
+
+  it("review round 1, F2: a rejected affiliation check fails closed with the §8 read fallback, never silently showing the cards", async () => {
+    globalThis.fetch = () => Promise.reject(new Error("network down"));
+    const result = await renderScreen();
+    fireEvent.press(result.getByLabelText("Continue with email"));
+    await flushPending();
+
+    expect(
+      result.getByText(
+        "Something went wrong loading that. Try again, and tell us if it keeps happening.",
+      ),
+    ).toBeTruthy();
+    expect(replaced).toEqual([]);
+    expect(pushed).toEqual([]);
   });
 
   it("review F9: a 400 BAD_REQUEST create-household refusal renders the exact household-name sentence", async () => {

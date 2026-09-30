@@ -2,9 +2,11 @@ import { describe, expect, it } from "vitest";
 import type { MemberDto } from "@smart-kitchen/contracts";
 import {
   ALLERGY_GATE_MESSAGE,
+  ALLERGY_SAVE_ERROR_MESSAGE,
   addCustomAllergen,
   buildInitialMemberDraft,
   draftFromMember,
+  firstName,
   isGateSatisfied,
   isMemberComplete,
   setSeverity,
@@ -232,5 +234,33 @@ describe("draftFromMember (re-entering S2 without losing prior answers)", () => 
 describe("ALLERGY_GATE_MESSAGE", () => {
   it("is the exact inline copy the ticket requires", () => {
     expect(ALLERGY_GATE_MESSAGE).toBe("Select at least one allergen, or confirm none, to continue");
+  });
+});
+
+describe("ALLERGY_SAVE_ERROR_MESSAGE", () => {
+  it("is the exact copy-deck.md §11 S2 save-failure string, reused verbatim by S12", () => {
+    expect(ALLERGY_SAVE_ERROR_MESSAGE).toBe("Couldn't save that. Try again.");
+  });
+});
+
+describe("firstName", () => {
+  it("a single-token name returns the whole name (BACKLOG.md M3-T6 Objective (f))", () => {
+    expect(firstName("Cher")).toBe("Cher");
+  });
+
+  it("a two-part name returns its first token", () => {
+    expect(firstName("Dean Chen")).toBe("Dean");
+  });
+
+  it("a multi-part name returns its first token, not the whole given name", () => {
+    expect(firstName("Mary Jane Watson")).toBe("Mary");
+  });
+
+  it("leading and repeated whitespace never produce an empty first token (M3-T2 review)", () => {
+    expect(firstName("  Dean   Chen  ")).toBe("Dean");
+  });
+
+  it("initials (the HTTP path's stand-in display name) pass through as a single token", () => {
+    expect(firstName("MC")).toBe("MC");
   });
 });

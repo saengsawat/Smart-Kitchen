@@ -11,7 +11,11 @@ import {
 import { useRouter } from "expo-router";
 import { apiClient, hasDevOfflineToggle } from "../../src/api/client";
 import { colors, fontFamily, minTouchTarget, radius, spacing } from "../../src/design/tokens";
-import { LedgerRefusedError, messageForLedgerError } from "../../src/inventory/errors";
+import {
+  GENERIC_READ_ERROR_MESSAGE,
+  LedgerRefusedError,
+  messageForLedgerError,
+} from "../../src/inventory/errors";
 import { validateHouseholdName } from "../../src/onboarding/validation";
 
 /**
@@ -56,6 +60,16 @@ export default function AccountScreen(): React.JSX.Element {
   const [joinError, setJoinError] = useState<string | null>(null);
   const [joinBusy, setJoinBusy] = useState(false);
   /**
+   * Review round 1, F2: a fixed-token identity (fixture or HTTP alike) can
+   * already belong to a household by the time "Continue with email" is
+   * tapped again (HTTP: the same persona signed in before; reproduced live
+   * as the same caller ending up with two server-side households and no
+   * way back). A rejected check fails closed, same convention as every
+   * other read in this app: shown, never silently treated as "no
+   * household".
+   */
+  const [affiliationCheckError, setAffiliationCheckError] = useState(false);
+  /**
    * Review F11/F4: a synchronous, `useRef`-backed single-flight guard.
    * `householdBusy`/`joinBusy` (React state) are not enough on their own —
    * two taps dispatched in the same frame both read the pre-update state
@@ -74,9 +88,36 @@ export default function AccountScreen(): React.JSX.Element {
     }
   }
 
+  /**
+   * Review round 1, F2 ruling: after signing in, S1 reads
+   * `getOnboardingState()` and routes an already-affiliated caller straight
+   * to "/" instead of ever showing the create/join cards. Reuses
+   * `requestInFlight` (already shared by create/join, F4/F11) so a
+   * same-frame double tap cannot start this check twice, and so Create/Join
+   * are refused for the moment this check is in flight too: showing either
+   * card usable while "do you already have a household" is still an open
+   * question is exactly the race this fixes.
+   */
   async function handleContinueWithEmail(): Promise<void> {
-    await apiClient.signInWithEmail();
-    setSignedIn(true);
+    if (requestInFlight.current) {
+      return;
+    }
+    requestInFlight.current = true;
+    setAffiliationCheckError(false);
+    try {
+      await apiClient.signInWithEmail();
+      const state = await apiClient.getOnboardingState();
+      if (state.household) {
+        router.replace("/");
+        return;
+      }
+      setSignedIn(true);
+    } catch {
+      setAffiliationCheckError(true);
+      AccessibilityInfo.announceForAccessibility(GENERIC_READ_ERROR_MESSAGE);
+    } finally {
+      requestInFlight.current = false;
+    }
   }
 
   function handleContinueWithGoogle(): void {
@@ -178,6 +219,18 @@ export default function AccountScreen(): React.JSX.Element {
         <Text style={styles.body}>
           Sign in to start your kitchen. This mockup skips real authentication.
         </Text>
+        {/*
+         * BACKLOG.md M3-T6 Objective (e): the profile screen's "Sign out"
+         * clears this device's local state, but the identity token itself is
+         * fixed by env (D-022, no auth vendor yet) — signing back in lands
+         * as the same fixture/env persona, not a different one. New copy
+         * (proposed for copy-deck.md §11 in the worker report), placed here
+         * rather than only on the profile screen so it is visible before
+         * anyone signs in at all.
+         */}
+        <Text style={styles.phaseLabel}>
+          Sign out (on the profile screen) is local only, until the auth vendor lands.
+        </Text>
 
         <Pressable
           accessibilityRole="button"
@@ -196,6 +249,12 @@ export default function AccountScreen(): React.JSX.Element {
             true only for `FixtureApiClient`. */}
         {signedIn && hasDevOfflineToggle(apiClient) ? (
           <Text style={styles.confirmation}>Signed in as Dean Chen.</Text>
+        ) : null}
+        {affiliationCheckError ? (
+          <View style={styles.noticeBox} accessibilityLiveRegion="assertive">
+            <Text style={styles.noticeIcon}>{"⚠"}</Text>
+            <Text style={styles.noticeText}>{GENERIC_READ_ERROR_MESSAGE}</Text>
+          </View>
         ) : null}
 
         <Pressable

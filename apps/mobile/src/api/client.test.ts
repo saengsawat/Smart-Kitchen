@@ -35,9 +35,11 @@ import {
   FIXTURE_JOIN_CODE,
   FixtureApiClient,
   hasDevOfflineToggle,
+  hasHouseholdCallerActions,
   householdSyncInputFromSummary,
   HttpApiClient,
   JOIN_CODE_ERROR_MESSAGE,
+  NOT_OWNER_MESSAGE,
 } from "./client";
 
 /** Typed parse of a mocked `fetch`'s captured request body (test-only convenience). */
@@ -2035,5 +2037,227 @@ describe("hasDevOfflineToggle (M3-T5)", () => {
   it("is true for FixtureApiClient, false for HttpApiClient", () => {
     expect(hasDevOfflineToggle(FixtureApiClient.returningUser())).toBe(true);
     expect(hasDevOfflineToggle(new HttpApiClient("http://localhost:4000"))).toBe(false);
+  });
+});
+
+describe("hasHouseholdCallerActions (M3-T6)", () => {
+  it("is true for HttpApiClient, false for FixtureApiClient", () => {
+    expect(hasHouseholdCallerActions(new HttpApiClient("http://localhost:4000"))).toBe(true);
+    expect(hasHouseholdCallerActions(FixtureApiClient.returningUser())).toBe(false);
+  });
+});
+
+describe("FixtureApiClient.signOut (M3-T6)", () => {
+  it("returns to newUser()'s exact starting state: no household, empty inventory", async () => {
+    const client = FixtureApiClient.returningUser();
+    expect((await client.getOnboardingState()).household).not.toBeNull();
+    expect((await client.getInventoryItems()).length).toBeGreaterThan(0);
+
+    await client.signOut();
+
+    expect((await client.getOnboardingState()).household).toBeNull();
+    expect(await client.getInventoryItems()).toEqual([]);
+  });
+
+  it("a fresh join after sign-out works exactly as it would for a brand-new user", async () => {
+    const client = FixtureApiClient.returningUser();
+    await client.signOut();
+    const result = await client.joinHousehold(FIXTURE_JOIN_CODE);
+    expect(result.ok).toBe(true);
+  });
+});
+
+describe("HttpApiClient.getCallerSummary / signOut / rotateJoinCode (M3-T6)", () => {
+  const originalFetch = globalThis.fetch;
+  afterEach(() => {
+    globalThis.fetch = originalFetch;
+  });
+
+  const SAMPLE_HOUSEHOLD_SUMMARY = {
+    householdId: "hh-chen",
+    name: "The Chens",
+    members: [
+      { memberId: "mem-dean", displayInitials: "DC", role: "owner", isCaller: true },
+      { memberId: "mem-maya", displayInitials: "MC", role: "member", isCaller: false },
+    ],
+  };
+
+  describe("getCallerSummary", () => {
+    it("is null before any household read", () => {
+      const client = new HttpApiClient("http://localhost:4000");
+      expect(client.getCallerSummary()).toBeNull();
+    });
+
+    it("getOnboardingState reads the caller's own row (isCaller) off the wire, initials plus role only", async () => {
+      globalThis.fetch = () =>
+        Promise.resolve(new Response(JSON.stringify(SAMPLE_HOUSEHOLD_SUMMARY), { status: 200 }));
+      const client = new HttpApiClient("http://localhost:4000");
+      await client.getOnboardingState();
+      expect(client.getCallerSummary()).toEqual({ displayInitials: "DC", role: "owner" });
+    });
+
+    it("createHousehold's response also feeds it", async () => {
+      globalThis.fetch = () =>
+        Promise.resolve(
+          new Response(
+            JSON.stringify({
+              household: SAMPLE_HOUSEHOLD_SUMMARY,
+              joinCode: { code: "ABCD-234", issuedAt: "2026-09-29T00:00:00.000Z" },
+            }),
+            { status: 201 },
+          ),
+        );
+      const client = new HttpApiClient("http://localhost:4000");
+      await client.createHousehold("The Chens");
+      expect(client.getCallerSummary()).toEqual({ displayInitials: "DC", role: "owner" });
+    });
+
+    it("joinHousehold's response also feeds it, for the joining member's own role", async () => {
+      const mayaIsCaller = {
+        ...SAMPLE_HOUSEHOLD_SUMMARY,
+        members: SAMPLE_HOUSEHOLD_SUMMARY.members.map((m) => ({
+          ...m,
+          isCaller: m.memberId === "mem-maya",
+        })),
+      };
+      globalThis.fetch = () =>
+        Promise.resolve(
+          new Response(JSON.stringify({ household: mayaIsCaller, alreadyMember: true }), {
+            status: 200,
+          }),
+        );
+      const client = new HttpApiClient("http://localhost:4000");
+      await client.joinHousehold("CHEN-482");
+      expect(client.getCallerSummary()).toEqual({ displayInitials: "MC", role: "member" });
+    });
+  });
+
+  describe("signOut", () => {
+    it("forgets both the delegate's household and the cached caller identity", async () => {
+      globalThis.fetch = () =>
+        Promise.resolve(new Response(JSON.stringify(SAMPLE_HOUSEHOLD_SUMMARY), { status: 200 }));
+      const client = new HttpApiClient("http://localhost:4000");
+      await client.getOnboardingState();
+      expect(client.getCallerSummary()).not.toBeNull();
+
+      await client.signOut();
+
+      expect(client.getCallerSummary()).toBeNull();
+      // The delegate's own household is gone too, not just this client's
+      // cached caller row: saving a restriction for a member id that
+      // existed before sign-out now rejects the same "no household yet"
+      // way a client that never read one in the first place would.
+      await expect(
+        client.saveMemberRestrictions("mem-dean", [], { noneConfirmed: true }),
+      ).rejects.toThrow(/no household yet/);
+    });
+
+    it("drops the cached inventory read too (review round 1, F3): a failed read after sign-out never serves the previous household's items", async () => {
+      const client = new HttpApiClient("http://localhost:4000");
+      globalThis.fetch = () =>
+        Promise.resolve(new Response(JSON.stringify(SAMPLE_RESPONSE), { status: 200 }));
+      await client.getInventoryItems();
+      expect(client.isInventoryStale()).toBe(false);
+
+      await client.signOut();
+
+      // Before any post-sign-out read, the stale flag must already read
+      // false (a fresh client's own starting value), not whatever the
+      // previous household's last successful read left it at.
+      expect(client.isInventoryStale()).toBe(false);
+
+      globalThis.fetch = () => Promise.reject(new Error("network down"));
+      await expect(client.getInventoryItems()).rejects.toThrow("network down");
+    });
+
+    it("clears the stale flag itself (review round 2, F3): go stale first, then sign out", async () => {
+      const client = new HttpApiClient("http://localhost:4000");
+      globalThis.fetch = () =>
+        Promise.resolve(new Response(JSON.stringify(SAMPLE_RESPONSE), { status: 200 }));
+      await client.getInventoryItems();
+      // A failed read with a cache present serves the cache and goes stale.
+      globalThis.fetch = () => Promise.reject(new Error("network down"));
+      await client.getInventoryItems();
+      expect(client.isInventoryStale()).toBe(true);
+      expect(client.isOffline()).toBe(true);
+
+      await client.signOut();
+
+      expect(client.isInventoryStale()).toBe(false);
+      expect(client.isOffline()).toBe(false);
+    });
+  });
+
+  describe("rotateJoinCode", () => {
+    it("POSTs with no body, returns ok:true with the new one-time code", async () => {
+      let capturedUrl: string | undefined;
+      let capturedInit: RequestInit | undefined;
+      globalThis.fetch = ((url: string, init?: RequestInit) => {
+        capturedUrl = url;
+        capturedInit = init;
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              joinCode: { code: "WXYZ-999", issuedAt: "2026-09-30T00:00:00.000Z" },
+            }),
+            { status: 200 },
+          ),
+        );
+      }) as typeof fetch;
+
+      const client = new HttpApiClient("http://localhost:4000");
+      const result = await client.rotateJoinCode();
+
+      expect(capturedUrl).toBe("http://localhost:4000/v1/households/me/join-code");
+      expect(capturedInit?.method).toBe("POST");
+      expect(capturedInit?.body).toBeUndefined();
+      expect((capturedInit?.headers as Record<string, string>).Authorization).toBe(
+        `Bearer ${FIXTURE_IDENTITY_TOKEN}`,
+      );
+      expect(result).toEqual({ ok: true, code: "WXYZ-999" });
+    });
+
+    it("a 403 NOT_OWNER resolves ok:false with the exact §8 string, never the server message", async () => {
+      globalThis.fetch = () =>
+        Promise.resolve(
+          new Response(
+            JSON.stringify({
+              error: {
+                code: "NOT_OWNER",
+                message: "this exact sentence must never reach the screen",
+                correlationId: "c1",
+              },
+            }),
+            { status: 403 },
+          ),
+        );
+      const client = new HttpApiClient("http://localhost:4000");
+      const result = await client.rotateJoinCode();
+      expect(result).toEqual({ ok: false, message: NOT_OWNER_MESSAGE });
+    });
+
+    it("any other failure (a 500, or a network failure) resolves ok:false with the generic fallback", async () => {
+      globalThis.fetch = () =>
+        Promise.resolve(
+          new Response(
+            JSON.stringify({ error: { code: "INTERNAL", message: "boom", correlationId: "c1" } }),
+            { status: 500 },
+          ),
+        );
+      const client = new HttpApiClient("http://localhost:4000");
+      const serverErrorResult = await client.rotateJoinCode();
+      expect(serverErrorResult).toEqual({ ok: false, message: GENERIC_LEDGER_ERROR_MESSAGE });
+
+      globalThis.fetch = () => Promise.reject(new Error("network down"));
+      const networkFailureResult = await client.rotateJoinCode();
+      expect(networkFailureResult).toEqual({ ok: false, message: GENERIC_LEDGER_ERROR_MESSAGE });
+    });
+
+    it("a malformed 2xx body resolves ok:false with the generic fallback, never an unhandled rejection", async () => {
+      globalThis.fetch = () => Promise.resolve(new Response(JSON.stringify({}), { status: 200 }));
+      const client = new HttpApiClient("http://localhost:4000");
+      const result = await client.rotateJoinCode();
+      expect(result).toEqual({ ok: false, message: GENERIC_LEDGER_ERROR_MESSAGE });
+    });
   });
 });

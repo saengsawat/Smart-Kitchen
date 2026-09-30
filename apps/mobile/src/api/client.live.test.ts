@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { getLiveApiTestBaseUrl, isLiveApiTestEnabled } from "../config/env";
-import { HttpApiClient, JOIN_CODE_ERROR_MESSAGE } from "./client";
+import { HttpApiClient, JOIN_CODE_ERROR_MESSAGE, NOT_OWNER_MESSAGE } from "./client";
 
 /**
  * M3-T4d live verification: exercises `HttpApiClient` against a *real*
@@ -126,5 +126,57 @@ describe.runIf(LIVE)("HttpApiClient against a real running API (M3-T4d)", () => 
     expect(detail?.summary.itemId).toBe(summary.itemId);
     expect(detail?.history).toHaveLength(1);
     expect(detail?.history[0]?.type).toBe("INITIAL_STOCK");
+  });
+
+  /**
+   * M3-T6 live verification, revised at review rounds 1 (F5) and 2 (F11).
+   * Rotating the seeded Chen household's own `CHEN-482` would revoke it for
+   * good (a reseed cannot restore it), so this test creates its own
+   * throwaway household under `fixture.new.user` and rotates that one.
+   *
+   * Both joins are made by `fixture.new.user` itself, the owner of that
+   * household: the old code must answer `JOIN_CODE_INVALID`, the new code
+   * must answer ok with `alreadyMember: true`, which proves the code
+   * resolves to the right household without moving anyone. Do not use a
+   * seeded persona for the successful join: the session runs as the most
+   * recently joined household, so joining would move that persona off Chen
+   * for every later run, and reseeding does not undo it (found at round 2).
+   * The only rows this test adds are new households owned by
+   * `fixture.new.user`, which the file's first test already does each run.
+   */
+  it("fixture.new.user creates a household, rotates its own code, and the old code stops working while the new one resolves", async () => {
+    vi.stubEnv("EXPO_PUBLIC_IDENTITY_TOKEN", "fixture.new.user");
+    const client = new HttpApiClient(BASE_URL);
+
+    const created = await client.createHousehold(
+      `Live rotate test household ${String(Date.now())}`,
+    );
+    expect(typeof created.joinCode).toBe("string");
+    const originalCode = created.joinCode as string;
+
+    const rotated = await client.rotateJoinCode();
+    expect(rotated.ok).toBe(true);
+    if (!rotated.ok) {
+      return;
+    }
+    expect(rotated.code).toMatch(/^[A-Z0-9]{4}-[0-9]{3}$/);
+    expect(rotated.code).not.toBe(originalCode);
+
+    const oldCodeAttempt = await client.joinHousehold(originalCode);
+    expect(oldCodeAttempt).toEqual({ ok: false, message: JOIN_CODE_ERROR_MESSAGE });
+
+    const newCodeAttempt = await client.joinHousehold(rotated.code);
+    expect(newCodeAttempt.ok).toBe(true);
+    if (newCodeAttempt.ok) {
+      expect(newCodeAttempt.alreadyMember).toBe(true);
+    }
+  });
+
+  it("fixture.maya.chen (a member, not the owner, of the seeded Chen household) is refused NOT_OWNER on rotate", async () => {
+    vi.stubEnv("EXPO_PUBLIC_IDENTITY_TOKEN", "fixture.maya.chen");
+    const client = new HttpApiClient(BASE_URL);
+
+    const result = await client.rotateJoinCode();
+    expect(result).toEqual({ ok: false, message: NOT_OWNER_MESSAGE });
   });
 });
