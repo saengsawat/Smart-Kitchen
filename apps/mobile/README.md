@@ -190,6 +190,12 @@ again. "Join with a code" with `CHEN-482` joins the Chen household. All tokens
 are listed in `tests/fixtures/identity/README.md`. They're fake test logins,
 not secrets.
 
+**Sign out** (profile screen, S12) clears this device's local state (the
+onboarding gate and, over HTTP, the cached household read) and returns to S1.
+It does not sign you out of anything real: the identity token above is fixed
+by the environment variable, not by this button, until the auth vendor lands
+(D-022) — the next launch signs back in as the same persona.
+
 **Use Open Food Facts' test server instead of the real one.** Set this in
 window 1 before `node apps/api/dist/server.js`:
 

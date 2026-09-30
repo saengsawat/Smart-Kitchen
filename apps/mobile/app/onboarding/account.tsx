@@ -178,6 +178,18 @@ export default function AccountScreen(): React.JSX.Element {
         <Text style={styles.body}>
           Sign in to start your kitchen. This mockup skips real authentication.
         </Text>
+        {/*
+         * BACKLOG.md M3-T6 Objective (e): the profile screen's "Sign out"
+         * clears this device's local state, but the identity token itself is
+         * fixed by env (D-022, no auth vendor yet) — signing back in lands
+         * as the same fixture/env persona, not a different one. New copy
+         * (proposed for copy-deck.md §11 in the worker report), placed here
+         * rather than only on the profile screen so it is visible before
+         * anyone signs in at all.
+         */}
+        <Text style={styles.phaseLabel}>
+          Sign out (on the profile screen) is local only, until the auth vendor lands.
+        </Text>
 
         <Pressable
           accessibilityRole="button"
