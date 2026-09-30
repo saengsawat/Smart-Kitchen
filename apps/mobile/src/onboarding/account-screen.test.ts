@@ -16,7 +16,7 @@ import React from "react";
 import { cleanup, fireEvent, render } from "@testing-library/react-native";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { flushPending } from "../test-support/flush";
-import { apiClient } from "../api/client";
+import { apiClient, type FixtureApiClient } from "../api/client";
 
 let pushed: unknown[] = [];
 
@@ -33,6 +33,16 @@ afterEach(() => {
   cleanup();
   pushed = [];
   vi.restoreAllMocks();
+  // Review round 1, F2: `handleContinueWithEmail` now reads
+  // `getOnboardingState()` and redirects away when a household already
+  // exists, so this file's shared `apiClient` singleton (every test below
+  // uses the same instance, by design, per this file's own header comment)
+  // can no longer carry a household from one test into the next -- an
+  // earlier test's `createHousehold`/`joinHousehold` would otherwise make a
+  // later "Continue with email" test redirect instead of showing the
+  // household cards, for a reason that has nothing to do with what that
+  // test is actually checking.
+  (apiClient as FixtureApiClient).clearHouseholdUntilServerSaysOtherwise();
 });
 
 async function renderScreen(): Promise<ReturnType<typeof render>> {
