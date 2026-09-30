@@ -26,6 +26,18 @@ import type {
 /** The exact inline gate message (copy-deck.md §11 proposed; BACKLOG.md M3-T2 invariant). */
 export const ALLERGY_GATE_MESSAGE = "Select at least one allergen, or confirm none, to continue";
 
+/**
+ * copy-deck.md §11 S2 "new save failure" (P8), reused verbatim by S12's
+ * per-member save (BACKLOG.md M3-T6 Objective (c)/(e)): the same action
+ * (persisting one member's restrictions through {@link toRestrictionDtos})
+ * failing the same way earns the same sentence, not a second one invented
+ * for a screen that is otherwise doing exactly what S2's Continue already
+ * does. Moved here from `app/onboarding/allergies.tsx` (M3-T2) so both
+ * screens import the one constant rather than each keeping a byte-identical
+ * copy.
+ */
+export const ALLERGY_SAVE_ERROR_MESSAGE = "Couldn't save that. Try again.";
+
 /** One allergen or custom ingredient a member has declared, mid-edit. */
 export interface AllergenSelectionDraft {
   /** Stable key: the major code itself, or `custom:<lowercased label>` for a free-text entry. */
@@ -157,6 +169,32 @@ export function isMemberComplete(draft: MemberAllergyDraft): boolean {
 /** The S2 Continue gate: every member covered, none excepted (BACKLOG.md M3-T2 invariant). */
 export function isGateSatisfied(drafts: readonly MemberAllergyDraft[]): boolean {
   return drafts.length > 0 && drafts.every(isMemberComplete);
+}
+
+/**
+ * The given name used in "No known allergies for {given name}" and in the
+ * accessibility labels alongside it. Moved here from
+ * `app/onboarding/allergies.tsx` (M3-T2 review: "firstName() splits on the
+ * first space"; BACKLOG.md M3-T6 Objective (f)) so S12's per-member edit
+ * reuses the same function rather than a second copy.
+ *
+ * A bare `displayName.split(" ")[0]` already returns the whole string for a
+ * single-token name (`"Cher".split(" ")` is `["Cher"]`), so that case was
+ * never actually broken; what the naive split gets wrong is any run of
+ * repeated or leading/trailing whitespace (`"  Dean  Chen"` would answer an
+ * empty string as its first "word"). Splitting on `/\s+/` after trimming
+ * closes that, for a single-token name and a multi-part one alike. This
+ * still cannot know that someone's actual given name is itself multiple
+ * words ("Mary Jane"; a display string carries no such boundary) — that
+ * remains a plain first-token heuristic, same as the prototype's, just no
+ * longer broken by stray whitespace.
+ */
+export function firstName(displayName: string): string {
+  const tokens = displayName
+    .trim()
+    .split(/\s+/)
+    .filter((token) => token.length > 0);
+  return tokens[0] ?? displayName;
 }
 
 /** Projects one member's draft onto the wire shape `saveMemberRestrictions` sends. */
