@@ -129,27 +129,22 @@ describe.runIf(LIVE)("HttpApiClient against a real running API (M3-T4d)", () => 
   });
 
   /**
-   * M3-T6 live verification, revised at review round 1 (F5): the original
-   * version of this test rotated the *seeded* Chen household's own
-   * `CHEN-482`, permanently revoking it server-side with no way for a
-   * reseed to restore it (the seed only ever issues a code "while the
-   * household has no live code" — CONTRIBUTING.md), so a second run of this
-   * file against the same database failed at
-   * `fixture.maya.chen joins the seeded Chen household with CHEN-482`
-   * above. This version creates its own throwaway household (under
-   * `fixture.new.user`, who already creates one earlier in this file, so a
-   * second create for the same caller is exactly the already-verified
-   * round trip) and rotates *that* household's own code instead — CHEN-482
-   * itself is never touched by anything below.
+   * M3-T6 live verification, revised at review rounds 1 (F5) and 2 (F11).
+   * Rotating the seeded Chen household's own `CHEN-482` would revoke it for
+   * good (a reseed cannot restore it), so this test creates its own
+   * throwaway household under `fixture.new.user` and rotates that one.
    *
-   * `fixture.dean.chen` (never used for a join anywhere else in this file,
-   * so this never interacts with the rate-limit test's own budget on
-   * `fixture.owner.other`) both proves the old code dead and joins with the
-   * new one, which also exercises rotate's own AC ("CHEN-482 then fails to
-   * join" — the general shape, not that literal code) without leaving any
-   * of this suite's other fixture personas or seeded data changed.
+   * Both joins are made by `fixture.new.user` itself, the owner of that
+   * household: the old code must answer `JOIN_CODE_INVALID`, the new code
+   * must answer ok with `alreadyMember: true`, which proves the code
+   * resolves to the right household without moving anyone. Do not use a
+   * seeded persona for the successful join: the session runs as the most
+   * recently joined household, so joining would move that persona off Chen
+   * for every later run, and reseeding does not undo it (found at round 2).
+   * The only rows this test adds are new households owned by
+   * `fixture.new.user`, which the file's first test already does each run.
    */
-  it("fixture.new.user creates a household, rotates its own code, and the old code stops working while the new one succeeds", async () => {
+  it("fixture.new.user creates a household, rotates its own code, and the old code stops working while the new one resolves", async () => {
     vi.stubEnv("EXPO_PUBLIC_IDENTITY_TOKEN", "fixture.new.user");
     const client = new HttpApiClient(BASE_URL);
 
@@ -167,21 +162,13 @@ describe.runIf(LIVE)("HttpApiClient against a real running API (M3-T4d)", () => 
     expect(rotated.code).toMatch(/^[A-Z0-9]{4}-[0-9]{3}$/);
     expect(rotated.code).not.toBe(originalCode);
 
-    vi.stubEnv("EXPO_PUBLIC_IDENTITY_TOKEN", "fixture.dean.chen");
-    const deanClient = new HttpApiClient(BASE_URL);
-
-    const oldCodeAttempt = await deanClient.joinHousehold(originalCode);
+    const oldCodeAttempt = await client.joinHousehold(originalCode);
     expect(oldCodeAttempt).toEqual({ ok: false, message: JOIN_CODE_ERROR_MESSAGE });
 
-    const firstJoin = await deanClient.joinHousehold(rotated.code);
-    expect(firstJoin.ok).toBe(true);
-    if (firstJoin.ok) {
-      expect(firstJoin.alreadyMember).toBe(false);
-    }
-    const secondJoin = await deanClient.joinHousehold(rotated.code);
-    expect(secondJoin.ok).toBe(true);
-    if (secondJoin.ok) {
-      expect(secondJoin.alreadyMember).toBe(true);
+    const newCodeAttempt = await client.joinHousehold(rotated.code);
+    expect(newCodeAttempt.ok).toBe(true);
+    if (newCodeAttempt.ok) {
+      expect(newCodeAttempt.alreadyMember).toBe(true);
     }
   });
 

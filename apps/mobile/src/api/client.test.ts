@@ -1921,6 +1921,23 @@ describe("HttpApiClient.getCallerSummary / signOut / rotateJoinCode (M3-T6)", ()
       globalThis.fetch = () => Promise.reject(new Error("network down"));
       await expect(client.getInventoryItems()).rejects.toThrow("network down");
     });
+
+    it("clears the stale flag itself (review round 2, F3): go stale first, then sign out", async () => {
+      const client = new HttpApiClient("http://localhost:4000");
+      globalThis.fetch = () =>
+        Promise.resolve(new Response(JSON.stringify(SAMPLE_RESPONSE), { status: 200 }));
+      await client.getInventoryItems();
+      // A failed read with a cache present serves the cache and goes stale.
+      globalThis.fetch = () => Promise.reject(new Error("network down"));
+      await client.getInventoryItems();
+      expect(client.isInventoryStale()).toBe(true);
+      expect(client.isOffline()).toBe(true);
+
+      await client.signOut();
+
+      expect(client.isInventoryStale()).toBe(false);
+      expect(client.isOffline()).toBe(false);
+    });
   });
 
   describe("rotateJoinCode", () => {
