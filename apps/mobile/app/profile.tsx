@@ -39,6 +39,8 @@ const FAST_FOLLOW_LINK_MESSAGE =
   "Invite by link is fast-follow · built after MVP launch, already planned.";
 const FAST_FOLLOW_EMAIL_MESSAGE =
   "Invite by email is fast-follow · built after MVP launch, already planned.";
+const INVITE_CONFIRM_MESSAGE =
+  "Get a new join code? The current code stops working. Share the new one with the person you're inviting.";
 
 /**
  * S12 · Profile & household (M3-T6), prototype v4 `#scr-profile`.
@@ -146,7 +148,19 @@ export default function ProfileScreen(): React.JSX.Element {
     setEditSaveError(false);
   }
 
+  /**
+   * Review round 1, F8: guarded on `editSaving`, not just the row's
+   * `disabled` prop (that alone only stops a real device's own touch
+   * handling; the logic itself must refuse too, or a tap that already
+   * dispatched before a re-render lands anyway). Without this, tapping a
+   * different row while a save is in flight opens a second editor, and the
+   * first save's success path (`cancelEditing()`) then closes *that* one
+   * instead of the row it actually saved.
+   */
   function toggleEditing(member: MemberDto): void {
+    if (editSaving) {
+      return;
+    }
     if (editingMemberId === member.memberId) {
       cancelEditing();
     } else {
@@ -208,6 +222,16 @@ export default function ProfileScreen(): React.JSX.Element {
   function openInviteConfirm(): void {
     setInviteConfirmOpen(true);
     setRotateError(null);
+    // Review round 1, F6: without this, Invite does nothing on a second
+    // tap once a code has already been shown once this session (the sheet
+    // itself is gated on `!rotatedCode`) -- tapping Invite again means "I
+    // want to rotate again", not "show me the code I already saw".
+    setRotatedCode(null);
+    // Review round 1, F7: the sheet appears in place (no navigation, no
+    // focus change a screen reader would otherwise notice on its own), so
+    // it needs the same explicit announcement every other inline notice on
+    // this screen already gets.
+    AccessibilityInfo.announceForAccessibility(INVITE_CONFIRM_MESSAGE);
   }
 
   function closeInviteConfirm(): void {
@@ -227,6 +251,11 @@ export default function ProfileScreen(): React.JSX.Element {
       if (result.ok) {
         setRotatedCode(result.code);
         setInviteConfirmOpen(false);
+        // Review round 1, F7: same reasoning as the confirm sheet itself --
+        // the new code appears in place, so a screen reader needs telling.
+        AccessibilityInfo.announceForAccessibility(
+          `Your join code: ${result.code}. Save it to invite others.`,
+        );
       } else {
         setRotateError(result.message);
         AccessibilityInfo.announceForAccessibility(result.message);
@@ -341,6 +370,55 @@ export default function ProfileScreen(): React.JSX.Element {
           ) : null}
         </View>
 
+        {/*
+         * Review round 1, F7: rendered right under the section header, next
+         * to the Invite link that opens it, not below the whole member
+         * list -- a sighted user tapping Invite should not have to scroll
+         * past every row to see what happened, and this also keeps it in
+         * the same tab order VoiceOver/TalkBack would reach right after
+         * Invite itself.
+         */}
+        {isHttp && isOwner && inviteConfirmOpen && !rotatedCode ? (
+          <View style={styles.confirmSheet}>
+            <Text style={styles.confirmText}>{INVITE_CONFIRM_MESSAGE}</Text>
+            {rotateError ? (
+              <View style={styles.noticeBox} accessibilityLiveRegion="assertive">
+                <Text style={styles.noticeIcon}>{"⚠"}</Text>
+                <Text style={styles.noticeText}>{rotateError}</Text>
+              </View>
+            ) : null}
+            <View style={styles.editActions}>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Cancel"
+                disabled={rotating}
+                onPress={closeInviteConfirm}
+                style={[styles.actionButton, styles.buttonSecondary]}
+              >
+                <Text style={styles.buttonTextOnLight}>Cancel</Text>
+              </Pressable>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Get new code"
+                disabled={rotating}
+                onPress={() => void handleGetNewCode()}
+                style={[styles.actionButton, styles.buttonPrimary]}
+              >
+                <Text style={styles.buttonTextOnDark}>Get new code</Text>
+              </Pressable>
+            </View>
+          </View>
+        ) : null}
+
+        {isHttp && isOwner && rotatedCode ? (
+          <View style={styles.noticeBox} accessibilityLiveRegion="assertive">
+            <Text style={styles.noticeIcon}>{"✓"}</Text>
+            <Text style={styles.noticeText}>
+              {`Your join code: ${rotatedCode}. Save it to invite others.`}
+            </Text>
+          </View>
+        ) : null}
+
         {household.members.map((member) => {
           const chipInitials = isHttp ? member.displayName : initialsFromName(member.displayName);
           const summary = memberAllergySummary(member);
@@ -350,6 +428,8 @@ export default function ProfileScreen(): React.JSX.Element {
               <Pressable
                 accessibilityRole="button"
                 accessibilityLabel={`${member.displayName}, ${summary}`}
+                accessibilityState={{ expanded: editingThisMember, disabled: editSaving }}
+                disabled={editSaving}
                 onPress={() => toggleEditing(member)}
                 style={styles.memberRow}
               >
@@ -427,50 +507,6 @@ export default function ProfileScreen(): React.JSX.Element {
               <Text style={styles.memberName}>Add a member</Text>
               <Text style={styles.memberCaption}>{`share the join code ${FIXTURE_JOIN_CODE}`}</Text>
             </View>
-          </View>
-        ) : null}
-
-        {isHttp && isOwner && inviteConfirmOpen && !rotatedCode ? (
-          <View style={styles.confirmSheet}>
-            <Text style={styles.confirmText}>
-              Get a new join code? The current code stops working. Share the new one with the person
-              you&apos;re inviting.
-            </Text>
-            {rotateError ? (
-              <View style={styles.noticeBox} accessibilityLiveRegion="assertive">
-                <Text style={styles.noticeIcon}>{"⚠"}</Text>
-                <Text style={styles.noticeText}>{rotateError}</Text>
-              </View>
-            ) : null}
-            <View style={styles.editActions}>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Cancel"
-                disabled={rotating}
-                onPress={closeInviteConfirm}
-                style={[styles.actionButton, styles.buttonSecondary]}
-              >
-                <Text style={styles.buttonTextOnLight}>Cancel</Text>
-              </Pressable>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Get new code"
-                disabled={rotating}
-                onPress={() => void handleGetNewCode()}
-                style={[styles.actionButton, styles.buttonPrimary]}
-              >
-                <Text style={styles.buttonTextOnDark}>Get new code</Text>
-              </Pressable>
-            </View>
-          </View>
-        ) : null}
-
-        {isHttp && isOwner && rotatedCode ? (
-          <View style={styles.noticeBox} accessibilityLiveRegion="assertive">
-            <Text style={styles.noticeIcon}>{"✓"}</Text>
-            <Text style={styles.noticeText}>
-              {`Your join code: ${rotatedCode}. Save it to invite others.`}
-            </Text>
           </View>
         ) : null}
 
