@@ -12,19 +12,32 @@ import { MAJOR_ALLERGEN_LABELS_DTO } from "@smart-kitchen/contracts";
 /**
  * BACKLOG.md M3-T6 Objective (c), verbatim forms: "No known allergies · edit"
  * or "{Allergen}, {allergen} · {severity} · edit". `severe` appears only when
- * at least one of the member's restrictions is severe (never "standard" —
+ * at least one of the member's restrictions is severe (never "standard" --
  * the unmarked case is the absence of the word, matching the prototype);
  * allergen labels come from {@link MAJOR_ALLERGEN_LABELS_DTO} for a `MAJOR`
  * restriction or the member's own wording for a `USER_DEFINED` one, joined in
  * whatever order the member's restrictions already carry (selection order,
- * from `allergyGate.ts`'s `toggleMajorAllergen`/`addCustomAllergen`) — never
+ * from `allergyGate.ts`'s `toggleMajorAllergen`/`addCustomAllergen`) -- never
  * re-sorted, and never the word "safe" (copy-deck.md §10).
+ *
+ * Review round 1, F4: a member with zero restrictions and `noneConfirmed`
+ * still `false` is the "gate not yet answered for this member" state, not
+ * "no known allergies" (that word pair is an explicit declaration, per S2's
+ * own gate copy, and it must never be shown for a member who has not
+ * actually made it). Unreachable through this screen today: the onboarding
+ * gate (`app/_layout.tsx`) redirects to S2 for as long as any member has
+ * neither a restriction nor a confirmed none, so nobody reaches S12 with a
+ * member left in this state -- pinned anyway, as the honest answer for the
+ * shape rather than an assumption this screen happens to get away with.
  */
 export function memberAllergySummary(
   member: Pick<MemberDto, "restrictions" | "noneConfirmed">,
 ): string {
-  if (member.noneConfirmed || member.restrictions.length === 0) {
+  if (member.noneConfirmed) {
     return "No known allergies · edit";
+  }
+  if (member.restrictions.length === 0) {
+    return "Allergies not set yet · edit";
   }
   const labels = member.restrictions.map((r) =>
     r.kind === "MAJOR" && r.code ? MAJOR_ALLERGEN_LABELS_DTO[r.code] : r.label,
