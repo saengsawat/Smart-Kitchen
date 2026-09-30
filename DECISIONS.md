@@ -141,6 +141,12 @@ Owners: `PO` = product owner (Dean), `ENG` = engineering.
 - **Consequences:** ADR-006 gains a PROPOSED provenance-tier policy for OFF data (identity match KNOWN_FACT; every OFF label field ESTIMATED with source `open-food-facts`; OFF can never license the absence of an allergen, so `ALLOWED` cannot come from OFF data alone, consistent with D-017); copy-deck §3.3 gains the `NOT_RUN` row; M3-T4d wires the client to the M2-T3 endpoints in parallel; M3-T4e wires lookup once M2-T4a lands.
 - **Alternatives:** wait for A3 (rejected: blocks the one flow a fridge test exercises); call OFF from the phone (rejected: no rate control, no provenance stamping, the API is the data boundary); FDC alongside OFF (rejected for now, see above).
 
+## D-026 — Open Food Facts `en:gluten` tag maps to `wheat` (over-blocking direction)
+- **Date:** 2026-09-29 · **Status:** PROPOSED (architect, from the M2-T4a code pass; built as proposed in M2-T4b; PO ratifies) · **Owner:** architect, Andy (PO)
+- **Context:** M2-T4a maps ten OFF allergen tags into the engine's codes and passes everything else through raw, where it reads as unrecognized data (an unknown plus a warning, never a block). OFF tags gluten-containing cereals as `en:gluten`, not `en:wheat`, so a product tagged gluten reaches a wheat-allergic member as an unknown rather than a block once M2-T4 runs the engine.
+- **Decision (proposed):** map `en:gluten` to `wheat` for both CONTAINS and MAY_CONTAIN. This over-blocks barley, rye and oat products for wheat-allergic members, which is the D-017 safe direction (worst wins; a warning can be added, never cleared). The EU-only tags (`en:mustard`, `en:celery`, `en:lupin`, `en:sulphur-dioxide-and-sulphites`) stay raw until user-defined restrictions can match them.
+- **Alternatives:** leave gluten raw (rejected: a real wheat signal downgraded to an unknown); add a `gluten` code to the taxonomy (rejected for now: the taxonomy is the FDA nine plus user-defined, D-017).
+
 ---
 
 ## Open product-owner questions (not yet decisions)

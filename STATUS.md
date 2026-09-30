@@ -1,12 +1,18 @@
 # STATUS.md
 
-_Last updated: 2026-09-29 (M2-T3, M2-T3a, M3-T5, M2-T4a, M3-T4d, M3-T4e accepted)_
+_Last updated: 2026-09-29 (M2-T3, M2-T3a, M3-T5, M2-T4a, M3-T4d, M3-T4e accepted; batch A dispatched)_
 
 ## Current phase
 **Milestones 0 and 1 complete. M2 (API) and M3 (client) have been building since 2026-09-22 under D-021, D-022 and D-023.** Every locked screen except Profile (M3-T6) exists on the phone; inventory reads and writes, household create and join, and manual item creation hit real endpoints; product lookup is live end to end (Open Food Facts, server-side); allergen verdicts stay "not checked" until M2-T4 stores restrictions; the shopping list is fixture-backed until M7. 1559 tests with DB / 1488 without (2026-09-24); CI green on `main`. The two blockers are PO decisions, not engineering: **D-024** (Dean's additions triage; a yes per row ratifies D-002 and unblocks the held Menu and Home tickets) and **A3** household permissions (gates M2-T4: restrictions storage and server-side screening). Build reference: prototype v4 (`docs/design/mockups/smart-kitchen-prototype.html`), [copy-deck.md](docs/design/copy-deck.md) (binding; deck wins on safety copy, prototype wins on the rest), [tokens.md](docs/design/tokens.md). Model routing (PO, 2026-09-22/23): Opus for rule-23 tickets with a detailed architect pass at acceptance, Sonnet for routine work, Fable only when super important.
 
-## In progress (architect-dispatched, isolated worktrees)
-Nothing dispatched. Next: M3-T6 profile (to be written), then the M2-T4 restrictions and screening work once A3 is answered.
+## In progress (architect-dispatched, isolated worktrees, disjoint file scopes)
+| Ticket | Title | Models (impl/review) | State |
+|---|---|---|---|
+| M3-T6 | Profile and household (S12): members with per-member allergy edit, join code for the owner, sign-out | Sonnet / Opus | dispatched 2026-09-29 |
+| M7-T1 | Shopping list persistence and endpoints (migration 0009, gap math on the server, check-off, add-to-inventory once per row, HTTP client wiring) | Opus / Opus | dispatched 2026-09-29 |
+| R-6 | Shelf-life data research: USDA FoodKeeper coverage, licence and the estimation rule (docs only) | Sonnet / Sonnet | dispatched 2026-09-29 |
+
+**Queued (batch A, no PO input needed):** M2-T4b lookup hardening (after M7-T1 and M3-T6 merge), M9-T0 maintenance bundle 2 (after those), M9-D1 architecture docs pass (architect). D-026 (gluten tag mapping) recorded PROPOSED for PO ratification.
 
 Then M3-T6 profile. **First on-device finding (Andy, 2026-09-29):** the scan screen only knew the four fixture barcodes, so every real product missed and manual add was refused over HTTP; D-025 unbundles the lookup endpoint from A3 and approves live Open Food Facts calls (server-side, no FDC, no persisted catalog).
 
