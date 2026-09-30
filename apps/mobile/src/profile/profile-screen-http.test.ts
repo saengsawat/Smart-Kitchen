@@ -101,6 +101,32 @@ describe("S12 · profile & household, HTTP path", () => {
     expect(result.getByLabelText(/^MC,/)).toBeTruthy();
   });
 
+  it("editing MC's (Maya) allergies changes only her row, and only her memberId is sent (review round 1, F1)", async () => {
+    globalThis.fetch = fetchRouter(DEAN_IS_CALLER);
+    const result = await renderScreen();
+    const { apiClient } = await import("../api/client");
+    const saveSpy = vi.spyOn(apiClient, "saveMemberRestrictions");
+
+    fireEvent.press(result.getByLabelText(/^MC,/));
+    fireEvent.press(result.getByLabelText("wheat"));
+    fireEvent.press(result.getByLabelText("Save allergies for MC"));
+    await flushPending();
+
+    // The rendered rows would look right even if the wrong id were sent to
+    // the port, same reasoning as profile-screen.test.ts's fixture-path
+    // pin: assert the actual call, then re-read the port itself.
+    expect(saveSpy).toHaveBeenCalledTimes(1);
+    expect(saveSpy.mock.calls[0]?.[0]).toBe("mem-maya");
+
+    const state = await apiClient.getOnboardingState();
+    const dean = state.household?.members.find((m) => m.memberId === "mem-dean");
+    const maya = state.household?.members.find((m) => m.memberId === "mem-maya");
+    expect(dean?.restrictions).toEqual([]);
+    expect(dean?.noneConfirmed).toBe(false);
+    expect(maya?.restrictions.map((r) => r.label)).toEqual(["wheat"]);
+    expect(maya?.noneConfirmed).toBe(false);
+  });
+
   it("the owner sees Invite; the confirm sheet, Get new code, shows the new code once", async () => {
     globalThis.fetch = fetchRouter(DEAN_IS_CALLER, (url, init) => {
       if (url.endsWith("/v1/households/me/join-code") && init?.method === "POST") {
@@ -126,6 +152,33 @@ describe("S12 · profile & household, HTTP path", () => {
     expect(result.getByText("Your join code: WXYZ-999. Save it to invite others.")).toBeTruthy();
     // The confirm sheet itself is gone once the code is shown.
     expect(result.queryByLabelText("Get new code")).toBeNull();
+  });
+
+  it("review round 1, F6: tapping Invite again after a rotation reopens the confirm sheet, not a dead tap", async () => {
+    globalThis.fetch = fetchRouter(DEAN_IS_CALLER, (url, init) => {
+      if (url.endsWith("/v1/households/me/join-code") && init?.method === "POST") {
+        return new Response(
+          JSON.stringify({ joinCode: { code: "WXYZ-999", issuedAt: "2026-09-30T00:00:00.000Z" } }),
+          { status: 200 },
+        );
+      }
+      return new Response(JSON.stringify({}), { status: 500 });
+    });
+    const result = await renderScreen();
+
+    fireEvent.press(result.getByLabelText("Invite"));
+    fireEvent.press(result.getByLabelText("Get new code"));
+    await flushPending();
+    expect(result.getByText("Your join code: WXYZ-999. Save it to invite others.")).toBeTruthy();
+
+    fireEvent.press(result.getByLabelText("Invite"));
+
+    expect(
+      result.getByText(
+        "Get a new join code? The current code stops working. Share the new one with the person you're inviting.",
+      ),
+    ).toBeTruthy();
+    expect(result.queryByText("Your join code: WXYZ-999. Save it to invite others.")).toBeNull();
   });
 
   it("Cancel on the confirm sheet never calls rotate", async () => {

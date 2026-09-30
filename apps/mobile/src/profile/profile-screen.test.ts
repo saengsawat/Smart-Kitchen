@@ -99,7 +99,8 @@ describe("S12 · profile & household, fixture path", () => {
     expect(result.queryByLabelText("Invite")).toBeNull();
   });
 
-  it("editing Maya's allergies changes only Maya's row", async () => {
+  it("editing Maya's allergies changes only Maya's row (review round 1, F1: the save target is pinned)", async () => {
+    const saveSpy = vi.spyOn(fixtureClient, "saveMemberRestrictions");
     const result = await renderScreen();
 
     fireEvent.press(result.getByLabelText("Maya Chen, Peanut, sesame · severe · edit"));
@@ -111,8 +112,24 @@ describe("S12 · profile & household, fixture path", () => {
     fireEvent.press(result.getByLabelText("Save allergies for Maya"));
     await flushPending();
 
+    // The rendered rows (an optimistic local update) would look right even
+    // if the wrong id were sent to the port, so this pins the actual call
+    // too: exactly one save, and it names Maya's memberId, not Dean's.
+    expect(saveSpy).toHaveBeenCalledTimes(1);
+    expect(saveSpy.mock.calls[0]?.[0]).toBe("member-maya");
     expect(result.getByLabelText("Dean Chen, No known allergies · edit")).toBeTruthy();
     expect(result.getByLabelText("Maya Chen, Peanut, sesame, kiwi · severe · edit")).toBeTruthy();
+
+    // Re-read from the port itself (not the screen's own optimistic state):
+    // Dean's stored restrictions/noneConfirmed must be exactly what they
+    // were before this edit, and Maya's must be exactly what was saved.
+    const state = await fixtureClient.getOnboardingState();
+    const dean = state.household?.members.find((m) => m.memberId === "member-dean");
+    const maya = state.household?.members.find((m) => m.memberId === "member-maya");
+    expect(dean?.restrictions).toEqual([]);
+    expect(dean?.noneConfirmed).toBe(true);
+    expect(maya?.restrictions.map((r) => r.label)).toEqual(["peanut", "sesame", "kiwi"]);
+    expect(maya?.noneConfirmed).toBe(false);
   });
 
   it("the S2 gate still applies: clearing every selection without confirming none shows the inline message", async () => {
@@ -140,6 +157,34 @@ describe("S12 · profile & household, fixture path", () => {
     await flushPending();
 
     expect(result.getByLabelText("Maya Chen, Peanut, sesame · severe · edit")).toBeTruthy();
+  });
+
+  it("review round 1, F8: tapping another row while a save is in flight is blocked", async () => {
+    let resolveSave: (() => void) | undefined;
+    vi.spyOn(fixtureClient, "saveMemberRestrictions").mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolveSave = () => resolve(undefined);
+        }),
+    );
+    const result = await renderScreen();
+
+    fireEvent.press(result.getByLabelText("Maya Chen, Peanut, sesame · severe · edit"));
+    fireEvent.press(result.getByLabelText("Save allergies for Maya"));
+    await flushPending();
+
+    // The save is still pending (the mock above never resolves it yet):
+    // tapping Dean's row must not open a second editor, which would let
+    // Maya's in-flight save land on whatever Dean's editor happened to be
+    // showing once it resolves.
+    fireEvent.press(result.getByLabelText("Dean Chen, No known allergies · edit"));
+    await flushPending();
+
+    expect(result.queryByLabelText("Save allergies for Dean")).toBeNull();
+    expect(result.getByLabelText("Save allergies for Maya")).toBeTruthy();
+
+    resolveSave?.();
+    await flushPending();
   });
 
   it("Sign out clears the fixture household and lands on S1", async () => {
