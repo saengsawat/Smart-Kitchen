@@ -64,7 +64,13 @@ const CHECK_BODY_SCHEMA = {
   additionalProperties: false,
   required: ["checked", "idempotencyKey"],
   properties: {
-    checked: { type: "boolean" },
+    // An `enum` with no `type`, on purpose. The instance keeps AJV's
+    // `coerceTypes` on (`app.ts`, architect ruling at M2-T2), and coercion
+    // applies only to a keyword with a `type`: `{ type: "boolean" }` would
+    // turn `"true"` into true and, worse, `null`, `0` and `""` into false, so
+    // a client bug sending `null` would uncheck a row. With a bare enum only
+    // the two JSON booleans pass.
+    checked: { enum: [true, false] },
     // The shape rule itself (letters, digits, dot, underscore, hyphen) is the
     // service's, so a bad key answers with the ledger code a screen can map.
     idempotencyKey: { type: "string", minLength: 1, maxLength: 128 },
