@@ -40,6 +40,14 @@ export const OFF_DEFAULT_USER_AGENT =
 export const OFF_PRODUCT_FIELDS = [
   "code",
   "product_name",
+  /**
+   * M2-T4b (c): OFF's English name, requested as a fallback when the
+   * record's main-language `product_name` is empty (a garbled OCR label, an
+   * un-backfilled contributor entry). Falling back to this is still better
+   * than `not-found` for a product OFF genuinely knows; a record with
+   * neither stays `not-found` (mapping.ts).
+   */
+  "product_name_en",
   "brands",
   "quantity",
   "serving_size",

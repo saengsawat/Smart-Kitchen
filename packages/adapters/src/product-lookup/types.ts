@@ -45,7 +45,7 @@ export interface Provenanced<T> {
 }
 
 /** Barcode/PLU code formats this port understands. PLU = produce lookup code (no barcode). */
-export type CodeType = "GTIN13" | "UPC_A" | "EAN13" | "EAN8" | "PLU";
+export type CodeType = "GTIN13" | "GTIN14" | "UPC_A" | "EAN13" | "EAN8" | "PLU";
 
 export interface ProductCode {
   readonly codeType: CodeType;

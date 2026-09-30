@@ -219,11 +219,12 @@ function errorResult(code: ProductCode, error: AdapterError): ResolveResult {
 }
 
 /**
- * The cache and in-flight key: the 13-digit GTIN form for 9 to 13 digit
- * codes (OFF's own normalization), EAN-8 unchanged.
+ * The cache and in-flight key: the 13-digit GTIN form for 8 to 13 digit
+ * codes (M2-T4b (e): EAN-8 is padded too, so an EAN-8 and its 13-digit
+ * spelling share one entry). Anything longer is left as is.
  */
 export function cacheKey(digits: string): string {
-  return digits.length > 8 && digits.length <= 13 ? digits.padStart(13, "0") : digits;
+  return digits.length <= 13 ? digits.padStart(13, "0") : digits;
 }
 
 /**

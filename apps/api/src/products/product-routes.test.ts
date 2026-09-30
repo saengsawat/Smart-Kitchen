@@ -59,6 +59,9 @@ function replayingFetch(): { fetch: FetchLike; sent: string[] } {
     [PEANUT_BUTTER]: "full-peanut-butter.json",
     "0096619555505": "full-peanut-butter.json",
     [MISSING]: "not-found.json",
+    "044000004637": "upc-e-graham-crackers.json",
+    "0044000004637": "upc-e-graham-crackers.json",
+    "5285000396437": "english-name-only-indomie.json",
   };
   const sent: string[] = [];
   const fetch: FetchLike = (url) => {
@@ -317,6 +320,58 @@ describe("codes that never reach the source", () => {
     expect(sent[0]).toContain("/api/v2/product/0096619555505.json");
     expect(body.status).toBe("hit");
     expect(body.code).toBe("00096619555505");
+  });
+
+  it("M2-T4b (a): a recorded UPC-E and its UPC-A form resolve to the same product, and only the UPC-A is sent", async () => {
+    const { fetch, sent } = replayingFetch();
+    const { app } = harness(new OpenFoodFactsProductLookupPort({ fetch }));
+    const e = await get<ProductLookupResultDto>(app, "04446307", DEAN);
+    const a = await get<ProductLookupResultDto>(app, "044000004637", DEAN);
+    expect(e.statusCode).toBe(200);
+    expect(e.body.status).toBe("hit");
+    expect(a.body.status).toBe("hit");
+    if (e.body.status !== "hit" || a.body.status !== "hit") return;
+    expect(e.body.code).toBe("04446307"); // the echo is what was asked
+    expect(e.body.product.name.value).toBe("Honey Maid Graham Crackers");
+    expect(e.body.product.name).toEqual(a.body.product.name);
+    expect(e.body.product.packageSize).toEqual(a.body.product.packageSize);
+    expect(e.body.product.codes).toEqual([{ codeType: "UPC_A", code: "044000004637" }]);
+    expect(sent).toHaveLength(1); // one shared cache entry
+    expect(sent[0]).toContain("/api/v2/product/044000004637.json");
+    expect(sent[0]).not.toContain("04446307");
+  });
+
+  it("M2-T4b (a): an 8-digit code that is neither an EAN-8 nor a UPC-E with a valid check digit is 400 and nothing is sent", async () => {
+    const { fetch, sent } = replayingFetch();
+    const { app } = harness(new OpenFoodFactsProductLookupPort({ fetch }));
+    for (const code of ["04446308", "24446307"]) {
+      const { statusCode, body } = await get<ApiErrorBodyDto>(app, code, DEAN);
+      expect(statusCode, code).toBe(400);
+      expect(body.error.code, code).toBe("BAD_REQUEST");
+    }
+    expect(sent).toEqual([]);
+  });
+
+  it("M2-T4b (c): a record with only product_name_en is a hit", async () => {
+    const { fetch } = replayingFetch();
+    const { app } = harness(new OpenFoodFactsProductLookupPort({ fetch }));
+    const { statusCode, body } = await get<ProductLookupResultDto>(app, "5285000396437", DEAN);
+    expect(statusCode).toBe(200);
+    expect(body.status).toBe("hit");
+    if (body.status === "hit") expect(body.product.name.value).toBe("Indomie");
+  });
+
+  it("M2-T4b (b): indicator 1 to 9 GTIN-14s stay 400 and indicator 0 stays a hit", async () => {
+    const { fetch, sent } = replayingFetch();
+    const { app } = harness(new OpenFoodFactsProductLookupPort({ fetch }));
+    // Valid check digits, so only the indicator decides.
+    for (const code of ["10096619555502", "20096619555509", "90096619555508"]) {
+      const { statusCode } = await get<ApiErrorBodyDto>(app, code, DEAN);
+      expect(statusCode, code).toBe(400);
+    }
+    expect(sent).toEqual([]);
+    const ok = await get<ProductLookupResultDto>(app, "00044000004637", DEAN);
+    expect(ok.body.status).toBe("hit");
   });
 
   it("an 8 and a 13 digit code are accepted", async () => {

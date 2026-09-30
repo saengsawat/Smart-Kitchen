@@ -44,6 +44,16 @@ describe("validateCodeFormat", () => {
     expect(validateCodeFormat({ codeType: "GTIN13", code: "4006381333931" })).toBeNull();
   });
 
+  it("accepts a well-formed GTIN-14 and refuses a wrong check digit or length (M2-T4b (b))", () => {
+    expect(validateCodeFormat({ codeType: "GTIN14", code: "00096619555505" })).toBeNull();
+    expect(validateCodeFormat({ codeType: "GTIN14", code: "00096619555504" })?.message).toMatch(
+      /check-digit/,
+    );
+    expect(validateCodeFormat({ codeType: "GTIN14", code: "0096619555505" })?.message).toMatch(
+      /14 numeric digits/,
+    );
+  });
+
   it("accepts a well-formed 4-digit PLU", () => {
     expect(validateCodeFormat({ codeType: "PLU", code: "4011" })).toBeNull();
   });

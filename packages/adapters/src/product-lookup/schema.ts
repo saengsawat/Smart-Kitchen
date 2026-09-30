@@ -35,7 +35,7 @@ import type {
   ServingSize,
 } from "./types.js";
 
-const CODE_TYPES: readonly CodeType[] = ["GTIN13", "UPC_A", "EAN13", "EAN8", "PLU"];
+const CODE_TYPES: readonly CodeType[] = ["GTIN13", "GTIN14", "UPC_A", "EAN13", "EAN8", "PLU"];
 const PROVENANCE_TIERS: readonly ProvenanceTier[] = [
   "KNOWN_FACT",
   "ESTIMATED",
@@ -46,8 +46,9 @@ const ALLERGEN_ASSERTIONS: readonly AllergenAssertionKind[] = ["CONTAINS", "MAY_
 const PRODUCT_KINDS: readonly ProductKind[] = ["BRANDED", "GENERIC"];
 
 /** Digit length for each fixed-length code type (`PLU` is variable, handled separately). */
-const CODE_LENGTHS: Readonly<Record<"GTIN13" | "UPC_A" | "EAN13" | "EAN8", number>> = {
+const CODE_LENGTHS: Readonly<Record<"GTIN13" | "GTIN14" | "UPC_A" | "EAN13" | "EAN8", number>> = {
   GTIN13: 13,
+  GTIN14: 14,
   UPC_A: 12,
   EAN13: 13,
   EAN8: 8,

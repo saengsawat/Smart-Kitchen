@@ -51,25 +51,75 @@ function checkDigitHolds(digits: string): boolean {
 }
 
 /**
+ * UPC-E to UPC-A expansion (M2-T4b (a)).
+ *
+ * Source: the GS1 UPC-E zero-suppression table (GS1 General Specifications,
+ * "UPC-E"; also tabulated on Wikipedia's "Universal Product Code" article).
+ * An 8-digit UPC-E is `N d1 d2 d3 d4 d5 d6 C`: number system `N` (0 or 1),
+ * six data digits and the check digit `C`. The last data digit `d6` says how
+ * the zeros were removed; the 11-digit UPC-A body is `N` + a 5-digit
+ * manufacturer code + a 5-digit product code:
+ *
+ * - d6 in 0, 1, 2: manufacturer `d1 d2 d6 0 0`, product `0 0 d3 d4 d5`
+ * - d6 = 3: manufacturer `d1 d2 d3 0 0`, product `0 0 0 d4 d5`
+ * - d6 = 4: manufacturer `d1 d2 d3 d4 0`, product `0 0 0 0 d5`
+ * - d6 in 5 to 9: manufacturer `d1 d2 d3 d4 d5`, product `0 0 0 0 d6`
+ *
+ * The printed check digit is not trusted: the GS1 check digit of the
+ * expanded 12 digits must hold, otherwise the code is refused, never
+ * guessed. A number system other than 0 or 1 is refused.
+ */
+export function expandUpcEToUpcA(raw: string): string | undefined {
+  if (!/^[01]\d{7}$/.test(raw)) return undefined;
+  const ns = raw[0] ?? "";
+  const d = raw.slice(1, 7);
+  const d6 = d[5] ?? "";
+  const check = raw[7] ?? "";
+  let body: string;
+  if (d6 === "0" || d6 === "1" || d6 === "2") {
+    body = `${ns}${d.slice(0, 2)}${d6}00` + `00${d.slice(2, 5)}`;
+  } else if (d6 === "3") {
+    body = `${ns}${d.slice(0, 3)}00` + `000${d.slice(3, 5)}`;
+  } else if (d6 === "4") {
+    body = `${ns}${d.slice(0, 4)}0` + `0000${d.slice(4, 5)}`;
+  } else {
+    body = `${ns}${d.slice(0, 5)}` + `0000${d6}`;
+  }
+  const upcA = `${body}${check}`;
+  return checkDigitHolds(upcA) ? upcA : undefined;
+}
+
+/**
  * The path segment, validated.
  *
  * - 4 or 5 digits: a PLU, refused (`PLU_NOT_SUPPORTED`), never sent anywhere.
- * - 8, 12 or 13 digits with a valid check digit: EAN-8, UPC-A, EAN-13.
+ * - 8 digits: an EAN-8 when its check digit holds as written. Otherwise a
+ *   UPC-E, expanded to its UPC-A ({@link expandUpcEToUpcA}) and looked up as
+ *   that; an expansion whose check digit fails is invalid. The phone sends
+ *   only the digits, not the symbology, so EAN-8 wins any ambiguity (a UPC-E
+ *   whose check digit also happens to satisfy the EAN-8 test reads as EAN-8).
+ * - 12 or 13 digits with a valid check digit: UPC-A, EAN-13.
  * - 14 digits with a valid check digit and a leading `0`: a GTIN-14 whose
  *   packaging indicator is 0 is the GTIN-13 in its last 13 digits (OFF's own
  *   barcode-normalization note), looked up as that EAN-13. A GTIN-14 with
  *   any other indicator names a case or a pallet, not something a household
- *   scans, and is refused as invalid. The adapter has no GTIN-14 code type
- *   (see the M2-T4a worker report, escalations).
+ *   scans, and is refused as invalid. The `GTIN14` code type exists in the
+ *   adapter and contracts since M2-T4b, but the lookup is always made as the
+ *   EAN-13, so no port receives a GTIN14 code today.
  * - anything else, including a bad check digit: invalid.
  */
 export function parseLookupCode(raw: string): ParsedLookupCode {
   if (!/^\d+$/.test(raw)) return { kind: "invalid" };
   if (raw.length === 4 || raw.length === 5) return { kind: "plu" };
-  if (![8, 12, 13, 14].includes(raw.length) || !checkDigitHolds(raw)) return { kind: "invalid" };
+  if (raw.length === 8) {
+    if (checkDigitHolds(raw)) return { kind: "barcode", code: { codeType: "EAN8", code: raw } };
+    const expanded = expandUpcEToUpcA(raw);
+    return expanded === undefined
+      ? { kind: "invalid" }
+      : { kind: "barcode", code: { codeType: "UPC_A", code: expanded } };
+  }
+  if (![12, 13, 14].includes(raw.length) || !checkDigitHolds(raw)) return { kind: "invalid" };
   switch (raw.length) {
-    case 8:
-      return { kind: "barcode", code: { codeType: "EAN8", code: raw } };
     case 12:
       return { kind: "barcode", code: { codeType: "UPC_A", code: raw } };
     case 13:

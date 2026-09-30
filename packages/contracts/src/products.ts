@@ -31,11 +31,18 @@ import type { ScreeningResultDto } from "./allergens.js";
  * not a domain one, hand-mirrored here for the same "contracts stays
  * dependency-free" reason as every other list in this package).
  */
-export const PRODUCT_CODE_TYPES_DTO = ["GTIN13", "UPC_A", "EAN13", "EAN8", "PLU"] as const;
+export const PRODUCT_CODE_TYPES_DTO = [
+  "GTIN13",
+  "GTIN14",
+  "UPC_A",
+  "EAN13",
+  "EAN8",
+  "PLU",
+] as const;
 export type ProductCodeTypeDto = (typeof PRODUCT_CODE_TYPES_DTO)[number];
 
 /** expo-camera's `BarcodeScanningResult.type` values this app scans for (BACKLOG.md M3-T4b Objective (b)). */
-export const SCANNABLE_BARCODE_TYPES_DTO = ["upc_a", "ean13", "ean8"] as const;
+export const SCANNABLE_BARCODE_TYPES_DTO = ["upc_a", "upc_e", "ean13", "ean8"] as const;
 export type ScannableBarcodeTypeDto = (typeof SCANNABLE_BARCODE_TYPES_DTO)[number];
 
 export interface ProductCodeDto {

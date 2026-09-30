@@ -8,6 +8,7 @@ import {
   API_ERROR_CODES,
   MAJOR_ALLERGEN_CODES_DTO,
   PRODUCT_LOOKUP_ROUTE,
+  SCANNABLE_BARCODE_TYPES_DTO,
   SCREENING_NOT_RUN_REASONS_DTO,
   productLookupPath,
   type ScreeningOutcomeDto,
@@ -33,12 +34,15 @@ describe("OFF allergen tag map vs the domain taxonomy", () => {
     for (const [tag] of mapEntries) expect(tag).toMatch(/^en:[a-z]+(?:-[a-z]+)*$/);
   });
 
-  it("is exactly this map: any entry removed or changed is a visible test change (review F2)", () => {
+  it("is exactly this map: any entry removed or changed is a visible test change (review F2, D-026)", () => {
     // Removing `en:molluscs` would turn a mollusc CONTAINS tag into an
     // unknown, so a shellfish allergy would read ALLOWED_WITH_UNKNOWNS
-    // instead of BLOCKED. Narrowing this map must never pass silently.
+    // instead of BLOCKED. Removing `en:gluten` would turn a gluten CONTAINS
+    // tag back into an unrecognized-data warning instead of a wheat block
+    // (D-026). Narrowing this map must never pass silently.
     expect(OFF_ALLERGEN_TAG_MAP).toEqual({
       "en:peanuts": "peanut",
+      "en:gluten": "wheat",
       "en:nuts": "tree_nut",
       "en:milk": "milk",
       "en:eggs": "egg",
@@ -49,19 +53,19 @@ describe("OFF allergen tag map vs the domain taxonomy", () => {
       "en:sesame-seeds": "sesame",
       "en:coconut": "tree_nut",
     });
+    expect(Object.keys(OFF_ALLERGEN_TAG_MAP)).toHaveLength(11);
   });
 
-  it("covers every major allergen except wheat, which OFF only reports as `en:gluten` (deliberately unmapped)", () => {
+  it("covers every major allergen: wheat is now reached via `en:gluten` (D-026)", () => {
     const reached = new Set(Object.values(OFF_ALLERGEN_TAG_MAP));
     const missing = MAJOR_ALLERGEN_CODES.filter((code) => !reached.has(code));
-    expect(missing).toEqual(["wheat"]);
+    expect(missing).toEqual([]);
   });
 
   it("a raw OFF tag is not already readable by the engine, so passing it through raw can only read as unrecognized", () => {
     // If the engine ever learned to read `en:`-prefixed tags on its own, an
     // unmapped raw tag could start meaning something this map never decided.
     const rawSeenInRecordings = [
-      "en:gluten",
       "en:Grains",
       "en:Seeds",
       "en:none",
@@ -75,7 +79,7 @@ describe("OFF allergen tag map vs the domain taxonomy", () => {
   });
 
   it("unmapped tags pass through unchanged; prototype keys do not resolve", () => {
-    expect(mapOffAllergenTag("en:gluten")).toBe("en:gluten");
+    expect(mapOffAllergenTag("en:gluten")).toBe("wheat");
     expect(mapOffAllergenTag("en:none")).toBe("en:none");
     expect(mapOffAllergenTag("constructor")).toBe("constructor");
     expect(mapOffAllergenTag("__proto__")).toBe("__proto__");
@@ -99,6 +103,10 @@ describe("product lookup contracts", () => {
       reason: "HOUSEHOLD_RESTRICTIONS_NOT_STORED",
     };
     expect(Object.keys(outcome).sort()).toEqual(["reason", "status"]);
+  });
+
+  it("the camera scans UPC-E too (M2-T4b (a)); the server expands it before lookup", () => {
+    expect([...SCANNABLE_BARCODE_TYPES_DTO]).toEqual(["upc_a", "upc_e", "ean13", "ean8"]);
   });
 
   it("PLU_NOT_SUPPORTED is an API error code", () => {

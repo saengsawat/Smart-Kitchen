@@ -37,6 +37,8 @@ export const RECORDED_OFF_FILES = [
   "no-allergen-fields-almond-breeze.json",
   "sparse-sandwich.json",
   "not-found.json",
+  "upc-e-graham-crackers.json",
+  "english-name-only-indomie.json",
 ] as const;
 
 export type RecordedOffFile = (typeof RECORDED_OFF_FILES)[number];
