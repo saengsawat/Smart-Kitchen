@@ -536,7 +536,7 @@ export interface ApiClient {
    * change (S11 reads {@link isOffline} directly for the initial render).
    */
   subscribeOffline(listener: (offline: boolean) => void): () => void;
-  /** S11's list (M3-T5). Fixture only until M7; `HttpApiClient` rejects with the established "not available yet" pattern. */
+  /** S11's list (M3-T5): the fixture list, or `GET /v1/shopping` on `HttpApiClient` (M7-T1). */
   getShoppingList(): Promise<ShoppingListDto>;
   /**
    * S11's check control, toggling one row `open`/`done`. `idempotencyKey` is
@@ -547,7 +547,7 @@ export interface ApiClient {
    * before that decision is made.
    */
   checkOffShoppingRow(rowId: string, checked: boolean, idempotencyKey: string): Promise<void>;
-  /** S11's AI-row Remove (decline): deletes the suggestion row. Fixture only until M7. */
+  /** S11's Remove: the fixture deletes the row; `HttpApiClient` marks it removed on the server (M7-T1, never a delete). */
   removeShoppingSuggestion(rowId: string): Promise<void>;
   /**
    * S11's close-the-loop Add: appends one `PURCHASE` of the row's

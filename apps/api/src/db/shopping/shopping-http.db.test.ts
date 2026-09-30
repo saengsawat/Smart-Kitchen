@@ -564,6 +564,8 @@ describe.skipIf(!dbTestsEnabled)(SUITE, () => {
       expect(answer.body.replayed).toBe(false);
       expect(answer.body.transactions).toHaveLength(1);
       const purchase = answer.body.transactions[0];
+      // The literal, not the constant, so a renamed source cannot pass unnoticed (review F3).
+      expect(purchase?.provenance.source).toBe("shopping-check-off");
       expect(purchase).toMatchObject({
         type: "PURCHASE",
         deltaMicros: "750000",
@@ -1061,18 +1063,70 @@ describe.skipIf(!dbTestsEnabled)(SUITE, () => {
       ).rejects.toMatchObject({ code: "42501" });
     });
 
-    it("the guard keeps added_transaction_id write-once, even for the owner role", async () => {
-      await expect(
-        db.pool.query("UPDATE shopping_rows SET added_transaction_id = NULL WHERE id = $1", [
-          CHICKEN_ROW,
-        ]),
-      ).rejects.toMatchObject({ code: "23514" });
-      await expect(
-        db.pool.query("UPDATE shopping_rows SET added_transaction_id = $2 WHERE id = $1", [
-          CHICKEN_ROW,
-          randomUUID(),
-        ]),
-      ).rejects.toMatchObject({ code: "23514" });
+    it("the guard keeps added_transaction_id write-once on a live row, for the owner role and for sk_app", async () => {
+      // A fresh row that is not removed, so the only branch that can refuse is
+      // the write-once one (review F1: CHICKEN_ROW is removed by now, and the
+      // "a removed row stays removed" branch answered 23514 on its behalf).
+      const rowId = await insertRow({
+        name: "Yogurt, write-once",
+        needMicros: 60_000_000n,
+        unit: "oz",
+        itemId: seedItemId("yogurt"),
+        done: true,
+      });
+      const added = await add(DEAN, rowId, key());
+      expect(added.statusCode).toBe(201);
+      const purchaseId = added.body.transactions[0]?.transactionId;
+      const stored = await storedRow(rowId);
+      expect(stored?.["added_transaction_id"]).toBe(purchaseId);
+      expect(stored?.["removed_at"]).toBeNull();
+      const otherPurchase = (await storedRow(CHICKEN_ROW))?.["added_transaction_id"];
+      expect(typeof otherPurchase).toBe("string");
+
+      for (const replacement of [null, randomUUID(), otherPurchase]) {
+        await expect(
+          db.pool.query("UPDATE shopping_rows SET added_transaction_id = $2 WHERE id = $1", [
+            rowId,
+            replacement,
+          ]),
+        ).rejects.toMatchObject({ code: "23514" });
+        await expect(
+          asApp("UPDATE shopping_rows SET added_transaction_id = $2 WHERE id = $1", [
+            rowId,
+            replacement,
+          ]),
+        ).rejects.toMatchObject({ code: "23514" });
+      }
+      // Positive control: the same row still takes a permitted update.
+      await asApp("UPDATE shopping_rows SET updated_at = clock_timestamp() WHERE id = $1", [rowId]);
+      expect((await storedRow(rowId))?.["added_transaction_id"]).toBe(purchaseId);
+    });
+
+    it("scopes recorded keys to the household: the same key is accepted in Chen and in Okafor", async () => {
+      const ada = fixture.sessions.find((session) => session.token === ADA);
+      if (ada === undefined) throw new Error("fixture map lost Ada");
+      const adaMember = await memberIdOf(okaforId, ada.userId);
+      const okaforRow = await insertRow({
+        name: "Okafor rice",
+        needMicros: 1_000_000n,
+        unit: "cup",
+        itemId: null,
+        householdId: okaforId,
+        memberId: adaMember,
+        createdBy: ada.userId,
+      });
+      const shared = key();
+      const inOkafor = await check(ADA, okaforRow, true, shared);
+      expect(inOkafor.statusCode).toBe(200);
+      const inChen = await check(DEAN, OLIVE_ROW, true, shared);
+      expect(inChen.statusCode).toBe(200);
+      const recorded = await db.pool.query<{ household_id: string }>(
+        "SELECT household_id FROM shopping_row_writes WHERE idempotency_key = $1 ORDER BY household_id",
+        [shared],
+      );
+      expect(recorded.rows.map((row) => row.household_id).sort()).toEqual(
+        [chenId, okaforId].sort(),
+      );
     });
 
     it("the guard refuses a purchase that is not this row's own PURCHASE on its own item", async () => {
