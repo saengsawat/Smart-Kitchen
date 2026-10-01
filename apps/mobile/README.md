@@ -208,8 +208,13 @@ $env:SK_OFF_BASE_URL = "https://world.openfoodfacts.net"
 
 Leave it unset normally. The real one needs no key.
 
-**Use a different API port.** Set `$env:PORT = "4000"` in window 1 and use
-`:4000` in `EXPO_PUBLIC_API_URL`. The two must match.
+**Use a different API port.** Add this line in window 1 before
+`node apps/api/dist/server.js`, and use `:4000` in `EXPO_PUBLIC_API_URL`. The
+two must match.
+
+```powershell
+$env:PORT = "4000"
+```
 
 **Call the barcode lookup directly (no app):**
 
