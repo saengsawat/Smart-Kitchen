@@ -153,11 +153,20 @@ export class DatabaseConfigurationError extends Error {
   }
 }
 
+/** What a test may substitute in the composition root; `server.ts` passes nothing. */
+export interface CompositionOverrides {
+  /** Logger level and destination, so a test can read the startup lines (BUG-002 review F3). */
+  readonly logging?: LoggingOptions;
+}
+
 /**
  * Composition root: reads the environment, refuses anything it cannot serve
  * safely, and returns the wired app together with the pool it owns.
  */
-export async function createAppFromEnvironment(env: EnvironmentLike): Promise<RunningApp> {
+export async function createAppFromEnvironment(
+  env: EnvironmentLike,
+  overrides: CompositionOverrides = {},
+): Promise<RunningApp> {
   // The identity refusal comes first, before anything else is read, so the
   // production message is never masked by a missing database (M2-T1).
   chooseIdentityAdapter(env);
@@ -197,6 +206,7 @@ export async function createAppFromEnvironment(env: EnvironmentLike): Promise<Ru
     },
     products: { lookup: new OpenFoodFactsProductLookupPort(offConfig) },
     cors,
+    ...(overrides.logging === undefined ? {} : { logging: overrides.logging }),
   });
   if (cors.source === "development-implied") {
     app.log.info(
