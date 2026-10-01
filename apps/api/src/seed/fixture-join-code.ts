@@ -33,9 +33,11 @@ export async function seedChenJoinCode(
   ownerUserId: string,
   hasher: JoinCodeHasher,
 ): Promise<JoinCodeSeedResult> {
+  // created_at is stamped with clock_timestamp() like the runtime paths
+  // (repository.ts issueJoinCode), not the column DEFAULT now() (M9-T0 j).
   const result = await pool.query(
-    `INSERT INTO household_join_codes (code_hash, household_id, created_by)
-     SELECT $1, $2, $3
+    `INSERT INTO household_join_codes (code_hash, household_id, created_by, created_at)
+     SELECT $1, $2, $3, clock_timestamp()
       WHERE NOT EXISTS (
               SELECT 1 FROM household_join_codes
                WHERE household_id = $2 AND revoked_at IS NULL)
