@@ -17,6 +17,7 @@ import { useReducedMotion } from "../../src/inventory/motion";
 import { chipAccessibilityLabel, ROW_CHIP_TEXT } from "../../src/inventory/provenance";
 import { microsToAmountText, trimAmountText } from "../../src/inventory/quantity";
 import { useToast } from "../../src/inventory/Toast";
+import { useGateCovered } from "../../src/onboarding/gate-context";
 import {
   addCtaIsBlocked,
   allowedLine,
@@ -88,7 +89,13 @@ export default function ScanScreen(): React.JSX.Element {
   const router = useRouter();
   const { show } = useToast();
   const reducedMotion = useReducedMotion();
-  const [permission, requestPermission] = useCameraPermissions();
+  // BUG-001 review F2b: while the onboarding gate covers this screen (it
+  // stays mounted under the cover once the root navigator has mounted), no
+  // camera side effect at all: no permission query (`get: false` stops the
+  // hook's own on-mount status read), no permission request (below), no
+  // live `CameraView` and so no `onBarcodeScanned` (render, below).
+  const gateCovered = useGateCovered();
+  const [permission, requestPermission] = useCameraPermissions({ get: !gateCovered });
   const [phase, setPhase] = useState<ScanPhase>({ kind: "camera" });
   const [typedCode, setTypedCode] = useState("");
   // M3-T4e review round 1 F4: whether "Enter it manually" should carry the
@@ -160,11 +167,11 @@ export default function ScanScreen(): React.JSX.Element {
   // enum from `expo-modules-core` this app never needs to compare against
   // directly), so this never re-prompts after a denial.
   useEffect(() => {
-    if (permission && !permission.granted && !requestedOnce) {
+    if (!gateCovered && permission && !permission.granted && !requestedOnce) {
       setRequestedOnce(true);
       void requestPermission();
     }
-  }, [permission, requestedOnce, requestPermission]);
+  }, [gateCovered, permission, requestedOnce, requestPermission]);
 
   // Review F11: member names on S8's allergen row are resolved from the
   // household DTO the app actually holds, never a fixed name map. One read
@@ -460,7 +467,7 @@ export default function ScanScreen(): React.JSX.Element {
         <Text style={styles.camTitle}>Scan barcode</Text>
         <View style={{ width: minTouchTarget }} />
       </View>
-      {permission?.granted ? (
+      {permission?.granted && !gateCovered ? (
         <CameraView
           style={styles.camera}
           facing="back"
