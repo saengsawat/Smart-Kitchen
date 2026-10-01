@@ -2,12 +2,18 @@
 /**
  * Manual web smoke check for the demo onboarding flow (BUG-001 guard).
  *
- * Drives a headless Chrome over the DevTools protocol through S1 (create a
- * household), S2 (pick an allergen chip and a preference chip, Continue),
- * Home, the Inventory tab, Add, Profile and Sign out (back to S1), and
- * fails on any console error
- * or uncaught exception (the BUG-001 red screen was "Maximum update depth
+ * Drives a headless Chrome over the DevTools protocol through cold-start
+ * deep links to /inventory and /add, S1 (create a household), S2 (pick an
+ * allergen chip and a preference chip, Continue), Home, the Inventory tab,
+ * Add, Profile and Sign out (back to S1), and fails on any console error or
+ * uncaught exception (the BUG-001 red screen was "Maximum update depth
  * exceeded" right after S2's Continue).
+ *
+ * What it is not: a crash guard only. It checks where each step lands and
+ * that nothing threw; it does not check what was visible between frames (a
+ * flash of a gated screen), keyboard reachability under the gate's cover,
+ * or the camera (headless Chrome shows no permission prompt and has no
+ * camera). Those stay manual, on a real device.
  *
  * Not part of `pnpm test` and adds no dependency: it uses Node's own
  * WebSocket (global on Node 22+, behind `--experimental-websocket` on

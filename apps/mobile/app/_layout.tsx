@@ -1,7 +1,7 @@
 import { useFonts } from "expo-font";
-import { Slot, usePathname, useRouter } from "expo-router";
-import { useCallback, useEffect, useState } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Redirect, Slot, usePathname, useRouter } from "expo-router";
+import { useCallback, useEffect, useLayoutEffect, useState } from "react";
+import { Platform, Pressable, StyleSheet, Text, View } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import fraunces from "../assets/fonts/Fraunces.ttf";
 import inter from "../assets/fonts/Inter.ttf";
@@ -10,6 +10,7 @@ import { colors, fontFamily, minTouchTarget, spacing } from "../src/design/token
 import { GENERIC_READ_ERROR_MESSAGE } from "../src/inventory/errors";
 import { ToastHost, ToastProvider } from "../src/inventory/Toast";
 import { TabBar } from "../src/navigation/TabBar";
+import { GateCoveredContext } from "../src/onboarding/gate-context";
 import {
   resolveLayoutRedirectForRead,
   resolveOnboardingRoute,
@@ -27,6 +28,14 @@ export default function RootLayout(): React.JSX.Element | null {
   const pathname = usePathname();
   const router = useRouter();
   const [read, setRead] = useState<OnboardingStateRead | null>(null);
+  /**
+   * BUG-001: whether `<Slot />` (expo-router's root navigator) has mounted
+   * yet. Before its first mount this layout may render nothing, the
+   * fallback alone, or `<Redirect>` (nothing to lose, nothing can loop);
+   * from its first mount on it never unmounts it, and covers instead.
+   * Only ever goes from false to true.
+   */
+  const [navigatorMounted, setNavigatorMounted] = useState(false);
   /**
    * M3-T4d review F2: the pathname a `getOnboardingState()` read most
    * recently *failed* for (network error, 401, 5xx, anything). Compared
@@ -113,8 +122,9 @@ export default function RootLayout(): React.JSX.Element | null {
   // "/onboarding", showing the destination would expose real content for
   // as long as the fresh read takes, unbounded over a real network,
   // exactly the bypass F2 closes for a *rejected* read; a *pending* read is
-  // the same bypass, just not failed yet. Hold (cover, below) until the
-  // fresh read for this pathname lands: a hold never redirects either, so
+  // the same bypass, just not failed yet. Hold until the fresh read for
+  // this pathname lands (render nothing before the navigator's first
+  // mount, cover after it; see below): a hold never redirects either, so
   // F18's fix still holds too.
   const pendingHold =
     !readFailed &&
@@ -130,50 +140,100 @@ export default function RootLayout(): React.JSX.Element | null {
   // here, once, means no individual screen can forget to re-derive it.
   const redirectTo = readFailed ? null : resolveLayoutRedirectForRead(read, pathname);
 
-  // BUG-001: the redirect is issued imperatively, once per (pathname,
-  // target), never by rendering `<Redirect>` in place of `<Slot />`. It is
-  // only ever computed from a read tagged for the current pathname (F18),
-  // so a stale read never redirects. `router` is deliberately not a
-  // dependency (same convention as allergies.tsx): its object identity is
-  // not a signal, and re-running on it could replace twice for one
-  // decision. Waits for the fonts branch below to have rendered `<Slot />`:
-  // a read can land before the fonts do, and expo-router refuses to
-  // navigate before the root layout has mounted a navigator.
-  const navigatorRendered = fontsLoaded || Boolean(fontError);
+  const fontsReady = fontsLoaded || Boolean(fontError);
+  // Everything that is not "show the current screen": a failed read, the
+  // pending-window hold, a redirect about to be issued.
+  const covered = readFailed || pendingHold || redirectTo !== null;
+  // Before the first mount `<Slot />` renders only for an uncovered screen;
+  // after it, always.
+  const rendersNavigator = fontsReady && (navigatorMounted || !covered);
+  useLayoutEffect(() => {
+    if (rendersNavigator && !navigatorMounted) {
+      setNavigatorMounted(true);
+    }
+  }, [rendersNavigator, navigatorMounted]);
+
+  // BUG-001: once the navigator has mounted, a redirect is issued
+  // imperatively, once per (pathname, target), never by rendering
+  // `<Redirect>` in place of `<Slot />`. Before that, the `<Redirect>`
+  // rendered below issues it. Either way it is only ever computed from a
+  // read tagged for the current pathname (F18), so a stale read never
+  // redirects. `router` is deliberately not a dependency (same convention
+  // as allergies.tsx): its object identity is not a signal, and re-running
+  // on it could replace twice for one decision.
   useEffect(() => {
-    if (navigatorRendered && redirectTo !== null) {
+    if (navigatorMounted && redirectTo !== null) {
       router.replace(redirectTo);
     }
-  }, [navigatorRendered, redirectTo, pathname]);
+  }, [navigatorMounted, redirectTo, pathname]);
 
-  if (!fontsLoaded && !fontError) {
-    // The only branch that renders no navigator, and it can only ever
-    // precede the first `<Slot />` mount: fonts never go from loaded back
-    // to not loaded, so this never unmounts a navigator that was mounted.
+  if (!fontsReady) {
     return null;
   }
 
-  // BUG-001: everything that is not "show the current screen" (a failed
-  // read, the pending-window hold, a redirect about to be issued) COVERS
-  // the navigator instead of unmounting it. `<Slot />` is expo-router's
-  // navigator; unmounting it mid-navigation throws its state away, the
-  // router store falls back to another route, this layout re-renders with
-  // that pathname and mounts the navigator again, which restores the URL's
-  // pathname, which unmounts it again: synchronously, inside layout
-  // effects, until React stops it with "Maximum update depth exceeded"
-  // (S2's Continue to "/" while the S2-routed read was still stale was the
-  // repro). So `<Slot />` stays mounted at the same tree position for the
-  // app's lifetime, and a covered screen is neither visible (an opaque
-  // full-screen cover on top), nor tappable (`pointerEvents="none"` on its
-  // subtree, and the cover absorbs touches), nor reachable by a screen
-  // reader (hidden from accessibility on every platform).
-  const covered = readFailed || pendingHold || redirectTo !== null;
+  const fallback = (
+    <View style={styles.errorScreen} accessibilityLiveRegion="assertive">
+      <Text style={styles.errorTitle}>Couldn&apos;t load your household.</Text>
+      <Text style={styles.errorBody}>{GENERIC_READ_ERROR_MESSAGE}</Text>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Try again"
+        onPress={load}
+        style={styles.errorButton}
+      >
+        <Text style={styles.errorButtonText}>Try again</Text>
+      </Pressable>
+    </View>
+  );
+
+  // Cold start, before the navigator's first mount (BUG-001 review F2a):
+  // 74371f1's mechanism, unchanged. Nothing is mounted under a gate that
+  // has not decided yet, so no screen's mount effects (S7's camera, any
+  // read) run before it does, and with no navigator mounted there is
+  // nothing whose unmount could loop.
+  if (!navigatorMounted && covered) {
+    if (readFailed) {
+      return <SafeAreaProvider>{fallback}</SafeAreaProvider>;
+    }
+    if (redirectTo !== null) {
+      return (
+        <SafeAreaProvider>
+          <View style={styles.app}>
+            <Redirect href={redirectTo} />
+          </View>
+        </SafeAreaProvider>
+      );
+    }
+    return null;
+  }
+
+  // BUG-001: from the navigator's first mount on, everything that is not
+  // "show the current screen" COVERS it instead of unmounting it.
+  // `<Slot />` is expo-router's navigator; unmounting it mid-navigation
+  // throws its state away, the router store falls back to another route,
+  // this layout re-renders with that pathname and mounts the navigator
+  // again, which restores the URL's pathname, which unmounts it again:
+  // synchronously, inside layout effects, until React stops it with
+  // "Maximum update depth exceeded" (S2's Continue to "/" while the
+  // S2-routed read was still stale was the repro). So `<Slot />` stays
+  // mounted at the same tree position from then on, and a covered screen
+  // is not visible (an opaque full-screen cover on top), not tappable
+  // (`pointerEvents: "none"` on its subtree, and the cover absorbs
+  // touches), not reachable by keyboard on web (`inert`; review F1:
+  // `pointerEvents` and `aria-hidden` do not stop Tab focus, and a hidden
+  // form could be filled and submitted), and not announced (hidden from
+  // accessibility on every platform). Screens with side effects outside
+  // the app read `GateCoveredContext` and hold them while covered (S7).
+  //
   // S1/S2 (M3-T2) and S6-S9 (M3-T4b, the FAB's Add-food flow: hub, camera
   // scan, scan confirm, manual add) are full-screen, matching prototype v4:
   // no bottom tab bar during onboarding or Add (or while covered): the
   // prototype's own `#scr-add`/`#scr-scan`/`#scr-manual` never render
   // `.nav`, unlike the four tab screens.
   const hideTabBar = covered || pathname.startsWith("/onboarding") || pathname.startsWith("/add");
+  // `inert` is a DOM attribute react-native-web 0.21 forwards on View;
+  // native gets no unknown prop.
+  const inertWhenCovered = Platform.OS === "web" ? { inert: covered } : {};
 
   return (
     <SafeAreaProvider>
@@ -187,31 +247,20 @@ export default function RootLayout(): React.JSX.Element | null {
       <ToastProvider>
         <View style={styles.app}>
           <View
-            style={styles.app}
-            pointerEvents={covered ? "none" : "auto"}
+            style={[styles.app, { pointerEvents: covered ? "none" : "auto" }]}
             aria-hidden={covered}
             accessibilityElementsHidden={covered}
             importantForAccessibility={covered ? "no-hide-descendants" : "auto"}
+            {...inertWhenCovered}
           >
-            <Slot />
+            <GateCoveredContext.Provider value={covered}>
+              <Slot />
+            </GateCoveredContext.Provider>
             {hideTabBar ? null : <TabBar />}
           </View>
           {covered ? (
             <View testID="root-gate-cover" style={styles.cover} accessibilityViewIsModal>
-              {readFailed ? (
-                <View style={styles.errorScreen} accessibilityLiveRegion="assertive">
-                  <Text style={styles.errorTitle}>Couldn&apos;t load your household.</Text>
-                  <Text style={styles.errorBody}>{GENERIC_READ_ERROR_MESSAGE}</Text>
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel="Try again"
-                    onPress={load}
-                    style={styles.errorButton}
-                  >
-                    <Text style={styles.errorButtonText}>Try again</Text>
-                  </Pressable>
-                </View>
-              ) : null}
+              {readFailed ? fallback : null}
             </View>
           ) : null}
         </View>
