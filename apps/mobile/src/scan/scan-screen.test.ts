@@ -44,6 +44,7 @@ import type {
 } from "@smart-kitchen/contracts";
 import { apiClient, FIXTURE_JOIN_CODE } from "../api/client";
 import { ProductLookupRefusedError } from "./product-lookup-errors";
+import { GENERIC_LEDGER_ERROR_MESSAGE, GENERIC_READ_ERROR_MESSAGE } from "../inventory/errors";
 
 let pushed: unknown[] = [];
 let replaced: unknown[] = [];
@@ -271,12 +272,10 @@ describe("S8 · household fetch rejection (review R4, architect finding on the R
 
       // Never an unhandled rejection (the effect's two-arg `.then` catches
       // it), never the loading state stuck forever, never a verdict with
-      // unnamed members — the §8 generic fallback plus a retry instead.
-      expect(
-        result.getByText(
-          "Something went wrong saving that. Try again, and tell us if it keeps happening.",
-        ),
-      ).toBeTruthy();
+      // unnamed members — the §8 read fallback plus a retry instead (a
+      // household load is a read, never the save string; M9-T0 h).
+      expect(result.getByText(GENERIC_READ_ERROR_MESSAGE)).toBeTruthy();
+      expect(result.queryByText(GENERIC_LEDGER_ERROR_MESSAGE)).toBeNull();
       expect(result.queryByText("Checking allergen data for your household.")).toBeNull();
       expect(result.queryByText(/blocked for/)).toBeNull();
 

@@ -16,6 +16,8 @@ import React from "react";
 import { cleanup, render } from "@testing-library/react-native";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { flushPending } from "../test-support/flush";
+import { apiClient } from "../api/client";
+import { GENERIC_LEDGER_ERROR_MESSAGE, GENERIC_READ_ERROR_MESSAGE } from "./errors";
 import { ToastProvider } from "./Toast";
 
 vi.mock("expo-router", () => ({
@@ -50,5 +52,27 @@ describe("S4 · inventory list (component)", () => {
     await flushPending();
     expect(result.getByText("Nothing here yet")).toBeTruthy();
     expect(result.getByText("Inventory")).toBeTruthy();
+  });
+
+  it("a cold-start load failure shows the copy-deck §8 read fallback with Try again, never the save string (M9-T0 h)", async () => {
+    const original = apiClient.getInventoryItems.bind(apiClient);
+    let attempt = 0;
+    apiClient.getInventoryItems = () => {
+      attempt += 1;
+      if (attempt === 1) return Promise.reject(new Error("network down"));
+      return original();
+    };
+    try {
+      const { default: InventoryScreen } = await import("../../app/inventory");
+      const result = render(
+        React.createElement(ToastProvider, null, React.createElement(InventoryScreen)),
+      );
+      await flushPending();
+      expect(result.getByText("Couldn't load your inventory.")).toBeTruthy();
+      expect(result.getByText(GENERIC_READ_ERROR_MESSAGE)).toBeTruthy();
+      expect(result.queryByText(GENERIC_LEDGER_ERROR_MESSAGE)).toBeNull();
+    } finally {
+      apiClient.getInventoryItems = original;
+    }
   });
 });
