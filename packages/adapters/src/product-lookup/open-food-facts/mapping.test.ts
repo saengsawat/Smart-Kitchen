@@ -4,7 +4,14 @@
  * are in each file's `capture` block). No test here opens a connection.
  */
 
-import { screenSubject } from "@smart-kitchen/domain";
+import {
+  majorRestriction,
+  screenSubject,
+  userDefinedRestriction,
+  type AllergenOutcome,
+  type AllergyRestriction,
+  type ScreeningResult,
+} from "@smart-kitchen/domain";
 import { describe, expect, it } from "vitest";
 import type { ProductCatalogItem, ProductCode } from "../types.js";
 import { gramsToMilligrams, mapOffAnswer, OFF_SOURCE, type OffMappedOutcome } from "./mapping.js";
@@ -128,6 +135,7 @@ describe("full record (Kirkland organic peanut butter, US, recorded from product
       ["tree_nut", "MAY_CONTAIN"], // en:nuts
       ["soy", "MAY_CONTAIN"], // en:soybeans
       ["tree_nut", "MAY_CONTAIN"], // en:coconut, D-017 P3
+      ["en:coconut", "MAY_CONTAIN"], // dual emission: the raw tag rides along (D-026 amended)
     ]);
   });
 
@@ -187,6 +195,7 @@ describe("record with unmapped allergen tags (Dave's Killer Bread)", () => {
   it("maps en:gluten to wheat (D-026) and passes the rest of the unmapped tags through raw", () => {
     expect(item.allergens.map((a) => [a.allergenCode, a.assertion])).toEqual([
       ["wheat", "CONTAINS"], // en:gluten (D-026)
+      ["en:gluten", "CONTAINS"], // dual emission: the raw tag rides along (D-026 amended)
       ["sesame", "CONTAINS"],
       ["tree_nut", "MAY_CONTAIN"],
       ["en:Grains", "MAY_CONTAIN"],
@@ -276,6 +285,7 @@ describe("record for a UPC-E-compressible product (Honey Maid Graham Crackers, M
   it("its real en:gluten and en:soybeans tags map to wheat and soy (D-026)", () => {
     expect(item.allergens.map((a) => [a.allergenCode, a.assertion])).toEqual([
       ["wheat", "CONTAINS"],
+      ["en:gluten", "CONTAINS"],
       ["soy", "CONTAINS"],
     ]);
   });
@@ -519,5 +529,86 @@ describe("gramsToMilligrams shifts the decimal point, it does not multiply float
 
   it("exponent-form input still lands on a clean value", () => {
     expect(gramsToMilligrams(4e-7)).toBe(0.0004);
+  });
+});
+
+describe("dual emission for non-identity mappings (D-026 as amended, M2-T4b review F1)", () => {
+  function built(outcome: AllergenOutcome<AllergyRestriction>): AllergyRestriction {
+    if (!outcome.ok) throw new Error(outcome.error.message);
+    return outcome.value;
+  }
+  function screen(item: ProductCatalogItem, restriction: AllergyRestriction): ScreeningResult {
+    const result = screenSubject({
+      subject: toEngineSubject(item),
+      members: [{ memberId: "m1", restrictions: [restriction] }],
+    });
+    if (!result.ok) throw new Error(result.error.message);
+    return result.value;
+  }
+  function synthetic(allergens: string[], traces: string[]): ProductCatalogItem {
+    const body = JSON.stringify({
+      status: 1,
+      product: {
+        code: "0096619555505",
+        product_name: "X",
+        allergens_tags: allergens,
+        traces_tags: traces,
+      },
+    });
+    const out = mapOffAnswer(
+      { httpStatus: 200, bodyText: body },
+      { codeType: "EAN13", code: "0096619555505" },
+      FETCHED_AT,
+    );
+    if (out.status !== "hit") throw new Error("expected a hit");
+    return out.product;
+  }
+
+  it("Honey Maid (en:gluten): a celiac user-defined 'gluten' restriction is BLOCKED on the raw tag", () => {
+    const item = hit("upc-e-graham-crackers.json");
+    const result = screen(item, built(userDefinedRestriction("r-gluten", "gluten", "severe")));
+    expect(result.verdict).toBe("BLOCKED");
+    expect(
+      result.evidence.some(
+        (e) => e.kind === "ASSERTION_CODE_TERM" && e.matchedText === "en:gluten",
+      ),
+    ).toBe(true);
+  });
+
+  it("Honey Maid: a wheat (MAJOR) restriction is also BLOCKED", () => {
+    const item = hit("upc-e-graham-crackers.json");
+    expect(screen(item, built(majorRestriction("r-wheat", "wheat", "severe"))).verdict).toBe(
+      "BLOCKED",
+    );
+  });
+
+  it("en:coconut: both tree_nut and the raw tag are emitted, same kind; a user-defined 'coconut' blocks", () => {
+    const item = synthetic([], ["en:coconut"]);
+    expect(item.allergens.map((a) => [a.allergenCode, a.assertion])).toEqual([
+      ["tree_nut", "MAY_CONTAIN"],
+      ["en:coconut", "MAY_CONTAIN"],
+    ]);
+    const result = screen(item, built(userDefinedRestriction("r-coconut", "coconut", "severe")));
+    expect(result.verdict).toBe("BLOCKED");
+    expect(result.evidence.some((e) => e.kind === "ASSERTION_CODE_TERM")).toBe(true);
+  });
+
+  it("en:molluscs: both shellfish and the raw tag are emitted; a user-defined 'molluscs' and a shellfish restriction both block", () => {
+    const item = synthetic(["en:molluscs"], []);
+    expect(item.allergens.map((a) => [a.allergenCode, a.assertion])).toEqual([
+      ["shellfish", "CONTAINS"],
+      ["en:molluscs", "CONTAINS"],
+    ]);
+    expect(
+      screen(item, built(userDefinedRestriction("r-mollusc", "molluscs", "severe"))).verdict,
+    ).toBe("BLOCKED");
+    expect(
+      screen(item, built(majorRestriction("r-shellfish", "shellfish", "severe"))).verdict,
+    ).toBe("BLOCKED");
+  });
+
+  it("exact matches (en:peanuts) and unmapped tags (en:celery) emit once", () => {
+    const item = synthetic(["en:peanuts", "en:celery"], []);
+    expect(item.allergens.map((a) => a.allergenCode)).toEqual(["peanut", "en:celery"]);
   });
 });

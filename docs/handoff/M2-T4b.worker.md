@@ -49,10 +49,10 @@ The printed `C` is appended and the GS1 check digit of the 12 digits is verified
 than 0 or 1 is refused.
 
 **Ambiguity.** The phone sends digits only (`result.data`; the symbology is not sent, and scan.tsx was
-limited to the type list). An 8-digit string can be an EAN-8 or a UPC-E. Rule: EAN-8 wins when its own
-check digit holds, UPC-E is tried only when it does not. So a UPC-E whose check digit also satisfies the
-EAN-8 test (about 1 in 10) reads as an EAN-8. This is a real limitation, pinned by a test
-(`04016007`, the UPC-E of Skittles `040000001607`).
+limited to the type list). An 8-digit string can be an EAN-8 or a UPC-E. SUPERSEDED by the round 1
+ruling (section 11, F2): a leading 0 tries UPC-E first, a leading 1 tries EAN-8 first. The first version
+of this paragraph said "about 1 in 10" collide; that figure was wrong, the true figure is 58% of valid
+UPC-Es (section 11).
 
 ## 3. The tag map as it now stands
 
@@ -150,9 +150,60 @@ the scanner list, the eleven-entry map, D-026 block on the real bread and cracke
 ADR-006 (OFF tier policy, "Open" paragraph): replace "UPC-E expansion and a GTIN-14 code type are
 backlog." with: "UPC-E is expanded server-side to its UPC-A by the GS1 zero-suppression table and the
 expansion's check digit must hold, otherwise the code is refused. The phone sends digits only, so an
-8-digit code that is a valid EAN-8 reads as an EAN-8 even if it is also a valid UPC-E. A `GTIN14` code
+8-digit code with a leading 0 is read as a UPC-E first (its expansion's check digit must hold), then as
+an EAN-8; a leading 1 is read as an EAN-8 first, then a UPC-E. Of all valid UPC-Es, 58% also pass the
+EAN-8 check, which is why the order matters; GS1-8 prefixes 000 to 099 are Restricted Circulation
+Numbers and never global GTIN-8s. A `GTIN14` code
 type exists; a GTIN-14 with indicator 0 is looked up as its EAN-13 and any other indicator is refused.
 `product_name_en` is a fallback before not-found."
 
-DECISIONS D-026: append "Built as proposed in M2-T4b (2026-09-30): `en:gluten` maps to `wheat` for
-CONTAINS and MAY_CONTAIN; the exact-map test pins eleven entries. Awaiting PO ratification."
+DECISIONS D-026: superseded by the architect's amendment on main (dual emission), see section 11 F1.
+
+## 11. Review fixes (round 1)
+
+Verdict was FAIL, caused by D-026 as written (it narrowed screening), not by the code. Fixes below.
+
+**F1 (blocker), dual emission.** `allergen-tag-map.ts` gains `OFF_DUAL_EMISSION_TAGS` (`en:gluten`,
+`en:coconut`, `en:molluscs`) and `offAllergenCodesFor(tag)`, which returns the mapped code and then the
+raw tag; `mapping.ts` gives both the same kind (CONTAINS or MAY_CONTAIN). The exact map is still eleven
+entries (test untouched). I limited dual emission to those three because they are the non-exact
+mappings; exact ones (`en:peanuts` to `peanut`) say the same thing in both spellings, and the coverage
+for that is the existing real-record tests. If the architect wants the raw tag on all eleven it is a
+one-line change (the set) plus the expectations. New tests in `mapping.test.ts`:
+
+- Honey Maid recording: `userDefinedRestriction("r-gluten", "gluten", "severe")` is BLOCKED with an
+  `ASSERTION_CODE_TERM` evidence row whose `matchedText` is `en:gluten` (the raw code is in
+  `matchedText`; `matchedTerm` is the restriction's own term, "gluten"). A `wheat` MAJOR restriction is
+  also BLOCKED.
+- Synthetic `en:coconut` (traces): emits `tree_nut` and `en:coconut` MAY_CONTAIN; user-defined "coconut"
+  is BLOCKED.
+- Synthetic `en:molluscs`: emits `shellfish` and `en:molluscs` CONTAINS; user-defined "molluscs" and a
+  `shellfish` MAJOR restriction are both BLOCKED.
+- `en:peanuts` and an unmapped `en:celery` emit once.
+- Existing expectations for the bread, peanut butter and graham cracker records updated to include the
+  raw rows.
+
+**F2 (major), collision figure and precedence.** The "about 1 in 10" figure was wrong. Per the review:
+1,160,000 of 2,000,000 valid UPC-Es also pass the EAN-8 check (58%); by d6: 0, 1, 2 give 20%, 3 gives
+0%, 4 gives 20%, 5 to 9 give 100%. Corrected in section 2 and the section 10 wording, and in the test
+comment. Ruling implemented in `parseLookupCode`: a leading 0 tries UPC-E (expansion check digit must
+hold), then EAN-8, then invalid; a leading 1 keeps EAN-8 first, then UPC-E; any other leading digit is
+EAN-8 only. Pinned: `04016007` resolves as UPC-A `040000001607`; `00000017` (leading 0, valid EAN-8, not
+a valid UPC-E) still reads as EAN-8; `12345670` (leading 1, valid as both) reads as EAN-8. Section 7
+deviation 1 is superseded.
+
+**F3 (minor).** Table rows with distinct digits: `0987643` to `09870000064` (d6 = 3) and `0987634` to
+`09876000003` (d6 = 4), plus the real pairs `04252614` to `042100005264` and `04963406` to
+`049000006346`.
+
+**F4 (minor).** `24446301` (number system 2) is pinned as undefined from `expandUpcEToUpcA` and
+`invalid` from `parseLookupCode`.
+
+**F5 (minor).** The fixture's capture note said "d6 = 7"; `04446307` has d6 = 0 and 7 is the check
+digit. Corrected in the note (a worker annotation, not OFF data; the body is untouched).
+
+**F6, F7.** Backlog and exempt, no change.
+
+**Verification (round 1).** See the hand-back message for the final hash and both counts; the same
+procedure as section 6 (empty build state, CI order, with and without `DATABASE_URL`, network shim,
+compiled-API curls). No new OFF requests were made.

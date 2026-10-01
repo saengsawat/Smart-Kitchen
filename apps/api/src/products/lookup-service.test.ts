@@ -25,6 +25,9 @@ describe("expandUpcEToUpcA: the GS1 zero-suppression table, one row per d6 class
     ["0123454", "01234000005", "d6=4"],
     ["0123455", "01234500005", "d6=5"],
     ["0123459", "01234500009", "d6=9"],
+    // Distinct digits, so a manufacturer built from d6 instead of d3 or d4 cannot hide (review F3).
+    ["0987643", "09870000064", "d6=3, distinct digits"],
+    ["0987634", "09876000003", "d6=4, distinct digits"],
     ["1123450", "11200000345", "number system 1, d6=0"],
   ];
 
@@ -40,6 +43,18 @@ describe("expandUpcEToUpcA: the GS1 zero-suppression table, one row per d6 class
 
   it("the recorded pair: 04446307 is 044000004637", () => {
     expect(expandUpcEToUpcA("04446307")).toBe("044000004637");
+  });
+
+  it.each([
+    ["04252614", "042100005264"],
+    ["04963406", "049000006346"],
+  ])("real pair: %s is %s", (e, a) => {
+    expect(expandUpcEToUpcA(e)).toBe(a);
+  });
+
+  it("number system 2 is refused even when the naive expansion's check digit holds (review F4)", () => {
+    expect(expandUpcEToUpcA("24446301")).toBeUndefined();
+    expect(parseLookupCode("24446301")).toEqual({ kind: "invalid" });
   });
 
   it.each([
@@ -64,13 +79,31 @@ describe("parseLookupCode", () => {
     });
   });
 
-  it("known limitation: a UPC-E whose check digit also satisfies the EAN-8 test reads as EAN-8", () => {
-    // 04016007 is the UPC-E of 040000001607 and also a valid EAN-8. The phone
-    // sends digits only, so the two cannot be told apart; EAN-8 wins.
-    expect(expandUpcEToUpcA("04016007")).toBe("040000001607");
+  it("a leading 0 reads as UPC-E first (review ruling F2): Skittles 04016007 is UPC-A 040000001607", () => {
+    // 04016007 is a valid UPC-E and also a valid EAN-8. Of all valid UPC-Es,
+    // 58% pass the EAN-8 check too (by d6: 0, 1, 2 give 20%; 3 gives 0%;
+    // 4 gives 20%; 5 to 9 give 100%). GS1-8 prefixes 000 to 099 are
+    // Restricted Circulation Numbers, so a leading-0 EAN-8 is never a global
+    // GTIN-8 and UPC-E wins.
     expect(parseLookupCode("04016007")).toEqual({
       kind: "barcode",
-      code: { codeType: "EAN8", code: "04016007" },
+      code: { codeType: "UPC_A", code: "040000001607" },
+    });
+  });
+
+  it("a leading-0 8-digit code that is a valid EAN-8 but not a valid UPC-E still falls back to EAN-8", () => {
+    expect(expandUpcEToUpcA("00000017")).toBeUndefined();
+    expect(parseLookupCode("00000017")).toEqual({
+      kind: "barcode",
+      code: { codeType: "EAN8", code: "00000017" },
+    });
+  });
+
+  it("a leading 1 keeps EAN-8 precedence: 12345670 is both a valid EAN-8 and a valid UPC-E and reads as EAN-8", () => {
+    expect(expandUpcEToUpcA("12345670")).toBeDefined();
+    expect(parseLookupCode("12345670")).toEqual({
+      kind: "barcode",
+      code: { codeType: "EAN8", code: "12345670" },
     });
   });
 

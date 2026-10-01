@@ -44,7 +44,7 @@ import type {
   ProductCode,
   Provenanced,
 } from "../types.js";
-import { mapOffAllergenTag } from "./allergen-tag-map.js";
+import { offAllergenCodesFor } from "./allergen-tag-map.js";
 import { OFF_MAX_BODY_CHARS } from "./config.js";
 import { parseOffQuantity } from "./parse-quantity.js";
 
@@ -171,16 +171,20 @@ export function mapOffProduct(
   const imageRef = httpsUrl(product["image_front_url"]);
 
   const allergens: AllergenTag[] = [
-    ...(allergensRaw ?? []).map((tag: unknown): AllergenTag => ({
-      allergenCode: mapOffAllergenTag(tag),
-      assertion: "CONTAINS",
-      provenance,
-    })),
-    ...(tracesRaw ?? []).map((tag: unknown): AllergenTag => ({
-      allergenCode: mapOffAllergenTag(tag),
-      assertion: "MAY_CONTAIN",
-      provenance,
-    })),
+    ...(allergensRaw ?? []).flatMap((tag: unknown): AllergenTag[] =>
+      offAllergenCodesFor(tag).map((allergenCode) => ({
+        allergenCode,
+        assertion: "CONTAINS",
+        provenance,
+      })),
+    ),
+    ...(tracesRaw ?? []).flatMap((tag: unknown): AllergenTag[] =>
+      offAllergenCodesFor(tag).map((allergenCode) => ({
+        allergenCode,
+        assertion: "MAY_CONTAIN",
+        provenance,
+      })),
+    ),
   ];
 
   const item: ProductCatalogItem = {

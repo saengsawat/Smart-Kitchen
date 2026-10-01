@@ -6,7 +6,7 @@
     "userAgent": "SmartKitchen/0.1 (development; https://github.com/saengsawat/Smart-Kitchen)",
     "httpStatus": 200,
     "contentType": "application/json; charset=utf-8",
-    "note": "M2-T4b: Honey Maid Graham Crackers, UPC-A 044000004637, compresses to the 8-digit UPC-E 04446307 (zero-suppression, d6 = 7). Proves a UPC-E scan expands server-side to the same product as its UPC-A form. Its real allergens_tags carry en:gluten (D-026) and en:soybeans."
+    "note": "M2-T4b: Honey Maid Graham Crackers, UPC-A 044000004637, compresses to the 8-digit UPC-E 04446307 (zero-suppression; its d6 is 0 and the trailing 7 is the check digit). Proves a UPC-E scan expands server-side to the same product as its UPC-A form. Its real allergens_tags carry en:gluten (D-026) and en:soybeans."
   },
   "body": {
     "code": "0044000004637",

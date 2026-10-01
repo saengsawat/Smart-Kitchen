@@ -93,11 +93,17 @@ export function expandUpcEToUpcA(raw: string): string | undefined {
  * The path segment, validated.
  *
  * - 4 or 5 digits: a PLU, refused (`PLU_NOT_SUPPORTED`), never sent anywhere.
- * - 8 digits: an EAN-8 when its check digit holds as written. Otherwise a
- *   UPC-E, expanded to its UPC-A ({@link expandUpcEToUpcA}) and looked up as
- *   that; an expansion whose check digit fails is invalid. The phone sends
- *   only the digits, not the symbology, so EAN-8 wins any ambiguity (a UPC-E
- *   whose check digit also happens to satisfy the EAN-8 test reads as EAN-8).
+ * - 8 digits: the phone sends only the digits, not the symbology, so an
+ *   8-digit string is read by its first digit (M2-T4b review ruling F2). A
+ *   leading `0`: a UPC-E first (expanded to its UPC-A by
+ *   {@link expandUpcEToUpcA} and looked up as that) when the expansion's check
+ *   digit holds, otherwise an EAN-8 when its own check digit holds, otherwise
+ *   invalid. GS1-8 prefixes 000 to 099 are Restricted Circulation Numbers,
+ *   never global GTIN-8s, so a leading-0 EAN-8 read against Open Food Facts
+ *   would be a miss or a wrong store-internal item, while about 58% of valid
+ *   UPC-Es also pass the EAN-8 check. A leading `1`: an EAN-8 first, then a
+ *   UPC-E. Any other first digit: an EAN-8 only (UPC-E number systems are 0
+ *   and 1).
  * - 12 or 13 digits with a valid check digit: UPC-A, EAN-13.
  * - 14 digits with a valid check digit and a leading `0`: a GTIN-14 whose
  *   packaging indicator is 0 is the GTIN-13 in its last 13 digits (OFF's own
@@ -112,11 +118,16 @@ export function parseLookupCode(raw: string): ParsedLookupCode {
   if (!/^\d+$/.test(raw)) return { kind: "invalid" };
   if (raw.length === 4 || raw.length === 5) return { kind: "plu" };
   if (raw.length === 8) {
-    if (checkDigitHolds(raw)) return { kind: "barcode", code: { codeType: "EAN8", code: raw } };
+    const asEan8: ParsedLookupCode | undefined = checkDigitHolds(raw)
+      ? { kind: "barcode", code: { codeType: "EAN8", code: raw } }
+      : undefined;
     const expanded = expandUpcEToUpcA(raw);
-    return expanded === undefined
-      ? { kind: "invalid" }
-      : { kind: "barcode", code: { codeType: "UPC_A", code: expanded } };
+    const asUpcE: ParsedLookupCode | undefined =
+      expanded === undefined
+        ? undefined
+        : { kind: "barcode", code: { codeType: "UPC_A", code: expanded } };
+    const ordered = raw.startsWith("0") ? [asUpcE, asEan8] : [asEan8, asUpcE];
+    return ordered.find((c) => c !== undefined) ?? { kind: "invalid" };
   }
   if (![12, 13, 14].includes(raw.length) || !checkDigitHolds(raw)) return { kind: "invalid" };
   switch (raw.length) {

@@ -18,7 +18,16 @@
  * below is either an exact taxonomy match or a policy the decision log
  * already made.
  *
- * `en:gluten` -> `wheat` (D-026, built as proposed in M2-T4b): OFF folds
+ * **Dual emission (D-026 as amended after the M2-T4b review).** A mapping
+ * that is not an exact taxonomy match (`en:gluten` to `wheat`, `en:coconut` to
+ * `tree_nut`, `en:molluscs` to `shellfish`) must never narrow what the
+ * engine is told: a user-defined restriction (a member's own "gluten" term)
+ * matches against the raw tag, so replacing the raw tag with the mapped code
+ * would turn a BLOCK into an unknown. `offAllergenCodesFor` therefore emits
+ * the mapped code AND the raw tag, with the same assertion kind. The outcome
+ * is a strict superset of what leaving the tag raw produced.
+ *
+ * `en:gluten` -> `wheat` (D-026): OFF folds
  * wheat, barley, rye, spelt, kamut and oats into one `gluten` entry, so a
  * gluten tag is not exactly the same claim as wheat — but leaving it raw
  * reached a wheat-allergic member as an unrecognized-data warning, never a
@@ -74,4 +83,27 @@ export function mapOffAllergenTag(tag: unknown): string {
     return JSON.stringify(tag) ?? String(tag);
   }
   return Object.hasOwn(OFF_ALLERGEN_TAG_MAP, tag) ? (OFF_ALLERGEN_TAG_MAP[tag] ?? tag) : tag;
+}
+
+/**
+ * The tags whose mapping is not an exact taxonomy match, so the raw tag is
+ * emitted too. Exact matches (`en:peanuts` to `peanut`) say the same thing in
+ * both spellings and need no second assertion.
+ */
+export const OFF_DUAL_EMISSION_TAGS: ReadonlySet<string> = new Set([
+  "en:gluten",
+  "en:coconut",
+  "en:molluscs",
+]);
+
+/**
+ * Every engine allergen code one OFF tag stands for: the mapped code first
+ * and, when the mapping is not an identity, the raw tag as well (dual
+ * emission, see the file header). An unmapped tag, or a non-string, yields
+ * just what `mapOffAllergenTag` returns. The caller gives every code the
+ * same assertion kind (CONTAINS or MAY_CONTAIN).
+ */
+export function offAllergenCodesFor(tag: unknown): string[] {
+  const mapped = mapOffAllergenTag(tag);
+  return typeof tag === "string" && OFF_DUAL_EMISSION_TAGS.has(tag) ? [mapped, tag] : [mapped];
 }
