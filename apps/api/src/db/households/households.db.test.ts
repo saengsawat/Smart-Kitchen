@@ -26,6 +26,7 @@ import {
   type TestDatabase,
 } from "../test-support/harness.js";
 import { captureError, pgFailure } from "../test-support/inventory-fixtures.js";
+import { migrationsAfter } from "../test-support/migration-list.js";
 import { createJoinCodeHasher, DEVELOPMENT_JOIN_CODE_PEPPER } from "./join-code.js";
 import {
   createHousehold,
@@ -511,9 +512,11 @@ describe.skipIf(!dbTestsEnabled)(SUITE, () => {
         };
         expect(await objects()).toEqual({ table: 1, functions: 4 });
 
-        // M7-T1's 0009 is rolled back first, so 0008 is the last one reverted.
-        const reverted = await migrateDown(scratch.url, 2);
-        expect(reverted).toEqual(["0009_shopping_rows", "0008_household_join_codes"]);
+        // Every later migration is rolled back first (read from the
+        // migrations directory, M9-T0 b), so 0008 is the last one reverted.
+        const after = migrationsAfter(8);
+        const reverted = await migrateDown(scratch.url, after.length + 1);
+        expect(reverted).toEqual([...after].reverse().concat("0008_household_join_codes"));
         expect(await objects()).toEqual({ table: 0, functions: 0 });
         const households = await scratch.pool.query(
           "SELECT 1 FROM pg_class WHERE relname = 'household_memberships'",
@@ -521,7 +524,7 @@ describe.skipIf(!dbTestsEnabled)(SUITE, () => {
         expect(households.rowCount).toBe(1);
 
         const applied = await migrateUp(scratch.url);
-        expect(applied).toEqual(["0008_household_join_codes", "0009_shopping_rows"]);
+        expect(applied).toEqual(["0008_household_join_codes", ...after]);
         expect(await objects()).toEqual({ table: 1, functions: 4 });
       } finally {
         await scratch.drop();
