@@ -4,10 +4,10 @@ The Smart Kitchen phone app, built with Expo. It also runs in a web browser.
 
 You can run it two ways:
 
-| Mode | What you get | What you need |
-| --- | --- | --- |
-| **Demo mode** (default) | Fake sample data, nothing is saved, barcode lookups don't work | Just this app |
-| **Real mode** | A real database, real barcode lookups from Open Food Facts | The app, the API and a database |
+| Mode                          | What you get                                                   | What you need                   |
+| ----------------------------- | -------------------------------------------------------------- | ------------------------------- |
+| **Demo mode** (default) | Fake sample data, nothing is saved, barcode lookups don't work | Just this app                   |
+| **Real mode**           | A real database, real barcode lookups from Open Food Facts     | The app, the API and a database |
 
 All commands below are PowerShell, run from the repo root `D:\06_Smart-Kitchen`.
 Don't `cd` into `apps/mobile`: this is a pnpm workspace, so run everything from
@@ -57,6 +57,9 @@ the Postgres already installed on your PC or its data.
 ### Step 3: Window 1, start the database and the API
 
 ```powershell
+# go to the repo first (new windows open in C:\Users\Andy)
+cd D:\06_Smart-Kitchen
+
 # start the practice database (do this again after every PC restart)
 & "C:\Program Files\PostgreSQL\17\bin\pg_ctl" -D "$env:TEMP\skpg" -o "-p 55432" -l "$env:TEMP\skpg.log" start
 
@@ -89,7 +92,8 @@ a line like `Server listening at http://192.168.1.23:3000`.)
 Put your own address in place of `192.168.1.23`:
 
 ```powershell
-$env:EXPO_PUBLIC_API_URL = "http://192.168.1.23:3000"
+cd D:\06_Smart-Kitchen
+$env:EXPO_PUBLIC_API_URL = "http://192.168.1.195:3000"
 pnpm --filter mobile start
 ```
 
@@ -179,11 +183,11 @@ manually" and type the barcode in instead. Try `3017620422003` (Nutella).
 $env:EXPO_PUBLIC_IDENTITY_TOKEN = "fixture.new.user"
 ```
 
-| Token | Who |
-| --- | --- |
-| *(unset)* or `fixture.dean.chen` | Dean, owner of the Chen household |
-| `fixture.maya.chen` | Maya, already a member of the Chen household |
-| `fixture.new.user` | Someone with no household yet, to try create or join |
+| Token                                | Who                                                  |
+| ------------------------------------ | ---------------------------------------------------- |
+| *(unset)* or `fixture.dean.chen` | Dean, owner of the Chen household                    |
+| `fixture.maya.chen`                | Maya, already a member of the Chen household         |
+| `fixture.new.user`                 | Someone with no household yet, to try create or join |
 
 As `fixture.new.user`, "Create household" shows a join code once, then never
 again. "Join with a code" with `CHEN-482` joins the Chen household. All tokens

@@ -294,6 +294,15 @@ Per P8 (every screen designs its non-happy states first). Format: headline, one 
 - **Zero candidates:** "Nothing matches right now." / "Add a few more items or loosen a filter and we'll look again." / action **Adjust filters**.
 - **All blocked:** "Every match today is blocked for someone in your household." / "We never offer a blocked recipe as a choice, even a close one." / action **See what's blocked** (expands the blocked list transparently; still no "cook anyway", per §3.5).
 
+### S12 · Profile and household (added at M3-T6 acceptance, 2026-09-30)
+
+- **Member allergy summary (one line per member, never a guarantee):** "No known allergies · edit" or "{Allergen}, {allergen} · {severity} · edit" (the severity word `severe` appears only when any restriction is severe; allergen labels from `MAJOR_ALLERGEN_LABELS` or the member's own wording). A member with no restrictions who has not confirmed none reads "Allergies not set yet · edit" (never "No known allergies"; unreachable today because the gate redirects first). Tapping opens S2's editor for that member alone; the S2 gate rules apply unchanged ("Select at least one allergen, or confirm none, to continue"); a failed save shows "Couldn't save that. Try again."
+- **Add a member:** fixture path "share the join code CHEN-482". HTTP path, owner: **Invite** opens "Get a new join code? The current code stops working. Share the new one with the person you're inviting." with **Get new code** and **Cancel**; success shows once "Your join code: {code}. Save it to invite others."; a member sees "Ask the household owner for the join code." and no Invite. Invite by link or email carries the §6 "fast-follow" label.
+- **Failures:** rotate refused for a member renders the §8 `NOT_OWNER` string; other rotate failures the §8 generic save fallback; a failed household read the §8 read fallback with Try again.
+- **Sign out:** returns to S1 as a fresh user; over HTTP it clears local state only until the auth vendor lands (D-022), and S1 says so in one line.
+
+---
+
 ### S11 · Shopping list
 
 - **Empty:** "Your shopping list is empty." / "Anything with a gap between what you need and what you have will show up here." / action **Browse recipes**.

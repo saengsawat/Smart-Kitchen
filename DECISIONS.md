@@ -147,6 +147,13 @@ Owners: `PO` = product owner (Dean), `ENG` = engineering.
 - **Decision (proposed):** map `en:gluten` to `wheat` for both CONTAINS and MAY_CONTAIN. This over-blocks barley, rye and oat products for wheat-allergic members, which is the D-017 safe direction (worst wins; a warning can be added, never cleared). The EU-only tags (`en:mustard`, `en:celery`, `en:lupin`, `en:sulphur-dioxide-and-sulphites`) stay raw until user-defined restrictions can match them.
 - **Alternatives:** leave gluten raw (rejected: a real wheat signal downgraded to an unknown); add a `gluten` code to the taxonomy (rejected for now: the taxonomy is the FDA nine plus user-defined, D-017).
 
+## D-027 — Browser origins may call the API only through an explicit allowlist (BUG-002)
+- **Date:** 2026-09-30 · **Status:** PROPOSED (architect; built as proposed in the BUG-002 fix; PO ratifies) · **Owner:** architect, Andy (PO)
+- **Context:** the web build in real mode could not reach the API: the API sent no CORS headers and answered the browser's preflight with 404, so every request carrying the Authorization header was blocked (docs/bugs/BUG-002-api-no-cors.md). Phones are not subject to CORS, so real mode worked there only. Allowing browser origins is a security boundary, not a convenience patch.
+- **Decision (proposed):** `SK_CORS_ORIGINS`, a comma-separated list of exact origins, unset by default. Unset: no CORS headers at all (today's behaviour, production-safe). Set: an exactly matching Origin is echoed back (never `*`), with `Vary: Origin`, and a preflight to a `/v1/` route answers 204 with the allowed methods and headers; a non-matching origin gets nothing. No credentials flag (bearer header, not cookies). In development only (`NODE_ENV` unset or `development`) and only when the variable is unset, the two local Expo web origins are implied and logged at startup. Hand-rolled, no package (rule 11).
+- **Alternatives:** `@fastify/cors` (rejected: a dozen inspectable lines are enough and the default-deny guard must see the preflight route); allow `*` in development (rejected: a wildcard is a habit that leaks into production); leave web demo-only (rejected: the PO tests in the browser and the README promises real mode there).
+- **Consequences:** ARCHITECTURE §7.11 gains the rule; `.env.example` gains the name; the mobile README states which origins work in real mode on web.
+
 ---
 
 ## Open product-owner questions (not yet decisions)
