@@ -1,11 +1,8 @@
 # BUG-002: API sends no CORS headers, so the web build can't use real mode
 
 **Found:** 2026-09-30 while trying to reproduce [BUG-001](BUG-001-s2-max-update-depth.md).
-**Status:** OPEN. Needs a product call: is web against the API meant to work?
+**Status:** FIXED 2026-10-01 (squash `2051473`, review PASS WITH FIXES then PASS). Decision D-027 (PROPOSED, PO ratification pending): browser origins only through the explicit `SK_CORS_ORIGINS` allowlist; unset means no CORS headers at all; the two local Expo web origins are implied in development only. Handoff: docs/handoff/BUG-002.{worker,review}.md.
 **Code at:** main `74371f1`.
-
-> **To the lead:** this file isn't committed yet. Please commit it right after
-> the bug is fixed (or decided), together with the fix.
 
 ## What happens
 
