@@ -26,14 +26,6 @@ import { flushPending } from "../test-support/flush";
 import { FIXTURE_IDENTITY_EMAIL, FIXTURE_JOIN_CODE } from "../api/client";
 import { ToastProvider } from "../inventory/Toast";
 
-// Same reason as allergies-screen.test.ts: ActivityIndicator is not one of
-// the react-native stand-in's primitives, and S12 renders it for the one
-// frame before `household`/`loadError` settle.
-vi.mock("react-native", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("react-native")>();
-  return { ...actual, ActivityIndicator: actual.View };
-});
-
 let fixtureClient: import("../api/client").FixtureApiClient;
 
 vi.mock("../api/client", async (importOriginal) => {

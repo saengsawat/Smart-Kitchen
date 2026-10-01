@@ -55,6 +55,8 @@ export const Text = hostComponent("Text");
 export const Pressable = hostComponent("Pressable");
 export const ScrollView = hostComponent("ScrollView");
 export const TextInput = hostComponent("TextInput");
+// S2 and S12 render it for the one frame before their data settles (M9-T0 f).
+export const ActivityIndicator = hostComponent("ActivityIndicator");
 
 export const StyleSheet = {
   // The real StyleSheet.create is an identity function at the type level

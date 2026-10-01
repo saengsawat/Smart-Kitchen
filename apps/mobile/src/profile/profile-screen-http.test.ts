@@ -11,12 +11,6 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { flushPending } from "../test-support/flush";
 import { ToastProvider } from "../inventory/Toast";
 
-// Same reason as allergies-screen.test.ts / profile-screen.test.ts.
-vi.mock("react-native", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("react-native")>();
-  return { ...actual, ActivityIndicator: actual.View };
-});
-
 // Forces the screen (which imports the module-level `apiClient` singleton
 // directly) onto a real HttpApiClient for this file, same pattern as
 // account-screen-http.test.ts / item-detail-screen.test.ts.
