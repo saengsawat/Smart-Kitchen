@@ -94,6 +94,11 @@ jobs:
           DATABASE_URL: postgres://postgres@localhost:5432/smart_kitchen_ci
 
       - name: Mobile export smoke check (M3-T1)
+        # Expo CLI probes the network (DNS, cdp.expo.dev telemetry); keep the
+        # export network-free so an offline runner cannot fail it (M9-T0 g).
+        env:
+          EXPO_OFFLINE: "1"
+          EXPO_NO_TELEMETRY: "1"
         run: pnpm --filter mobile export
 
       - name: Format check
