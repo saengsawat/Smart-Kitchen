@@ -10,11 +10,14 @@
  *
  * Order of registration matters and is not incidental:
  *
- * 1. `registerAuthorization` first, so its `onRoute` guard sees every route
- *    that follows and its `onRequest` hook runs before any handler;
+ * 0. `registerCorsHeaders` (BUG-002), whose `onRequest` hook must run before
+ *    the authorization hook so that a 401 or 403 to an allowed browser origin
+ *    still carries `Access-Control-Allow-Origin`. It adds no route;
+ * 1. `registerAuthorization`, so its `onRoute` guard sees every route that
+ *    follows and its `onRequest` hook runs before any handler;
  * 2. the response/error handlers, so a failure inside a handler still answers
  *    the shared error envelope and still carries the correlation id;
- * 3. the routes.
+ * 3. the routes, the CORS preflight route among them, each declared.
  *
  * No port is bound here. `server.ts` owns the process.
  */
@@ -31,6 +34,13 @@ import {
   type IdentityPort,
 } from "./identity/index.js";
 import { registerAuthorization } from "./http/authorization.js";
+import {
+  NO_CORS,
+  registerCorsHeaders,
+  registerCorsPreflight,
+  resolveCorsPolicy,
+  type CorsPolicy,
+} from "./http/cors.js";
 import {
   buildLogController,
   buildLoggerOptions,
@@ -54,6 +64,11 @@ export interface AppDependencies {
   /** Product lookup (M2-T4a); the composition root always supplies it. */
   readonly products?: RouteDeps["products"];
   readonly logging?: LoggingOptions;
+  /**
+   * Browser origins to serve (BUG-002). Defaults to none: no CORS header on
+   * any response and no preflight route, as before.
+   */
+  readonly cors?: CorsPolicy;
   /** Correlation-id generator; defaults to the shared UUIDv7 generator. */
   readonly correlationId?: () => string;
 }
@@ -82,6 +97,8 @@ export function buildApp(deps: AppDependencies): FastifyInstance {
     ajv: { customOptions: { removeAdditional: false } },
   });
 
+  const cors = deps.cors ?? NO_CORS;
+  registerCorsHeaders(app, cors);
   registerAuthorization(app, { identity: deps.identity });
 
   app.addHook("onResponse", (request, reply, done) => {
@@ -113,6 +130,7 @@ export function buildApp(deps: AppDependencies): FastifyInstance {
     return reply.code(statusCode >= 400 ? statusCode : 500).send(body);
   });
 
+  registerCorsPreflight(app, cors);
   registerRoutes(app, {
     tenantSession: deps.tenantSession,
     ...(deps.households === undefined ? {} : { households: deps.households }),
@@ -135,11 +153,20 @@ export class DatabaseConfigurationError extends Error {
   }
 }
 
+/** What a test may substitute in the composition root; `server.ts` passes nothing. */
+export interface CompositionOverrides {
+  /** Logger level and destination, so a test can read the startup lines (BUG-002 review F3). */
+  readonly logging?: LoggingOptions;
+}
+
 /**
  * Composition root: reads the environment, refuses anything it cannot serve
  * safely, and returns the wired app together with the pool it owns.
  */
-export async function createAppFromEnvironment(env: EnvironmentLike): Promise<RunningApp> {
+export async function createAppFromEnvironment(
+  env: EnvironmentLike,
+  overrides: CompositionOverrides = {},
+): Promise<RunningApp> {
   // The identity refusal comes first, before anything else is read, so the
   // production message is never masked by a missing database (M2-T1).
   chooseIdentityAdapter(env);
@@ -158,6 +185,10 @@ export async function createAppFromEnvironment(env: EnvironmentLike): Promise<Ru
     SK_OFF_BASE_URL: env["SK_OFF_BASE_URL"],
     SK_OFF_USER_AGENT: env["SK_OFF_USER_AGENT"],
   });
+  // BUG-002 (D-027 as proposed): browser origins come from SK_CORS_ORIGINS
+  // only, plus two localhost origins in development when it is unset. A
+  // malformed entry refuses to start rather than silently serving nobody.
+  const cors = resolveCorsPolicy(env);
 
   const pool = new Pool({ connectionString });
   // M2-T3: memberships come from the database, so a household created or
@@ -174,6 +205,14 @@ export async function createAppFromEnvironment(env: EnvironmentLike): Promise<Ru
       joinLimiter: createJoinAttemptLimiter(),
     },
     products: { lookup: new OpenFoodFactsProductLookupPort(offConfig) },
+    cors,
+    ...(overrides.logging === undefined ? {} : { logging: overrides.logging }),
   });
+  if (cors.source === "development-implied") {
+    app.log.info(
+      { corsOrigins: cors.allowedOrigins },
+      "cors: SK_CORS_ORIGINS is unset in development, so the local web origins are allowed",
+    );
+  }
   return { app, pool };
 }

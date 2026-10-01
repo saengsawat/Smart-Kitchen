@@ -102,6 +102,16 @@ Then open it on your phone (next section), or press `w` for web.
 Why not `localhost`? On the phone, `localhost` means the phone itself, not your
 PC. The Wi-Fi address works for both the phone and the web.
 
+Real mode works on web because the API, run with `NODE_ENV=development` as in
+Step 3, lets a browser page on `http://localhost:8081` or
+`http://localhost:8090` call it. Open the web build at one of those two
+addresses (pressing `w` opens 8081), not at your Wi-Fi address, or the browser
+blocks every call and you get "Couldn't load your household." To use a
+different address, set `$env:SK_CORS_ORIGINS` in window 1 before starting the
+API, for example `$env:SK_CORS_ORIGINS = "http://192.168.1.23:8081"` (exact
+scheme, host and port, comma-separated for more than one, no trailing slash).
+Once it is set, only the addresses it lists are allowed.
+
 If you change `EXPO_PUBLIC_API_URL`, stop the app with `Ctrl+C` and start it
 again. Reloading isn't enough.
 
