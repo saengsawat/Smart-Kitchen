@@ -53,6 +53,7 @@ import {
   type TransactionType,
 } from "@smart-kitchen/domain";
 import type { ClientBase } from "pg";
+import { CLIENT_KEY } from "./client-key.js";
 import { readInventoryItemDetail } from "./detail.js";
 import { canonicalizeInstant } from "./mapping.js";
 import { decimalTextToMicros } from "./quantity-text.js";
@@ -74,13 +75,6 @@ export const MAX_DISPLAY_NAME_LENGTH = 120;
 
 /** Longest product reference accepted. */
 export const MAX_PRODUCT_REF_LENGTH = 128;
-
-/**
- * Client key shape, identical to M2-T2's (`write-service.ts`), restated here
- * because this ticket's scope is the creation service only. It keeps `::`
- * (the ledger's namespace) and `/` (the derived `/lot/<n>` namespace) out.
- */
-const CLIENT_KEY = /^[A-Za-z0-9._-]{1,128}$/;
 
 /** Control characters: never part of a name a person typed. */
 const CONTROL_CHARACTERS = /\p{Cc}/u;
