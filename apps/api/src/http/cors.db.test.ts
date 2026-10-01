@@ -41,14 +41,14 @@ it.runIf(!dbTestsEnabled)(`SKIP NOTICE: ${SUITE} did not run`, () => {
 const ALLOWED = "http://localhost:8090";
 const POLICY: CorsPolicy = { allowedOrigins: [ALLOWED], source: "configured" };
 
-/** Token, then the status `/v1/households/me` has always answered it with. */
-const MATRIX: readonly (readonly [string | undefined, number])[] = [
-  ["fixture.dean.chen", 200],
-  ["fixture.maya.chen", 200],
-  ["fixture.owner.other", 200],
-  ["fixture.new.user", 403],
-  ["fixture.nobody", 401],
-  [undefined, 401],
+/** Label, token, then the status `/v1/households/me` has always answered it with. */
+const MATRIX: readonly (readonly [string, string | undefined, number])[] = [
+  ["Dean (Chen owner)", "fixture.dean.chen", 200],
+  ["Maya (Chen member)", "fixture.maya.chen", 200],
+  ["Ada (Okafor owner)", "fixture.owner.other", 200],
+  ["the new user (no household)", "fixture.new.user", 403],
+  ["an unknown token", "fixture.nobody", 401],
+  ["no token", undefined, 401],
 ];
 
 function corsHeaderNames(response: LightMyRequestResponse): string[] {
@@ -112,9 +112,9 @@ describe.skipIf(!dbTestsEnabled)(SUITE, () => {
     });
   }
 
-  it.each(MATRIX)(
-    "%s answers %i, identically with and without an allowed origin",
-    async (token, status) => {
+  it.each(MATRIX.map(([label, token, status]) => ({ label, token, status })))(
+    "$label answers $status, identically with and without an allowed origin",
+    async ({ token, status }) => {
       const baseline = await me(withoutCors, token, ALLOWED);
       const plain = await me(withCors, token);
       const fromBrowser = await me(withCors, token, ALLOWED);
