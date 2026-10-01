@@ -23,6 +23,8 @@ function codeTypeToDto(c: CodeType): ProductCodeTypeDto {
   switch (c) {
     case "GTIN13":
       return "GTIN13";
+    case "GTIN14":
+      return "GTIN14";
     case "UPC_A":
       return "UPC_A";
     case "EAN13":
@@ -38,7 +40,7 @@ function codeTypeToDto(c: CodeType): ProductCodeTypeDto {
 
 describe("product contracts vs adapters product-lookup CodeType (compile-time exhaustiveness)", () => {
   it("codeTypeToDto covers every CodeType member", () => {
-    const codes: readonly CodeType[] = ["GTIN13", "UPC_A", "EAN13", "EAN8", "PLU"];
+    const codes: readonly CodeType[] = ["GTIN13", "GTIN14", "UPC_A", "EAN13", "EAN8", "PLU"];
     for (const code of codes) {
       expect(codeTypeToDto(code)).toBe(code);
     }

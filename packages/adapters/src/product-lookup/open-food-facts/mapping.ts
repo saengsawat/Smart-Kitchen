@@ -9,17 +9,19 @@
  * | --- | --- |
  * | 200, JSON, `status: 1`, a `product` object with a name | `hit` |
  * | 200 or 404, JSON, `status: 0` | `not-found` (the code is kept, S7 renders it) |
- * | 200, JSON, `status: 1`, product without a usable `product_name` | `not-found`, see below |
+ * | 200, JSON, `status: 1`, no usable `product_name` but a usable `product_name_en` | `hit`, named from `product_name_en` |
+ * | 200, JSON, `status: 1`, product without a usable `product_name` or `product_name_en` | `not-found`, see below |
  * | 404 whose body is not OFF's JSON miss | `error` `UPSTREAM_MALFORMED` (a wrong base URL must not look like "every product is missing") |
  * | 429 | `error` `UPSTREAM_RATE_LIMITED` |
  * | 5xx | `error` `UPSTREAM_UNAVAILABLE` |
  * | any other 4xx, a 3xx that was not followed | `error` `UPSTREAM_REJECTED` |
  * | not JSON, wrong shape, a `code` that names a different product | `error` `UPSTREAM_MALFORMED` |
  *
- * A record OFF has but with no product name is answered `not-found`: the
- * scan sheet has nothing to put in its header, the S7 miss path already
- * keeps the code and hands off to manual add, and inventing a name is not
- * an option (the item-level decision is recorded in the worker report).
+ * A record OFF has but with no usable name in either `product_name` or the
+ * `product_name_en` fallback (M2-T4b (c)) is answered `not-found`: the scan
+ * sheet has nothing to put in its header, the S7 miss path already keeps the
+ * code and hands off to manual add, and inventing a name is not an option
+ * (the item-level decision is recorded in the worker report).
  *
  * ## Tier policy (D-025)
  *
@@ -42,7 +44,7 @@ import type {
   ProductCode,
   Provenanced,
 } from "../types.js";
-import { mapOffAllergenTag } from "./allergen-tag-map.js";
+import { offAllergenCodesFor } from "./allergen-tag-map.js";
 import { OFF_MAX_BODY_CHARS } from "./config.js";
 import { parseOffQuantity } from "./parse-quantity.js";
 
@@ -148,7 +150,10 @@ export function mapOffProduct(
     return fail("UPSTREAM_MALFORMED", "Open Food Facts allergen tags are not arrays");
   }
 
-  const name = nonEmptyText(product["product_name"]);
+  // M2-T4b (c): product_name_en is a fallback, tried only when the record's
+  // own product_name is unusable (absent, blank, or non-string) — never
+  // preferred over a genuine main-language name.
+  const name = nonEmptyText(product["product_name"]) ?? nonEmptyText(product["product_name_en"]);
   if (name === undefined) return { status: "not-found" };
 
   const provenance: FieldProvenance = {
@@ -166,16 +171,20 @@ export function mapOffProduct(
   const imageRef = httpsUrl(product["image_front_url"]);
 
   const allergens: AllergenTag[] = [
-    ...(allergensRaw ?? []).map((tag: unknown): AllergenTag => ({
-      allergenCode: mapOffAllergenTag(tag),
-      assertion: "CONTAINS",
-      provenance,
-    })),
-    ...(tracesRaw ?? []).map((tag: unknown): AllergenTag => ({
-      allergenCode: mapOffAllergenTag(tag),
-      assertion: "MAY_CONTAIN",
-      provenance,
-    })),
+    ...(allergensRaw ?? []).flatMap((tag: unknown): AllergenTag[] =>
+      offAllergenCodesFor(tag).map((allergenCode) => ({
+        allergenCode,
+        assertion: "CONTAINS",
+        provenance,
+      })),
+    ),
+    ...(tracesRaw ?? []).flatMap((tag: unknown): AllergenTag[] =>
+      offAllergenCodesFor(tag).map((allergenCode) => ({
+        allergenCode,
+        assertion: "MAY_CONTAIN",
+        provenance,
+      })),
+    ),
   ];
 
   const item: ProductCatalogItem = {

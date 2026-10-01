@@ -4,7 +4,14 @@
  * are in each file's `capture` block). No test here opens a connection.
  */
 
-import { screenSubject } from "@smart-kitchen/domain";
+import {
+  majorRestriction,
+  screenSubject,
+  userDefinedRestriction,
+  type AllergenOutcome,
+  type AllergyRestriction,
+  type ScreeningResult,
+} from "@smart-kitchen/domain";
 import { describe, expect, it } from "vitest";
 import type { ProductCatalogItem, ProductCode } from "../types.js";
 import { gramsToMilligrams, mapOffAnswer, OFF_SOURCE, type OffMappedOutcome } from "./mapping.js";
@@ -46,7 +53,7 @@ const HIT_FILES = RECORDED_OFF_FILES.filter((f) => f !== "not-found.json");
 describe("recorded fixtures are what they claim to be", () => {
   it.each(RECORDED_OFF_FILES)("%s carries its capture date, host and request", (file) => {
     const { capture } = loadRecorded(file);
-    expect(capture.capturedAt).toMatch(/^2026-09-29T/);
+    expect(capture.capturedAt).toMatch(/^2026-09-(29|30)T/);
     expect(["https://world.openfoodfacts.org", "https://world.openfoodfacts.net"]).toContain(
       capture.host,
     );
@@ -128,6 +135,7 @@ describe("full record (Kirkland organic peanut butter, US, recorded from product
       ["tree_nut", "MAY_CONTAIN"], // en:nuts
       ["soy", "MAY_CONTAIN"], // en:soybeans
       ["tree_nut", "MAY_CONTAIN"], // en:coconut, D-017 P3
+      ["en:coconut", "MAY_CONTAIN"], // dual emission: the raw tag rides along (D-026 amended)
     ]);
   });
 
@@ -184,9 +192,10 @@ describe("record with traces only (Bear Naked granola)", () => {
 describe("record with unmapped allergen tags (Dave's Killer Bread)", () => {
   const item = hit("unmapped-tags-bread.json");
 
-  it("passes unmapped tags through raw", () => {
+  it("maps en:gluten to wheat (D-026) and passes the rest of the unmapped tags through raw", () => {
     expect(item.allergens.map((a) => [a.allergenCode, a.assertion])).toEqual([
-      ["en:gluten", "CONTAINS"],
+      ["wheat", "CONTAINS"], // en:gluten (D-026)
+      ["en:gluten", "CONTAINS"], // dual emission: the raw tag rides along (D-026 amended)
       ["sesame", "CONTAINS"],
       ["tree_nut", "MAY_CONTAIN"],
       ["en:Grains", "MAY_CONTAIN"],
@@ -194,7 +203,20 @@ describe("record with unmapped allergen tags (Dave's Killer Bread)", () => {
     ]);
   });
 
-  it("the engine's fail-closed handling flags them (unknown plus UNRECOGNIZED_ALLERGEN_DATA)", () => {
+  it("blocks a wheat allergy on the (mapped) gluten CONTAINS tag (D-026)", () => {
+    const wheat = everyAllergenMember("standard");
+    const screened = screenSubject({ subject: toEngineSubject(item), members: [wheat] });
+    expect(screened.ok && screened.value.verdict).toBe("BLOCKED");
+    if (screened.ok) {
+      expect(
+        screened.value.evidence.some(
+          (e) => e.kind === "ASSERTION_CONTAINS" && e.matchedTerm === "wheat",
+        ),
+      ).toBe(true);
+    }
+  });
+
+  it("the engine's fail-closed handling still flags the remaining unmapped tags (unknown plus UNRECOGNIZED_ALLERGEN_DATA)", () => {
     const member = everyAllergenMember("standard");
     const screened = screenSubject({ subject: toEngineSubject(item), members: [member] });
     expect(screened.ok).toBe(true);
@@ -242,6 +264,34 @@ describe("sparse record (store sandwich: no quantity, no ingredients, no categor
     expect(item.category).toBeUndefined();
     expect(item.servingSize?.value).toEqual({ qty: 227, unit: "g" });
     expect(item.allergens).toEqual([]);
+  });
+});
+
+describe("record for a UPC-E-compressible product (Honey Maid Graham Crackers, M2-T4b (f))", () => {
+  const item = hit("upc-e-graham-crackers.json");
+
+  it("maps the full record from the code the server queries with (the expanded UPC-A, not the 8-digit UPC-E)", () => {
+    expect(item.id).toBe("044000004637");
+    expect(item.codes).toEqual([{ codeType: "UPC_A", code: "044000004637" }]);
+    expect(item.name.value).toBe("Honey Maid Graham Crackers");
+    expect(item.brand?.value).toBe("Honey Maid");
+  });
+
+  it("parses '14.4 oz (408g)' and the bracketed serving amount", () => {
+    expect(item.packageSize?.value).toEqual({ qty: 14.4, unit: "oz" });
+    expect(item.servingSize?.value).toEqual({ qty: 30, unit: "g" });
+  });
+
+  it("its real en:gluten and en:soybeans tags map to wheat and soy (D-026)", () => {
+    expect(item.allergens.map((a) => [a.allergenCode, a.assertion])).toEqual([
+      ["wheat", "CONTAINS"],
+      ["en:gluten", "CONTAINS"],
+      ["soy", "CONTAINS"],
+    ]);
+  });
+
+  it("nutrition_data_per is exactly 100g, so both profiles are emitted", () => {
+    expect(item.nutrition.map((n) => n.basis).sort()).toEqual(["PER_100G", "PER_SERVING"]);
   });
 });
 
@@ -316,11 +366,50 @@ describe("outcome mapping", () => {
     if (outcome.status === "error") expect(outcome.error.code).toBe("UPSTREAM_MALFORMED");
   });
 
-  it("a product with no usable name is not-found (nothing to show, nothing invented)", () => {
+  it("a product with no usable name in either field is not-found (nothing to show, nothing invented)", () => {
     for (const name of [undefined, "", "   ", 42]) {
       const product = name === undefined ? {} : { product_name: name };
       expect(answer(200, JSON.stringify({ status: 1, product }))).toEqual({ status: "not-found" });
     }
+    // product_name_en unusable too (blank/absent): still not-found.
+    for (const nameEn of [undefined, "", "  "]) {
+      const product = {
+        product_name: "",
+        ...(nameEn === undefined ? {} : { product_name_en: nameEn }),
+      };
+      expect(answer(200, JSON.stringify({ status: 1, product }))).toEqual({ status: "not-found" });
+    }
+  });
+
+  it("M2-T4b (c): product_name_en is a fallback, tried only when product_name is unusable", () => {
+    // Blank main name, usable English name: hit, named from product_name_en.
+    const blank = answer(
+      200,
+      JSON.stringify({ status: 1, product: { product_name: "", product_name_en: "Indomie" } }),
+    );
+    expect(blank.status).toBe("hit");
+    if (blank.status === "hit") expect(blank.product.name.value).toBe("Indomie");
+
+    // A genuine main name is never overridden by product_name_en.
+    const both = answer(
+      200,
+      JSON.stringify({
+        status: 1,
+        product: { product_name: "Le Nom", product_name_en: "The Name" },
+      }),
+    );
+    expect(both.status).toBe("hit");
+    if (both.status === "hit") expect(both.product.name.value).toBe("Le Nom");
+  });
+
+  it("the recorded English-name-only product (Indomie, product_name empty on staging) is a hit named from product_name_en", () => {
+    const item = hit("english-name-only-indomie.json");
+    expect(item.name.value).toBe("Indomie");
+    expect(item.name.provenance).toEqual({
+      tier: "ESTIMATED",
+      source: OFF_SOURCE,
+      observedAt: lastModifiedIso("english-name-only-indomie.json"),
+    });
   });
 
   it("OFF's leading-zero normalization is the same product", () => {
@@ -440,5 +529,86 @@ describe("gramsToMilligrams shifts the decimal point, it does not multiply float
 
   it("exponent-form input still lands on a clean value", () => {
     expect(gramsToMilligrams(4e-7)).toBe(0.0004);
+  });
+});
+
+describe("dual emission for non-identity mappings (D-026 as amended, M2-T4b review F1)", () => {
+  function built(outcome: AllergenOutcome<AllergyRestriction>): AllergyRestriction {
+    if (!outcome.ok) throw new Error(outcome.error.message);
+    return outcome.value;
+  }
+  function screen(item: ProductCatalogItem, restriction: AllergyRestriction): ScreeningResult {
+    const result = screenSubject({
+      subject: toEngineSubject(item),
+      members: [{ memberId: "m1", restrictions: [restriction] }],
+    });
+    if (!result.ok) throw new Error(result.error.message);
+    return result.value;
+  }
+  function synthetic(allergens: string[], traces: string[]): ProductCatalogItem {
+    const body = JSON.stringify({
+      status: 1,
+      product: {
+        code: "0096619555505",
+        product_name: "X",
+        allergens_tags: allergens,
+        traces_tags: traces,
+      },
+    });
+    const out = mapOffAnswer(
+      { httpStatus: 200, bodyText: body },
+      { codeType: "EAN13", code: "0096619555505" },
+      FETCHED_AT,
+    );
+    if (out.status !== "hit") throw new Error("expected a hit");
+    return out.product;
+  }
+
+  it("Honey Maid (en:gluten): a celiac user-defined 'gluten' restriction is BLOCKED on the raw tag", () => {
+    const item = hit("upc-e-graham-crackers.json");
+    const result = screen(item, built(userDefinedRestriction("r-gluten", "gluten", "severe")));
+    expect(result.verdict).toBe("BLOCKED");
+    expect(
+      result.evidence.some(
+        (e) => e.kind === "ASSERTION_CODE_TERM" && e.matchedText === "en:gluten",
+      ),
+    ).toBe(true);
+  });
+
+  it("Honey Maid: a wheat (MAJOR) restriction is also BLOCKED", () => {
+    const item = hit("upc-e-graham-crackers.json");
+    expect(screen(item, built(majorRestriction("r-wheat", "wheat", "severe"))).verdict).toBe(
+      "BLOCKED",
+    );
+  });
+
+  it("en:coconut: both tree_nut and the raw tag are emitted, same kind; a user-defined 'coconut' blocks", () => {
+    const item = synthetic([], ["en:coconut"]);
+    expect(item.allergens.map((a) => [a.allergenCode, a.assertion])).toEqual([
+      ["tree_nut", "MAY_CONTAIN"],
+      ["en:coconut", "MAY_CONTAIN"],
+    ]);
+    const result = screen(item, built(userDefinedRestriction("r-coconut", "coconut", "severe")));
+    expect(result.verdict).toBe("BLOCKED");
+    expect(result.evidence.some((e) => e.kind === "ASSERTION_CODE_TERM")).toBe(true);
+  });
+
+  it("en:molluscs: both shellfish and the raw tag are emitted; a user-defined 'molluscs' and a shellfish restriction both block", () => {
+    const item = synthetic(["en:molluscs"], []);
+    expect(item.allergens.map((a) => [a.allergenCode, a.assertion])).toEqual([
+      ["shellfish", "CONTAINS"],
+      ["en:molluscs", "CONTAINS"],
+    ]);
+    expect(
+      screen(item, built(userDefinedRestriction("r-mollusc", "molluscs", "severe"))).verdict,
+    ).toBe("BLOCKED");
+    expect(
+      screen(item, built(majorRestriction("r-shellfish", "shellfish", "severe"))).verdict,
+    ).toBe("BLOCKED");
+  });
+
+  it("exact matches (en:peanuts) and unmapped tags (en:celery) emit once", () => {
+    const item = synthetic(["en:peanuts", "en:celery"], []);
+    expect(item.allergens.map((a) => a.allergenCode)).toEqual(["peanut", "en:celery"]);
   });
 });

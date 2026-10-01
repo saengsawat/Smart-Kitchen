@@ -78,10 +78,11 @@ describe("request shape", () => {
     expect(sent[0]?.headers["Authorization"]).toBeUndefined();
   });
 
-  it("the field list is exactly the ticket's (plus M3-T4e's nutrition_data_per)", () => {
+  it("the field list is exactly the ticket's (plus M3-T4e's nutrition_data_per and M2-T4b's product_name_en)", () => {
     expect([...OFF_PRODUCT_FIELDS]).toEqual([
       "code",
       "product_name",
+      "product_name_en",
       "brands",
       "quantity",
       "serving_size",
@@ -423,11 +424,23 @@ describe("one GTIN, one cache entry (review F3)", () => {
     expect(rb.status === "hit" && rb.product.id).toBe("0096619555505");
   });
 
-  it("the key is the 13-digit form for 9 to 13 digits; EAN-8 stays as is", async () => {
+  it("the key is the 13-digit form for 8 to 13 digits, EAN-8 included (M2-T4b (e))", async () => {
     const { cacheKey } = await import("./open-food-facts-port.js");
     expect(cacheKey("096619555505")).toBe("0096619555505");
     expect(cacheKey("0096619555505")).toBe("0096619555505");
-    expect(cacheKey("96385074")).toBe("96385074");
+    expect(cacheKey("96385074")).toBe("0000096385074");
+  });
+
+  it("an EAN-8 and its 13-digit spelling share one entry and one upstream request", async () => {
+    const miss = () =>
+      Promise.resolve({ status: 404, body: JSON.stringify({ code: "0000096385074", status: 0 }) });
+    const { fetch, sent } = stubFetch(miss);
+    const port = new OpenFoodFactsProductLookupPort({ fetch });
+    const a = await port.resolve({ codeType: "EAN8", code: "96385074" });
+    const b = await port.resolve({ codeType: "EAN13", code: "0000096385074" });
+    expect(a.status).toBe("not-found");
+    expect(b.status).toBe("not-found");
+    expect(sent).toHaveLength(1);
   });
 });
 

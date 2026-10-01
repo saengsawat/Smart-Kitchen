@@ -32,3 +32,18 @@ within the ticket's "at most two" budget: one throwaway connectivity check
 (`fields=code` only, not saved as a fixture) and one real capture of
 `liquid-per-100ml-ripple.json` above, with the updated field list that now
 includes `nutrition_data_per`.
+
+**M2-T4b addition (2026-09-30):** two recordings, both captured by hand from
+the staging host (`https://world.openfoodfacts.net`) with the field list that
+now includes `product_name_en`, bodies unedited:
+
+| File | Code asked | Product | Why it is here |
+| --- | --- | --- | --- |
+| `upc-e-graham-crackers.json` | 044000004637 | Honey Maid Graham Crackers | its UPC-A compresses to the UPC-E `04446307`; the API expands the UPC-E and asks OFF for this code. Its real tags include `en:gluten` (mapped to wheat, D-026) and `en:soybeans` |
+| `english-name-only-indomie.json` | 5285000396437 | Indomie | `product_name` is empty on staging, only `product_name_en` is set (fallback before not-found) |
+
+Requests by hand for this ticket: 6 staging product reads (2 kept as
+recordings; 3 candidates rejected (a Skittles record whose UPC-E collided with the EAN-8 check; two products whose staging copy already had a main-language
+name), plus 1 connectivity check),
+1 staging search, and 9 production searches to pick candidates (one answered 503 and was not retried). Never more than
+one in flight.
