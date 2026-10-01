@@ -1,13 +1,8 @@
 # BUG-001: S2 allergies Continue crashes with "Maximum update depth exceeded" (Android and web)
 
 **Reported:** 2026-09-30 by Andy (PO), on his phone.
-**Status:** OPEN, regression, reproduces in both demo and real mode (Andy's
-phone). Not reproduced by an agent yet.
+**Status:** FIXED 2026-10-01 (squash `13509a8`, review PASS WITH FIXES then PASS). Reproduced by the worker in headless Chrome before any change; bisected to `8d1217b` (M3-T4d, the round-2 "pending window hold" that returned `null` and so unmounted expo-router's navigator mid-navigation). Fix: before the navigator's first mount the root layout behaves as it did at 74371f1 (nothing while the first read is pending, the fallback alone on a failed read, `<Redirect>` on the first decision); once `<Slot />` has mounted it is never unmounted, and a hold, a failed read or a pending redirect is an opaque cover over it (underneath hidden, non-interactive and `inert` on web so keyboard focus cannot reach it; redirects via `router.replace` in an effect, once per decision). A gate-covered context lets S7 skip the camera permission and `CameraView` while covered. Verified in headless Chrome: the smoke script fails on 74371f1 and passes on the fix; Tab under a failed-read cover reaches only Try again; a household-less cold deep link to the scan screen makes no camera call. Android device pass still owed. Handoff: docs/handoff/BUG-001.{worker,review}.md.
 **Code at:** main `74371f1` (just after the M3-T6 merge).
-
-> **To the lead:** this file isn't committed yet. Please commit it right after
-> the bug is fixed, together with the fix. The uncommitted `cd D:\06_Smart-Kitchen`
-> lines in `apps/mobile/README.md` (Steps 3 and 5) can go in the same commit.
 
 ## Setup
 
@@ -132,10 +127,9 @@ phone, API or database, so a headless browser test can guard it.
   day; if Andy's working run on 09-29 predates it, that commit is in the
   window as well.
 
-## Still unknown
+## Resolved
 
-- Which commit introduced it (see the regression table above).
-- Whether iOS behaves the same (Android and web both crash).
+- Introduced by `8d1217b` (M3-T4d). iOS not separately tested; the mechanism was platform-independent (expo-router's navigator unmounted during navigation).
 
 ## Suggested approach for the fix
 
