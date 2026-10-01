@@ -29,6 +29,7 @@
 import { reconcile, sumLotDeltaMicros } from "./derive.js";
 import { err, ok, type LedgerError, type Outcome } from "./errors.js";
 import { deepFreeze } from "./freeze.js";
+import { parseIsoInstantStrict } from "./instant.js";
 import { RESERVED_KEY_SEPARATOR } from "./ledger.js";
 import { amountToMicros, microsToAmount, MAX_QUANTITY_MICROS } from "./quantity.js";
 import {
@@ -140,16 +141,6 @@ export type ConsumptionRequest = {
 export type ConsumptionInputBase = Omit<TransactionInput, "lotId" | "qtyDelta">;
 
 /**
- * ISO-8601 instant shape accepted for lot dates.
- *
- * Deliberately the same expression the ledger validates timestamps with. It is
- * duplicated rather than imported because `ledger.ts` does not export it and
- * this ticket's file scope does not include changing that module; sharing the
- * parser is a proposed follow-up in the M1-T8 worker report.
- */
-const ISO_INSTANT_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,9})?(?:Z|[+-]\d{2}:\d{2})$/;
-
-/**
  * Parses an optional lot instant to epoch millis.
  *
  * Returns `undefined` for an absent date (legitimately undated — ordered last)
@@ -171,12 +162,9 @@ function optionalMillis(
   lotId: string,
 ): Outcome<number | undefined> {
   if (value === undefined) return ok(undefined);
-  if (typeof value !== "string" || !ISO_INSTANT_RE.test(value)) {
+  const millis = parseIsoInstantStrict(value);
+  if (millis === undefined) {
     return err("INVALID_TIMESTAMP", `lot ${lotId}: ${field} must be an ISO-8601 instant`, lotId);
-  }
-  const millis = Date.parse(value);
-  if (Number.isNaN(millis)) {
-    return err("INVALID_TIMESTAMP", `lot ${lotId}: ${field} is not a valid instant`, lotId);
   }
   return ok(millis);
 }

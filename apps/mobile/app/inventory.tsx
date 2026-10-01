@@ -11,7 +11,7 @@ import {
   LOCATION_LABELS,
   type LocationFilter,
 } from "../src/inventory/list-view";
-import { GENERIC_LEDGER_ERROR_MESSAGE } from "../src/inventory/errors";
+import { GENERIC_READ_ERROR_MESSAGE } from "../src/inventory/errors";
 import { loadInventoryList } from "../src/inventory/load-inventory";
 import { useReducedMotion, pressScaleStyle } from "../src/inventory/motion";
 import {
@@ -92,12 +92,14 @@ export default function InventoryScreen(): React.JSX.Element {
     if (loadError) {
       // Review F5: a cold-start read has no cache to fall back to (unlike a
       // failure after a prior success, which the stale-offline banner below
-      // handles), so without this the screen stayed blank forever.
+      // handles), so without this the screen stayed blank forever. A load is
+      // a read, so it wears the copy-deck §8 read fallback, never the save
+      // string (M9-T0 h).
       return (
         <View style={styles.screen}>
           <View style={styles.emptyWrap} accessibilityLiveRegion="assertive">
             <Text style={styles.emptyTitle}>Couldn't load your inventory.</Text>
-            <Text style={styles.emptyBody}>{GENERIC_LEDGER_ERROR_MESSAGE}</Text>
+            <Text style={styles.emptyBody}>{GENERIC_READ_ERROR_MESSAGE}</Text>
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="Try again"

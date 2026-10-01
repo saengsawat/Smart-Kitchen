@@ -81,6 +81,7 @@ import {
   readInventoryHistory,
   type LedgerHistoryEntry,
 } from "./detail.js";
+import { CLIENT_KEY } from "./client-key.js";
 import { decimalTextToMicros } from "./quantity-text.js";
 import { appendTransactionToDb, insertInventoryLot, loadInventoryItem } from "./repository.js";
 
@@ -100,17 +101,6 @@ export const MANUAL_ENTRY_SOURCE = "manual-entry";
 
 /** Reason prefix reserved for the rows the undo endpoint writes. */
 export const UNDO_REASON_PREFIX = "undo:";
-
-/**
- * Client idempotency keys: letters, digits, dot, underscore, hyphen.
- *
- * Narrow on purpose. It excludes `::`, which the ledger reserves for the rows
- * it authors itself, and `/`, which keeps every client key outside the
- * `<key>/lot/<n>` namespace this module derives into. Without the second
- * exclusion a key ending in `/lot` would derive into another key's namespace,
- * and "the rows of this write" would stop being a well-defined set.
- */
-const CLIENT_KEY = /^[A-Za-z0-9._-]{1,128}$/;
 
 /** Longest reason a caller may attach to a row. */
 const MAX_REASON_LENGTH = 200;

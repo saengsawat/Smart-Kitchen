@@ -22,6 +22,7 @@ import {
   type TestDatabase,
 } from "../test-support/harness.js";
 import { captureError, pgFailure } from "../test-support/inventory-fixtures.js";
+import { migrationsAfter } from "../test-support/migration-list.js";
 
 const SUITE = "inventory_correction_telemetry view";
 // A *running* test, so the notice reaches the default reporter: console output
@@ -242,14 +243,12 @@ describe.skipIf(!dbTestsEnabled)(SUITE, () => {
       try {
         expect(await viewExists(scratch.pool)).toBe(true);
 
-        // Every migration after 0007 is rolled back first (M2-T3 added 0008,
-        // M7-T1 added 0009), so the one under test is the last one reverted.
-        const reverted = await migrateDown(scratch.url, 3);
-        expect(reverted).toEqual([
-          "0009_shopping_rows",
-          "0008_household_join_codes",
-          "0007_correction_telemetry",
-        ]);
+        // Every migration after 0007 is rolled back first (read from the
+        // migrations directory, M9-T0 b), so the one under test is the last
+        // one reverted.
+        const after = migrationsAfter(7);
+        const reverted = await migrateDown(scratch.url, after.length + 1);
+        expect(reverted).toEqual([...after].reverse().concat("0007_correction_telemetry"));
         expect(await viewExists(scratch.pool)).toBe(false);
 
         // The table it reads from is untouched by rolling back only this
@@ -261,11 +260,7 @@ describe.skipIf(!dbTestsEnabled)(SUITE, () => {
         expect(tables.rows[0]?.count).toBe("1");
 
         const applied = await migrateUp(scratch.url);
-        expect(applied).toEqual([
-          "0007_correction_telemetry",
-          "0008_household_join_codes",
-          "0009_shopping_rows",
-        ]);
+        expect(applied).toEqual(["0007_correction_telemetry", ...after]);
         expect(await viewExists(scratch.pool)).toBe(true);
       } finally {
         await scratch.drop();

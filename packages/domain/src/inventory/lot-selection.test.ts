@@ -409,6 +409,24 @@ describe("planLotConsumption — rejections", () => {
     expect(planRejection(brokenAcquired, { amount: 1, policy: "FIFO" })).toBe("INVALID_TIMESTAMP");
   });
 
+  it.each(["2026-02-30T00:00:00Z", "2026-09-14T24:00:00Z"])(
+    "rejects a rolled-over lot instant %s instead of ordering on the rolled date (M9-T0 a)",
+    (rolled) => {
+      const expiry = {
+        ...item,
+        lots: item.lots.map((lot) => (lot.lotId === "lot-a" ? { ...lot, expiresAt: rolled } : lot)),
+      } as unknown as InventoryItem;
+      expect(planRejection(expiry, { amount: 1, policy: "FEFO" })).toBe("INVALID_TIMESTAMP");
+      const acquired = {
+        ...item,
+        lots: item.lots.map((lot) =>
+          lot.lotId === "lot-c" ? { ...lot, acquiredAt: rolled } : lot,
+        ),
+      } as unknown as InventoryItem;
+      expect(planRejection(acquired, { amount: 1, policy: "FIFO" })).toBe("INVALID_TIMESTAMP");
+    },
+  );
+
   it("review F1: refuses an item carrying the same lotId twice instead of double-allocating", () => {
     // `sumLotDeltaMicros` sums by id, so both copies report the same balance and
     // a planner that trusted the list would allocate 1.0 lb of stock twice.

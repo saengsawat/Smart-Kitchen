@@ -75,17 +75,11 @@ import {
   LedgerIntegrityError,
   LedgerWriteRejectedError,
 } from "../inventory/write-service.js";
+import { CLIENT_KEY } from "../inventory/client-key.js";
 import { computeRowGap, type GapItemInput } from "./gap.js";
 
 /** Provenance source on the PURCHASE an add-to-inventory appends. */
 export const SHOPPING_CHECK_OFF_SOURCE = "shopping-check-off";
-
-/**
- * Client key shape, identical to M2-T2's (`write-service.ts`) and restated
- * like `create-service.ts` does. Mirrored by the CHECK on
- * `shopping_row_writes.idempotency_key`.
- */
-const CLIENT_KEY = /^[A-Za-z0-9._-]{1,128}$/;
 
 /** The ledger key of a row's PURCHASE: one per row and generation. */
 export function shoppingPurchaseKey(rowId: string, generation: number): string {

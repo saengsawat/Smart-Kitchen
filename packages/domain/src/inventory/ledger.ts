@@ -20,6 +20,7 @@
 
 import { err, ledgerError, ok, type LedgerError, type Outcome } from "./errors.js";
 import { deepFreeze } from "./freeze.js";
+import { parseIsoInstantStrict } from "./instant.js";
 import {
   amountToMicros,
   makeQuantity,
@@ -68,8 +69,6 @@ const PROVENANCE_TIERS: readonly ProvenanceTier[] = [
   "AI_INTERPRETATION",
 ];
 
-const ISO_INSTANT_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,9})?(?:Z|[+-]\d{2}:\d{2})$/;
-
 function nonEmptyString(value: unknown, field: string): Outcome<string> {
   if (typeof value !== "string" || value.trim() === "") {
     return err("INVALID_FIELD", `${field} must be a non-empty string`, field);
@@ -78,12 +77,9 @@ function nonEmptyString(value: unknown, field: string): Outcome<string> {
 }
 
 function instantMillis(value: unknown, field: string): Outcome<number> {
-  if (typeof value !== "string" || !ISO_INSTANT_RE.test(value)) {
+  const millis = parseIsoInstantStrict(value);
+  if (millis === undefined) {
     return err("INVALID_TIMESTAMP", `${field} must be an ISO-8601 instant`, field);
-  }
-  const millis = Date.parse(value);
-  if (Number.isNaN(millis)) {
-    return err("INVALID_TIMESTAMP", `${field} is not a valid instant`, field);
   }
   return ok(millis);
 }

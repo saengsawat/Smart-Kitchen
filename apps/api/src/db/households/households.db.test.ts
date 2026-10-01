@@ -26,6 +26,7 @@ import {
   type TestDatabase,
 } from "../test-support/harness.js";
 import { captureError, pgFailure } from "../test-support/inventory-fixtures.js";
+import { migrationsAfter } from "../test-support/migration-list.js";
 import { createJoinCodeHasher, DEVELOPMENT_JOIN_CODE_PEPPER } from "./join-code.js";
 import {
   createHousehold,
@@ -468,10 +469,21 @@ describe.skipIf(!dbTestsEnabled)(SUITE, () => {
           ),
         );
       }
-      const times = issued.map((code) => Date.parse(code.issuedAt));
-      for (let index = 1; index < times.length; index += 1) {
-        expect(times[index]).toBeGreaterThan(times[index - 1] ?? Number.POSITIVE_INFINITY);
-      }
+      expect(issued).toHaveLength(9);
+
+      // Strictly increasing created_at, compared inside Postgres at its own
+      // microsecond precision (node-pg truncates timestamps to milliseconds, so
+      // two rotations under 1 ms apart would have compared equal in JS; M9-T0 e).
+      const ordering = await db.pool.query<{ total: string; not_increasing: string }>(
+        `SELECT count(*)::text AS total,
+                count(*) FILTER (WHERE previous IS NOT NULL AND created_at <= previous)::text
+                  AS not_increasing
+           FROM (SELECT created_at,
+                        lag(created_at) OVER (ORDER BY created_at) AS previous
+                   FROM household_join_codes WHERE household_id = $1) AS ordered`,
+        [delta.householdId],
+      );
+      expect(ordering.rows[0]).toEqual({ total: "9", not_increasing: "0" });
 
       const rows = await db.pool.query<{ created_at: Date; revoked_at: Date | null }>(
         `SELECT created_at, revoked_at FROM household_join_codes
@@ -493,6 +505,124 @@ describe.skipIf(!dbTestsEnabled)(SUITE, () => {
     });
   });
 
+  describe("redeem versus rotation (M9-T0 d, FOR SHARE in app_redeem_join_code)", () => {
+    /** A raw transaction mirroring session.ts, held open across awaits. */
+    async function openTransaction(householdId: string | null): Promise<PoolClient> {
+      const client = await db.pool.connect();
+      try {
+        await client.query("BEGIN");
+        await client.query(`SET LOCAL ROLE ${APP_ROLE}`);
+        if (householdId !== null) {
+          await client.query("SELECT set_config('app.household_id', $1, true)", [householdId]);
+        }
+        return client;
+      } catch (error) {
+        client.release();
+        throw error;
+      }
+    }
+
+    async function pidOf(client: PoolClient): Promise<number> {
+      const result = await client.query<{ pid: number }>("SELECT pg_backend_pid() AS pid");
+      const pid = result.rows[0]?.pid;
+      if (pid === undefined) throw new Error("no backend pid");
+      return pid;
+    }
+
+    /** Waits until the backend `pid` is blocked behind another transaction's lock. */
+    async function waitUntilBlocked(pid: number): Promise<void> {
+      for (let attempt = 0; attempt < 100; attempt += 1) {
+        const result = await db.pool.query<{ blocked: boolean }>(
+          "SELECT cardinality(pg_blocking_pids($1)) > 0 AS blocked",
+          [pid],
+        );
+        if (result.rows[0]?.blocked === true) return;
+        await new Promise((resolve) => setTimeout(resolve, 50));
+      }
+      throw new Error(`backend ${pid} never blocked`);
+    }
+
+    it("a redeem that starts while a rotation is uncommitted waits, then finds the code revoked and joins nobody", async () => {
+      const house = await seedHousehold(db.pool, "race-redeem-second");
+      const oldCode = (
+        await asApp(house.householdId, (client) =>
+          issueJoinCode(client, house.householdId, house.userId, hasher),
+        )
+      ).code;
+      const joiner = await newUser();
+
+      const a = await openTransaction(house.householdId);
+      const b = await openTransaction(null);
+      let aOpen = true;
+      try {
+        // A rotates and holds the revoke uncommitted.
+        await rotateJoinCode(a, house.householdId, house.userId, hasher);
+
+        // B reads the old code: still live in B's snapshot, locked by A's revoke.
+        const bPid = await pidOf(b);
+        const redeeming = redeemJoinCode(b, hasher.hash(oldCode), joiner, randomUUID());
+        await waitUntilBlocked(bPid);
+
+        await a.query("COMMIT");
+        aOpen = false;
+
+        // After A commits, FOR SHARE re-checks revoked_at IS NULL on the updated
+        // row and drops it. A plain SELECT would have joined on the revoked code.
+        expect(await redeeming).toBeUndefined();
+        await b.query("COMMIT");
+      } finally {
+        if (aOpen) await a.query("ROLLBACK").catch(() => undefined);
+        await b.query("ROLLBACK").catch(() => undefined);
+        a.release();
+        b.release();
+      }
+      expect(await membershipCount(house.householdId, joiner)).toBe(0);
+    });
+
+    it("a rotation that starts while a redeem is uncommitted waits for it, so the join stands and the old code is then revoked", async () => {
+      const house = await seedHousehold(db.pool, "race-rotate-second");
+      const oldCode = (
+        await asApp(house.householdId, (client) =>
+          issueJoinCode(client, house.householdId, house.userId, hasher),
+        )
+      ).code;
+      const joiner = await newUser();
+
+      const b = await openTransaction(null);
+      const a = await openTransaction(house.householdId);
+      let bOpen = true;
+      try {
+        // B redeems first and holds the share lock on the live code, uncommitted.
+        const joined = await redeemJoinCode(b, hasher.hash(oldCode), joiner, randomUUID());
+        expect(joined?.joined).toBe(true);
+
+        const aPid = await pidOf(a);
+        const rotating = rotateJoinCode(a, house.householdId, house.userId, hasher);
+        await waitUntilBlocked(aPid);
+
+        await b.query("COMMIT");
+        bOpen = false;
+        await rotating;
+        await a.query("COMMIT");
+      } finally {
+        if (bOpen) await b.query("ROLLBACK").catch(() => undefined);
+        await a.query("ROLLBACK").catch(() => undefined);
+        a.release();
+        b.release();
+      }
+      expect(await membershipCount(house.householdId, joiner)).toBe(1);
+      const live = await db.pool.query(
+        "SELECT 1 FROM household_join_codes WHERE household_id = $1 AND revoked_at IS NULL",
+        [house.householdId],
+      );
+      expect(live.rowCount).toBe(1);
+      const afterRotation = await asApp(null, (client) =>
+        redeemJoinCode(client, hasher.hash(oldCode), joiner, randomUUID()),
+      );
+      expect(afterRotation).toBeUndefined();
+    });
+  });
+
   describe("migration 0008 round trip", () => {
     it("down removes the table and the functions; up restores them", async () => {
       const scratch = await createTestDatabase("m2t3-migration");
@@ -511,9 +641,11 @@ describe.skipIf(!dbTestsEnabled)(SUITE, () => {
         };
         expect(await objects()).toEqual({ table: 1, functions: 4 });
 
-        // M7-T1's 0009 is rolled back first, so 0008 is the last one reverted.
-        const reverted = await migrateDown(scratch.url, 2);
-        expect(reverted).toEqual(["0009_shopping_rows", "0008_household_join_codes"]);
+        // Every later migration is rolled back first (read from the
+        // migrations directory, M9-T0 b), so 0008 is the last one reverted.
+        const after = migrationsAfter(8);
+        const reverted = await migrateDown(scratch.url, after.length + 1);
+        expect(reverted).toEqual([...after].reverse().concat("0008_household_join_codes"));
         expect(await objects()).toEqual({ table: 0, functions: 0 });
         const households = await scratch.pool.query(
           "SELECT 1 FROM pg_class WHERE relname = 'household_memberships'",
@@ -521,7 +653,7 @@ describe.skipIf(!dbTestsEnabled)(SUITE, () => {
         expect(households.rowCount).toBe(1);
 
         const applied = await migrateUp(scratch.url);
-        expect(applied).toEqual(["0008_household_join_codes", "0009_shopping_rows"]);
+        expect(applied).toEqual(["0008_household_join_codes", ...after]);
         expect(await objects()).toEqual({ table: 1, functions: 4 });
       } finally {
         await scratch.drop();

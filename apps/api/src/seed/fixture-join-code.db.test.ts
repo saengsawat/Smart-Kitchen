@@ -18,8 +18,10 @@ import {
   createTestDatabase,
   dbTestsEnabled,
   noteDbSuiteSkipped,
+  seedHousehold,
   type TestDatabase,
 } from "../db/test-support/harness.js";
+import { seedChenJoinCode } from "./fixture-join-code.js";
 import { runFixtureSeed, type SeedIo } from "./seed-fixture.js";
 
 const SUITE = "M2-T3: development seed join code and household-less user";
@@ -82,6 +84,37 @@ describe.skipIf(!dbTestsEnabled)(SUITE, () => {
     const after = await db.pool.query("SELECT * FROM household_join_codes ORDER BY code_hash");
     expect(after.rows).toEqual(before.rows);
     expect(out[out.length - 1]).toContain("join code already present or rotated");
+  });
+
+  it("stamps created_at with clock_timestamp() like the runtime paths, not the transaction's now() (M9-T0 j)", async () => {
+    const house = await seedHousehold(db.pool, "seed-stamp");
+    const hasher = createJoinCodeHasher("p".repeat(40));
+    const client = await db.pool.connect();
+    try {
+      await client.query("BEGIN");
+      const started = await client.query<{ started: Date }>("SELECT now() AS started");
+      await client.query("SELECT pg_sleep(0.05)");
+      const result = await seedChenJoinCode(
+        client as unknown as Parameters<typeof seedChenJoinCode>[0],
+        house.householdId,
+        house.userId,
+        hasher,
+      );
+      await client.query("COMMIT");
+      expect(result.issued).toBe(true);
+      const row = await db.pool.query<{ created_at: Date }>(
+        "SELECT created_at FROM household_join_codes WHERE household_id = $1",
+        [house.householdId],
+      );
+      const startedAt = started.rows[0]?.started;
+      const createdAt = row.rows[0]?.created_at;
+      if (startedAt === undefined || createdAt === undefined) throw new Error("no timestamps");
+      // With the DEFAULT now() these would be equal.
+      expect(createdAt.getTime() - startedAt.getTime()).toBeGreaterThanOrEqual(40);
+    } finally {
+      await client.query("ROLLBACK").catch(() => undefined);
+      client.release();
+    }
   });
 
   it("refuses a short configured pepper before connecting", async () => {

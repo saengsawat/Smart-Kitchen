@@ -11,7 +11,7 @@ import type {
 import { SCANNABLE_BARCODE_TYPES_DTO } from "@smart-kitchen/contracts";
 import { apiClient } from "../../src/api/client";
 import { colors, fontFamily, minTouchTarget, radius, spacing } from "../../src/design/tokens";
-import { GENERIC_LEDGER_ERROR_MESSAGE, messageForLedgerError } from "../../src/inventory/errors";
+import { GENERIC_READ_ERROR_MESSAGE, messageForLedgerError } from "../../src/inventory/errors";
 import { LOCATION_LABELS } from "../../src/inventory/list-view";
 import { useReducedMotion } from "../../src/inventory/motion";
 import { chipAccessibilityLabel, ROW_CHIP_TEXT } from "../../src/inventory/provenance";
@@ -750,12 +750,13 @@ function ConfirmSheet({
             before that fetch resolves (or after it fails) would render
             every member as the neutral fallback phrase over a real
             network, which copy rule 8 does not want. A rejection shows the
-            copy-deck.md §8 generic fallback plus a retry, never a verdict
+            copy-deck.md §8 read fallback (a household load is a read, M9-T0 h)
+            plus a retry, never a verdict
             with unnamed members. */}
         <View style={styles.allergenRow}>
           {householdError ? (
             <View style={styles.allergenErrorBox} accessibilityLiveRegion="assertive">
-              <Text style={styles.allergenErrorText}>{GENERIC_LEDGER_ERROR_MESSAGE}</Text>
+              <Text style={styles.allergenErrorText}>{GENERIC_READ_ERROR_MESSAGE}</Text>
               <Pressable
                 accessibilityRole="button"
                 accessibilityLabel="Try again"

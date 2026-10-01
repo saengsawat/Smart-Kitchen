@@ -11,20 +11,6 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { flushPending } from "../test-support/flush";
 import { apiClient, FIXTURE_JOIN_CODE } from "../api/client";
 
-// `ActivityIndicator` is not one of `src/test-support/react-native-mock.ts`'s
-// primitives (that stand-in covers only what today's *other* screens use —
-// its own doc comment already flags this as a known limitation). S2 renders
-// it for the one frame before `drafts`/`loadError` settle, which every
-// render of this screen passes through, so without this it crashes before
-// any assertion runs. Aliased to the mock's own `View` (the same canonical
-// reference `importOriginal()` returns, not a new component type), so
-// `getByText`/`getByLabelText`'s identity checks on every other element are
-// unaffected.
-vi.mock("react-native", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("react-native")>();
-  return { ...actual, ActivityIndicator: actual.View };
-});
-
 let replaced: unknown[] = [];
 
 vi.mock("expo-router", () => ({

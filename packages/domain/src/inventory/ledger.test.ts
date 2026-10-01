@@ -132,6 +132,18 @@ describe("appendTransaction — validation", () => {
     ).toBe("TIMESTAMP_ORDER");
   });
 
+  it.each(["2026-02-30T00:00:00Z", "2026-09-14T24:00:00Z", "2026-04-31T08:00:00Z"])(
+    "rejects the rolled-over instant %s (M9-T0 a)",
+    (rolled) => {
+      expect(rejectionCode(item, txInput("PURCHASE", 1, { occurredAt: rolled }))).toBe(
+        "INVALID_TIMESTAMP",
+      );
+      expect(rejectionCode(item, txInput("PURCHASE", 1, { recordedAt: rolled }))).toBe(
+        "INVALID_TIMESTAMP",
+      );
+    },
+  );
+
   it("rejects incomplete attribution", () => {
     expect(
       rejectionCode(item, txInput("PURCHASE", 1, { actor: { kind: "user", userId: "" } })),
