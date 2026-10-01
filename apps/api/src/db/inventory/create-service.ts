@@ -45,6 +45,7 @@ import {
   ledgerError,
   lookupUnit,
   microsToAmount,
+  parseIsoInstantStrict,
   PLAN_KEY_INFIX,
   RESERVED_KEY_SEPARATOR,
   type LedgerError,
@@ -84,14 +85,6 @@ const CLIENT_KEY = /^[A-Za-z0-9._-]{1,128}$/;
 /** Control characters: never part of a name a person typed. */
 const CONTROL_CHARACTERS = /\p{Cc}/u;
 
-/**
- * An ISO-8601 instant with an explicit offset: the domain ledger's own
- * `ISO_INSTANT_RE` (`packages/domain/src/inventory/ledger.ts`), restated
- * because the domain does not export it and this ticket's scope stops at the
- * creation service.
- */
-const ISO_INSTANT = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,9})?(?:Z|[+-]\d{2}:\d{2})$/;
-
 /** A calendar date with nothing else, read as UTC midnight (review F1). */
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -112,9 +105,10 @@ export function canonicalBestBy(text: string): string | undefined {
     const iso = new Date(millis).toISOString();
     return iso.slice(0, 10) === text ? iso : undefined;
   }
-  if (ISO_INSTANT.test(text)) {
-    const millis = Date.parse(text);
-    if (Number.isNaN(millis)) return undefined;
+  // The domain's strict parser: shape plus a round trip, so a rolled-over
+  // instant (`2026-02-30T00:00:00Z`, `T24:00:00Z`) is refused, not stored as
+  // a different day (M9-T0 a).
+  if (parseIsoInstantStrict(text) !== undefined) {
     return canonicalizeInstant(text);
   }
   return undefined;

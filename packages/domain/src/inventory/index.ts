@@ -53,6 +53,8 @@ export {
 
 export { deepFreeze, isDeeplyFrozen } from "./freeze.js";
 
+export { ISO_INSTANT_RE, parseIsoInstantStrict } from "./instant.js";
+
 export { err, isLedgerError, ledgerError, ok } from "./errors.js";
 
 export { transactionDirection, TRANSACTION_DIRECTIONS, TRANSACTION_TYPES } from "./types.js";

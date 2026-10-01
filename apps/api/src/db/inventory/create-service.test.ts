@@ -198,12 +198,19 @@ describe("canonicalBestBy (review F1)", () => {
     expect(canonicalBestBy("2026-10-12T00:00:00.000Z")).toBe("2026-10-12T00:00:00.000Z");
   });
 
-  it.each([["1"], ["March 7"], ["2026-10-12T00:00:00"], ["2026-02-30"], [""], ["2026-13-01"]])(
-    "refuses %j",
-    (text) => {
-      expect(canonicalBestBy(text)).toBeUndefined();
-    },
-  );
+  it.each([
+    ["1"],
+    ["March 7"],
+    ["2026-10-12T00:00:00"],
+    ["2026-02-30"],
+    [""],
+    ["2026-13-01"],
+    ["2026-02-30T00:00:00Z"],
+    ["2026-10-12T24:00:00Z"],
+    ["2026-04-31T08:00:00+02:00"],
+  ])("refuses %j", (text) => {
+    expect(canonicalBestBy(text)).toBeUndefined();
+  });
 });
 
 describe("the create unit list against the domain registry", () => {
