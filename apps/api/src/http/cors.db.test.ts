@@ -57,6 +57,15 @@ function corsHeaderNames(response: LightMyRequestResponse): string[] {
   );
 }
 
+/**
+ * Under the configured allowlist, a missing or non-matching origin gets
+ * `Vary: Origin` and nothing else from CORS (review F1, ruling R1).
+ */
+function expectOnlyVary(response: LightMyRequestResponse): void {
+  expect(corsHeaderNames(response)).toEqual(["vary"]);
+  expect(response.headers["vary"]).toBe("Origin");
+}
+
 /** A body with any `correlationId` blanked, which differs per request by design. */
 function withoutCorrelation(body: unknown): unknown {
   return JSON.parse(
@@ -127,8 +136,8 @@ describe.skipIf(!dbTestsEnabled)(SUITE, () => {
       expect(fromBrowser.headers["access-control-allow-origin"]).toBe(ALLOWED);
       expect(fromBrowser.headers["vary"]).toBe("Origin");
       expect(corsHeaderNames(baseline)).toEqual([]);
-      expect(corsHeaderNames(plain)).toEqual([]);
-      expect(corsHeaderNames(fromStranger)).toEqual([]);
+      expectOnlyVary(plain);
+      expectOnlyVary(fromStranger);
     },
   );
 
@@ -151,7 +160,7 @@ describe.skipIf(!dbTestsEnabled)(SUITE, () => {
     expect(allowed.headers["access-control-allow-origin"]).toBe(ALLOWED);
     expect(allowed.headers["access-control-allow-headers"]).toBe("authorization, content-type");
     expect(stranger.statusCode).toBe(204);
-    expect(corsHeaderNames(stranger)).toEqual([]);
+    expectOnlyVary(stranger);
     expect(before.statusCode).toBe(404);
     expect(corsHeaderNames(before)).toEqual([]);
   });

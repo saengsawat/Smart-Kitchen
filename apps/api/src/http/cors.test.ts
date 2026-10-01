@@ -47,6 +47,15 @@ function corsHeaderNames(response: LightMyRequestResponse): string[] {
   );
 }
 
+/**
+ * Under a configured allowlist, a response to a missing or non-matching origin
+ * carries `Vary: Origin` and nothing else from CORS (review F1, ruling R1).
+ */
+function expectOnlyVary(response: LightMyRequestResponse): void {
+  expect(corsHeaderNames(response)).toEqual(["vary"]);
+  expect(response.headers["vary"]).toBe("Origin");
+}
+
 describe("matchAllowedOrigin", () => {
   const allowed = ["http://localhost:8081", "https://app.example.test"];
 
@@ -95,6 +104,10 @@ describe("the header set", () => {
     });
   });
 
+  it("varies on Origin with no allow-origin when nothing matched", () => {
+    expect(corsResponseHeaders(undefined)).toEqual({ vary: "Origin" });
+  });
+
   it("answers a preflight with methods, the app's two request headers and a max age", () => {
     expect(corsPreflightHeaders()).toEqual({
       "access-control-allow-methods": "GET, POST, OPTIONS",
@@ -136,6 +149,32 @@ describe("parseCorsOrigins", () => {
     expect(() => parseCorsOrigins(entry)).toThrow(CorsConfigurationError);
     expect(() => parseCorsOrigins(`http://localhost:8081,${entry}`)).toThrow(
       CorsConfigurationError,
+    );
+  });
+
+  it.each([
+    ["user and password", "https://user:s3cretpw@app.example.test", "s3cretpw"],
+    ["a password-like user", "https://s3cretpw@app.example.test", "s3cretpw"],
+    ["a query token", "https://app.example.test/?token=s3cretpw", "s3cretpw"],
+    ["a path secret", "https://app.example.test/s3cretpw", "s3cretpw"],
+    ["unparseable text", "s3cretpw not a url", "s3cretpw"],
+    ["another scheme", "ftp://app.example.test/s3cretpw", "s3cretpw"],
+  ])("never echoes the entry when refusing %s (review F2)", (_case, entry, secret) => {
+    let message = "";
+    try {
+      parseCorsOrigins(`http://localhost:8081, ${entry}`);
+    } catch (error) {
+      expect(error).toBeInstanceOf(CorsConfigurationError);
+      message = (error as Error).message;
+    }
+    expect(message).toContain("SK_CORS_ORIGINS entry 2");
+    expect(message).not.toContain(secret);
+    expect(message).not.toContain(entry);
+  });
+
+  it("says an entry with credentials contains credentials", () => {
+    expect(() => parseCorsOrigins("https://user:s3cretpw@app.example.test")).toThrow(
+      /entry 1 contains credentials/,
     );
   });
 
@@ -315,7 +354,7 @@ describe("a preflight through the app", () => {
     const response = await preflight(app, origin);
 
     expect(response.statusCode).toBe(204);
-    expect(corsHeaderNames(response)).toEqual([]);
+    expectOnlyVary(response);
   });
 
   it("with no Origin answers 204 with no CORS header at all", async () => {
@@ -323,7 +362,7 @@ describe("a preflight through the app", () => {
     const response = await preflight(app, undefined);
 
     expect(response.statusCode).toBe(204);
-    expect(corsHeaderNames(response)).toEqual([]);
+    expectOnlyVary(response);
   });
 
   it("never consults identity or opens a session, even when a token is sent", async () => {
@@ -365,7 +404,7 @@ describe("a real request through the app", () => {
     const response = await get(app, INVENTORY_ITEMS_PATH, { token: DEAN });
 
     expect(response.statusCode).toBe(200);
-    expect(corsHeaderNames(response)).toEqual([]);
+    expectOnlyVary(response);
   });
 
   it("GET from a disallowed origin answers as before, with no CORS header", async () => {
@@ -376,7 +415,7 @@ describe("a real request through the app", () => {
     });
 
     expect(response.statusCode).toBe(200);
-    expect(corsHeaderNames(response)).toEqual([]);
+    expectOnlyVary(response);
   });
 
   it("a refusal to an allowed origin still carries the origin, so the page can read it", async () => {
@@ -519,8 +558,40 @@ describe("the composition root", () => {
     const local = await preflight(app, "http://localhost:8090");
     const configured = await preflight(app, "http://example.test");
 
-    expect(corsHeaderNames(local)).toEqual([]);
+    expectOnlyVary(local);
     expect(configured.headers["access-control-allow-origin"]).toBe("http://example.test");
+  });
+
+  describe("the development startup line (review F3)", () => {
+    async function startupLines(extra: Record<string, string>): Promise<string[]> {
+      const lines: string[] = [];
+      const running = await createAppFromEnvironment(
+        { SK_IDENTITY: "fixture", DATABASE_URL: UNUSED_DB, ...extra },
+        { logging: { level: "info", destination: { write: (line) => void lines.push(line) } } },
+      );
+      open.push(running.app);
+      await running.pool.end();
+      return lines.filter((line) => line.includes("corsOrigins"));
+    }
+
+    it("logs exactly one line naming the implied origins in development", async () => {
+      const lines = await startupLines({ NODE_ENV: "development" });
+      expect(lines).toHaveLength(1);
+      const record = JSON.parse(lines[0] ?? "{}") as { corsOrigins?: unknown; msg?: unknown };
+      expect(record.corsOrigins).toEqual(["http://localhost:8081", "http://localhost:8090"]);
+      expect(record.msg).toContain("SK_CORS_ORIGINS is unset in development");
+    });
+
+    it("logs it with NODE_ENV unset too", async () => {
+      expect(await startupLines({})).toHaveLength(1);
+    });
+
+    it.each([
+      ["a configured list", { NODE_ENV: "development", SK_CORS_ORIGINS: "http://example.test" }],
+      ["NODE_ENV=test", { NODE_ENV: "test" }],
+    ])("logs nothing with %s", async (_case, extra) => {
+      expect(await startupLines(extra)).toEqual([]);
+    });
   });
 
   it("refuses to start on an allowlist entry that could never match", async () => {

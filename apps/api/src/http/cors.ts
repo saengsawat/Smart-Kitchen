@@ -16,12 +16,14 @@
  *   ({@link DEVELOPMENT_IMPLIED_ORIGINS}). In `test` and in every other
  *   environment nothing is implied.
  *
- * For a request whose `Origin` matches an entry exactly, the response carries
- * `Access-Control-Allow-Origin: <that origin>` and `Vary: Origin`. A preflight
- * (`OPTIONS` on any `/v1/` path) answers 204 and adds the allowed methods, the
- * allowed request headers and a max age. A missing or non-matching `Origin`
- * gets no CORS header of any kind, and its preflight is still a bare 204, so
- * the browser refuses the real request itself.
+ * Once an allowlist exists, every response carries `Vary: Origin`. For a
+ * request whose `Origin` matches an entry exactly, the response also carries
+ * `Access-Control-Allow-Origin: <that origin>`, and a preflight (`OPTIONS` on
+ * any `/v1/` path) answers 204 and adds the allowed methods, the allowed
+ * request headers and a max age. A missing or non-matching `Origin` gets no
+ * `Access-Control-*` header of any kind, and its preflight is a 204 with only
+ * `Vary`, so the browser refuses the real request itself. With no allowlist
+ * there is no CORS header and no `Vary` at all.
  *
  * What is deliberately absent:
  *
@@ -110,12 +112,19 @@ export class CorsConfigurationError extends Error {
  * it: `http` or `https`, a host, an optional non-default port, and nothing
  * else. A trailing slash, a path, upper case or an explicit default port would
  * never match, so they refuse to start rather than silently serve nobody.
+ *
+ * Refusals name the entry by its position, never by its text (BUG-002 review
+ * F2): a mistyped value can carry a password (`https://user:pw@host`) or a
+ * token in a query, and the refusal goes to stderr and the logs. Only `*` and
+ * `null`, which are exactly those strings, and the parsed origin (which holds
+ * no userinfo, path or query) are ever printed.
  */
-function validatedOrigin(entry: string): string {
+function validatedOrigin(entry: string, position: number): string {
+  const which = `${CORS_ORIGINS_ENV_VAR} entry ${String(position)}`;
   if (entry === "*" || entry.toLowerCase() === "null") {
     throw new CorsConfigurationError(
-      `${CORS_ORIGINS_ENV_VAR} entry "${entry}" is not allowed. List exact origins such as ` +
-        `https://app.example.com; a wildcard or the opaque "null" origin is never served.`,
+      `${which} is "${entry === "*" ? "*" : "null"}", which is never served. List exact ` +
+        `origins such as https://app.example.com.`,
     );
   }
   let parsed: URL;
@@ -123,20 +132,23 @@ function validatedOrigin(entry: string): string {
     parsed = new URL(entry);
   } catch {
     throw new CorsConfigurationError(
-      `${CORS_ORIGINS_ENV_VAR} entry "${entry}" is not an origin. Use scheme, host and port ` +
-        `only, for example http://localhost:8081.`,
+      `${which} is not an origin. Use scheme, host and port only, for example ` +
+        `http://localhost:8081.`,
+    );
+  }
+  if (parsed.username !== "" || parsed.password !== "") {
+    throw new CorsConfigurationError(
+      `${which} contains credentials (user or password before the host). An origin never ` +
+        `does; remove them, and treat the value as exposed wherever it was stored.`,
     );
   }
   if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
-    throw new CorsConfigurationError(
-      `${CORS_ORIGINS_ENV_VAR} entry "${entry}" must start with http:// or https://.`,
-    );
+    throw new CorsConfigurationError(`${which} must start with http:// or https://.`);
   }
   if (parsed.origin !== entry) {
     throw new CorsConfigurationError(
-      `${CORS_ORIGINS_ENV_VAR} entry "${entry}" would never match, because a browser sends ` +
-        `"${parsed.origin}". Write it exactly that way (no path, no trailing slash, lower case, ` +
-        `no default port).`,
+      `${which} would never match, because a browser sends "${parsed.origin}". Write it ` +
+        `exactly that way (no path, no query, no trailing slash, lower case, no default port).`,
     );
   }
   return entry;
@@ -148,7 +160,9 @@ export function parseCorsOrigins(raw: string): readonly string[] {
     .split(",")
     .map((entry) => entry.trim())
     .filter((entry) => entry !== "");
-  return Object.freeze([...new Set(entries.map(validatedOrigin))]);
+  return Object.freeze([
+    ...new Set(entries.map((entry, index) => validatedOrigin(entry, index + 1))),
+  ]);
 }
 
 /**
@@ -185,9 +199,19 @@ export function matchAllowedOrigin(
   return allowedOrigins.includes(origin) ? origin : undefined;
 }
 
-/** Headers for any response to an allowed origin. */
-export function corsResponseHeaders(origin: string): Readonly<Record<string, string>> {
-  return { "access-control-allow-origin": origin, vary: "Origin" };
+/**
+ * Headers for any response while an allowlist exists (BUG-002 review F1,
+ * ruling R1). `Vary: Origin` goes on **every** response, matched or not,
+ * preflights included, because the answer differs by `Origin` and a cache that
+ * stored a stranger's header-less answer must not hand it to the allowed page
+ * (or the reverse). `Access-Control-Allow-Origin` is added only for a match.
+ */
+export function corsResponseHeaders(
+  matchedOrigin: string | undefined,
+): Readonly<Record<string, string>> {
+  return matchedOrigin === undefined
+    ? { vary: "Origin" }
+    : { "access-control-allow-origin": matchedOrigin, vary: "Origin" };
 }
 
 /** Additional headers for a preflight answer to an allowed origin. */
@@ -200,15 +224,17 @@ export function corsPreflightHeaders(): Readonly<Record<string, string>> {
 }
 
 /**
- * First half: the `onRequest` hook that stamps the allowed origin on every
- * response. Call it **before** `registerAuthorization`. Installs nothing when
- * the allowlist is empty.
+ * First half: the `onRequest` hook that stamps `Vary: Origin` on every
+ * response and the allowed origin on a match. Call it **before**
+ * `registerAuthorization`. Installs nothing when the allowlist is empty, so
+ * with no allowlist there is no CORS header and no `Vary` at all.
  */
 export function registerCorsHeaders(app: FastifyInstance, policy: CorsPolicy): void {
   if (policy.allowedOrigins.length === 0) return;
   app.addHook("onRequest", (request: FastifyRequest, reply: FastifyReply, done) => {
-    const origin = matchAllowedOrigin(request.headers.origin, policy.allowedOrigins);
-    if (origin !== undefined) reply.headers(corsResponseHeaders(origin));
+    reply.headers(
+      corsResponseHeaders(matchAllowedOrigin(request.headers.origin, policy.allowedOrigins)),
+    );
     done();
   });
 }
