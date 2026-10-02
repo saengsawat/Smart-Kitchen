@@ -170,9 +170,16 @@ export default function ItemDetailScreen(): React.JSX.Element {
     if (!itemId) {
       return;
     }
-    await apiClient.confirmAiProposal(itemId);
-    const updated = await apiClient.getInventoryItem(itemId);
-    setDetail(updated);
+    try {
+      await apiClient.confirmAiProposal(itemId);
+      const updated = await apiClient.getInventoryItem(itemId);
+      setDetail(updated);
+    } catch (error) {
+      // BUG-004: a failed confirm (or re-read) is a failed write. Generic
+      // ledger fallback in the toast (copy-deck §8); nothing is marked
+      // confirmed and a failed confirm never re-reads.
+      show(messageForLedgerError(error));
+    }
   }
 
   if (notFound) {

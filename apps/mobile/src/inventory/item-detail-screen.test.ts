@@ -20,6 +20,7 @@ import type {
   InventoryWriteResponseDto,
 } from "@smart-kitchen/contracts";
 import { apiClient } from "../api/client";
+import { GENERIC_LEDGER_ERROR_MESSAGE } from "./errors";
 import { flushPending } from "../test-support/flush";
 import { ToastHost, ToastProvider } from "./Toast";
 
@@ -329,6 +330,32 @@ describe("S5 · item detail (component)", () => {
       } finally {
         confirmSpy.mockRestore();
       }
+    });
+
+    it("a failed confirm shows the generic ledger fallback, marks nothing confirmed, does not re-read, leaks no rejection (BUG-004)", async () => {
+      let getCalls = 0;
+      globalThis.fetch = () => {
+        getCalls += 1;
+        return Promise.resolve(
+          new Response(JSON.stringify(sampleDetail("AI_INTERPRETATION")), { status: 200 }),
+        );
+      };
+
+      // The real HttpApiClient: confirmAiProposal rejects NOT_AVAILABLE (no
+      // endpoint until M2-T5). vitest fails the run on an unhandled rejection
+      // (apps/mobile lint bans the `process` global for our own listener).
+      const result = await renderScreen();
+      await flushPending();
+      expect(result.getByText("Needs your confirmation")).toBeTruthy();
+      const getsBefore = getCalls;
+
+      fireEvent.press(result.getByLabelText("Confirm Strawberries"));
+      await flushPending(5);
+      await new Promise<void>((resolve) => setTimeout(resolve, 10));
+
+      expect(result.getByText(GENERIC_LEDGER_ERROR_MESSAGE)).toBeTruthy();
+      expect(result.getByText("Needs your confirmation")).toBeTruthy();
+      expect(getCalls).toBe(getsBefore);
     });
   });
 });

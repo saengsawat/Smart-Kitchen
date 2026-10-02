@@ -1180,10 +1180,10 @@ export class HttpApiClient implements ApiClient {
 
   constructor(baseUrl: string) {
     this.baseUrl = baseUrl;
-    // M3-T4d: `.returningUser()`, not `.newUser()` — only for
-    // `confirmAiProposal`'s pre-existing, still-fixture-only inventory (a
-    // gap outside this ticket's scope) — then immediately stripped of its
-    // household: this client's household comes only from the server
+    // M3-T4d: `.returningUser()`, not `.newUser()`; the delegate now backs
+    // only the client-local restrictions/preferences store (BUG-004:
+    // `confirmAiProposal` no longer reaches it). It is immediately stripped
+    // of its household: this client's household comes only from the server
     // (invariant: never assume a household it did not get from the
     // server), and `.returningUser()`'s household is the already-onboarded
     // Chen fixture, a false positive this client must not start with.
