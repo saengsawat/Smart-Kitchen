@@ -19,3 +19,14 @@ overrides:
   "brace-expansion@<2": "^1.1.20"
   "brace-expansion@>=2 <3": "^2.1.6"
   "brace-expansion@>=4 <5.0.11": "^5.0.11"
+
+# Audit exceptions (recorded in CONTRIBUTING.md "Dependency audit"). Each entry
+# names the advisory, why it does not reach shipped code, and when to remove it.
+# GHSA-86w9-cpqp-85rv node-forge (2026-10-01): RSA PKCS#1 v1.5 signature
+# verification; no patched version published. Reached only through @expo/cli
+# and @expo/code-signing-certificates (the dev server's code signing), never
+# bundled into the app by Metro and not a dependency of the API. Remove the
+# day a patched node-forge exists or Expo drops it; re-check at every Expo bump.
+auditConfig:
+  ignoreGhsas:
+    - GHSA-86w9-cpqp-85rv

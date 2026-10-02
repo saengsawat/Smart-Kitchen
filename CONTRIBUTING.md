@@ -117,6 +117,12 @@ is taken locally.
 
 CI runs gitleaks over every pushed commit. It flags the *shape* of a secret, not only real ones: a curl example with a literal `Authorization: Bearer <token>` header trips its `curl-auth-header` rule even when the token is a published fixture value. Put tokens in a variable in docs and scripts (`$token = "fixture.dean.chen"` then `-H "Authorization: Bearer $token"`). To check locally before pushing, download the gitleaks release binary and run `gitleaks git --log-opts="origin/main..HEAD"` in the repo (M2-T4a acceptance, 2026-09-29).
 
+## Dependency audit exceptions
+
+CI fails on any high or critical advisory (`pnpm audit --audit-level=high`). Fix order: bump the direct dependency within its major (rule 11, no new package), else pin the transitive package with an `overrides` entry in `pnpm-workspace.yaml`, else, only when no patched version exists anywhere, add the advisory to `auditConfig.ignoreGhsas` in `pnpm-workspace.yaml` with a comment naming the advisory, why it does not reach shipped code, and when to remove it. Every exception is listed here and re-checked at each bump of its parent.
+
+- `GHSA-86w9-cpqp-85rv` node-forge (2026-10-01): no patched version; reached only through `@expo/cli` and `@expo/code-signing-certificates` (dev server code signing), not bundled by Metro, not an API dependency. Remove when a patched node-forge exists or Expo drops it.
+
 ## Seeding a development database (M2-T2)
 
 `pnpm --filter api db:seed:fixture` fills a database with the synthetic
