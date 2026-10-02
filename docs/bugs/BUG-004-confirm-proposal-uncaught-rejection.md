@@ -27,7 +27,7 @@ On S4, the "Needs your confirmation" tray lists Strawberries and Mushrooms (seed
 
 ## File scope
 
-`apps/mobile/app/inventory.tsx` (`handleConfirm` and the audit only; BUG-003 edits this file's content padding in parallel, touch nothing else there), `apps/mobile/src/api/client.ts` (`confirmAiProposal` in `HttpApiClient` only), their tests, `docs/handoff/BUG-004.worker.md`.
+`apps/mobile/app/inventory.tsx` (`handleConfirm` and the audit only; BUG-003 edits this file's content padding in parallel, touch nothing else there), `apps/mobile/app/inventory/[itemId].tsx` (`handleConfirm` only; widened 2026-10-01 after the worker found the same un-caught await on S5), `apps/mobile/src/api/client.ts` (`confirmAiProposal` in `HttpApiClient` and the stale constructor comment), their tests (including `item-detail-screen.test.ts`, whose S5 Confirm test only passed through the fixture fall-through), `docs/handoff/BUG-004.worker.md`.
 
 ## Out of scope
 
