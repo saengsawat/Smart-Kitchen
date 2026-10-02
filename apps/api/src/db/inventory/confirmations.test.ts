@@ -21,7 +21,7 @@
  */
 
 import { randomUUID } from "node:crypto";
-import type { Pool, PoolClient } from "pg";
+import { Client, type Pool, type PoolClient } from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { confirmAiProposal, NotAProposalError } from "../../inventory/confirm-service.js";
 import { migrateDown, migrateUp } from "../migrate.js";
@@ -44,7 +44,7 @@ import {
 } from "../test-support/inventory-fixtures.js";
 import { migrationsAfter } from "../test-support/migration-list.js";
 import { readInventoryItemDetail } from "./detail.js";
-import { readInventoryItemSummary } from "./snapshot.js";
+import { readInventoryItemSummary, readInventorySnapshot } from "./snapshot.js";
 import { InventoryItemNotVisibleError, LedgerWriteRejectedError } from "./write-service.js";
 
 const SUITE = "M2-T5: AI proposal confirmations at the database";
@@ -59,6 +59,8 @@ interface LedgerRowSpec {
   readonly micros?: string;
   readonly source?: string;
   readonly modelRef?: string | null;
+  /** `system` writes the row the way the seed writes its receipt reads (no user). */
+  readonly actor?: "user" | "system";
 }
 
 /** The whole-table image a confirm must leave untouched. */
@@ -72,6 +74,7 @@ describe.skipIf(!dbTestsEnabled)(SUITE, () => {
   let db: TestDatabase;
   let home: SeededHousehold;
   let away: SeededHousehold;
+  let secondMemberId: string;
 
   /** Runs `fn` as `sk_app` inside `householdId`'s tenant transaction. */
   function asTenant<T>(
@@ -109,6 +112,9 @@ describe.skipIf(!dbTestsEnabled)(SUITE, () => {
           provenance_source: row.source ?? `source-${String(index)}`,
           provenance_model_ref: row.modelRef ?? null,
           provenance_confidence: row.tier === "AI_INTERPRETATION" ? "0.62" : null,
+          ...(row.actor === "system"
+            ? { actor_kind: "system", actor_user_id: null, actor_component: "fixture-seed" }
+            : {}),
         },
       );
       transactionIds.push(id);
@@ -175,6 +181,19 @@ describe.skipIf(!dbTestsEnabled)(SUITE, () => {
     db = await createTestDatabase("m2t5-confirmations");
     home = await seedHousehold(db.pool, "Confirm");
     away = await seedHousehold(db.pool, "Elsewhere");
+    // A second member of `home`, so a confirmer can differ from the row's
+    // author (review round 1, F2 and F3). "Second member": initials SM.
+    secondMemberId = randomUUID();
+    await db.pool.query(
+      `INSERT INTO users (id, auth_provider_subject, email, display_name)
+       VALUES ($1, $2, 'second@example.test', 'Second member')`,
+      [secondMemberId, `test|${secondMemberId}`],
+    );
+    await db.pool.query(
+      `INSERT INTO household_memberships (id, household_id, user_id, role)
+       VALUES ($1, $2, $3, 'member')`,
+      [randomUUID(), home.householdId, secondMemberId],
+    );
   }, 60_000);
 
   afterAll(async () => {
@@ -400,6 +419,136 @@ describe.skipIf(!dbTestsEnabled)(SUITE, () => {
       expect(result.detail.summary).toEqual(before);
       expect(result.detail.history[0]?.provenance.source).toBe("receipt C · confirmed by CO");
     });
+  });
+
+  describe("review round 1: joins and concurrency a mutant could break unseen", () => {
+    /**
+     * F1. The list read must join the confirmation of the *latest* ledger row
+     * (`c.transaction_id = q.id`), not any confirmation of the item. Joined
+     * by item, an item whose two older AI rows are confirmed would list as
+     * KNOWN_FACT while its newest reading is still unconfirmed (dropping out
+     * of S4's tray), and would list once per confirmation.
+     */
+    it("lists an item exactly once, as AI_INTERPRETATION, when only older AI rows are confirmed", async () => {
+      const item = await itemWith(home, [
+        { tier: "AI_INTERPRETATION", source: "receipt one" },
+        { tier: "AI_INTERPRETATION", source: "receipt two" },
+      ]);
+      const first = await confirm(home, item.itemId);
+      expect(first.confirmedTransactionIds).toHaveLength(2);
+
+      await insertRawTransaction(
+        db.pool,
+        {
+          householdId: home.householdId,
+          itemId: item.itemId,
+          lotId: item.lotId,
+          userId: home.userId,
+        },
+        {
+          sequence: 3,
+          provenance_tier: "AI_INTERPRETATION",
+          provenance_source: "receipt three",
+        },
+      );
+
+      const listed = await asTenant(home.householdId, (client) =>
+        readInventorySnapshot(client, home.householdId),
+      );
+      const rows = listed.filter((row) => row.itemId === item.itemId);
+      expect(rows).toHaveLength(1);
+      expect(rows[0]?.provenance.quantity).toMatchObject({
+        tier: "AI_INTERPRETATION",
+        source: "receipt three",
+      });
+    });
+
+    /**
+     * F2. The history attributes a confirmation to the confirmer
+     * (`c.confirmed_by`), never to the row's author. The real case is the
+     * seeded receipt reads: a system actor, confirmed by a person.
+     */
+    it("attributes a confirmed system-authored row to its confirmer, not its author", async () => {
+      const item = await itemWith(home, [
+        { tier: "AI_INTERPRETATION", source: "receipt read “LEMONS 3CT”", actor: "system" },
+      ]);
+
+      const result = await confirm(home, item.itemId, "second-member-key", secondMemberId);
+
+      expect(result.detail.history[0]?.actor).toEqual({ kind: "system" });
+      expect(result.detail.history[0]?.provenance).toMatchObject({
+        tier: "KNOWN_FACT",
+        source: "receipt read “LEMONS 3CT” · confirmed by SM",
+      });
+      expect(result.detail.summary.provenance.quantity?.source).toBe(
+        "receipt read “LEMONS 3CT” · confirmed by SM",
+      );
+    });
+
+    /**
+     * F3. The item lock serialises two confirms of the same item. A third
+     * connection holds the item row `FOR UPDATE`; both confirms must be seen
+     * waiting on it (drop the lock and they never wait, so this fails), and
+     * once it releases, one confirm records every row and the other none, with
+     * no error (without the lock and `ON CONFLICT DO NOTHING`, the loser gets
+     * the unique violation, 23505, which the write retry does not retry).
+     */
+    it("serialises two concurrent confirms on the item lock: one records all rows, the other none, no error", async () => {
+      const item = await itemWith(home, [
+        { tier: "AI_INTERPRETATION", source: "receipt race one" },
+        { tier: "AI_INTERPRETATION", source: "receipt race two" },
+      ]);
+      const holder = new Client({ connectionString: db.url });
+      await holder.connect();
+      let released = false;
+      try {
+        await holder.query("BEGIN");
+        await holder.query(`SELECT id FROM inventory_items WHERE id = $1 FOR UPDATE`, [
+          item.itemId,
+        ]);
+        const pid = await holder.query<{ pid: number }>(`SELECT pg_backend_pid() AS pid`);
+        const holderPid = pid.rows[0]?.pid;
+
+        const owner = confirm(home, item.itemId, "race-owner", home.userId);
+        const member = confirm(home, item.itemId, "race-member", secondMemberId);
+
+        // Both must be blocked behind the holder before it lets go.
+        const deadline = Date.now() + 10_000;
+        // The first waits on the holder's transaction; the second queues
+        // behind the first on the same row lock, so its blocker is the first,
+        // not the holder. Counted per database, which is this file's own.
+        let waiting = 0;
+        let onHolder = 0;
+        while (Date.now() < deadline) {
+          const blocked = await db.pool.query<{ waiting: string; on_holder: string }>(
+            `SELECT count(*)::text AS waiting,
+                    count(*) FILTER (WHERE $1 = ANY(pg_blocking_pids(pid)))::text AS on_holder
+               FROM pg_stat_activity
+              WHERE datname = current_database()
+                AND cardinality(pg_blocking_pids(pid)) > 0`,
+            [holderPid],
+          );
+          waiting = Number(blocked.rows[0]?.waiting ?? "0");
+          onHolder = Number(blocked.rows[0]?.on_holder ?? "0");
+          if (waiting >= 2) break;
+          await new Promise<void>((resolve) => setTimeout(resolve, 25));
+        }
+        expect(waiting).toBe(2);
+        expect(onHolder).toBeGreaterThanOrEqual(1);
+
+        await holder.query("COMMIT");
+        released = true;
+        const [a, b] = await Promise.all([owner, member]);
+
+        const counts = [a.confirmedTransactionIds.length, b.confirmedTransactionIds.length].sort();
+        expect(counts).toEqual([0, 2]);
+        expect(a.detail).toEqual(b.detail);
+        expect(await confirmationsOf(item.itemId)).toHaveLength(2);
+      } finally {
+        if (!released) await holder.query("ROLLBACK").catch(() => undefined);
+        await holder.end();
+      }
+    }, 30_000);
   });
 
   describe("what migration 0010 refuses on its own", () => {

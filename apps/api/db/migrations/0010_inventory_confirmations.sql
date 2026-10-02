@@ -19,7 +19,9 @@
 --    a confirmation can point at a ledger row with a composite foreign key
 --    that carries the household and the item (the 0003 trick). `id` is
 --    already the primary key, so the triple is unique by construction; the
---    constraint only exists to be referenced. No row is read or written.
+--    constraint only exists to be referenced. No row is written; building
+--    the index scans the ledger and holds a SHARE lock on it for that time
+--    (appends wait; on a small ledger, milliseconds).
 -- 2. Creates `inventory_confirmations`:
 --      * `transaction_id` with its household and item: the composite foreign
 --        key means a confirmation can never name another household's row, or

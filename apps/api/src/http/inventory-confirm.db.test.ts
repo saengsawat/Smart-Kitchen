@@ -278,6 +278,12 @@ describe.skipIf(!dbTestsEnabled)(SUITE, () => {
         tier: "KNOWN_FACT",
         source: "receipt read “CREMINI MUSHRM 8OZ” · confirmed by MC",
       });
+      // The seeded receipt row's author is the system (`fixture-seed`); the
+      // history credits the confirmer, Maya, not the author (review F2).
+      expect(maya.body.item.history[0]?.actor).toEqual({ kind: "system" });
+      expect(maya.body.item.history[0]?.provenance.source).toBe(
+        "receipt read “CREMINI MUSHRM 8OZ” · confirmed by MC",
+      );
       expect(await confirmations(MUSHROOMS)).toEqual([
         { confirmed_by: mayaUserId, client_key: "maya-mushrooms", model_ref: null },
       ]);
