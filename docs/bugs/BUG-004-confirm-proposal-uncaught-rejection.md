@@ -1,7 +1,7 @@
 # BUG-004: Confirm on an AI proposal throws an uncaught promise rejection over the API
 
 **Reported:** 2026-10-01 by Andy (PO), second on-device test, real mode against the seeded practice database.
-**Status:** OPEN, dispatched 2026-10-01 (Sonnet / Sonnet). The crash guard is this ticket; making Confirm actually work over the API is M2-T5 in BACKLOG.md.
+**Status:** FIXED 2026-10-01 (squash `523bbf2`, review PASS WITH FIXES then PASS). Crash guard only: over the API, Confirm on S4 and S5 now shows the generic ledger write fallback and leaves the row in the tray; `HttpApiClient.confirmAiProposal` refuses with a typed `NOT_AVAILABLE` code instead of falling through to the fixture. The worker reproduced the exact crash text against the compiled API and the fix. Making Confirm work is M2-T5 (D-028). Handoff: docs/handoff/BUG-004.{worker,review}.md.
 **Code at:** main `84ff332`.
 
 ## What Andy saw
