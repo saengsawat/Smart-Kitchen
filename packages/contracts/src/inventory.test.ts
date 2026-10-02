@@ -84,8 +84,8 @@ describe("InventoryTransactionDto / InventoryItemDetailDto (M3-T3)", () => {
 
 describe("ConfirmAiProposal DTOs (M2-T5, D-028)", () => {
   it("the request carries a client key and nothing that names a household or a person", () => {
-    const body: ConfirmAiProposalRequestDto = { clientKey: "k-1" };
-    expect(Object.keys(body)).toEqual(["clientKey"]);
+    const body: ConfirmAiProposalRequestDto = { idempotencyKey: "k-1" };
+    expect(Object.keys(body)).toEqual(["idempotencyKey"]);
   });
 
   it("the response is the item detail and nothing else, so a replay is byte-identical", () => {

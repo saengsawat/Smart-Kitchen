@@ -19,7 +19,6 @@ import type {
   InventoryWriteRequestDto,
   InventoryWriteResponseDto,
 } from "@smart-kitchen/contracts";
-import { apiClient } from "../api/client";
 import { GENERIC_LEDGER_ERROR_MESSAGE } from "./errors";
 import { flushPending } from "../test-support/flush";
 import { ToastHost, ToastProvider } from "./Toast";

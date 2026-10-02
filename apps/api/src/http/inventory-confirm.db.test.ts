@@ -101,7 +101,7 @@ describe.skipIf(!dbTestsEnabled)(SUITE, () => {
 
   async function confirm(
     itemId: string,
-    body: Record<string, unknown> = { clientKey: randomUUID() },
+    body: Record<string, unknown> = { idempotencyKey: randomUUID() },
     options: { readonly token?: string | null; readonly instance?: FastifyInstance } = {},
   ): Promise<Answer> {
     const token = options.token === undefined ? DEAN : options.token;
@@ -216,7 +216,7 @@ describe.skipIf(!dbTestsEnabled)(SUITE, () => {
     });
 
     it("Dean confirms Strawberries: 200, KNOWN_FACT with the confirmed-by source", async () => {
-      first = await confirm(STRAWBERRIES, { clientKey: "dean-strawberries-1" });
+      first = await confirm(STRAWBERRIES, { idempotencyKey: "dean-strawberries-1" });
 
       expect(first.statusCode).toBe(200);
       expect(first.body.item.summary.itemId).toBe(STRAWBERRIES);
@@ -246,28 +246,32 @@ describe.skipIf(!dbTestsEnabled)(SUITE, () => {
     });
 
     it("a second confirm with the same key returns the same body and records nothing", async () => {
-      const again = await confirm(STRAWBERRIES, { clientKey: "dean-strawberries-1" });
+      const again = await confirm(STRAWBERRIES, { idempotencyKey: "dean-strawberries-1" });
       expect(again.statusCode).toBe(200);
       expect(again.raw).toBe(first.raw);
       expect(await confirmations(STRAWBERRIES)).toHaveLength(1);
     });
 
     it("a second confirm with a different key returns the same body and records nothing", async () => {
-      const again = await confirm(STRAWBERRIES, { clientKey: "dean-strawberries-2" });
+      const again = await confirm(STRAWBERRIES, { idempotencyKey: "dean-strawberries-2" });
       expect(again.statusCode).toBe(200);
       expect(again.raw).toBe(first.raw);
       expect(await confirmations(STRAWBERRIES)).toHaveLength(1);
     });
 
     it("Maya (member) confirming the already-confirmed Strawberries gets the same body: still Dean's confirmation", async () => {
-      const maya = await confirm(STRAWBERRIES, { clientKey: "maya-strawberries" }, { token: MAYA });
+      const maya = await confirm(
+        STRAWBERRIES,
+        { idempotencyKey: "maya-strawberries" },
+        { token: MAYA },
+      );
       expect(maya.statusCode).toBe(200);
       expect(maya.raw).toBe(first.raw);
       expect(await confirmations(STRAWBERRIES)).toHaveLength(1);
     });
 
     it("Maya (member) can confirm a Dean-household item: Mushrooms, confirmed by MC", async () => {
-      const maya = await confirm(MUSHROOMS, { clientKey: "maya-mushrooms" }, { token: MAYA });
+      const maya = await confirm(MUSHROOMS, { idempotencyKey: "maya-mushrooms" }, { token: MAYA });
 
       expect(maya.statusCode).toBe(200);
       expect(maya.body.item.summary.provenance.quantity).toMatchObject({
@@ -322,9 +326,9 @@ describe.skipIf(!dbTestsEnabled)(SUITE, () => {
 
   describe("refusals by shape", () => {
     it.each([
-      ["a key with the ledger's reserved separator", { clientKey: "a::b" }],
-      ["a key with a slash", { clientKey: "a/lot/0" }],
-      ["a key with a space", { clientKey: "has space" }],
+      ["a key with the ledger's reserved separator", { idempotencyKey: "a::b" }],
+      ["a key with a slash", { idempotencyKey: "a/lot/0" }],
+      ["a key with a space", { idempotencyKey: "has space" }],
     ])("answers 400 INVALID_IDEMPOTENCY_KEY for %s, writing nothing", async (_case, body) => {
       const refused = await confirm(chenRlsItem, body);
       expect(refused.statusCode).toBe(400);
@@ -334,12 +338,14 @@ describe.skipIf(!dbTestsEnabled)(SUITE, () => {
 
     it.each([
       ["no body field at all", {}],
-      ["an empty key", { clientKey: "" }],
-      ["a key over 128 characters", { clientKey: "k".repeat(129) }],
+      // The field was `clientKey` before the rename to match every other write body.
+      ["the old field name clientKey", { clientKey: "ok" }],
+      ["an empty key", { idempotencyKey: "" }],
+      ["a key over 128 characters", { idempotencyKey: "k".repeat(129) }],
       // A literal: `it.each` rows are built at collection time, before
       // `beforeAll` has read the fixture households.
-      ["a household named in the body", { clientKey: "ok", householdId: randomUUID() }],
-      ["a user named in the body", { clientKey: "ok", confirmedBy: "someone" }],
+      ["a household named in the body", { idempotencyKey: "ok", householdId: randomUUID() }],
+      ["a user named in the body", { idempotencyKey: "ok", confirmedBy: "someone" }],
     ])("answers 400 for %s, writing nothing", async (_case, body) => {
       const refused = await confirm(chenRlsItem, body);
       expect(refused.statusCode).toBe(400);
@@ -398,7 +404,7 @@ describe.skipIf(!dbTestsEnabled)(SUITE, () => {
         // Positive control on the same instance: the caller's own item confirms.
         const own = await confirm(
           chenRlsItem,
-          { clientKey: "bypassed-own" },
+          { idempotencyKey: "bypassed-own" },
           { instance: bypassed },
         );
         expect(own.statusCode).toBe(200);

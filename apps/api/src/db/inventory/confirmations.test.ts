@@ -124,7 +124,7 @@ describe.skipIf(!dbTestsEnabled)(SUITE, () => {
   ): Promise<Awaited<ReturnType<typeof confirmAiProposal>>> {
     return asTenant(household.householdId, (client) =>
       confirmAiProposal(client, household.householdId, itemId, {
-        clientKey,
+        idempotencyKey: clientKey,
         actorUserId: userId,
       }),
     );
@@ -607,7 +607,7 @@ describe.skipIf(!dbTestsEnabled)(SUITE, () => {
       const error = await captureError(() =>
         asTenant(null, (client) =>
           confirmAiProposal(client, home.householdId, mine.itemId, {
-            clientKey: "no-context",
+            idempotencyKey: "no-context",
             actorUserId: home.userId,
           }),
         ),
@@ -657,7 +657,7 @@ describe.skipIf(!dbTestsEnabled)(SUITE, () => {
           household.householdId,
           (client) =>
             confirmAiProposal(client, household.householdId, item.itemId, {
-              clientKey: "before-rollback",
+              idempotencyKey: "before-rollback",
               actorUserId: household.userId,
             }),
           { assumeRole: APP_ROLE },

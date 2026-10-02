@@ -360,7 +360,7 @@ export function inventoryTransactionUndoPath(itemId: string, transactionId: stri
  * records nothing, whatever key it carries.
  */
 export interface ConfirmAiProposalRequestDto {
-  readonly clientKey: string;
+  readonly idempotencyKey: string;
 }
 
 /**

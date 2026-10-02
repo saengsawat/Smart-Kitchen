@@ -2330,8 +2330,8 @@ describe("HttpApiClient.confirmAiProposal (M2-T5: real POST /v1/inventory/items/
       `Bearer ${FIXTURE_IDENTITY_TOKEN}`,
     );
     const body = parsedBody<Record<string, unknown>>(calls[0]?.init);
-    expect(Object.keys(body)).toEqual(["clientKey"]);
-    expect(body["clientKey"]).toMatch(UUID_SHAPE);
+    expect(Object.keys(body)).toEqual(["idempotencyKey"]);
+    expect(body["idempotencyKey"]).toMatch(UUID_SHAPE);
   });
 
   it("goes to the network even for a fixture item id, never to the internal fixture delegate", async () => {
@@ -2357,7 +2357,7 @@ describe("HttpApiClient.confirmAiProposal (M2-T5: real POST /v1/inventory/items/
     let attempt = 0;
     globalThis.fetch = ((_url: string, init?: RequestInit) => {
       attempt += 1;
-      keys.push(parsedBody<{ clientKey: string }>(init).clientKey);
+      keys.push(parsedBody<{ idempotencyKey: string }>(init).idempotencyKey);
       if (attempt === 1) return Promise.reject(new TypeError("Network request failed"));
       return Promise.resolve(confirmedResponse());
     }) as typeof fetch;

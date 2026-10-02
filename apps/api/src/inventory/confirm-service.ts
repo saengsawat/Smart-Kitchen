@@ -44,7 +44,7 @@ import {
 
 /** What the caller asked for, with identity already resolved from the session. */
 export interface ConfirmAiProposalCommand {
-  readonly clientKey: string;
+  readonly idempotencyKey: string;
   /** The session's user. Never a request field (INV-TENANT-1). */
   readonly actorUserId: string;
 }
@@ -80,12 +80,12 @@ export async function confirmAiProposal(
   itemId: string,
   command: ConfirmAiProposalCommand,
 ): Promise<ConfirmAiProposalResult> {
-  if (!CLIENT_KEY.test(command.clientKey)) {
+  if (!CLIENT_KEY.test(command.idempotencyKey)) {
     throw new LedgerWriteRejectedError(
       ledgerError(
         "INVALID_IDEMPOTENCY_KEY",
-        "clientKey must be 1 to 128 characters of letters, digits, dot, underscore or hyphen",
-        "clientKey",
+        "idempotencyKey must be 1 to 128 characters of letters, digits, dot, underscore or hyphen",
+        "idempotencyKey",
       ),
     );
   }
@@ -103,7 +103,7 @@ export async function confirmAiProposal(
     householdId,
     itemId,
     command.actorUserId,
-    command.clientKey,
+    command.idempotencyKey,
   );
 
   const read = await readInventoryItemDetail(client, householdId, itemId);

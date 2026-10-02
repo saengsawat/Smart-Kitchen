@@ -1604,7 +1604,7 @@ export class HttpApiClient implements ApiClient {
    */
   async confirmAiProposal(itemId: string): Promise<void> {
     const url = `${this.baseUrl}${inventoryItemConfirmPath(itemId)}`;
-    const body: ConfirmAiProposalRequestDto = { clientKey: nextIdempotencyKey() };
+    const body: ConfirmAiProposalRequestDto = { idempotencyKey: nextIdempotencyKey() };
     let attempt = 0;
     for (;;) {
       let response: Response;

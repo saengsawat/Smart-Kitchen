@@ -52,9 +52,9 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const CONFIRM_BODY_SCHEMA = {
   type: "object",
   additionalProperties: false,
-  required: ["clientKey"],
+  required: ["idempotencyKey"],
   properties: {
-    clientKey: { type: "string", minLength: 1, maxLength: 128 },
+    idempotencyKey: { type: "string", minLength: 1, maxLength: 128 },
   },
 } as const;
 
@@ -123,7 +123,7 @@ export function registerConfirmRoute(app: FastifyInstance, deps: ConfirmRouteDep
       try {
         const result = await deps.tenantSession.write(session, (client) =>
           confirmAiProposal(client, session.householdId, itemId, {
-            clientKey: body.clientKey,
+            idempotencyKey: body.idempotencyKey,
             // The confirming person is the session, always. There is no request field for it.
             actorUserId: session.userId,
           }),
