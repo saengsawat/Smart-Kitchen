@@ -1016,7 +1016,8 @@ function ConfirmSheet({
  * record's quantity on this line with the Known Fact chip (the user's own
  * entry, D-025), and clearing the field restores the record's size and tier.
  * The unit is the record's and is not editable. The record itself is never
- * changed.
+ * changed. Not editable at all when the record's unit is not a supported
+ * create unit (the size would not be recorded).
  */
 function PackageSizeField({
   packageSize,
@@ -1045,6 +1046,17 @@ function PackageSizeField({
   const lineText = packageUnitSupported
     ? `${shownQty} ${unit}`
     : `${String(count)} ${count === 1 ? "package" : "packages"} of ${shownQty} ${unit}`;
+
+  // A unit the ledger cannot hold is recorded as a count of packages, so a
+  // typed size would never be saved: not editable, and no chip flip (rule 8).
+  if (!packageUnitSupported) {
+    return (
+      <>
+        <Text style={styles.productMeta}>{lineText}</Text>
+        <TierChip tier={packageSize.provenance.tier} />
+      </>
+    );
+  }
 
   if (editing) {
     const closeIfUsable = (): void => {

@@ -1262,21 +1262,41 @@ describe("S8 · editable package size (M3-T7 b)", () => {
     },
   );
 
-  it("a size the ledger cannot hold (qt) edits the '{count} packages of {qty} {unit}' text; the amount stays a count of packages", async () => {
+  it("a size the ledger cannot hold (qt) is not editable: no field opens, the chip stays Estimated, the text and the Add amount are unchanged", async () => {
     await withLookup(yogurtProduct("qt"), async () => {
       const result = await renderScreen();
       await lookUp(result, "096619555505");
       expect(result.getByText("1 package of 125 qt")).toBeTruthy();
-      openSizeField(result);
-      fireEvent.changeText(result.getByLabelText("Package size"), "2");
+      expect(result.queryByLabelText("Edit package size")).toBeNull();
+      expect(result.queryByLabelText("Package size")).toBeNull();
+      expect(result.queryByText("✓ Fact")).toBeNull();
+      expect(result.getAllByText("≈ Est.")).toHaveLength(4);
       fireEvent.press(result.getByLabelText("Increase quantity"));
-      fireEvent(result.getByLabelText("Package size"), "blur");
-      expect(result.getByText("2 packages of 2 qt")).toBeTruthy();
+      expect(result.getByText("2 packages of 125 qt")).toBeTruthy();
       const calls = spyCreate();
       fireEvent.press(result.getByLabelText("Add 2 to Fridge"));
       await flushPending();
       expect(calls[0]?.unit).toBe("each");
       expect(calls[0]?.amount).toBe("2");
+      expect(calls[0]?.quantityProvenance.source).toBe("scanned barcode");
+    });
+  });
+
+  it("a supported-unit typed size reaches the create payload in exact micros (typed x count)", async () => {
+    await withLookup(yogurtProduct("g"), async () => {
+      const result = await renderScreen();
+      await lookUp(result, "096619555505");
+      openSizeField(result);
+      fireEvent.changeText(result.getByLabelText("Package size"), "0.000001");
+      fireEvent.press(result.getByLabelText("Increase quantity"));
+      fireEvent.press(result.getByLabelText("Increase quantity"));
+      const calls = spyCreate();
+      fireEvent.press(result.getByLabelText("Add 3 to Fridge"));
+      await flushPending();
+      expect(calls[0]?.amount).toBe("0.000003");
+      const items = await apiClient.getInventoryItems();
+      const created = items.find((item) => item.displayName === "Plain Greek Yogurt");
+      expect(created?.quantity.micros).toBe("3");
     });
   });
 
