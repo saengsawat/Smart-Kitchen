@@ -16,9 +16,13 @@ import React from "react";
 import { cleanup, fireEvent, render } from "@testing-library/react-native";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { flushPending } from "../test-support/flush";
-import { apiClient, FixtureApiClient } from "../api/client";
+import { apiClient, FIXTURE_JOIN_CODE, FixtureApiClient } from "../api/client";
 import { GENERIC_LEDGER_ERROR_MESSAGE, GENERIC_READ_ERROR_MESSAGE } from "./errors";
 import { ToastHost, ToastProvider } from "./Toast";
+import { setMockBottomInset } from "../test-support/safe-area-mock";
+import { tabBarClearanceFor } from "../navigation/TabBar";
+
+vi.mock("react-native-safe-area-context", () => import("../test-support/safe-area-mock"));
 
 vi.mock("expo-router", () => ({
   useRouter: () => ({ push: () => {}, replace: () => {}, canGoBack: () => false, back: () => {} }),
@@ -162,5 +166,38 @@ describe("S4 · inventory list (component)", () => {
         },
       );
     });
+  });
+});
+
+/** BUG-003: the clearance helpers shared by the per-screen padding tests. */
+function contentPaddingBottom(result: ReturnType<typeof render>): unknown {
+  const scroll = result.UNSAFE_getByType("ScrollView" as unknown as React.ComponentType);
+  const list: readonly unknown[] = Array.isArray(scroll.props.contentContainerStyle)
+    ? scroll.props.contentContainerStyle
+    : [scroll.props.contentContainerStyle];
+  const flat: Record<string, unknown> = {};
+  for (const entry of list) {
+    if (entry && typeof entry === "object") Object.assign(flat, entry);
+  }
+  return flat.paddingBottom;
+}
+
+describe("S4 · tab bar clearance (BUG-003)", () => {
+  it("pads the scroll content by the tab bar's footprint for a non-zero bottom inset", async () => {
+    setMockBottomInset(34);
+    try {
+      await apiClient.joinHousehold(FIXTURE_JOIN_CODE);
+      const result = await (async () => {
+        const { default: InventoryScreen } = await import("../../app/inventory");
+        return render(
+          React.createElement(ToastProvider, null, React.createElement(InventoryScreen)),
+        );
+      })();
+      await flushPending();
+      expect(contentPaddingBottom(result)).toBe(tabBarClearanceFor(34));
+      expect(tabBarClearanceFor(34)).toBe(134);
+    } finally {
+      setMockBottomInset(0);
+    }
   });
 });

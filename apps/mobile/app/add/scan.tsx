@@ -1,5 +1,16 @@
 import { useEffect, useRef, useState } from "react";
-import { Linking, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import {
+  KeyboardAvoidingView,
+  Linking,
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  TextInput,
+  useWindowDimensions,
+  View,
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import type {
@@ -87,6 +98,11 @@ type ScanPhase =
  */
 export default function ScanScreen(): React.JSX.Element {
   const router = useRouter();
+  // BUG-003: the typed-code sheet clears the bottom inset; the camera panel
+  // is capped at a share of the window so the viewfinder is one-hand reachable.
+  const insets = useSafeAreaInsets();
+  const { height: windowHeight } = useWindowDimensions();
+  const cameraPanelHeight = Math.round(windowHeight * CAMERA_PANEL_MAX_FRACTION);
   const { show } = useToast();
   const reducedMotion = useReducedMotion();
   // BUG-001 review F2b: while the onboarding gate covers this screen (it
@@ -461,29 +477,31 @@ export default function ScanScreen(): React.JSX.Element {
   }
 
   return (
-    <View style={[styles.screen, styles.camScreen]}>
-      <View style={styles.camTop}>
-        <BackButton onPress={handleBack} light />
-        <Text style={styles.camTitle}>Scan barcode</Text>
-        <View style={{ width: minTouchTarget }} />
+    <View style={styles.screen}>
+      <View testID="scan-camera-panel" style={[styles.cameraPanel, { height: cameraPanelHeight }]}>
+        {permission?.granted && !gateCovered ? (
+          <CameraView
+            style={styles.cameraFill}
+            facing="back"
+            barcodeScannerSettings={{ barcodeTypes: [...SCANNABLE_BARCODE_TYPES_DTO] }}
+            onBarcodeScanned={(result) => {
+              if (scanLockRef.current) {
+                return;
+              }
+              scanLockRef.current = true;
+              void handleCode(result.data);
+            }}
+          />
+        ) : (
+          <View style={styles.cameraFill} />
+        )}
+        <View style={styles.camTop}>
+          <BackButton onPress={handleBack} light />
+          <Text style={styles.camTitle}>Scan barcode</Text>
+          <View style={{ width: minTouchTarget }} />
+        </View>
+        <ScanFrame reducedMotion={reducedMotion} />
       </View>
-      {permission?.granted && !gateCovered ? (
-        <CameraView
-          style={styles.camera}
-          facing="back"
-          barcodeScannerSettings={{ barcodeTypes: [...SCANNABLE_BARCODE_TYPES_DTO] }}
-          onBarcodeScanned={(result) => {
-            if (scanLockRef.current) {
-              return;
-            }
-            scanLockRef.current = true;
-            void handleCode(result.data);
-          }}
-        />
-      ) : (
-        <View style={styles.camera} />
-      )}
-      <ScanFrame reducedMotion={reducedMotion} />
       <Text style={styles.camHint}>Point the camera at a barcode</Text>
       {lookupFailure ? (
         <View style={styles.lookupErrorBox} accessibilityLiveRegion="assertive">
@@ -501,28 +519,34 @@ export default function ScanScreen(): React.JSX.Element {
           </Pressable>
         </View>
       ) : null}
-      <View style={styles.fallbackSheet}>
-        <Text style={styles.fallbackLabel}>Type the barcode instead</Text>
-        <View style={styles.fallbackRow}>
-          <TextInput
-            accessibilityLabel="Barcode number"
-            placeholder="e.g. 060000100025"
-            value={typedCode}
-            onChangeText={setTypedCode}
-            keyboardType="number-pad"
-            style={styles.fallbackInput}
-            onSubmitEditing={handleTypedSubmit}
-          />
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Look up code"
-            onPress={handleTypedSubmit}
-            style={styles.fallbackButton}
-          >
-            <Text style={styles.fallbackButtonText}>Look up</Text>
-          </Pressable>
+      <View style={styles.sheetSpacer} />
+      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"}>
+        <View
+          testID="scan-fallback-sheet"
+          style={[styles.fallbackSheet, { paddingBottom: insets.bottom + spacing.md }]}
+        >
+          <Text style={styles.fallbackLabel}>Type the barcode instead</Text>
+          <View style={styles.fallbackRow}>
+            <TextInput
+              accessibilityLabel="Barcode number"
+              placeholder="e.g. 060000100025"
+              value={typedCode}
+              onChangeText={setTypedCode}
+              keyboardType="number-pad"
+              style={styles.fallbackInput}
+              onSubmitEditing={handleTypedSubmit}
+            />
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Look up code"
+              onPress={handleTypedSubmit}
+              style={styles.fallbackButton}
+            >
+              <Text style={styles.fallbackButtonText}>Look up</Text>
+            </Pressable>
+          </View>
         </View>
-      </View>
+      </KeyboardAvoidingView>
     </View>
   );
 }
@@ -954,6 +978,9 @@ function Macro({
   );
 }
 
+/** BUG-003: the camera panel takes at most this share of the window height. */
+const CAMERA_PANEL_MAX_FRACTION = 0.55;
+const FRAME_HEIGHT = 150;
 const CORNER_SIZE = 22;
 const CORNER_THICKNESS = 3;
 
@@ -1001,13 +1028,31 @@ const styles = StyleSheet.create({
     paddingTop: spacing.xl,
   },
   camTitle: { color: colors.cream, fontWeight: "700", fontSize: 15, fontFamily: fontFamily.body },
-  camera: { flex: 1, backgroundColor: colors.espresso2 },
+  // BUG-003: the camera panel keeps the prototype's espresso camera look but
+  // is capped (height set inline from the window) and may shrink when the
+  // keyboard takes room; the gap below the hint is the sand screen.
+  cameraPanel: {
+    position: "relative",
+    flexShrink: 1,
+    backgroundColor: colors.espresso,
+    overflow: "hidden",
+  },
+  cameraFill: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: colors.espresso2,
+  },
+  sheetSpacer: { flex: 1 },
   frame: {
     position: "absolute",
     left: "20%",
     right: "20%",
-    top: "30%",
-    height: 150,
+    top: "50%",
+    marginTop: -FRAME_HEIGHT / 2,
+    height: FRAME_HEIGHT,
   },
   corner: {
     position: "absolute",
@@ -1048,7 +1093,7 @@ const styles = StyleSheet.create({
   },
   camHint: {
     textAlign: "center",
-    color: colors.cream,
+    color: colors.ink2,
     fontSize: 12.5,
     fontFamily: fontFamily.body,
     marginTop: spacing.sm,

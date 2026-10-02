@@ -4,6 +4,7 @@ import { useRouter } from "expo-router";
 import type { InventoryItemSummaryDto } from "@smart-kitchen/contracts";
 import { apiClient } from "../src/api/client";
 import { colors, fontFamily, minTouchTarget, radius, spacing } from "../src/design/tokens";
+import { useTabBarClearance } from "../src/navigation/TabBar";
 import { CENTER_ACTION } from "../src/navigation/tabs";
 import { daysUntil, expiryUrgencyText, freshnessRing } from "../src/inventory/expiry";
 import {
@@ -39,6 +40,7 @@ const LOCATION_TAB_LABELS: Readonly<Record<LocationFilter, string>> = {
  * rather than assuming one.
  */
 export default function InventoryScreen(): React.JSX.Element {
+  const tabBarClearance = useTabBarClearance();
   const router = useRouter();
   const reducedMotion = useReducedMotion();
   const { show } = useToast();
@@ -239,7 +241,7 @@ export default function InventoryScreen(): React.JSX.Element {
             </Pressable>
           </View>
 
-          <ScrollView contentContainerStyle={styles.content}>
+          <ScrollView contentContainerStyle={[styles.content, { paddingBottom: tabBarClearance }]}>
             {view.needsConfirmationTray.length > 0 ? (
               <View style={styles.tray}>
                 <View style={styles.trayHeader}>
@@ -551,7 +553,6 @@ const styles = StyleSheet.create({
   content: {
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.md,
-    paddingBottom: spacing.xxl * 2,
   },
   tray: {
     borderRadius: radius.md,

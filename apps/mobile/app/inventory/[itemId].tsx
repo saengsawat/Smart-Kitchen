@@ -8,6 +8,7 @@ import type {
 } from "@smart-kitchen/contracts";
 import { apiClient, type RemovalAction } from "../../src/api/client";
 import { colors, fontFamily, minTouchTarget, radius, spacing } from "../../src/design/tokens";
+import { useTabBarClearance } from "../../src/navigation/TabBar";
 import { messageForLedgerError } from "../../src/inventory/errors";
 import { daysUntil, expiryUrgencyText, freshnessRing } from "../../src/inventory/expiry";
 import { useReducedMotion, pressScaleStyle } from "../../src/inventory/motion";
@@ -38,6 +39,7 @@ const STEP_MICROS = 250_000n; // 0.25 unit, matching prototype v4's stepItemQty(
  * `null` and the component renders an empty shell rather than assuming data.
  */
 export default function ItemDetailScreen(): React.JSX.Element {
+  const tabBarClearance = useTabBarClearance();
   const params = useLocalSearchParams<{ itemId: string }>();
   const itemId = params.itemId;
   const router = useRouter();
@@ -215,7 +217,7 @@ export default function ItemDetailScreen(): React.JSX.Element {
   return (
     <View style={styles.screen}>
       <Header onBack={handleBack} title={summary.displayName ?? "Item"} chip={tier} />
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView contentContainerStyle={[styles.content, { paddingBottom: tabBarClearance }]}>
         <View style={styles.qtyBig}>
           <Text style={styles.qtyBigText}>{qtyDisplay}</Text>
           <Text style={styles.qtyBigSub}>
@@ -553,7 +555,7 @@ const styles = StyleSheet.create({
     color: colors.ink,
   },
   notFound: { padding: spacing.lg, fontSize: 14, color: colors.ink2, fontFamily: fontFamily.body },
-  content: { paddingHorizontal: spacing.lg, paddingBottom: spacing.xxl * 2, gap: spacing.sm },
+  content: { paddingHorizontal: spacing.lg, gap: spacing.sm },
   qtyBig: {
     flexDirection: "row",
     alignItems: "baseline",

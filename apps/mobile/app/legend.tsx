@@ -1,6 +1,7 @@
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useRouter } from "expo-router";
 import { colors, fontFamily, minTouchTarget, spacing } from "../src/design/tokens";
+import { useTabBarClearance } from "../src/navigation/TabBar";
 import { LEGEND_CLOSING_LINE, LEGEND_LINES, ROW_CHIP_TEXT } from "../src/inventory/provenance";
 
 /**
@@ -22,6 +23,7 @@ import { LEGEND_CLOSING_LINE, LEGEND_LINES, ROW_CHIP_TEXT } from "../src/invento
  * this sentence in copy-deck.md §10's exception table at acceptance.
  */
 export default function LegendScreen(): React.JSX.Element {
+  const tabBarClearance = useTabBarClearance();
   const router = useRouter();
 
   function handleBack(): void {
@@ -46,7 +48,7 @@ export default function LegendScreen(): React.JSX.Element {
         </Pressable>
         <Text style={styles.title}>What do these mean?</Text>
       </View>
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView contentContainerStyle={[styles.content, { paddingBottom: tabBarClearance }]}>
         <Text style={styles.intro}>
           Every value in KitchenSmart wears a tag showing how sure we are. A tag is our confidence
           in a fact. It is never a safety check by itself.
@@ -94,7 +96,7 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: colors.ink,
   },
-  content: { paddingHorizontal: spacing.lg, paddingBottom: spacing.xxl, gap: spacing.md },
+  content: { paddingHorizontal: spacing.lg, gap: spacing.md },
   intro: { fontSize: 13, color: colors.ink2, fontFamily: fontFamily.body, lineHeight: 19.5 },
   row: { flexDirection: "row", alignItems: "flex-start", gap: spacing.sm },
   chip: {

@@ -102,3 +102,26 @@ export const AccessibilityInfo = {
     return { remove: () => {} };
   },
 };
+
+/**
+ * BUG-003: S7 wraps its typed-code sheet in `KeyboardAvoidingView` and sizes
+ * the camera panel from `useWindowDimensions`. The stand-in renders the
+ * avoider as a plain host element (there is no keyboard under a test
+ * renderer) and serves a settable window size.
+ */
+export const KeyboardAvoidingView = hostComponent("KeyboardAvoidingView");
+
+export const Platform = {
+  OS: "android" as string,
+};
+
+let mockWindow = { width: 390, height: 844, scale: 2, fontScale: 1 };
+
+/** Test-only: set the window size `useWindowDimensions` reports. */
+export function setMockWindowDimensions(width: number, height: number): void {
+  mockWindow = { ...mockWindow, width, height };
+}
+
+export function useWindowDimensions(): typeof mockWindow {
+  return mockWindow;
+}

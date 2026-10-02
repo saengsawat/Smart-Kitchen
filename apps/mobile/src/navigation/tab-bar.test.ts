@@ -40,3 +40,24 @@ describe("TabBar (component)", () => {
     expect(result.getAllByRole("button")).toHaveLength(5);
   });
 });
+
+describe("tab bar clearance (BUG-003)", () => {
+  it("is bar height + bottom offset + inset + spacing.lg for an inset of 0 and of 34", async () => {
+    const { tabBarClearanceFor, TAB_BAR_HEIGHT, TAB_BAR_BOTTOM_OFFSET } = await import("./TabBar");
+    expect(TAB_BAR_HEIGHT).toBe(66);
+    expect(TAB_BAR_BOTTOM_OFFSET).toBe(18);
+    expect(tabBarClearanceFor(0)).toBe(66 + 18 + 0 + 16);
+    expect(tabBarClearanceFor(34)).toBe(66 + 18 + 34 + 16);
+  });
+
+  it("the hook reads the safe-area inset through the same formula", async () => {
+    const { useTabBarClearance, tabBarClearanceFor } = await import("./TabBar");
+    let value = -1;
+    function Probe(): null {
+      value = useTabBarClearance();
+      return null;
+    }
+    render(React.createElement(Probe));
+    expect(value).toBe(tabBarClearanceFor(0));
+  });
+});
