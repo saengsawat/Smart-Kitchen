@@ -19,6 +19,8 @@ import type {
   InventoryWriteRequestDto,
   InventoryWriteResponseDto,
 } from "@smart-kitchen/contracts";
+import { apiClient } from "../api/client";
+import { GENERIC_LEDGER_ERROR_MESSAGE } from "./errors";
 import { flushPending } from "../test-support/flush";
 import { ToastHost, ToastProvider } from "./Toast";
 import { setMockBottomInset } from "../test-support/safe-area-mock";
@@ -314,14 +316,50 @@ describe("S5 · item detail (component)", () => {
         return Promise.resolve(new Response(JSON.stringify(sampleDetail(tier)), { status: 200 }));
       };
 
+      // BUG-004: over HTTP `confirmAiProposal` now rejects NOT_AVAILABLE
+      // (no endpoint until M2-T5) instead of reaching the fixture delegate,
+      // which only "worked" here because ITEM_ID matched a fixture id. Stub
+      // the success path; this test pins S5's reload-after-confirm only.
+      const confirmSpy = vi.spyOn(apiClient, "confirmAiProposal").mockResolvedValue(undefined);
+      try {
+        const result = await renderScreen();
+        await flushPending();
+        expect(result.getByText("Needs your confirmation")).toBeTruthy();
+        const confirmButton = result.getByLabelText("Confirm Strawberries");
+        fireEvent.press(confirmButton);
+        await flushPending();
+
+        expect(confirmSpy).toHaveBeenCalledWith(ITEM_ID);
+        expect(result.queryByText("Needs your confirmation")).toBeNull();
+      } finally {
+        confirmSpy.mockRestore();
+      }
+    });
+
+    it("a failed confirm shows the generic ledger fallback, marks nothing confirmed, does not re-read, leaks no rejection (BUG-004)", async () => {
+      let getCalls = 0;
+      globalThis.fetch = () => {
+        getCalls += 1;
+        return Promise.resolve(
+          new Response(JSON.stringify(sampleDetail("AI_INTERPRETATION")), { status: 200 }),
+        );
+      };
+
+      // The real HttpApiClient: confirmAiProposal rejects NOT_AVAILABLE (no
+      // endpoint until M2-T5). vitest fails the run on an unhandled rejection
+      // (apps/mobile lint bans the `process` global for our own listener).
       const result = await renderScreen();
       await flushPending();
       expect(result.getByText("Needs your confirmation")).toBeTruthy();
-      const confirmButton = result.getByLabelText("Confirm Strawberries");
-      fireEvent.press(confirmButton);
-      await flushPending();
+      const getsBefore = getCalls;
 
-      expect(result.queryByText("Needs your confirmation")).toBeNull();
+      fireEvent.press(result.getByLabelText("Confirm Strawberries"));
+      await flushPending(5);
+      await new Promise<void>((resolve) => setTimeout(resolve, 10));
+
+      expect(result.getByText(GENERIC_LEDGER_ERROR_MESSAGE)).toBeTruthy();
+      expect(result.getByText("Needs your confirmation")).toBeTruthy();
+      expect(getCalls).toBe(getsBefore);
     });
   });
 });

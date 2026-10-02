@@ -30,6 +30,7 @@ import type {
 } from "@smart-kitchen/contracts";
 import {
   assertShoppingRowUnitMatchesItem,
+  CONFIRM_NOT_AVAILABLE_CODE,
   createApiClient,
   FIXTURE_IDENTITY_TOKEN,
   FIXTURE_JOIN_CODE,
@@ -391,6 +392,34 @@ describe("FixtureApiClient (M3-T1/M3-T2, no network, no persistence)", () => {
       await client.getInventoryItems();
       expect(client.isInventoryStale()).toBe(false);
     });
+  });
+});
+
+describe("HttpApiClient.confirmAiProposal (BUG-004)", () => {
+  it("rejects with a coded NOT_AVAILABLE refusal, never reaches the fixture delegate, makes no request", async () => {
+    const originalFetch = globalThis.fetch;
+    const fetchSpy = vi.fn();
+    globalThis.fetch = fetchSpy;
+    try {
+      const client = new HttpApiClient("http://localhost:4000");
+      const delegate = (client as unknown as { delegate: FixtureApiClient }).delegate;
+      const delegateSpy = vi.spyOn(delegate, "confirmAiProposal");
+
+      const error: unknown = await client.confirmAiProposal("server-item-id").then(
+        () => null,
+        (e: unknown) => e,
+      );
+
+      expect(error).toBeInstanceOf(LedgerRefusedError);
+      expect((error as LedgerRefusedError).code).toBe(CONFIRM_NOT_AVAILABLE_CODE);
+      expect(CONFIRM_NOT_AVAILABLE_CODE).toBe("NOT_AVAILABLE");
+      expect((error as Error).message).not.toMatch(/unknown item/i);
+      expect(messageForLedgerError(error)).toBe(GENERIC_LEDGER_ERROR_MESSAGE);
+      expect(delegateSpy).not.toHaveBeenCalled();
+      expect(fetchSpy).not.toHaveBeenCalled();
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
   });
 });
 
