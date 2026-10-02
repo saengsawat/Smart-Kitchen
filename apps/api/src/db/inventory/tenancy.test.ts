@@ -389,6 +389,7 @@ describe.skipIf(!dbTestsEnabled)(SUITE, () => {
         "household_memberships",
         "households",
         "inventory_confirmations",
+        "inventory_item_moves",
         "inventory_items",
         "inventory_lots",
         "inventory_transactions",

@@ -53,6 +53,7 @@ import {
 import { seedFixtureIdentities } from "../identity/test-support/seed-fixture-identities.js";
 import { seedChenInventory, seedItemId } from "../seed/fixture-inventory.js";
 import { createTenantSessionRunner, type TenantSessionRunner } from "./tenant-session.js";
+import { ledgerRows } from "../db/test-support/history.js";
 
 const SUITE = "M2-T2: inventory writes over HTTP (ledger, tenancy, idempotency)";
 
@@ -243,7 +244,9 @@ describe.skipIf(!dbTestsEnabled)(SUITE, () => {
 
     it("attributes the row to the session's user, as initials and never a name", async () => {
       const { body } = await detail(itemId);
-      const correction = body.history.find((row) => row.transactionId === correctionTransactionId);
+      const correction = ledgerRows(body.history).find(
+        (row) => row.transactionId === correctionTransactionId,
+      );
 
       expect(correction?.actor).toEqual({ kind: "user", displayInitials: "DC" });
       expect(JSON.stringify(body)).not.toContain("Dean Chen");
@@ -324,11 +327,13 @@ describe.skipIf(!dbTestsEnabled)(SUITE, () => {
 
     it("never deletes the row it undid: the history keeps both", async () => {
       const { body } = await detail(itemId);
-      const deltas = body.history.map((row) => row.deltaMicros);
+      const deltas = ledgerRows(body.history).map((row) => row.deltaMicros);
 
       expect(deltas).toContain("250000");
       expect(deltas).toContain("-250000");
-      expect(body.history.some((row) => row.transactionId === correctionTransactionId)).toBe(true);
+      expect(
+        ledgerRows(body.history).some((row) => row.transactionId === correctionTransactionId),
+      ).toBe(true);
     });
 
     it("replays an undo under its own key without appending twice", async () => {
@@ -362,7 +367,7 @@ describe.skipIf(!dbTestsEnabled)(SUITE, () => {
       const { statusCode, body } = await detail(itemId);
 
       expect(statusCode).toBe(200);
-      const seeded = body.history.slice(0, 4);
+      const seeded = ledgerRows(body.history).slice(0, 4);
       expect(seeded.map((row) => `${row.type} ${row.amount}`)).toEqual([
         "PURCHASE 2",
         "USE_IN_MEAL -2.250000",
@@ -373,7 +378,7 @@ describe.skipIf(!dbTestsEnabled)(SUITE, () => {
 
     it("marks the clamp as the system's own and attributes it to nobody", async () => {
       const { body } = await detail(itemId);
-      const clamp = body.history.find((row) => row.systemFlag !== undefined);
+      const clamp = ledgerRows(body.history).find((row) => row.systemFlag !== undefined);
 
       expect(clamp?.systemFlag).toBe("OVER_CONSUMPTION");
       expect(clamp?.actor).toEqual({ kind: "system" });

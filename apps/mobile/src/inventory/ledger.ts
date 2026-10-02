@@ -33,12 +33,14 @@ import type {
   InventoryItemDetailDto,
   InventoryItemSummaryDto,
   InventoryLotDto,
+  InventoryMoveEntryDto,
   InventoryTransactionDto,
   ProvenanceTierDto,
   StorageLocationDto,
   TransactionActorDto,
   TransactionTypeDto,
 } from "@smart-kitchen/contracts";
+import { mergeMovesIntoDetailHistory } from "./history";
 import { formatQuantityDisplay, microsToAmountText, parseMicros } from "./quantity";
 
 /** Thrown for the one user-triggerable ledger error a fixture write can hit (copy-deck.md §8 ZERO_DELTA). */
@@ -62,12 +64,19 @@ const MANUAL_ENTRY_SOURCE = "manual-entry";
 export interface MutableItemFixture {
   readonly itemId: string;
   readonly displayName: string;
-  readonly storageLocation: StorageLocationDto;
+  /**
+   * Where the item is now. The one mutable attribute besides the ledger: a
+   * move (M2-T6, D-024 row 1) changes it and appends to {@link moves}; it
+   * never touches {@link history} or any quantity.
+   */
+  storageLocation: StorageLocationDto;
   readonly unit: string;
   /** Static display snapshot (see module doc comment); not recomputed per transaction. */
   readonly lots: readonly InventoryLotDto[];
   /** Append-only, oldest first (the ledger's authoritative sequence order). */
   history: InventoryTransactionDto[];
+  /** Append-only record of moves between locations (M2-T6), oldest first. Not ledger rows: no quantity. */
+  moves: InventoryMoveEntryDto[];
   /**
    * Fixture-only confirmation flag (`confirmAiProposal`): the real system
    * promotes an AI observation to a household fact through a different
@@ -373,6 +382,7 @@ export function createFixtureItem(params: {
       },
     ],
     history: [],
+    moves: [],
     confirmed: false,
     needsConfirmWhenUnconfirmed: false,
     productRef: params.productRef ?? null,
@@ -443,7 +453,35 @@ export function toSummaryDto(item: MutableItemFixture): InventoryItemSummaryDto 
 
 /** Builds S5's payload: the summary plus full history, oldest first. */
 export function toDetailDto(item: MutableItemFixture): InventoryItemDetailDto {
-  return { summary: toSummaryDto(item), history: item.history };
+  return {
+    summary: toSummaryDto(item),
+    history: mergeMovesIntoDetailHistory(item.history, item.moves),
+  };
+}
+
+/**
+ * Records a move between locations (M2-T6): appends one move entry and sets the
+ * item's location. Touches no ledger row and no quantity. The caller has
+ * already refused a move to the current location.
+ */
+export function appendMove(
+  item: MutableItemFixture,
+  toLocation: StorageLocationDto,
+  recordedAt: string,
+  actor: TransactionActorDto,
+): InventoryMoveEntryDto {
+  idCounter += 1;
+  const entry: InventoryMoveEntryDto = {
+    type: "MOVED",
+    moveId: `${item.itemId}-move-${idCounter}`,
+    fromLocation: item.storageLocation,
+    toLocation,
+    recordedAt,
+    actor,
+  };
+  item.moves.push(entry);
+  item.storageLocation = toLocation;
+  return entry;
 }
 
 /** Display string for an item's on-hand quantity (formatting module, BigInt-safe throughout). */

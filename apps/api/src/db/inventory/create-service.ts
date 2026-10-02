@@ -299,10 +299,22 @@ async function findByKey(
   const found = await client.query<StoredCreation>(
     `SELECT t.item_id, t.sequence, t.type, t.qty_delta_micros::text AS qty_delta_micros, t.unit,
             t.provenance_tier, t.provenance_source, t.actor_user_id,
-            i.display_name, i.storage_location, i.product_ref,
+            i.display_name,
+            -- M2-T6: the location the item was CREATED with. A later move changes
+            -- inventory_items.storage_location, and a retried create must still
+            -- recognise itself, so when the item has moves the creation location is
+            -- the first move's source.
+            CASE WHEN fm.moved THEN fm.from_location ELSE i.storage_location END AS storage_location,
+            i.product_ref,
             l.expires_at, l.expiry_tier
        FROM inventory_transactions AS t
        JOIN inventory_items AS i ON i.household_id = t.household_id AND i.id = t.item_id
+       LEFT JOIN LATERAL (
+              SELECT m.from_location, true AS moved
+                FROM inventory_item_moves AS m
+               WHERE m.household_id = i.household_id AND m.item_id = i.id
+               ORDER BY m.occurred_at, m.id
+               LIMIT 1) AS fm ON true
        JOIN inventory_lots AS l
          ON l.household_id = t.household_id AND l.item_id = t.item_id AND l.id = t.lot_id
       WHERE t.household_id = $1 AND t.idempotency_key = $2`,

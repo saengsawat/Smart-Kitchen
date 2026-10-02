@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
+import { ledgerRowsOf } from "./history";
 import {
   appendCorrection,
   appendDecrease,
+  appendMove,
   appendRemoval,
   appendUndo,
   currentMicros,
@@ -23,6 +25,7 @@ function freshItem(): MutableItemFixture {
     unit: "lb",
     lots: [],
     history: [],
+    moves: [],
     confirmed: false,
     needsConfirmWhenUnconfirmed: false,
     productRef: null,
@@ -200,13 +203,13 @@ describe("the Chen household chicken-breast fixture reproduces the prototype led
     const chicken = inventory.get("fixture-item-chicken")!;
     const detail = toDetailDto(chicken);
 
-    expect(detail.history.map((tx) => tx.amount)).toEqual([
+    expect(ledgerRowsOf(detail.history).map((tx) => tx.amount)).toEqual([
       "2", // whole micros render with no fraction (QuantityDto.amount contract)
       "-2.250000",
       "0.250000",
       "1.250000",
     ]);
-    expect(detail.history[2]!.systemFlag).toBe("OVER_CONSUMPTION");
+    expect(ledgerRowsOf(detail.history)[2]!.systemFlag).toBe("OVER_CONSUMPTION");
     expect(detail.history[2]!.actor.kind).toBe("system");
     expect(detail.summary.quantity.amount).toBe("1.250000");
     expect(currentMicros(chicken.history)).toBe(1_250_000n);
@@ -231,5 +234,54 @@ describe("the fixture household's other rows are internally consistent", () => {
         }
       }
     }
+  });
+});
+
+describe("appendMove (M2-T6): a move is a location event, never a ledger row", () => {
+  const WHEN = "2026-10-01T12:00:00.000Z";
+
+  it("sets the location and appends one move, touching no ledger row and no quantity", () => {
+    const item = buildChenInventory().get("fixture-item-eggs")!;
+    const rowsBefore = structuredClone(item.history);
+    const microsBefore = currentMicros(item.history);
+    const lotsBefore = structuredClone(item.lots);
+
+    const entry = appendMove(item, "PANTRY", WHEN, DEAN);
+
+    expect(item.storageLocation).toBe("PANTRY");
+    expect(item.moves).toEqual([entry]);
+    expect(entry).toMatchObject({ type: "MOVED", fromLocation: "FRIDGE", toLocation: "PANTRY" });
+    expect(item.history).toEqual(rowsBefore);
+    expect(currentMicros(item.history)).toBe(microsBefore);
+    expect(item.lots).toEqual(lotsBefore);
+  });
+
+  it("gives every move its own id, and records each one's source", () => {
+    const item = buildChenInventory().get("fixture-item-eggs")!;
+    const first = appendMove(item, "PANTRY", WHEN, DEAN);
+    const second = appendMove(item, "FREEZER", "2026-10-01T12:01:00.000Z", DEAN);
+    expect(first.moveId).not.toBe(second.moveId);
+    expect(second.fromLocation).toBe("PANTRY");
+    expect(item.moves).toHaveLength(2);
+  });
+
+  it("the detail merges the move into the history by time and the summary shows the new location", () => {
+    const item = buildChenInventory().get("fixture-item-chicken")!;
+    const entry = appendMove(item, "FREEZER", WHEN, DEAN);
+    const detail = toDetailDto(item);
+    expect(detail.history).toHaveLength(item.history.length + 1);
+    expect(detail.history.at(-1)).toBe(entry);
+    expect(detail.summary.storageLocation).toBe("FREEZER");
+    // Ledger rows keep their sequence order and their content.
+    expect(ledgerRowsOf(detail.history)).toEqual(item.history);
+  });
+
+  it("a move older than a later ledger row sits before it", () => {
+    const item = freshItem();
+    const early = appendMove(item, "PANTRY", "2026-01-01T00:00:00.000Z", DEAN);
+    appendCorrection(item, 1_000_000n, "2026-02-01T00:00:00.000Z", DEAN);
+    const detail = toDetailDto(item);
+    expect(detail.history[0]).toBe(early);
+    expect(detail.history[1]).toMatchObject({ type: "ADJUSTMENT" });
   });
 });

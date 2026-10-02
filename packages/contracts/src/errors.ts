@@ -72,6 +72,13 @@ export const API_ERROR_CODES = [
    * refusal; it answers the same idempotent 200.
    */
   "NOT_A_PROPOSAL",
+  /**
+   * 409 from `POST /v1/inventory/items/{itemId}/move` when `toLocation` is
+   * the item's current location (M2-T6, D-024 row 1). Nothing is recorded.
+   * A retry of an applied move (same key) is not this refusal: it answers the
+   * same 200.
+   */
+  "SAME_LOCATION",
 ] as const;
 
 export type ApiErrorCode = (typeof API_ERROR_CODES)[number];

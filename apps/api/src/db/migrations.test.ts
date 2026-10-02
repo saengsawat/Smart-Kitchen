@@ -40,6 +40,8 @@ const APP_TABLES = [
   "inventory_transactions",
   // M2-T5 (D-028), migration 0010.
   "inventory_confirmations",
+  // M2-T6 (D-024 row 1), migration 0011.
+  "inventory_item_moves",
 ];
 
 async function tableNames(pool: Pool): Promise<string[]> {

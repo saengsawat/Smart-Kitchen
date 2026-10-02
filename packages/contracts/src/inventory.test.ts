@@ -1,15 +1,20 @@
 import { describe, expect, it } from "vitest";
 import {
   INVENTORY_ITEM_CONFIRM_ROUTE,
+  INVENTORY_ITEM_MOVE_ROUTE,
   TRANSACTION_TYPES_DTO,
   inventoryItemConfirmPath,
+  inventoryItemMovePath,
 } from "./inventory.js";
 import type {
   ConfirmAiProposalRequestDto,
   ConfirmAiProposalResponseDto,
   InventoryItemDetailDto,
   InventoryItemSummaryDto,
+  InventoryMoveEntryDto,
   InventoryTransactionDto,
+  MoveItemRequestDto,
+  MoveItemResponseDto,
 } from "./inventory.js";
 
 const SUMMARY: InventoryItemSummaryDto = {
@@ -97,5 +102,51 @@ describe("ConfirmAiProposal DTOs (M2-T5, D-028)", () => {
     expect(inventoryItemConfirmPath("item-1")).toBe("/v1/inventory/items/item-1/confirm");
     expect(inventoryItemConfirmPath("a/b")).toBe("/v1/inventory/items/a%2Fb/confirm");
     expect(INVENTORY_ITEM_CONFIRM_ROUTE).toBe("/v1/inventory/items/:itemId/confirm");
+  });
+});
+
+describe("MoveItem DTOs (M2-T6, D-024 row 1)", () => {
+  it("the request carries a destination and a key, and nothing that names a household, a person or a source", () => {
+    const body: MoveItemRequestDto = { toLocation: "PANTRY", idempotencyKey: "k-1" };
+    expect(Object.keys(body).sort()).toEqual(["idempotencyKey", "toLocation"]);
+  });
+
+  it("the response is the item detail and nothing else, so a replay is byte-identical", () => {
+    const body: MoveItemResponseDto = { item: { summary: SUMMARY, history: [] } };
+    expect(Object.keys(body)).toEqual(["item"]);
+  });
+
+  it("the move path is the item path plus /move, with the id encoded", () => {
+    expect(inventoryItemMovePath("item-1")).toBe("/v1/inventory/items/item-1/move");
+    expect(inventoryItemMovePath("a/b")).toBe("/v1/inventory/items/a%2Fb/move");
+    expect(INVENTORY_ITEM_MOVE_ROUTE).toBe("/v1/inventory/items/:itemId/move");
+  });
+
+  it("a MOVED history entry carries where the item went and no amount, and sits in the same history as ledger rows", () => {
+    const moved: InventoryMoveEntryDto = {
+      type: "MOVED",
+      moveId: "move-1",
+      fromLocation: "FRIDGE",
+      toLocation: "PANTRY",
+      recordedAt: "2026-10-01T12:00:00.000Z",
+      actor: { kind: "user", displayInitials: "DC" },
+    };
+    const detail: InventoryItemDetailDto = { summary: SUMMARY, history: [moved] };
+    expect(detail.history[0]?.type).toBe("MOVED");
+    expect(Object.keys(moved)).not.toContain("amount");
+    expect(Object.keys(moved)).not.toContain("deltaMicros");
+    expect(TRANSACTION_TYPES_DTO as readonly string[]).not.toContain("MOVED");
+  });
+
+  it("a move out of an unassigned item has a null source", () => {
+    const moved: InventoryMoveEntryDto = {
+      type: "MOVED",
+      moveId: "move-2",
+      fromLocation: null,
+      toLocation: "OTHER",
+      recordedAt: "2026-10-01T12:00:00.000Z",
+      actor: { kind: "user" },
+    };
+    expect(moved.fromLocation).toBeNull();
   });
 });

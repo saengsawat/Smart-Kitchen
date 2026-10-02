@@ -31,7 +31,9 @@
 
 import type {
   FieldProvenanceDto,
+  InventoryHistoryEntryDto,
   InventoryItemDetailDto,
+  InventoryMoveEntryDto,
   InventoryTransactionDto,
   ProvenanceTierDto,
   TransactionActorDto,
@@ -41,7 +43,9 @@ import { TRANSACTION_TYPES_DTO } from "@smart-kitchen/contracts";
 import type { ClientBase } from "pg";
 import { microsToDecimalText } from "./repository.js";
 import { confirmedProvenance } from "./confirmed-provenance.js";
+import { mergeMovesIntoHistory } from "./history-merge.js";
 import { displayInitials } from "./initials.js";
+import { parseStoredLocation, readMoveRows, type MoveRow } from "./moves.js";
 import { readInventoryItemSummary, UnknownStoredValueError } from "./snapshot.js";
 
 // Moved to `initials.ts` by M2-T5 so the summary read can use it without an
@@ -66,6 +70,8 @@ export interface LedgerHistoryEntry {
   readonly deltaMicros: bigint;
   /** The row's own key. Never leaves the server. */
   readonly idempotencyKey: string;
+  /** `recorded_at` at stored microsecond precision, fixed-width ISO text (M2-T6: the history merge key). Never on the wire. */
+  readonly recordedAtUs: string;
   /** The key of the row this one compensates, on a ledger-authored clamp row. */
   readonly clampCauseKey: string | null;
   readonly dto: InventoryTransactionDto;
@@ -79,6 +85,7 @@ interface HistoryRow {
   readonly qty_delta_micros: string;
   readonly reason: string | null;
   readonly recorded_at: Date;
+  readonly recorded_at_us: string;
   readonly actor_kind: string;
   readonly actor_display_name: string | null;
   readonly provenance_tier: string;
@@ -113,6 +120,7 @@ const HISTORY_SQL = `
          t.qty_delta_micros::text      AS qty_delta_micros,
          t.reason                      AS reason,
          t.recorded_at                 AS recorded_at,
+         to_char(t.recorded_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS recorded_at_us,
          t.actor_kind                  AS actor_kind,
          u.display_name                AS actor_display_name,
          t.provenance_tier             AS provenance_tier,
@@ -191,6 +199,7 @@ function toEntry(row: HistoryRow): LedgerHistoryEntry {
     lotId: row.lot_id,
     deltaMicros: micros,
     idempotencyKey: row.idempotency_key,
+    recordedAtUs: row.recorded_at_us,
     clampCauseKey: row.system_flag_caused_by_idempotency_key,
     dto,
   };
@@ -211,6 +220,22 @@ export async function readInventoryHistory(
   return rows.rows.map(toEntry);
 }
 
+function toMoveDto(row: MoveRow): InventoryMoveEntryDto {
+  const initials = displayInitials(row.actor_display_name);
+  const toLocation = parseStoredLocation("inventory_item_moves.to_location", row.to_location);
+  if (toLocation === null) {
+    throw new UnknownStoredValueError("inventory_item_moves.to_location", row.to_location);
+  }
+  return {
+    type: "MOVED",
+    moveId: row.id,
+    fromLocation: parseStoredLocation("inventory_item_moves.from_location", row.from_location),
+    toLocation,
+    recordedAt: row.occurred_at.toISOString(),
+    actor: initials === undefined ? { kind: "user" } : { kind: "user", displayInitials: initials },
+  };
+}
+
 /** Summary plus history, or `undefined` when the item is not visible to this session. */
 export async function readInventoryItemDetail(
   client: ClientBase,
@@ -222,5 +247,12 @@ export async function readInventoryItemDetail(
   const summary = await readInventoryItemSummary(client, householdId, itemId);
   if (summary === undefined) return undefined;
   const history = await readInventoryHistory(client, householdId, itemId);
-  return { detail: { summary, history: history.map((entry) => entry.dto) }, history };
+  // M2-T6: the item's moves are merged in by time (history-merge.ts). `history`
+  // in the return value stays ledger-only: the write path needs ledger rows.
+  const moves = await readMoveRows(client, householdId, itemId);
+  const merged = mergeMovesIntoHistory<InventoryHistoryEntryDto, InventoryHistoryEntryDto>(
+    history.map((entry) => ({ at: entry.recordedAtUs, value: entry.dto })),
+    moves.map((row) => ({ at: row.occurred_at_us, id: row.id, value: toMoveDto(row) })),
+  );
+  return { detail: { summary, history: merged }, history };
 }
