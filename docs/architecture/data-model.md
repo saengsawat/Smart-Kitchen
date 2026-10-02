@@ -111,6 +111,8 @@ ai_observations      (id, household_id, kind ENUM(barcode_photo,receipt_line,vis
 
 **Shopping rows (M7-T1, 2026-09-30).** One list per household is implicit; `shopping_lists` waits for named lists. The amount to buy is never stored: every read computes it with the domain's `neededQuantity` over `need_micros` and the item's snapshot, counting the snapshot only when its unit is the row's unit (never a conversion), with the snapshot's own tier. Stored `skipped` means removed; "already have enough" is a read-time status. Add-to-inventory appends one PURCHASE per row and generation under the ledger key `shopping-row/<rowId>/generation/<n>`, in the transaction that sets the write-once `added_transaction_id`; unchecking never reverses it. Menu and AI origins arrive with later migrations (the `origin_kind` CHECK grows then).
 
+**Confirmations (M2-T5, 2026-10-01, D-028).** `inventory_confirmations (id, household_id, item_id, transaction_id, confirmed_by, model_ref NULL, client_key, confirmed_at DEFAULT clock_timestamp(), UNIQUE (household_id, transaction_id))`, insert-only (no UPDATE, DELETE or TRUNCATE for any role), composite FK to the confirmed ledger row and to the confirmer's membership; REAL since migration 0010, which also gave `inventory_transactions` the `UNIQUE (household_id, item_id, id)` that composite FK references. A confirm inserts one row per not-yet-confirmed AI-interpreted transaction of the item (under the item's row lock, so concurrent confirms never race); reads join it to present the row as Known Fact with "{source} · confirmed by {initials}". The ledger's append-only trigger has existed since 0004 (the "enforced again by trigger in hardening milestone" note above is historical).
+
 ## 3. Snapshot maintenance & reconciliation
 
 - `inventory_items.current_qty` updated in the **same DB transaction** as each ledger append (application-level, or trigger — decide in M1-T2).
@@ -127,6 +129,8 @@ confidence        NUMERIC NULL  -- probabilistic sources only
 observed_at       TIMESTAMPTZ
 confirmed_by      UUID NULL     -- user who confirmed, where confirmation applies
 ```
+
+`provenance_confirmed_by` on the ledger is write-once at insert (a row created already confirmed); a confirmation of an existing row lives in the sibling `inventory_confirmations` table (D-028), never as an update.
 
 ## 5. Tenancy isolation & sensitive data
 
