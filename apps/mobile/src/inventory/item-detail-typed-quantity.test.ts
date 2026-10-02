@@ -6,6 +6,7 @@
  * `.test.ts` with `React.createElement`, like its siblings.
  */
 import React from "react";
+import { ledgerRowsOf } from "./history";
 import { cleanup, fireEvent, render } from "@testing-library/react-native";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AccessibilityInfo } from "react-native";
@@ -76,7 +77,7 @@ describe("S5 · typed amount (M3-T7 a)", () => {
 
     expect(spy).toHaveBeenCalledWith(EGGS, "8250000");
     const detail = await apiClient.getInventoryItem(EGGS);
-    const last = detail?.history[detail.history.length - 1];
+    const last = ledgerRowsOf(detail?.history ?? []).at(-1);
     expect(last?.deltaMicros).toBe("250000");
     expect(detail?.summary.quantity.micros).toBe("8250000");
     expect(result.getByText("8.25 of 12")).toBeTruthy();
@@ -89,7 +90,7 @@ describe("S5 · typed amount (M3-T7 a)", () => {
     fireEvent.press(result.getByLabelText("Save correction"));
     await flushPending();
     const detail = await apiClient.getInventoryItem(EGGS);
-    const last = detail?.history[detail.history.length - 1];
+    const last = ledgerRowsOf(detail?.history ?? []).at(-1);
     expect(last?.deltaMicros).toBe("1250000");
     expect(result.getByText("9.25 of 12")).toBeTruthy();
   });

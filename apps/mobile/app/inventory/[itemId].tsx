@@ -11,13 +11,22 @@ import {
 import { useLocalSearchParams, useRouter } from "expo-router";
 import type {
   InventoryItemDetailDto,
+  InventoryMoveEntryDto,
   InventoryTransactionDto,
   ProvenanceTierDto,
+  StorageLocationDto,
 } from "@smart-kitchen/contracts";
 import { apiClient, type RemovalAction } from "../../src/api/client";
 import { colors, fontFamily, minTouchTarget, radius, spacing } from "../../src/design/tokens";
 import { useTabBarClearance } from "../../src/navigation/TabBar";
-import { messageForLedgerError } from "../../src/inventory/errors";
+import { GENERIC_READ_ERROR_MESSAGE, messageForLedgerError } from "../../src/inventory/errors";
+import {
+  isMoveEntry,
+  ledgerRowsOf,
+  movedRowCaption,
+  movedRowTitle,
+  otherLocations,
+} from "../../src/inventory/history";
 import { daysUntil, expiryUrgencyText, freshnessRing } from "../../src/inventory/expiry";
 import { useReducedMotion, pressScaleStyle } from "../../src/inventory/motion";
 import { chipAccessibilityLabel, ROW_CHIP_TEXT } from "../../src/inventory/provenance";
@@ -71,6 +80,8 @@ export default function ItemDetailScreen(): React.JSX.Element {
   const [pendingReason, setPendingReason] = useState<RemovalAction | null>(null);
   const [correctionError, setCorrectionError] = useState<string | null>(null);
   const [removalError, setRemovalError] = useState<string | null>(null);
+  // M2-T6: true while a move is in flight, so a double tap sends one request.
+  const [moving, setMoving] = useState(false);
 
   const resetDraft = useCallback((micros: bigint): void => {
     setDraftMicros(micros);
@@ -226,6 +237,37 @@ export default function ItemDetailScreen(): React.JSX.Element {
     }
   }
 
+  async function handleMove(toLocation: StorageLocationDto): Promise<void> {
+    if (!itemId || moving) {
+      return;
+    }
+    setMoving(true);
+    try {
+      try {
+        await apiClient.moveItem(itemId, toLocation);
+      } catch (error) {
+        // A failed move is a failed write: the §8 fallback in the toast,
+        // nothing changes on screen, and the chips stay for another try.
+        const message = messageForLedgerError(error);
+        show(message);
+        AccessibilityInfo.announceForAccessibility(message);
+        return;
+      }
+      let updated: InventoryItemDetailDto | null;
+      try {
+        updated = await apiClient.getInventoryItem(itemId);
+      } catch {
+        // The move is recorded; only the re-read failed. Say so honestly.
+        show(GENERIC_READ_ERROR_MESSAGE);
+        return;
+      }
+      setDetail(updated);
+      show(`Moved to ${LOCATION_LABELS[toLocation]}`);
+    } finally {
+      setMoving(false);
+    }
+  }
+
   if (notFound) {
     return (
       <View style={styles.screen}>
@@ -249,7 +291,8 @@ export default function ItemDetailScreen(): React.JSX.Element {
   // chips rather than let a tap reach a rejected removeQuantity call.
   const isZeroBalance = parseMicros(summary.quantity.micros) <= 0n;
   const historyNewestFirst = [...detail.history].reverse();
-  const whyLine = buildWhyLine(qtyDisplay, summary.quantity.unit, detail.history);
+  // M2-T6: the "Why {qty}?" narrative is about quantity, so it sees ledger rows only.
+  const whyLine = buildWhyLine(qtyDisplay, summary.quantity.unit, ledgerRowsOf(detail.history));
   // Objective (g): Confirm reachable from S5, same action and label as the
   // tray/row (app/inventory.tsx's handleConfirm/TrayRow), for an AI-tier
   // item opened directly (e.g. by deep link, review F2's warm-open case).
@@ -406,6 +449,27 @@ export default function ItemDetailScreen(): React.JSX.Element {
           </View>
         ) : null}
 
+        <Text style={styles.sectionHeading}>Move to</Text>
+        <View style={styles.chipsRow}>
+          {otherLocations(summary.storageLocation).map((location) => (
+            <Pressable
+              key={location}
+              accessibilityRole="button"
+              accessibilityLabel={`Move to ${LOCATION_LABELS[location]}`}
+              accessibilityState={{ disabled: moving }}
+              disabled={moving}
+              onPress={() => void handleMove(location)}
+              style={({ pressed }) => [
+                styles.chip,
+                moving ? styles.chipDisabled : null,
+                pressScaleStyle(pressed, reducedMotion),
+              ]}
+            >
+              <Text style={styles.chipText}>{LOCATION_LABELS[location]}</Text>
+            </Pressable>
+          ))}
+        </View>
+
         {summary.lots.length > 0 ? (
           <>
             <Text style={styles.sectionHeading}>Lots</Text>
@@ -444,9 +508,13 @@ export default function ItemDetailScreen(): React.JSX.Element {
         ) : null}
 
         <Text style={styles.sectionHeading}>History</Text>
-        {historyNewestFirst.map((tx) => (
-          <HistoryRow key={tx.transactionId} tx={tx} unit={summary.quantity.unit} />
-        ))}
+        {historyNewestFirst.map((entry) =>
+          isMoveEntry(entry) ? (
+            <MovedRow key={entry.moveId} entry={entry} />
+          ) : (
+            <HistoryRow key={entry.transactionId} tx={entry} unit={summary.quantity.unit} />
+          ),
+        )}
       </ScrollView>
     </View>
   );
@@ -478,6 +546,28 @@ function Header({
           {ROW_CHIP_TEXT[chip]}
         </Text>
       ) : null}
+    </View>
+  );
+}
+
+/** M2-T6: a move between locations. No amount and no tier chip: it is where the item is, not how much (ADR-008). */
+function MovedRow({ entry }: { entry: InventoryMoveEntryDto }): React.JSX.Element {
+  const caption = movedRowCaption(entry);
+  return (
+    <View style={styles.historyRow}>
+      <View style={styles.historyIcon}>
+        <Text style={styles.historyIconGlyph}>{"→"}</Text>
+      </View>
+      <View style={styles.historyMeta}>
+        <Text style={styles.historyTitle}>{movedRowTitle(entry)}</Text>
+        <View style={styles.historyCaptionRow}>
+          {entry.actor.displayInitials ? (
+            <Text style={styles.initialsChip}>{entry.actor.displayInitials}</Text>
+          ) : null}
+          {caption ? <Text style={styles.historyCaption}>{caption}</Text> : null}
+        </View>
+        <Text style={styles.historyTime}>{formatRowTimestamp(entry.recordedAt)}</Text>
+      </View>
     </View>
   );
 }

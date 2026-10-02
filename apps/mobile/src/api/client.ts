@@ -79,11 +79,14 @@ import type {
   JoinHouseholdResponseDto,
   MemberDto,
   MemberRestrictionDto,
+  MoveItemRequestDto,
+  MoveItemResponseDto,
   OnboardingStateDto,
   ProductLookupResultDto,
   RotateJoinCodeResponseDto,
   ShoppingListDto,
   ShoppingRowDto,
+  StorageLocationDto,
   TransactionActorDto,
   UndoRequestDto,
 } from "@smart-kitchen/contracts";
@@ -94,6 +97,7 @@ import {
   HOUSEHOLDS_PATH,
   INVENTORY_ITEMS_PATH,
   inventoryItemConfirmPath,
+  inventoryItemMovePath,
   inventoryItemPath,
   inventoryItemTransactionsPath,
   inventoryTransactionUndoPath,
@@ -110,6 +114,7 @@ import type { RemovalAction } from "../inventory/transactions";
 import {
   appendCorrection,
   appendIncrease,
+  appendMove,
   appendRemoval,
   appendUndo,
   createFixtureItem,
@@ -258,6 +263,14 @@ function isInventoryItemDetailResponse(body: unknown): body is InventoryItemDeta
 
 /** Same shallow-shape-guard rule (M2-T5), for the confirm endpoint's `{ item }` envelope. */
 function isConfirmAiProposalResponse(body: unknown): body is ConfirmAiProposalResponseDto {
+  if (typeof body !== "object" || body === null) {
+    return false;
+  }
+  return isInventoryItemDetailResponse((body as { item?: unknown }).item);
+}
+
+/** Same shallow-shape-guard rule (M2-T6), for the move endpoint's `{ item }` envelope. */
+function isMoveItemResponse(body: unknown): body is MoveItemResponseDto {
   if (typeof body !== "object" || body === null) {
     return false;
   }
@@ -567,6 +580,15 @@ export interface ApiClient {
    * `POST /v1/inventory/items/{itemId}/confirm` (M2-T5).
    */
   confirmAiProposal(itemId: string): Promise<void>;
+  /**
+   * S5 "Move to" (M2-T6, D-024 row 1): moves the whole item to another
+   * storage location. A move is a recorded location event, never a ledger row:
+   * no quantity changes. The fixture sets the location and appends a `MOVED`
+   * history entry in memory; `HttpApiClient` calls
+   * `POST /v1/inventory/items/{itemId}/move`. Resolves when the move is
+   * recorded; a refusal rejects (a coded one as a `LedgerRefusedError`).
+   */
+  moveItem(itemId: string, toLocation: StorageLocationDto): Promise<void>;
   /**
    * S7/S8: resolves a scanned or typed code to a product plus its household
    * allergen screening (M3-T4b). The fixture maps a handful of codes to
@@ -974,6 +996,19 @@ export class FixtureApiClient implements ApiClient {
     try {
       const item = this.requireItem(itemId);
       item.confirmed = true;
+      return Promise.resolve();
+    } catch (error) {
+      return Promise.reject(toError(error));
+    }
+  }
+
+  moveItem(itemId: string, toLocation: StorageLocationDto): Promise<void> {
+    try {
+      const item = this.requireItem(itemId);
+      if (item.storageLocation === toLocation) {
+        throw new LedgerRefusedError("SAME_LOCATION");
+      }
+      appendMove(item, toLocation, new Date().toISOString(), DEAN_ACTOR);
       return Promise.resolve();
     } catch (error) {
       return Promise.reject(toError(error));
@@ -1633,6 +1668,56 @@ export class HttpApiClient implements ApiClient {
       if (this.cachedItems) {
         this.cachedItems = this.cachedItems.map((item) =>
           item.itemId === confirmed.itemId ? confirmed : item,
+        );
+      }
+      return;
+    }
+  }
+
+  /**
+   * `POST /v1/inventory/items/{itemId}/move` (M2-T6, D-024 row 1). One client
+   * key per call, minted before the first attempt and reused unchanged on the
+   * one network retry (the server answers the same 200 for a repeated key and
+   * destination and records nothing). A well-formed refusal (404, 409
+   * `SAME_LOCATION`, 409 `CONFLICT`, a 400) is thrown as a
+   * {@link LedgerRefusedError} carrying only the code, never retried and never
+   * the server's message.
+   *
+   * On success the summary cache entry for this item is replaced with the
+   * server's post-move summary, so the stale-cache fallback (copy-deck §7 S4)
+   * can never regroup the item under its old location.
+   */
+  async moveItem(itemId: string, toLocation: StorageLocationDto): Promise<void> {
+    const url = `${this.baseUrl}${inventoryItemMovePath(itemId)}`;
+    const body: MoveItemRequestDto = { toLocation, idempotencyKey: nextIdempotencyKey() };
+    let attempt = 0;
+    for (;;) {
+      let response: Response;
+      try {
+        response = await fetch(url, {
+          method: "POST",
+          headers: { ...this.authHeaders(), "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+      } catch (networkError) {
+        if (attempt >= MAX_NETWORK_RETRIES) {
+          throw toError(networkError);
+        }
+        attempt += 1;
+        continue;
+      }
+      if (!response.ok) {
+        const errorBody: unknown = await response.json().catch(() => null);
+        throw new LedgerRefusedError(extractErrorCode(errorBody) ?? "INTERNAL");
+      }
+      const parsedBody: unknown = await response.json();
+      if (!isMoveItemResponse(parsedBody)) {
+        throw new Error(`POST ${url} returned an unexpected response body`);
+      }
+      const moved = parsedBody.item.summary;
+      if (this.cachedItems) {
+        this.cachedItems = this.cachedItems.map((item) =>
+          item.itemId === moved.itemId ? moved : item,
         );
       }
       return;

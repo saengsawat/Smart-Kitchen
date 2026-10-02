@@ -309,6 +309,105 @@ describe.skipIf(!dbTestsEnabled)(SUITE, () => {
     });
   });
 
+  /**
+   * M2-T6 (D-024 row 1): a move is a recorded location event, so it gets the
+   * ledger's own two layers. The table holds one move written for this block
+   * alone.
+   */
+  describe("inventory_item_moves is append-only too (M2-T6)", () => {
+    let movedItem: SeededItem;
+
+    beforeAll(async () => {
+      movedItem = await seedItem(db.pool, household.householdId);
+      await db.pool.query(
+        `INSERT INTO inventory_item_moves
+                (household_id, item_id, from_location, to_location, moved_by, client_key)
+         VALUES ($1, $2, 'FRIDGE', 'PANTRY', $3, 'append-only-probe')`,
+        [household.householdId, movedItem.itemId, household.userId],
+      );
+    });
+
+    it("holds exactly INSERT and SELECT on inventory_item_moves", async () => {
+      const grants = await db.pool.query<{ privilege_type: string }>(
+        `SELECT privilege_type
+           FROM information_schema.role_table_grants
+          WHERE grantee = $1 AND table_name = 'inventory_item_moves'
+          ORDER BY privilege_type`,
+        [APP_ROLE],
+      );
+      expect(grants.rows.map((row) => row.privilege_type)).toEqual(["INSERT", "SELECT"]);
+    });
+
+    it.each([
+      ["UPDATE", `UPDATE inventory_item_moves SET client_key = 'edited' WHERE item_id = $1`],
+      ["DELETE", `DELETE FROM inventory_item_moves WHERE item_id = $1`],
+    ])("refuses a %s as sk_app", async (_op, sql) => {
+      const failure = pgFailure(
+        await captureError(() =>
+          withHouseholdTransaction(
+            db.pool,
+            household.householdId,
+            (client) => client.query(sql, [movedItem.itemId]),
+            { assumeRole: APP_ROLE },
+          ),
+        ),
+      );
+      expect(failure.code).toBe("42501");
+    });
+
+    it("refuses a TRUNCATE as sk_app", async () => {
+      const failure = pgFailure(
+        await captureError(() =>
+          withHouseholdTransaction(
+            db.pool,
+            household.householdId,
+            (client) => client.query(`TRUNCATE inventory_item_moves`),
+            { assumeRole: APP_ROLE },
+          ),
+        ),
+      );
+      expect(failure.code).toBe("42501");
+    });
+
+    it.each([
+      ["UPDATE", `UPDATE inventory_item_moves SET client_key = 'edited' WHERE item_id = $1`],
+      ["DELETE", `DELETE FROM inventory_item_moves WHERE item_id = $1`],
+    ])("refuses a %s as the owner", async (op, sql) => {
+      const failure = pgFailure(await captureError(() => db.pool.query(sql, [movedItem.itemId])));
+      expect(failure.code).toBe("0A000");
+      expect(failure.message).toMatch(/inventory_item_moves is append-only/);
+      expect(failure.message).toContain(`${op} is not permitted`);
+    });
+
+    it("refuses a TRUNCATE as the owner", async () => {
+      const failure = pgFailure(
+        await captureError(() => db.pool.query(`TRUNCATE inventory_item_moves`)),
+      );
+      expect(failure.code).toBe("0A000");
+      expect(failure.message).toMatch(/TRUNCATE is not permitted/);
+    });
+
+    it("leaves the move untouched after every refused attempt", async () => {
+      const stored = await db.pool.query<{ count: string; client_key: string }>(
+        `SELECT count(*)::text AS count, min(client_key) AS client_key
+           FROM inventory_item_moves WHERE item_id = $1`,
+        [movedItem.itemId],
+      );
+      expect(stored.rows[0]).toEqual({ count: "1", client_key: "append-only-probe" });
+    });
+
+    it("sk_app may update the location column of an item (the move's own write) and no snapshot column", async () => {
+      const grants = await db.pool.query<{ column_name: string }>(
+        `SELECT column_name
+           FROM information_schema.column_privileges
+          WHERE grantee = $1 AND table_name = 'inventory_items' AND privilege_type = 'UPDATE'
+          ORDER BY column_name`,
+        [APP_ROLE],
+      );
+      expect(grants.rows.map((row) => row.column_name)).toContain("storage_location");
+    });
+  });
+
   describe("snapshot columns are out of the runtime role's reach", () => {
     it("grants sk_app UPDATE only on item metadata columns", async () => {
       const grants = await db.pool.query<{ column_name: string }>(

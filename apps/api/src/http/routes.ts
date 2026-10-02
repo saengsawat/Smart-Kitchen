@@ -54,6 +54,7 @@ import {
   type InventoryWriteResult,
 } from "../db/inventory/write-service.js";
 import { registerConfirmRoute } from "../inventory/confirm-route.js";
+import { registerMoveRoute } from "../inventory/move-route.js";
 import { householdRoute, publicRoute, requireSession } from "./authorization.js";
 import { registerHouseholdRoutes, type HouseholdRouteDeps } from "./household-routes.js";
 import { registerProductRoutes, type ProductRouteDeps } from "./product-routes.js";
@@ -398,6 +399,10 @@ export function registerRoutes(app: FastifyInstance, deps: RouteDeps): void {
   // M2-T5 (D-028): `POST /v1/inventory/items/:itemId/confirm`, a household
   // route for any member. Handler and service live in `src/inventory/`.
   registerConfirmRoute(app, { tenantSession: deps.tenantSession });
+
+  // M2-T6 (D-024 row 1): `POST /v1/inventory/items/:itemId/move`, a household
+  // route for any member. Handler and service live in `src/inventory/`.
+  registerMoveRoute(app, { tenantSession: deps.tenantSession });
 
   // M7-T1: always registered, like the inventory routes; they need nothing
   // beyond the tenant session.

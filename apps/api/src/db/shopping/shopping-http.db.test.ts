@@ -57,6 +57,7 @@ import {
   SHOPPING_CHECK_OFF_SOURCE,
   shoppingPurchaseKey,
 } from "./service.js";
+import { ledgerRows as ledgerOnly } from "../test-support/history.js";
 
 const SUITE = "M7-T1: shopping list endpoints over HTTP";
 
@@ -607,7 +608,7 @@ describe.skipIf(!dbTestsEnabled)(SUITE, () => {
         inventoryItemPath(CHICKEN_ITEM),
         DEAN,
       );
-      const fromShopping = detail.body.history.filter(
+      const fromShopping = ledgerOnly(detail.body.history).filter(
         (row) => row.provenance.source === SHOPPING_CHECK_OFF_SOURCE,
       );
       expect(fromShopping).toHaveLength(1);

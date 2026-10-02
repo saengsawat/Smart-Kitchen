@@ -203,11 +203,40 @@ export interface InventoryTransactionDto {
   readonly correlationLabel?: string;
 }
 
-/** S5's payload: the item summary plus its full ledger history, in sequence order. */
+/**
+ * One move of an item between storage locations (M2-T6, D-024 row 1), as S5's
+ * history shows it: "Moved to Pantry", no amount. Not a ledger row: a move is
+ * a fact about where the item is, never about how much of it there is
+ * (ADR-008), so it carries no `deltaMicros`, no `amount` and no provenance
+ * tier. `type: "MOVED"` is the discriminant against {@link InventoryTransactionDto}
+ * and is deliberately not one of {@link TRANSACTION_TYPES_DTO}.
+ */
+export interface InventoryMoveEntryDto {
+  readonly type: "MOVED";
+  readonly moveId: string;
+  /** `null` when the item had no location before this move. */
+  readonly fromLocation: StorageLocationDto | null;
+  readonly toLocation: StorageLocationDto;
+  /** When the server recorded the move. */
+  readonly recordedAt: string;
+  /** Always `kind: "user"`, with the two-letter chip when the name is visible to the caller. */
+  readonly actor: TransactionActorDto;
+}
+
+/** One entry of an item's history: a ledger row or a move. Discriminate on `type`. */
+export type InventoryHistoryEntryDto = InventoryTransactionDto | InventoryMoveEntryDto;
+
+/**
+ * S5's payload: the item summary plus its history.
+ *
+ * History is the item's ledger rows merged with its moves (M2-T6), oldest
+ * first. Ledger rows stay in `sequence` order, the ledger's authoritative
+ * order. Each move sits before the first ledger row recorded after it, and a
+ * move recorded at exactly the same instant as a ledger row sorts after it.
+ */
 export interface InventoryItemDetailDto {
   readonly summary: InventoryItemSummaryDto;
-  /** Ledger rows oldest first (`sequence` ascending), the ledger's authoritative order. */
-  readonly history: readonly InventoryTransactionDto[];
+  readonly history: readonly InventoryHistoryEntryDto[];
 }
 
 // ---------------------------------------------------------------------------
@@ -378,6 +407,46 @@ export const INVENTORY_ITEM_CONFIRM_ROUTE = "/v1/inventory/items/:itemId/confirm
 /** `POST` path of the confirm endpoint for one item, with the id encoded. */
 export function inventoryItemConfirmPath(itemId: string): string {
   return `${inventoryItemPath(itemId)}/confirm`;
+}
+
+// ---------------------------------------------------------------------------
+// M2-T6: moving an item between storage locations (D-024 row 1).
+//
+// Location is an attribute of an item, not a quantity, so a move is a recorded
+// location event and never a ledger row (ADR-008): the server inserts one
+// `inventory_item_moves` row and updates `inventory_items.storage_location` in
+// one database transaction. No quantity changes. The caller never names an
+// actor (the session is the actor, INV-TENANT-1).
+// ---------------------------------------------------------------------------
+
+/**
+ * Body of `POST /v1/inventory/items/{itemId}/move`.
+ *
+ * Idempotent on `(itemId, idempotencyKey)` (same key shape as
+ * {@link InventoryWriteRequestDto.idempotencyKey}): a retry with the same key
+ * and the same `toLocation` answers the same 200 and records nothing; the same
+ * key with a different `toLocation` is a 409 `CONFLICT`. A `toLocation` equal
+ * to the item's current location is a 409 `SAME_LOCATION`.
+ */
+export interface MoveItemRequestDto {
+  readonly toLocation: StorageLocationDto;
+  readonly idempotencyKey: string;
+}
+
+/**
+ * Response of the move endpoint: the item as it stands afterwards (summary
+ * with the new location, history with the `MOVED` entry). No replay flag: a
+ * retry and a first attempt answer byte-identical bodies.
+ */
+export interface MoveItemResponseDto {
+  readonly item: InventoryItemDetailDto;
+}
+
+export const INVENTORY_ITEM_MOVE_ROUTE = "/v1/inventory/items/:itemId/move";
+
+/** `POST` path of the move endpoint for one item, with the id encoded. */
+export function inventoryItemMovePath(itemId: string): string {
+  return `${inventoryItemPath(itemId)}/move`;
 }
 
 // ---------------------------------------------------------------------------

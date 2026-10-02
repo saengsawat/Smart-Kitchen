@@ -46,6 +46,7 @@ import { migrationsAfter } from "../test-support/migration-list.js";
 import { readInventoryItemDetail } from "./detail.js";
 import { readInventoryItemSummary, readInventorySnapshot } from "./snapshot.js";
 import { InventoryItemNotVisibleError, LedgerWriteRejectedError } from "./write-service.js";
+import { ledgerRows } from "../test-support/history.js";
 
 const SUITE = "M2-T5: AI proposal confirmations at the database";
 it.runIf(!dbTestsEnabled)(`SKIP NOTICE: ${SUITE} did not run`, () => {
@@ -394,14 +395,21 @@ describe.skipIf(!dbTestsEnabled)(SUITE, () => {
         readInventoryItemDetail(client, home.householdId, item.itemId),
       );
       expect(
-        read?.detail.history.map((row) => [row.provenance.tier, row.provenance.source]),
+        ledgerRows(read?.detail.history ?? []).map((row) => [
+          row.provenance.tier,
+          row.provenance.source,
+        ]),
       ).toEqual([
         ["KNOWN_FACT", "receipt A · confirmed by CO"],
         ["ESTIMATED", "shelf-life guess"],
         ["KNOWN_FACT", "receipt B · confirmed by CO"],
       ]);
       // The actor is still whoever wrote the row; confirming is not authoring.
-      expect(read?.detail.history.map((row) => row.actor.kind)).toEqual(["user", "user", "user"]);
+      expect(ledgerRows(read?.detail.history ?? []).map((row) => row.actor.kind)).toEqual([
+        "user",
+        "user",
+        "user",
+      ]);
     });
 
     it("leaves the summary alone when the latest row is not AI, while still confirming the older AI row", async () => {
@@ -417,7 +425,9 @@ describe.skipIf(!dbTestsEnabled)(SUITE, () => {
 
       expect(result.confirmedTransactionIds).toEqual([item.transactionIds[0]]);
       expect(result.detail.summary).toEqual(before);
-      expect(result.detail.history[0]?.provenance.source).toBe("receipt C · confirmed by CO");
+      expect(ledgerRows(result.detail.history)[0]?.provenance.source).toBe(
+        "receipt C · confirmed by CO",
+      );
     });
   });
 
@@ -476,7 +486,7 @@ describe.skipIf(!dbTestsEnabled)(SUITE, () => {
       const result = await confirm(home, item.itemId, "second-member-key", secondMemberId);
 
       expect(result.detail.history[0]?.actor).toEqual({ kind: "system" });
-      expect(result.detail.history[0]?.provenance).toMatchObject({
+      expect(ledgerRows(result.detail.history)[0]?.provenance).toMatchObject({
         tier: "KNOWN_FACT",
         source: "receipt read “LEMONS 3CT” · confirmed by SM",
       });

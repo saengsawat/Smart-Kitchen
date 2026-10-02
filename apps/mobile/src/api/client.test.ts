@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { ledgerRowsOf } from "../inventory/history";
 import {
   INVENTORY_ITEMS_PATH,
   SHOPPING_PATH,
@@ -297,12 +298,12 @@ describe("FixtureApiClient (M3-T1/M3-T2, no network, no persistence)", () => {
       const result = await client.correctQuantity("fixture-item-chicken", "1500000");
       const detail = await client.getInventoryItem("fixture-item-chicken");
       expect(detail?.summary.quantity.micros).toBe("1500000");
-      expect(detail?.history.at(-1)?.type).toBe("ADJUSTMENT");
-      expect(detail?.history.at(-1)?.deltaMicros).toBe("250000");
+      expect(ledgerRowsOf(detail?.history ?? []).at(-1)?.type).toBe("ADJUSTMENT");
+      expect(ledgerRowsOf(detail?.history ?? []).at(-1)?.deltaMicros).toBe("250000");
       // Review F3: the resolved transactionId is the row this call actually
       // appended, so a caller never has to assume "the last row in history"
       // (which a concurrent write could make wrong).
-      expect(result.transactionId).toBe(detail?.history.at(-1)?.transactionId);
+      expect(result.transactionId).toBe(ledgerRowsOf(detail?.history ?? []).at(-1)?.transactionId);
     });
 
     it("correctQuantity's resolved transactionId still names the right row even if another write lands after it (review F3)", async () => {
@@ -312,9 +313,11 @@ describe("FixtureApiClient (M3-T1/M3-T2, no network, no persistence)", () => {
       // gets around to reading history back.
       await client.correctQuantity("fixture-item-chicken", "2000000");
       const detail = await client.getInventoryItem("fixture-item-chicken");
-      const namedRow = detail?.history.find((tx) => tx.transactionId === result.transactionId);
+      const namedRow = ledgerRowsOf(detail?.history ?? []).find(
+        (tx) => tx.transactionId === result.transactionId,
+      );
       expect(namedRow?.deltaMicros).toBe("250000"); // the first correction's own delta
-      expect(namedRow).not.toBe(detail?.history.at(-1)); // NOT the same row as "last in history"
+      expect(namedRow).not.toBe(ledgerRowsOf(detail?.history ?? []).at(-1)); // NOT the same row as "last in history"
     });
 
     it("correctQuantity rejects a no-op correction (zero delta)", async () => {
@@ -327,7 +330,7 @@ describe("FixtureApiClient (M3-T1/M3-T2, no network, no persistence)", () => {
       await client.removeQuantity("fixture-item-spinach", "DISCARD", "Spoiled");
       const detail = await client.getInventoryItem("fixture-item-spinach");
       expect(detail?.summary.quantity.micros).toBe("0");
-      const last = detail?.history.at(-1);
+      const last = ledgerRowsOf(detail?.history ?? []).at(-1);
       expect(last?.type).toBe("DISCARD");
       // M3-T4a: the reason lives in the row's own `reason` field, matching
       // the real endpoint (review F4 ruling: never correlationLabel, which
@@ -350,14 +353,16 @@ describe("FixtureApiClient (M3-T1/M3-T2, no network, no persistence)", () => {
       const client = FixtureApiClient.returningUser();
       await client.correctQuantity("fixture-item-chicken", "1500000");
       const beforeUndo = await client.getInventoryItem("fixture-item-chicken");
-      const correctionId = beforeUndo!.history.at(-1)!.transactionId;
+      const correctionId = ledgerRowsOf(beforeUndo!.history).at(-1)!.transactionId;
       const historyLengthBefore = beforeUndo!.history.length;
 
       await client.undo("fixture-item-chicken", correctionId);
       const afterUndo = await client.getInventoryItem("fixture-item-chicken");
       expect(afterUndo?.history).toHaveLength(historyLengthBefore + 1);
       expect(afterUndo?.summary.quantity.micros).toBe("1250000");
-      expect(afterUndo?.history.some((tx) => tx.transactionId === correctionId)).toBe(true);
+      expect(
+        ledgerRowsOf(afterUndo?.history ?? []).some((tx) => tx.transactionId === correctionId),
+      ).toBe(true);
     });
 
     it("undo rejects an unknown transaction id", async () => {
@@ -1660,7 +1665,7 @@ describe("FixtureApiClient shopping methods (M3-T5)", () => {
     const after = await client.getInventoryItem("fixture-item-chicken");
 
     expect(after?.summary.quantity.micros).toBe((BigInt(beforeMicros) + 750_000n).toString());
-    const appended = after!.history.at(-1)!;
+    const appended = ledgerRowsOf(after!.history).at(-1)!;
     expect(appended.type).toBe("PURCHASE");
     expect(appended.deltaMicros).toBe("750000");
     // Review F6: not just the delta/type — the row's declared unit ("lb")

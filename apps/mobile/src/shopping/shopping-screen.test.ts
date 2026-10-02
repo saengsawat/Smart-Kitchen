@@ -19,6 +19,7 @@
  * test in this file.
  */
 import React from "react";
+import { ledgerRowsOf } from "../inventory/history";
 import { cleanup, fireEvent, render } from "@testing-library/react-native";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { flushPending } from "../test-support/flush";
@@ -109,7 +110,7 @@ describe("S11 · shopping list (component)", () => {
     const after = await apiClient.getInventoryItem("fixture-item-chicken");
     expect(after?.summary.quantity.amount).toBe("2");
     expect(after?.history.at(-1)?.type).toBe("PURCHASE");
-    expect(after?.history.at(-1)?.deltaMicros).toBe("750000");
+    expect(ledgerRowsOf(after?.history ?? []).at(-1)?.deltaMicros).toBe("750000");
     expect(result.getByText("Chicken breast added to Fridge · inventory updated")).toBeTruthy();
     // The loop bar is gone once Add succeeds.
     expect(result.queryByText("Chicken breast checked off · add it to the pantry?")).toBeNull();

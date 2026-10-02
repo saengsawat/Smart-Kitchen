@@ -46,6 +46,7 @@ import {
 import { seedFixtureIdentities } from "../identity/test-support/seed-fixture-identities.js";
 import { seedChenInventory, seedItemId } from "../seed/fixture-inventory.js";
 import { createTenantSessionRunner, type TenantSessionRunner } from "./tenant-session.js";
+import { ledgerRows } from "../db/test-support/history.js";
 
 const SUITE = "M2-T5: confirm an AI proposal over HTTP (D-028, tenancy, idempotency)";
 
@@ -224,7 +225,9 @@ describe.skipIf(!dbTestsEnabled)(SUITE, () => {
         tier: "KNOWN_FACT",
         source: "receipt read “ORG STRWB 1LB” · confirmed by DC",
       });
-      expect(first.body.item.history.map((row) => row.provenance.tier)).toEqual(["KNOWN_FACT"]);
+      expect(ledgerRows(first.body.item.history).map((row) => row.provenance.tier)).toEqual([
+        "KNOWN_FACT",
+      ]);
     });
 
     it("the list endpoint shows Strawberries as KNOWN_FACT with the same source", async () => {
@@ -281,7 +284,7 @@ describe.skipIf(!dbTestsEnabled)(SUITE, () => {
       // The seeded receipt row's author is the system (`fixture-seed`); the
       // history credits the confirmer, Maya, not the author (review F2).
       expect(maya.body.item.history[0]?.actor).toEqual({ kind: "system" });
-      expect(maya.body.item.history[0]?.provenance.source).toBe(
+      expect(ledgerRows(maya.body.item.history)[0]?.provenance.source).toBe(
         "receipt read “CREMINI MUSHRM 8OZ” · confirmed by MC",
       );
       expect(await confirmations(MUSHROOMS)).toEqual([
