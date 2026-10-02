@@ -1109,4 +1109,16 @@ describe("S7 · bottom inset and camera size (BUG-003)", () => {
     );
     expect(panel.findAll((n) => n.props.pointerEvents === "none")).not.toHaveLength(0);
   });
+
+  it("centres the brackets frame in the panel and lets the panel shrink for the keyboard", async () => {
+    __setMockCameraPermission({ granted: true, canAskAgain: true, status: "granted" });
+    const result = await renderScreen();
+    const panel = result.getByTestId("scan-camera-panel");
+    expect(flattenStyle(panel.props.style).flexShrink).toBe(1);
+    const frame = panel.findAll((n) => n.props.pointerEvents === "none")[0];
+    const style = flattenStyle(frame?.props.style);
+    expect(style.top).toBe("50%");
+    expect(style.height).toBe(150);
+    expect(style.marginTop).toBe(-75);
+  });
 });
