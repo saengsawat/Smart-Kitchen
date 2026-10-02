@@ -44,6 +44,7 @@ import { seedChenShopping, seedShoppingRowId } from "../../seed/fixture-shopping
 import { appendTransactionToDb } from "../inventory/repository.js";
 import { migrateDown, migrateUp } from "../migrate.js";
 import { withHouseholdTransaction } from "../session.js";
+import { migrationsAfter } from "../test-support/migration-list.js";
 import {
   APP_ROLE,
   createTestDatabase,
@@ -1245,9 +1246,15 @@ describe.skipIf(!dbTestsEnabled)(SUITE, () => {
           };
         };
         expect(await objects()).toEqual({ tables: 2, guard: 1, constraint: 1 });
-        expect(await migrateDown(scratch.url, 1)).toEqual(["0009_shopping_rows"]);
+        // Every later migration is rolled back first (read from the
+        // migrations directory, the M9-T0 b pattern; M2-T5 added 0010), so
+        // 0009 is the last one reverted.
+        const after = migrationsAfter(9);
+        expect(await migrateDown(scratch.url, after.length + 1)).toEqual(
+          [...after].reverse().concat("0009_shopping_rows"),
+        );
         expect(await objects()).toEqual({ tables: 0, guard: 0, constraint: 0 });
-        expect(await migrateUp(scratch.url)).toEqual(["0009_shopping_rows"]);
+        expect(await migrateUp(scratch.url)).toEqual(["0009_shopping_rows", ...after]);
         expect(await objects()).toEqual({ tables: 2, guard: 1, constraint: 1 });
       } finally {
         await scratch.drop();

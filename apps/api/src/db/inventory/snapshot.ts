@@ -45,6 +45,7 @@ import type {
   StorageLocationDto,
 } from "@smart-kitchen/contracts";
 import type { ClientBase } from "pg";
+import { confirmedProvenance } from "./confirmed-provenance.js";
 import { microsToDecimalText } from "./repository.js";
 
 /** Raised when a stored enum value is outside the union this build knows. */
@@ -98,6 +99,9 @@ interface ItemRow {
   readonly qty_source: string | null;
   readonly qty_confidence: string | null;
   readonly qty_recorded_at: Date | null;
+  /** M2-T5: whether the latest ledger row has a confirmation (D-028). */
+  readonly qty_confirmed: boolean;
+  readonly qty_confirmer_display_name: string | null;
 }
 
 interface LotRow {
@@ -117,6 +121,13 @@ interface LotRow {
  * The lateral join orders by `sequence`, the ledger's authoritative order, not
  * by `recorded_at`: two rows can share a timestamp, and the sequence is the
  * only total order the ledger guarantees (domain-model.md §2).
+ *
+ * M2-T5 (D-028): that latest row's confirmation, if a member recorded one, is
+ * joined on with the confirmer's display name, so a confirmed receipt read
+ * presents as KNOWN_FACT ("… · confirmed by DC") without the ledger row
+ * changing. Both are `LEFT JOIN`s: an unconfirmed row, and a confirmer the
+ * users policy hides, must not make the item vanish. `UNIQUE (household_id,
+ * transaction_id)` keeps the join to at most one row.
  */
 const ITEMS_SQL = `
   SELECT i.id                          AS item_id,
@@ -129,16 +140,22 @@ const ITEMS_SQL = `
          q.provenance_tier             AS qty_tier,
          q.provenance_source           AS qty_source,
          q.provenance_confidence::text AS qty_confidence,
-         q.recorded_at                 AS qty_recorded_at
+         q.recorded_at                 AS qty_recorded_at,
+         (c.id IS NOT NULL)            AS qty_confirmed,
+         cu.display_name               AS qty_confirmer_display_name
     FROM inventory_items AS i
     LEFT JOIN LATERAL (
-      SELECT t.provenance_tier, t.provenance_source, t.provenance_confidence, t.recorded_at
+      SELECT t.id, t.provenance_tier, t.provenance_source, t.provenance_confidence, t.recorded_at
         FROM inventory_transactions AS t
        WHERE t.household_id = i.household_id
          AND t.item_id = i.id
        ORDER BY t.sequence DESC
        LIMIT 1
     ) AS q ON true
+    LEFT JOIN inventory_confirmations AS c
+      ON c.household_id = i.household_id
+     AND c.transaction_id = q.id
+    LEFT JOIN users AS cu ON cu.id = c.confirmed_by
    WHERE i.household_id = $1
    ORDER BY i.created_at, i.id`;
 
@@ -161,16 +178,22 @@ const ITEM_BY_ID_SQL = `
          q.provenance_tier             AS qty_tier,
          q.provenance_source           AS qty_source,
          q.provenance_confidence::text AS qty_confidence,
-         q.recorded_at                 AS qty_recorded_at
+         q.recorded_at                 AS qty_recorded_at,
+         (c.id IS NOT NULL)            AS qty_confirmed,
+         cu.display_name               AS qty_confirmer_display_name
     FROM inventory_items AS i
     LEFT JOIN LATERAL (
-      SELECT t.provenance_tier, t.provenance_source, t.provenance_confidence, t.recorded_at
+      SELECT t.id, t.provenance_tier, t.provenance_source, t.provenance_confidence, t.recorded_at
         FROM inventory_transactions AS t
        WHERE t.household_id = i.household_id
          AND t.item_id = i.id
        ORDER BY t.sequence DESC
        LIMIT 1
     ) AS q ON true
+    LEFT JOIN inventory_confirmations AS c
+      ON c.household_id = i.household_id
+     AND c.transaction_id = q.id
+    LEFT JOIN users AS cu ON cu.id = c.confirmed_by
    WHERE i.household_id = $1
      AND i.id = $2`;
 
@@ -203,12 +226,16 @@ const LOTS_BY_ITEM_SQL = `
 
 function quantityProvenance(row: ItemRow): FieldProvenanceDto | null {
   if (row.qty_tier === null) return null;
-  return {
+  const stored: FieldProvenanceDto = {
     tier: toProvenanceTier(row.qty_tier, "inventory_transactions.provenance_tier"),
     source: row.qty_source,
     confidence: row.qty_confidence,
     recordedAt: row.qty_recorded_at === null ? null : row.qty_recorded_at.toISOString(),
   };
+  return confirmedProvenance(stored, {
+    confirmed: row.qty_confirmed,
+    confirmerDisplayName: row.qty_confirmer_display_name,
+  });
 }
 
 function expiryProvenance(row: LotRow): FieldProvenanceDto | null {

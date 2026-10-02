@@ -40,7 +40,13 @@ import type {
 import { TRANSACTION_TYPES_DTO } from "@smart-kitchen/contracts";
 import type { ClientBase } from "pg";
 import { microsToDecimalText } from "./repository.js";
+import { confirmedProvenance } from "./confirmed-provenance.js";
+import { displayInitials } from "./initials.js";
 import { readInventoryItemSummary, UnknownStoredValueError } from "./snapshot.js";
+
+// Moved to `initials.ts` by M2-T5 so the summary read can use it without an
+// import cycle; re-exported so every existing importer keeps working.
+export { displayInitials } from "./initials.js";
 
 const PROVENANCE_TIERS: ReadonlySet<string> = new Set([
   "KNOWN_FACT",
@@ -81,6 +87,9 @@ interface HistoryRow {
   readonly idempotency_key: string;
   readonly system_flag_kind: string | null;
   readonly system_flag_caused_by_idempotency_key: string | null;
+  /** M2-T5: whether a member confirmed this row (`inventory_confirmations`, D-028). */
+  readonly confirmed: boolean;
+  readonly confirmer_display_name: string | null;
 }
 
 /**
@@ -90,6 +99,11 @@ interface HistoryRow {
  * to join, and a user the `users_shared_household` policy hides must make the
  * row render without a chip rather than make the row vanish. History that
  * silently loses a statement is worse than history with an unattributed one.
+ *
+ * M2-T5 joins the row's confirmation, if any, and the confirmer's display
+ * name, both `LEFT JOIN`s for the same reason. `UNIQUE (household_id,
+ * transaction_id)` on the confirmations table means the join can never
+ * duplicate a ledger row.
  */
 const HISTORY_SQL = `
   SELECT t.id                          AS id,
@@ -106,36 +120,18 @@ const HISTORY_SQL = `
          t.provenance_confidence::text AS provenance_confidence,
          t.idempotency_key             AS idempotency_key,
          t.system_flag_kind            AS system_flag_kind,
-         t.system_flag_caused_by_idempotency_key AS system_flag_caused_by_idempotency_key
+         t.system_flag_caused_by_idempotency_key AS system_flag_caused_by_idempotency_key,
+         (c.id IS NOT NULL)            AS confirmed,
+         cu.display_name               AS confirmer_display_name
     FROM inventory_transactions AS t
     LEFT JOIN users AS u ON u.id = t.actor_user_id
+    LEFT JOIN inventory_confirmations AS c
+      ON c.household_id = t.household_id
+     AND c.transaction_id = t.id
+    LEFT JOIN users AS cu ON cu.id = c.confirmed_by
    WHERE t.household_id = $1
      AND t.item_id = $2
    ORDER BY t.sequence`;
-
-/**
- * Two-letter chip for a display name: first letter of the first word, first
- * letter of the last (`Dean Chen` becomes `DC`).
- *
- * Returns `undefined` for a name with no letters in it rather than an empty
- * chip. Uses the string's code points so a name outside the Basic Multilingual
- * Plane is not cut in half.
- */
-export function displayInitials(displayName: string | null): string | undefined {
-  if (displayName === null) return undefined;
-  const words = displayName.split(/\s+/).filter((word) => word !== "");
-  const first = words[0];
-  const last = words[words.length - 1];
-  if (first === undefined || last === undefined) return undefined;
-  const letters =
-    words.length === 1 ? [firstCodePoint(first)] : [firstCodePoint(first), firstCodePoint(last)];
-  const chip = letters.join("").toUpperCase();
-  return chip === "" ? undefined : chip;
-}
-
-function firstCodePoint(word: string): string {
-  return [...word][0] ?? "";
-}
 
 function toActor(row: HistoryRow): TransactionActorDto {
   if (!ACTOR_KINDS.has(row.actor_kind)) {
@@ -154,12 +150,17 @@ function toProvenance(row: HistoryRow): FieldProvenanceDto {
       row.provenance_tier,
     );
   }
-  return {
+  const stored: FieldProvenanceDto = {
     tier: row.provenance_tier as ProvenanceTierDto,
     source: row.provenance_source,
     confidence: row.provenance_confidence,
     recordedAt: row.recorded_at.toISOString(),
   };
+  // M2-T5: a confirmed AI row presents as KNOWN_FACT, the ledger row unchanged.
+  return confirmedProvenance(stored, {
+    confirmed: row.confirmed,
+    confirmerDisplayName: row.confirmer_display_name,
+  });
 }
 
 function toEntry(row: HistoryRow): LedgerHistoryEntry {

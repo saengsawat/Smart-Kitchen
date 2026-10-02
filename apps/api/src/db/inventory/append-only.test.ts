@@ -177,10 +177,21 @@ describe.skipIf(!dbTestsEnabled)(SUITE, () => {
     });
 
     it("refuses a TRUNCATE as the owner", async () => {
-      const failure = pgFailure(
+      // M2-T5 (migration 0010): `inventory_confirmations` now references this
+      // table, so a plain TRUNCATE is refused by the foreign-key check before
+      // the trigger is reached. Still refused, same code. `CASCADE` is the
+      // form that gets past that check, so it is the one that proves the
+      // ledger's own trigger still holds; both are asserted.
+      const plain = pgFailure(
         await captureError(() => db.pool.query(`TRUNCATE inventory_transactions`)),
       );
+      expect(plain.code).toBe("0A000");
+
+      const failure = pgFailure(
+        await captureError(() => db.pool.query(`TRUNCATE inventory_transactions CASCADE`)),
+      );
       expect(failure.code).toBe("0A000");
+      expect(failure.message).toMatch(/inventory_transactions is append-only \(INV-LEDGER-2/);
       expect(failure.message).toMatch(/TRUNCATE is not permitted/);
     });
 
@@ -192,6 +203,109 @@ describe.skipIf(!dbTestsEnabled)(SUITE, () => {
       );
       expect(stored.rows[0]?.count).toBe("2");
       expect(stored.rows[0]?.reason).toBeNull();
+    });
+  });
+
+  /**
+   * M2-T5 (D-028): a confirmation is a fact about a ledger row, so it gets the
+   * ledger's own two layers. The table holds one row confirming an
+   * AI-interpreted transaction written for this block alone.
+   */
+  describe("inventory_confirmations is append-only too (D-028)", () => {
+    let aiItem: SeededItem;
+
+    beforeAll(async () => {
+      aiItem = await seedItem(db.pool, household.householdId);
+      await insertRawTransaction(
+        db.pool,
+        {
+          householdId: household.householdId,
+          itemId: aiItem.itemId,
+          lotId: aiItem.lotId,
+          userId: household.userId,
+        },
+        { provenance_tier: "AI_INTERPRETATION", provenance_source: "receipt read" },
+      );
+      await db.pool.query(
+        `INSERT INTO inventory_confirmations
+                (household_id, item_id, transaction_id, confirmed_by, client_key)
+         SELECT household_id, item_id, id, $2, 'append-only-probe'
+           FROM inventory_transactions WHERE item_id = $1`,
+        [aiItem.itemId, household.userId],
+      );
+    });
+
+    it("holds exactly INSERT and SELECT on inventory_confirmations", async () => {
+      const grants = await db.pool.query<{ privilege_type: string }>(
+        `SELECT privilege_type
+           FROM information_schema.role_table_grants
+          WHERE grantee = $1 AND table_name = 'inventory_confirmations'
+          ORDER BY privilege_type`,
+        [APP_ROLE],
+      );
+      expect(grants.rows.map((row) => row.privilege_type)).toEqual(["INSERT", "SELECT"]);
+    });
+
+    it.each([
+      ["UPDATE", `UPDATE inventory_confirmations SET client_key = 'edited' WHERE item_id = $1`],
+      ["DELETE", `DELETE FROM inventory_confirmations WHERE item_id = $1`],
+    ])("refuses a %s as sk_app", async (_op, sql) => {
+      const failure = pgFailure(
+        await captureError(() =>
+          withHouseholdTransaction(
+            db.pool,
+            household.householdId,
+            (client) => client.query(sql, [aiItem.itemId]),
+            { assumeRole: APP_ROLE },
+          ),
+        ),
+      );
+      expect(failure.code).toBe("42501");
+    });
+
+    it("refuses a TRUNCATE as sk_app", async () => {
+      const failure = pgFailure(
+        await captureError(() =>
+          withHouseholdTransaction(
+            db.pool,
+            household.householdId,
+            (client) => client.query(`TRUNCATE inventory_confirmations`),
+            { assumeRole: APP_ROLE },
+          ),
+        ),
+      );
+      expect(failure.code).toBe("42501");
+    });
+
+    it.each([
+      [
+        "UPDATE",
+        `UPDATE inventory_confirmations SET client_key = 'edited' WHERE item_id = $1`,
+        [] as string[],
+      ],
+      ["DELETE", `DELETE FROM inventory_confirmations WHERE item_id = $1`, [] as string[]],
+    ])("refuses a %s as the owner", async (op, sql) => {
+      const failure = pgFailure(await captureError(() => db.pool.query(sql, [aiItem.itemId])));
+      expect(failure.code).toBe("0A000");
+      expect(failure.message).toMatch(/inventory_confirmations is append-only/);
+      expect(failure.message).toContain(`${op} is not permitted`);
+    });
+
+    it("refuses a TRUNCATE as the owner", async () => {
+      const failure = pgFailure(
+        await captureError(() => db.pool.query(`TRUNCATE inventory_confirmations`)),
+      );
+      expect(failure.code).toBe("0A000");
+      expect(failure.message).toMatch(/TRUNCATE is not permitted/);
+    });
+
+    it("leaves the confirmation untouched after every refused attempt", async () => {
+      const stored = await db.pool.query<{ count: string; client_key: string }>(
+        `SELECT count(*)::text AS count, min(client_key) AS client_key
+           FROM inventory_confirmations WHERE item_id = $1`,
+        [aiItem.itemId],
+      );
+      expect(stored.rows[0]).toEqual({ count: "1", client_key: "append-only-probe" });
     });
   });
 

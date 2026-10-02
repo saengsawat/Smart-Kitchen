@@ -65,6 +65,13 @@ export const API_ERROR_CODES = [
    * PURCHASE to; the client hands such a row to S9's manual add instead.
    */
   "ROW_HAS_NO_ITEM",
+  /**
+   * 409 from `POST /v1/inventory/items/{itemId}/confirm` for an item with no
+   * AI-interpreted ledger row at all (M2-T5, D-028): there is no proposal to
+   * confirm. An item whose AI rows are all confirmed already is not this
+   * refusal; it answers the same idempotent 200.
+   */
+  "NOT_A_PROPOSAL",
 ] as const;
 
 export type ApiErrorCode = (typeof API_ERROR_CODES)[number];
