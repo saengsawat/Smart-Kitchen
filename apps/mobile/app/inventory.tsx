@@ -11,7 +11,7 @@ import {
   LOCATION_LABELS,
   type LocationFilter,
 } from "../src/inventory/list-view";
-import { GENERIC_READ_ERROR_MESSAGE } from "../src/inventory/errors";
+import { GENERIC_LEDGER_ERROR_MESSAGE, GENERIC_READ_ERROR_MESSAGE } from "../src/inventory/errors";
 import { loadInventoryList } from "../src/inventory/load-inventory";
 import { useReducedMotion, pressScaleStyle } from "../src/inventory/motion";
 import {
@@ -76,7 +76,15 @@ export default function InventoryScreen(): React.JSX.Element {
   useEffect(() => load(), [load]);
 
   async function handleConfirm(itemId: string, name: string): Promise<void> {
-    await apiClient.confirmAiProposal(itemId);
+    try {
+      await apiClient.confirmAiProposal(itemId);
+    } catch {
+      // BUG-004: a failed confirm is a failed write. Generic ledger fallback
+      // (copy-deck §8), the tray row stays, nothing reloads. Never the raw
+      // Error.message.
+      show(GENERIC_LEDGER_ERROR_MESSAGE);
+      return;
+    }
     load();
     show(`${name} confirmed`);
   }

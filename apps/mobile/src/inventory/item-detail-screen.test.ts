@@ -19,6 +19,7 @@ import type {
   InventoryWriteRequestDto,
   InventoryWriteResponseDto,
 } from "@smart-kitchen/contracts";
+import { apiClient } from "../api/client";
 import { flushPending } from "../test-support/flush";
 import { ToastHost, ToastProvider } from "./Toast";
 
@@ -310,14 +311,24 @@ describe("S5 · item detail (component)", () => {
         return Promise.resolve(new Response(JSON.stringify(sampleDetail(tier)), { status: 200 }));
       };
 
-      const result = await renderScreen();
-      await flushPending();
-      expect(result.getByText("Needs your confirmation")).toBeTruthy();
-      const confirmButton = result.getByLabelText("Confirm Strawberries");
-      fireEvent.press(confirmButton);
-      await flushPending();
+      // BUG-004: over HTTP `confirmAiProposal` now rejects NOT_AVAILABLE
+      // (no endpoint until M2-T5) instead of reaching the fixture delegate,
+      // which only "worked" here because ITEM_ID matched a fixture id. Stub
+      // the success path; this test pins S5's reload-after-confirm only.
+      const confirmSpy = vi.spyOn(apiClient, "confirmAiProposal").mockResolvedValue(undefined);
+      try {
+        const result = await renderScreen();
+        await flushPending();
+        expect(result.getByText("Needs your confirmation")).toBeTruthy();
+        const confirmButton = result.getByLabelText("Confirm Strawberries");
+        fireEvent.press(confirmButton);
+        await flushPending();
 
-      expect(result.queryByText("Needs your confirmation")).toBeNull();
+        expect(confirmSpy).toHaveBeenCalledWith(ITEM_ID);
+        expect(result.queryByText("Needs your confirmation")).toBeNull();
+      } finally {
+        confirmSpy.mockRestore();
+      }
     });
   });
 });

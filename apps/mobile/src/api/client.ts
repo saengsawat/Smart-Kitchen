@@ -42,10 +42,10 @@
  * {@link FixtureApiClient.syncHouseholdFromServer}, which overwrites the
  * household's identity/members/roles from the wire but preserves whatever
  * restrictions/preferences this session already saved for a member who is
- * still present. `confirmAiProposal` still has no endpoint (M2-T3 doesn't
- * add one), so it keeps delegating to the same fixture instance too — its
- * `this.inventory` is unrelated to real HTTP inventory items, a pre-existing
- * gap this ticket does not close (see the worker report).
+ * still present. `confirmAiProposal` still has no endpoint (M2-T5 adds one); over
+ * HTTP it rejects with a coded `NOT_AVAILABLE` refusal rather than reaching
+ * the fixture instance, whose `this.inventory` is unrelated to real HTTP
+ * inventory items (BUG-004).
  *
  * ## Idempotency keys and retries (M3-T4a)
  *
@@ -117,6 +117,9 @@ import {
   type MutableItemFixture,
 } from "../inventory/ledger";
 import { GENERIC_LEDGER_ERROR_MESSAGE, LedgerRefusedError } from "../inventory/errors";
+
+/** Wire-style code `HttpApiClient.confirmAiProposal` rejects with until M2-T5 (BUG-004). */
+export const CONFIRM_NOT_AVAILABLE_CODE = "NOT_AVAILABLE";
 import { microsToAmountText, parseMicros } from "../inventory/quantity";
 import { fixtureLookupProduct } from "../scan/fixture-products";
 import { ProductLookupRefusedError } from "../scan/product-lookup-errors";
@@ -1570,8 +1573,16 @@ export class HttpApiClient implements ApiClient {
     );
   }
 
+  /**
+   * BUG-004: there is no server endpoint yet (M2-T5), and the fixture
+   * delegate's inventory does not know the server's item ids, so delegating
+   * only produced a misleading "unknown item" rejection. Reject with a coded
+   * {@link LedgerRefusedError} instead; the screen renders it through the
+   * generic ledger fallback. M2-T5 replaces this with the real call.
+   */
   confirmAiProposal(itemId: string): Promise<void> {
-    return this.delegate.confirmAiProposal(itemId);
+    void itemId;
+    return Promise.reject(new LedgerRefusedError(CONFIRM_NOT_AVAILABLE_CODE));
   }
 
   /**
