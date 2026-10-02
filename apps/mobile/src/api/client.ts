@@ -1176,7 +1176,7 @@ const MAX_NETWORK_RETRIES = 1;
  * Real HTTP client for the M2-T1/M2-T2 inventory endpoints and the M2-T3
  * household/item-creation endpoints (M3-T4d), used when
  * `EXPO_PUBLIC_API_URL` is set. Onboarding's restrictions half delegates to
- * an internal fixture client — see this module's doc comment for why.
+ * an internal fixture client (see this module's doc comment for why).
  * `confirmAiProposal` calls the M2-T5 endpoint.
  */
 export class HttpApiClient implements ApiClient {
