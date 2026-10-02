@@ -340,6 +340,47 @@ export function inventoryTransactionUndoPath(itemId: string, transactionId: stri
 }
 
 // ---------------------------------------------------------------------------
+// M2-T5: confirming an AI proposal (D-028).
+//
+// A member says "that reading is right" about an item whose quantity came
+// from an AI interpretation (a receipt read). The ledger row is never edited
+// (INV-LEDGER-2): the server records one confirmation per not-yet-confirmed
+// `AI_INTERPRETATION` row of the item, in its own append-only table, and every
+// read presents a confirmed row as `KNOWN_FACT` with the source
+// "{original source} · confirmed by {initials}". No quantity changes.
+// ---------------------------------------------------------------------------
+
+/**
+ * Body of `POST /v1/inventory/items/{itemId}/confirm`.
+ *
+ * Same key shape as {@link InventoryWriteRequestDto.idempotencyKey} (letters,
+ * digits, `.`, `_`, `-`, 1 to 128 characters). The key is recorded for the
+ * audit trail; the confirm is idempotent by state, not by key: a second
+ * confirm of an item with nothing left to confirm answers the same 200 and
+ * records nothing, whatever key it carries.
+ */
+export interface ConfirmAiProposalRequestDto {
+  readonly idempotencyKey: string;
+}
+
+/**
+ * Response of the confirm endpoint: the item as it stands afterwards, so a
+ * screen needs no second request. Deliberately nothing else (no "inserted"
+ * count, no replay flag): a retry and a first attempt answer byte-identical
+ * bodies.
+ */
+export interface ConfirmAiProposalResponseDto {
+  readonly item: InventoryItemDetailDto;
+}
+
+export const INVENTORY_ITEM_CONFIRM_ROUTE = "/v1/inventory/items/:itemId/confirm";
+
+/** `POST` path of the confirm endpoint for one item, with the id encoded. */
+export function inventoryItemConfirmPath(itemId: string): string {
+  return `${inventoryItemPath(itemId)}/confirm`;
+}
+
+// ---------------------------------------------------------------------------
 // M3-T4b: item creation (S8 scan confirm, S9 manual add).
 //
 // A new item's *first* row is `PURCHASE` (a scanned barcode: the household

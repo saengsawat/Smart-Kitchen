@@ -19,7 +19,6 @@ import type {
   InventoryWriteRequestDto,
   InventoryWriteResponseDto,
 } from "@smart-kitchen/contracts";
-import { apiClient } from "../api/client";
 import { GENERIC_LEDGER_ERROR_MESSAGE } from "./errors";
 import { flushPending } from "../test-support/flush";
 import { ToastHost, ToastProvider } from "./Toast";
@@ -310,44 +309,57 @@ describe("S5 · item detail (component)", () => {
   describe("Confirm (Objective (g))", () => {
     it("is reachable from S5 for an AI-tier item, same label as the tray", async () => {
       let getCalls = 0;
-      globalThis.fetch = () => {
+      const confirmUrls: string[] = [];
+      globalThis.fetch = ((url: string, init?: RequestInit) => {
+        // M2-T5: Confirm is a real POST now (`{ item }` envelope), no longer
+        // the fixture delegate (BUG-004 stubbed it while there was no endpoint).
+        if (init?.method === "POST") {
+          confirmUrls.push(url);
+          return Promise.resolve(
+            new Response(JSON.stringify({ item: sampleDetail("KNOWN_FACT") }), { status: 200 }),
+          );
+        }
         getCalls += 1;
         const tier = getCalls === 1 ? "AI_INTERPRETATION" : "KNOWN_FACT";
         return Promise.resolve(new Response(JSON.stringify(sampleDetail(tier)), { status: 200 }));
-      };
+      }) as typeof fetch;
 
-      // BUG-004: over HTTP `confirmAiProposal` now rejects NOT_AVAILABLE
-      // (no endpoint until M2-T5) instead of reaching the fixture delegate,
-      // which only "worked" here because ITEM_ID matched a fixture id. Stub
-      // the success path; this test pins S5's reload-after-confirm only.
-      const confirmSpy = vi.spyOn(apiClient, "confirmAiProposal").mockResolvedValue(undefined);
-      try {
-        const result = await renderScreen();
-        await flushPending();
-        expect(result.getByText("Needs your confirmation")).toBeTruthy();
-        const confirmButton = result.getByLabelText("Confirm Strawberries");
-        fireEvent.press(confirmButton);
-        await flushPending();
+      const result = await renderScreen();
+      await flushPending();
+      expect(result.getByText("Needs your confirmation")).toBeTruthy();
+      const confirmButton = result.getByLabelText("Confirm Strawberries");
+      fireEvent.press(confirmButton);
+      await flushPending();
 
-        expect(confirmSpy).toHaveBeenCalledWith(ITEM_ID);
-        expect(result.queryByText("Needs your confirmation")).toBeNull();
-      } finally {
-        confirmSpy.mockRestore();
-      }
+      expect(confirmUrls).toEqual([
+        `http://localhost:4000/v1/inventory/items/${encodeURIComponent(ITEM_ID)}/confirm`,
+      ]);
+      expect(result.queryByText("Needs your confirmation")).toBeNull();
     });
 
     it("a failed confirm shows the generic ledger fallback, marks nothing confirmed, does not re-read, leaks no rejection (BUG-004)", async () => {
       let getCalls = 0;
-      globalThis.fetch = () => {
+      globalThis.fetch = ((_url: string, init?: RequestInit) => {
+        // M2-T5: the real endpoint refuses (here a 409 NOT_A_PROPOSAL, the
+        // answer a stale screen gets); the client rejects with the code.
+        if (init?.method === "POST") {
+          return Promise.resolve(
+            new Response(
+              JSON.stringify({
+                error: { code: "NOT_A_PROPOSAL", message: "server sentence", correlationId: "c1" },
+              }),
+              { status: 409 },
+            ),
+          );
+        }
         getCalls += 1;
         return Promise.resolve(
           new Response(JSON.stringify(sampleDetail("AI_INTERPRETATION")), { status: 200 }),
         );
-      };
+      }) as typeof fetch;
 
-      // The real HttpApiClient: confirmAiProposal rejects NOT_AVAILABLE (no
-      // endpoint until M2-T5). vitest fails the run on an unhandled rejection
-      // (apps/mobile lint bans the `process` global for our own listener).
+      // vitest fails the run on an unhandled rejection (apps/mobile lint bans
+      // the `process` global for our own listener).
       const result = await renderScreen();
       await flushPending();
       expect(result.getByText("Needs your confirmation")).toBeTruthy();
@@ -358,6 +370,7 @@ describe("S5 · item detail (component)", () => {
       await new Promise<void>((resolve) => setTimeout(resolve, 10));
 
       expect(result.getByText(GENERIC_LEDGER_ERROR_MESSAGE)).toBeTruthy();
+      expect(result.queryByText("server sentence")).toBeNull();
       expect(result.getByText("Needs your confirmation")).toBeTruthy();
       expect(getCalls).toBe(getsBefore);
     });

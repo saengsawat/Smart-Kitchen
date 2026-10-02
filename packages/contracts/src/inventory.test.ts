@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { TRANSACTION_TYPES_DTO } from "./inventory.js";
+import {
+  INVENTORY_ITEM_CONFIRM_ROUTE,
+  TRANSACTION_TYPES_DTO,
+  inventoryItemConfirmPath,
+} from "./inventory.js";
 import type {
+  ConfirmAiProposalRequestDto,
+  ConfirmAiProposalResponseDto,
   InventoryItemDetailDto,
   InventoryItemSummaryDto,
   InventoryTransactionDto,
@@ -73,5 +79,23 @@ describe("InventoryTransactionDto / InventoryItemDetailDto (M3-T3)", () => {
     const detail: InventoryItemDetailDto = { summary: SUMMARY, history: [] };
     expect(detail.summary.itemId).toBe("item-1");
     expect(detail.history).toEqual([]);
+  });
+});
+
+describe("ConfirmAiProposal DTOs (M2-T5, D-028)", () => {
+  it("the request carries a client key and nothing that names a household or a person", () => {
+    const body: ConfirmAiProposalRequestDto = { idempotencyKey: "k-1" };
+    expect(Object.keys(body)).toEqual(["idempotencyKey"]);
+  });
+
+  it("the response is the item detail and nothing else, so a replay is byte-identical", () => {
+    const body: ConfirmAiProposalResponseDto = { item: { summary: SUMMARY, history: [] } };
+    expect(Object.keys(body)).toEqual(["item"]);
+  });
+
+  it("the confirm path is the item path plus /confirm, with the id encoded", () => {
+    expect(inventoryItemConfirmPath("item-1")).toBe("/v1/inventory/items/item-1/confirm");
+    expect(inventoryItemConfirmPath("a/b")).toBe("/v1/inventory/items/a%2Fb/confirm");
+    expect(INVENTORY_ITEM_CONFIRM_ROUTE).toBe("/v1/inventory/items/:itemId/confirm");
   });
 });
