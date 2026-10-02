@@ -26,7 +26,12 @@ import { GENERIC_READ_ERROR_MESSAGE, messageForLedgerError } from "../../src/inv
 import { LOCATION_LABELS } from "../../src/inventory/list-view";
 import { useReducedMotion } from "../../src/inventory/motion";
 import { chipAccessibilityLabel, ROW_CHIP_TEXT } from "../../src/inventory/provenance";
-import { microsToAmountText, trimAmountText } from "../../src/inventory/quantity";
+import {
+  microsToAmountText,
+  microsToTypedText,
+  parseTypedAmount,
+  trimAmountText,
+} from "../../src/inventory/quantity";
 import { useToast } from "../../src/inventory/Toast";
 import { useGateCovered } from "../../src/onboarding/gate-context";
 import {
@@ -74,6 +79,26 @@ const PACKAGE_UNIT_ALIASES: Readonly<Record<string, string>> = { ct: "each" };
 
 function normalizePackageUnit(unit: string): string {
   return PACKAGE_UNIT_ALIASES[unit] ?? unit;
+}
+
+/** M3-T7: shown under the package size field while its text is not a usable size (proposed for copy-deck §7 S8). */
+const SIZE_HINT = "Enter a number, like 2 or 0.5.";
+
+/** The source recorded on a quantity the user typed themselves (D-025: the user's own entry is a Known Fact). */
+const USER_ENTRY_SOURCE = "user-entry";
+
+type TypedSize =
+  | { readonly kind: "none" }
+  | { readonly kind: "valid"; readonly micros: bigint }
+  | { readonly kind: "invalid" };
+
+/** What the typed package-size text means (`null`: never touched; "": cleared): nothing typed (the record's own size stands), a usable size, or unusable text. A size of zero is not usable. */
+function resolveTypedSize(text: string | null): TypedSize {
+  if (text === null || text.trim() === "") {
+    return { kind: "none" };
+  }
+  const micros = parseTypedAmount(text);
+  return micros === null || micros === 0n ? { kind: "invalid" } : { kind: "valid", micros };
 }
 
 function isProvenanceTier(value: string): value is ProvenanceTierDto {
@@ -125,6 +150,10 @@ export default function ScanScreen(): React.JSX.Element {
     readonly retainCode: boolean;
   } | null>(null);
   const [count, setCount] = useState(1);
+  // M3-T7: the package size text the user typed on S8. `null` = never touched
+  // and "" = cleared: either way the record's own size and tier stand. The
+  // field shows the record's quantity for `null`, so merely opening it is not a typed value.
+  const [typedSize, setTypedSize] = useState<string | null>(null);
   const [location, setLocation] = useState<StorageLocationDto>("FRIDGE");
   const [addError, setAddError] = useState<string | null>(null);
   const [requestedOnce, setRequestedOnce] = useState(false);
@@ -170,6 +199,11 @@ export default function ScanScreen(): React.JSX.Element {
 
   function updateCount(updater: (prev: number) => number): void {
     setCount(updater);
+    forgetHeldKey();
+  }
+
+  function updateTypedSize(text: string | null): void {
+    setTypedSize(text);
     forgetHeldKey();
   }
 
@@ -243,6 +277,7 @@ export default function ScanScreen(): React.JSX.Element {
       if (result.status === "hit") {
         setPhase({ kind: "confirm", code: trimmed, product: result.product });
         setCount(1);
+        setTypedSize(null);
         setLocation("FRIDGE");
         forgetHeldKey(); // a fresh scan never reuses a previous product's held key
       } else if (result.status === "not-found") {
@@ -317,6 +352,10 @@ export default function ScanScreen(): React.JSX.Element {
     if (addInFlight.current) {
       return;
     }
+    const size = resolveTypedSize(typedSize);
+    if (size.kind === "invalid") {
+      return;
+    }
     addInFlight.current = true;
     setAdding(true);
     setAddError(null);
@@ -332,15 +371,21 @@ export default function ScanScreen(): React.JSX.Element {
       const plan = planScanQuantity(
         packageSize
           ? {
-              qty: packageSize.value.qty,
+              // M3-T7: a size the user typed replaces the record's quantity
+              // and tier (their own entry is a Known Fact, D-025); the unit
+              // is always the record's.
+              qty: size.kind === "valid" ? microsToAmountText(size.micros) : packageSize.value.qty,
               unit: normalizePackageUnit(packageSize.value.unit),
-              tier: packageSize.provenance.tier,
+              tier: size.kind === "valid" ? "KNOWN_FACT" : packageSize.provenance.tier,
               // FieldProvenanceDto.source is nullable in general (a value
               // recorded with no known source); every real package-size
               // record carries one (OFF: "open-food-facts", the fixture
               // corpus: "manufacturer-label"), so this fallback is only a
               // defensive "never invent a source name", not an expected path.
-              source: packageSize.provenance.source ?? SCANNED_BARCODE_QUANTITY_SOURCE,
+              source:
+                size.kind === "valid"
+                  ? USER_ENTRY_SOURCE
+                  : (packageSize.provenance.source ?? SCANNED_BARCODE_QUANTITY_SOURCE),
             }
           : undefined,
         count,
@@ -396,6 +441,8 @@ export default function ScanScreen(): React.JSX.Element {
         product={phase.product}
         count={count}
         setCount={updateCount}
+        typedSize={typedSize}
+        setTypedSize={updateTypedSize}
         location={location}
         setLocation={updateLocation}
         addError={addError}
@@ -617,6 +664,8 @@ function ConfirmSheet({
   product,
   count,
   setCount,
+  typedSize,
+  setTypedSize,
   location,
   setLocation,
   addError,
@@ -631,6 +680,8 @@ function ConfirmSheet({
   product: ScannedProductDto;
   count: number;
   setCount: (updater: (prev: number) => number) => void;
+  typedSize: string | null;
+  setTypedSize: (text: string | null) => void;
   location: StorageLocationDto;
   setLocation: (loc: StorageLocationDto) => void;
   addError: string | null;
@@ -647,7 +698,10 @@ function ConfirmSheet({
   // still in flight or has failed outright. M3-T4e Objective (f): also
   // disabled while a Save is already in flight (the held-key/single-flight
   // guard's visible half; `handleAdd`'s ref is the synchronous half).
-  const canAdd = householdLoaded && !householdError && !adding;
+  const size = resolveTypedSize(typedSize);
+  const sizeInvalid = size.kind === "invalid";
+  const canAdd = householdLoaded && !householdError && !adding && !sizeInvalid;
+  const [editingSize, setEditingSize] = useState(false);
   // M2-T4a: `null` when the server says screening did not run. The verdict
   // lines below render only from a result the server actually produced.
   const result = ranScreeningResult(product.screening);
@@ -701,16 +755,23 @@ function ConfirmSheet({
               </>
             ) : null}
             {product.packageSize ? (
-              <>
-                <Text style={styles.productMeta}>
-                  {packageUnitSupported
-                    ? `${trimAmountText(product.packageSize.value.qty)} ${product.packageSize.value.unit}`
-                    : `${String(count)} ${count === 1 ? "package" : "packages"} of ${trimAmountText(product.packageSize.value.qty)} ${product.packageSize.value.unit}`}
-                </Text>
-                <TierChip tier={product.packageSize.provenance.tier} />
-              </>
+              <PackageSizeField
+                packageSize={product.packageSize}
+                packageUnitSupported={packageUnitSupported}
+                count={count}
+                typedSize={typedSize}
+                size={size}
+                editing={editingSize}
+                setEditing={setEditingSize}
+                setTypedSize={setTypedSize}
+              />
             ) : null}
           </View>
+        ) : null}
+        {sizeInvalid ? (
+          <Text style={styles.sizeHint} accessibilityLiveRegion="polite">
+            {SIZE_HINT}
+          </Text>
         ) : null}
 
         {/* Review round 1 F5 ruling: the prototype caption always renders,
@@ -946,6 +1007,89 @@ function ConfirmSheet({
         </Pressable>
       </View>
     </View>
+  );
+}
+
+/**
+ * M3-T7: the package size line, editable. Tapping it opens a numeric field
+ * pre-filled with the record's quantity; a usable typed size replaces the
+ * record's quantity on this line with the Known Fact chip (the user's own
+ * entry, D-025), and clearing the field restores the record's size and tier.
+ * The unit is the record's and is not editable. The record itself is never
+ * changed.
+ */
+function PackageSizeField({
+  packageSize,
+  packageUnitSupported,
+  count,
+  typedSize,
+  size,
+  editing,
+  setEditing,
+  setTypedSize,
+}: {
+  packageSize: NonNullable<ScannedProductDto["packageSize"]>;
+  packageUnitSupported: boolean;
+  count: number;
+  typedSize: string | null;
+  size: TypedSize;
+  editing: boolean;
+  setEditing: (editing: boolean) => void;
+  setTypedSize: (text: string | null) => void;
+}): React.JSX.Element {
+  const unit = packageSize.value.unit;
+  const recordQty = trimAmountText(packageSize.value.qty);
+  const shownQty = size.kind === "valid" ? microsToTypedText(size.micros) : recordQty;
+  const shownTier: ProvenanceTierDto =
+    size.kind === "valid" ? "KNOWN_FACT" : packageSize.provenance.tier;
+  const lineText = packageUnitSupported
+    ? `${shownQty} ${unit}`
+    : `${String(count)} ${count === 1 ? "package" : "packages"} of ${shownQty} ${unit}`;
+
+  if (editing) {
+    const closeIfUsable = (): void => {
+      if (size.kind !== "invalid") {
+        setEditing(false);
+      }
+    };
+    return (
+      <>
+        <TextInput
+          accessibilityLabel="Package size"
+          keyboardType="decimal-pad"
+          inputMode="decimal"
+          autoFocus
+          selectTextOnFocus
+          placeholder={recordQty}
+          value={typedSize ?? recordQty}
+          onChangeText={setTypedSize}
+          onBlur={closeIfUsable}
+          onSubmitEditing={closeIfUsable}
+          style={[styles.sizeInput, size.kind === "invalid" ? styles.sizeInputInvalid : null]}
+        />
+        <Text style={styles.productMeta}>{unit}</Text>
+        <TierChip tier={shownTier} />
+      </>
+    );
+  }
+  return (
+    <>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Edit package size"
+        onPress={() => {
+          // The field shows the record's quantity until something is typed.
+          if (typedSize === "") {
+            setTypedSize(null);
+          }
+          setEditing(true);
+        }}
+        style={styles.sizeLine}
+      >
+        <Text style={styles.productMeta}>{lineText}</Text>
+      </Pressable>
+      <TierChip tier={shownTier} />
+    </>
   );
 }
 
@@ -1303,6 +1447,22 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: colors.line,
   },
+  sizeLine: { minHeight: minTouchTarget, justifyContent: "center" },
+  sizeInput: {
+    minWidth: 88,
+    minHeight: minTouchTarget,
+    borderRadius: radius.sm,
+    borderWidth: 1,
+    borderColor: colors.line,
+    backgroundColor: colors.paper,
+    paddingHorizontal: spacing.sm,
+    fontSize: 14,
+    fontWeight: "700",
+    color: colors.ink,
+    fontFamily: fontFamily.body,
+  },
+  sizeInputInvalid: { borderColor: colors.danger },
+  sizeHint: { fontSize: 12, color: colors.danger, fontFamily: fontFamily.body },
   step: { flexDirection: "row", alignItems: "center", gap: spacing.md },
   stepButton: {
     width: minTouchTarget,

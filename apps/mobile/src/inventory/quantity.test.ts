@@ -3,9 +3,12 @@ import type { InventoryLotDto, QuantityDto } from "@smart-kitchen/contracts";
 import {
   formatQuantityDisplay,
   formatSignedAmount,
+  MAX_TYPED_QUANTITY_MICROS,
   microsToAmountText,
+  microsToTypedText,
   MICROS_PER_UNIT,
   parseMicros,
+  parseTypedAmount,
   trimAmountText,
 } from "./quantity";
 
@@ -188,5 +191,78 @@ describe("formatQuantityDisplay (prototype v4 #scr-inventory fixture rows)", () 
     expect(
       formatQuantityDisplay(qty("count", "2000000", "2.000000"), [plainLot], "KNOWN_FACT"),
     ).toBe("2 count");
+  });
+});
+
+describe("parseTypedAmount (M3-T7)", () => {
+  it.each([
+    ["9", 9_000_000n],
+    ["9.25", 9_250_000n],
+    [" 9.25 ", 9_250_000n],
+    [".5", 500_000n],
+    ["9.", 9_000_000n],
+    ["0", 0n],
+    ["007.5", 7_500_000n],
+    ["0.000001", 1n],
+    ["519.354399", 519_354_399n],
+    ["100000000", MAX_TYPED_QUANTITY_MICROS],
+  ])("parses %j exactly", (text, micros) => {
+    expect(parseTypedAmount(text)).toBe(micros);
+  });
+
+  it.each([
+    "",
+    " ",
+    ".",
+    "abc",
+    "1.1234567",
+    "-1",
+    "+1",
+    "1e3",
+    "1,5",
+    "1.2.3",
+    "1 g",
+    "0x10",
+    "Infinity",
+    "NaN",
+    "100000000.000001",
+    "99999999999999999999999",
+  ])("refuses %j", (text) => {
+    expect(parseTypedAmount(text)).toBeNull();
+  });
+
+  it("pins the maximum to the domain's MAX_QUANTITY_MICROS (100 million units)", () => {
+    expect(MAX_TYPED_QUANTITY_MICROS).toBe(100_000_000n * MICROS_PER_UNIT);
+  });
+
+  it("property: canonical typed text round-trips through parseTypedAmount and microsToTypedText (6-decimal inputs)", () => {
+    // Seeded LCG in bigint: deterministic, no Math.random, no float.
+    let state = 0x2545f4914f6cdd1dn;
+    const next = (): bigint => {
+      state = (state * 6364136223846793005n + 1442695040888963407n) & 0xffffffffffffffffn;
+      return state >> 11n;
+    };
+    for (let i = 0; i < 2000; i += 1) {
+      const whole = next() % 100_000_000n;
+      const fractionDigits = Number(next() % 7n); // 0..6 decimals
+      let fraction = "";
+      for (let d = 0; d < fractionDigits; d += 1) {
+        fraction += (next() % 10n).toString();
+      }
+      fraction = fraction.replace(/0+$/, ""); // canonical: no trailing zero
+      const text = fraction === "" ? whole.toString() : `${whole.toString()}.${fraction}`;
+      const micros = parseTypedAmount(text);
+      expect(micros).not.toBeNull();
+      expect(microsToTypedText(micros!)).toBe(text);
+      // And the server-shaped text parses back to the same micros.
+      expect(parseMicros(micros!.toString())).toBe(micros);
+      expect(parseTypedAmount(microsToAmountText(micros!))).toBe(micros);
+    }
+  });
+
+  it("property: boundary micros values survive text and back", () => {
+    for (const micros of [0n, 1n, 999_999n, 1_000_000n, 1_000_001n, 123_456_789_012n]) {
+      expect(parseTypedAmount(microsToTypedText(micros))).toBe(micros);
+    }
   });
 });

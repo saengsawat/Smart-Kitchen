@@ -1122,3 +1122,199 @@ describe("S7 · bottom inset and camera size (BUG-003)", () => {
     expect(style.marginTop).toBe(-75);
   });
 });
+
+// ---------------------------------------------------------------------------
+// M3-T7 (b): the package size line is editable. The record below is a
+// hand-built Open Food Facts style yogurt (125 g, Estimated, the shape of the
+// can-of-corn bug Andy hit on 2026-10-01); the fixture corpus has no yogurt.
+// ---------------------------------------------------------------------------
+
+function yogurtProduct(unit: string): ScannedProductDto {
+  return {
+    ...notRunProduct(true),
+    productId: "yogurt-test-1",
+    name: { value: "Plain Greek Yogurt", provenance: OFF_PROVENANCE },
+    brand: { value: "Test Dairy", provenance: OFF_PROVENANCE },
+    packageSize: { value: { qty: "125", unit }, provenance: OFF_PROVENANCE },
+  };
+}
+
+const SIZE_HINT = "Enter a number, like 2 or 0.5.";
+
+function spyCreate(): CreateItemRequestDto[] {
+  const calls: CreateItemRequestDto[] = [];
+  const original = apiClient.createItem.bind(apiClient);
+  vi.spyOn(apiClient, "createItem").mockImplementation(async (input) => {
+    calls.push(input);
+    return original(input);
+  });
+  return calls;
+}
+
+describe("S8 · editable package size (M3-T7 b)", () => {
+  function openSizeField(result: ReturnType<typeof render>): void {
+    fireEvent.press(result.getByLabelText("Edit package size"));
+  }
+
+  it("shows the record's size with its own Estimated chip until something is typed; opening the field pre-fills the record's quantity and changes nothing", async () => {
+    await withLookup(yogurtProduct("g"), async () => {
+      const result = await renderScreen();
+      await lookUp(result, "096619555505");
+      expect(result.getByText("125 g")).toBeTruthy();
+      expect(result.queryByText("✓ Fact")).toBeNull();
+      openSizeField(result);
+      const input = result.getByLabelText("Package size");
+      expect((input.props as { value: string }).value).toBe("125");
+      expect((input.props as { keyboardType?: string }).keyboardType).toBe("decimal-pad");
+      // Opening is not typing: the chip stays Estimated.
+      expect(result.queryByText("✓ Fact")).toBeNull();
+      expect(result.getAllByText("≈ Est.")).toHaveLength(4);
+    });
+  });
+
+  it("typing 500 makes the line 500 g with the Fact chip, and Add creates 500 g x count, Known Fact, source user-entry", async () => {
+    await withLookup(yogurtProduct("g"), async () => {
+      const result = await renderScreen();
+      await lookUp(result, "096619555505");
+      openSizeField(result);
+      fireEvent.changeText(result.getByLabelText("Package size"), "500");
+      expect(result.getByText("✓ Fact")).toBeTruthy();
+      fireEvent.press(result.getByLabelText("Increase quantity")); // count 2
+      fireEvent(result.getByLabelText("Package size"), "blur");
+      expect(result.getByText("500 g")).toBeTruthy();
+      expect(result.queryByText("125 g")).toBeNull();
+      expect(result.getByText("✓ Fact")).toBeTruthy();
+
+      const calls = spyCreate();
+      fireEvent.press(result.getByLabelText("Add 2 to Fridge"));
+      await flushPending();
+
+      expect(calls[0]?.amount).toBe("1000"); // 2 x 500 g, exact text
+      expect(calls[0]?.unit).toBe("g");
+      expect(calls[0]?.quantityProvenance.tier).toBe("KNOWN_FACT");
+      expect(calls[0]?.quantityProvenance.source).toBe("user-entry");
+      const items = await apiClient.getInventoryItems();
+      const created = items.find((item) => item.displayName === "Plain Greek Yogurt");
+      expect(created?.quantity.micros).toBe("1000000000");
+      expect(created?.provenance.quantity?.tier).toBe("KNOWN_FACT");
+      expect(
+        result.queryByText("Added 2 × Plain Greek Yogurt to Fridge · Known Fact"),
+      ).toBeTruthy();
+    });
+  });
+
+  it("a fractional typed size stays exact (248.5 g x 3)", async () => {
+    await withLookup(yogurtProduct("g"), async () => {
+      const result = await renderScreen();
+      await lookUp(result, "096619555505");
+      openSizeField(result);
+      fireEvent.changeText(result.getByLabelText("Package size"), "248.5");
+      fireEvent.press(result.getByLabelText("Increase quantity"));
+      fireEvent.press(result.getByLabelText("Increase quantity"));
+      const calls = spyCreate();
+      fireEvent.press(result.getByLabelText("Add 3 to Fridge"));
+      await flushPending();
+      expect(calls[0]?.amount).toBe("745.500000"); // the exact six-place text, never a float;
+    });
+  });
+
+  it("clearing the field restores the record's size, Estimated chip, tier and source", async () => {
+    await withLookup(yogurtProduct("g"), async () => {
+      const result = await renderScreen();
+      await lookUp(result, "096619555505");
+      openSizeField(result);
+      fireEvent.changeText(result.getByLabelText("Package size"), "500");
+      expect(result.getByText("✓ Fact")).toBeTruthy();
+      fireEvent.changeText(result.getByLabelText("Package size"), "");
+      expect(result.queryByText("✓ Fact")).toBeNull();
+      fireEvent(result.getByLabelText("Package size"), "blur");
+      expect(result.getByText("125 g")).toBeTruthy();
+
+      const calls = spyCreate();
+      fireEvent.press(result.getByLabelText("Add 1 to Fridge"));
+      await flushPending();
+      expect(calls[0]?.amount).toBe("125");
+      expect(calls[0]?.quantityProvenance.tier).toBe("ESTIMATED");
+      expect(calls[0]?.quantityProvenance.source).toBe("open-food-facts");
+    });
+  });
+
+  it.each(["abc", "0", "1.1234567", "-5", "1,5"])(
+    "%j shows the hint, keeps the editor open and disables Add",
+    async (text) => {
+      await withLookup(yogurtProduct("g"), async () => {
+        const result = await renderScreen();
+        await lookUp(result, "096619555505");
+        openSizeField(result);
+        fireEvent.changeText(result.getByLabelText("Package size"), text);
+        expect(result.getByText(SIZE_HINT)).toBeTruthy();
+        const add = result.getByLabelText("Add 1 to Fridge");
+        const state = (add.props as { accessibilityState?: { disabled?: boolean } })
+          .accessibilityState;
+        expect(state?.disabled).toBe(true);
+        fireEvent(result.getByLabelText("Package size"), "blur");
+        expect(result.getByLabelText("Package size")).toBeTruthy(); // still editing
+        const spy = vi.spyOn(apiClient, "createItem");
+        fireEvent.press(add);
+        await flushPending();
+        expect(spy).not.toHaveBeenCalled();
+      });
+    },
+  );
+
+  it("a size the ledger cannot hold (qt) edits the '{count} packages of {qty} {unit}' text; the amount stays a count of packages", async () => {
+    await withLookup(yogurtProduct("qt"), async () => {
+      const result = await renderScreen();
+      await lookUp(result, "096619555505");
+      expect(result.getByText("1 package of 125 qt")).toBeTruthy();
+      openSizeField(result);
+      fireEvent.changeText(result.getByLabelText("Package size"), "2");
+      fireEvent.press(result.getByLabelText("Increase quantity"));
+      fireEvent(result.getByLabelText("Package size"), "blur");
+      expect(result.getByText("2 packages of 2 qt")).toBeTruthy();
+      const calls = spyCreate();
+      fireEvent.press(result.getByLabelText("Add 2 to Fridge"));
+      await flushPending();
+      expect(calls[0]?.unit).toBe("each");
+      expect(calls[0]?.amount).toBe("2");
+    });
+  });
+
+  it("changing the typed size after a failed Add discards the held key", async () => {
+    await withLookup(yogurtProduct("g"), async () => {
+      const result = await renderScreen();
+      await lookUp(result, "096619555505");
+      const keys: string[] = [];
+      const original = apiClient.createItem.bind(apiClient);
+      let calls = 0;
+      vi.spyOn(apiClient, "createItem").mockImplementation(async (input) => {
+        keys.push(input.idempotencyKey);
+        calls += 1;
+        if (calls === 1) {
+          throw new Error("network down");
+        }
+        return original(input);
+      });
+      fireEvent.press(result.getByLabelText("Add 1 to Fridge"));
+      await flushPending();
+      openSizeField(result);
+      fireEvent.changeText(result.getByLabelText("Package size"), "500");
+      fireEvent.press(result.getByLabelText("Add 1 to Fridge"));
+      await flushPending();
+      expect(keys).toHaveLength(2);
+      expect(keys[0]).not.toBe(keys[1]);
+    });
+  });
+
+  it("the size tap target and field are at least 44 high", async () => {
+    await withLookup(yogurtProduct("g"), async () => {
+      const result = await renderScreen();
+      await lookUp(result, "096619555505");
+      const style = flattenStyle(result.getByLabelText("Edit package size").props.style);
+      expect(style.minHeight).toBe(44);
+      openSizeField(result);
+      const input = flattenStyle(result.getByLabelText("Package size").props.style);
+      expect(input.minHeight).toBe(44);
+    });
+  });
+});

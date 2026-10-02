@@ -1,5 +1,13 @@
 import { useCallback, useEffect, useState } from "react";
-import { AccessibilityInfo, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import {
+  AccessibilityInfo,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import type {
   InventoryItemDetailDto,
@@ -16,8 +24,10 @@ import { chipAccessibilityLabel, ROW_CHIP_TEXT } from "../../src/inventory/prove
 import {
   formatQuantityDisplay,
   formatSignedAmount,
-  microsToAmountText,
+  MAX_TYPED_QUANTITY_MICROS,
+  microsToTypedText,
   parseMicros,
+  parseTypedAmount,
   trimAmountText,
 } from "../../src/inventory/quantity";
 import {
@@ -31,6 +41,9 @@ import { useToast } from "../../src/inventory/Toast";
 import { LOCATION_LABELS, needsConfirmation } from "../../src/inventory/list-view";
 
 const STEP_MICROS = 250_000n; // 0.25 unit, matching prototype v4's stepItemQty(±0.25)
+
+/** M3-T7: shown under the amount field while its text is not a usable amount (proposed for copy-deck §7 S5). */
+const AMOUNT_HINT = "Enter a number, like 2 or 0.5.";
 
 /**
  * S5 · item detail / ledger history (M3-T3), prototype v4 `#scr-item`.
@@ -49,9 +62,21 @@ export default function ItemDetailScreen(): React.JSX.Element {
   const [detail, setDetail] = useState<InventoryItemDetailDto | null>(null);
   const [notFound, setNotFound] = useState(false);
   const [draftMicros, setDraftMicros] = useState<bigint | null>(null);
+  // M3-T7: what the amount field shows. `draftMicros` is the last usable
+  // amount; `draftText` may be mid-edit or unparsable, in which case Save is
+  // off and the hint shows. Always set together with `draftMicros` except on
+  // an unparsable keystroke.
+  const [draftText, setDraftText] = useState("");
+  const [draftInvalid, setDraftInvalid] = useState(false);
   const [pendingReason, setPendingReason] = useState<RemovalAction | null>(null);
   const [correctionError, setCorrectionError] = useState<string | null>(null);
   const [removalError, setRemovalError] = useState<string | null>(null);
+
+  const resetDraft = useCallback((micros: bigint): void => {
+    setDraftMicros(micros);
+    setDraftText(microsToTypedText(micros));
+    setDraftInvalid(false);
+  }, []);
 
   const load = useCallback((): (() => void) => {
     let cancelled = false;
@@ -67,13 +92,13 @@ export default function ItemDetailScreen(): React.JSX.Element {
       setDetail(result);
       setNotFound(result === null);
       if (result) {
-        setDraftMicros(parseMicros(result.summary.quantity.micros));
+        resetDraft(parseMicros(result.summary.quantity.micros));
       }
     });
     return () => {
       cancelled = true;
     };
-  }, [itemId]);
+  }, [itemId, resetDraft]);
 
   useEffect(() => load(), [load]);
 
@@ -86,13 +111,26 @@ export default function ItemDetailScreen(): React.JSX.Element {
   }
 
   function stepDraft(deltaMicros: bigint): void {
-    setDraftMicros((prev) => {
-      if (prev === null) {
-        return prev;
-      }
-      const next = prev + deltaMicros;
-      return next < 0n ? 0n : next;
-    });
+    if (draftMicros === null) {
+      return;
+    }
+    // Steps from the typed value; from the last usable amount when the field
+    // holds unparsable text (the step then replaces that text).
+    const stepped = draftMicros + deltaMicros;
+    const next =
+      stepped < 0n ? 0n : stepped > MAX_TYPED_QUANTITY_MICROS ? MAX_TYPED_QUANTITY_MICROS : stepped;
+    resetDraft(next);
+  }
+
+  function handleAmountTyped(text: string): void {
+    setDraftText(text);
+    const parsed = parseTypedAmount(text);
+    if (parsed === null) {
+      setDraftInvalid(true);
+      return;
+    }
+    setDraftInvalid(false);
+    setDraftMicros(parsed);
   }
 
   async function handleUndo(transactionId: string): Promise<void> {
@@ -103,12 +141,12 @@ export default function ItemDetailScreen(): React.JSX.Element {
     const updated = await apiClient.getInventoryItem(itemId);
     setDetail(updated);
     if (updated) {
-      setDraftMicros(parseMicros(updated.summary.quantity.micros));
+      resetDraft(parseMicros(updated.summary.quantity.micros));
     }
   }
 
   async function handleSaveCorrection(): Promise<void> {
-    if (!itemId || draftMicros === null) {
+    if (!itemId || draftMicros === null || draftInvalid) {
       return;
     }
     setCorrectionError(null);
@@ -128,7 +166,7 @@ export default function ItemDetailScreen(): React.JSX.Element {
     const updated = await apiClient.getInventoryItem(itemId);
     setDetail(updated);
     if (updated) {
-      setDraftMicros(parseMicros(updated.summary.quantity.micros));
+      resetDraft(parseMicros(updated.summary.quantity.micros));
     }
     show("Corrected. Undo", () => void handleUndo(result.transactionId));
   }
@@ -195,8 +233,7 @@ export default function ItemDetailScreen(): React.JSX.Element {
   const { summary } = detail;
   const tier = summary.provenance.quantity?.tier ?? null;
   const qtyDisplay = formatQuantityDisplay(summary.quantity, summary.lots, tier);
-  const draftAmountText = formatDraftAmount(draftMicros);
-  const canSave = draftMicros !== parseMicros(summary.quantity.micros);
+  const canSave = !draftInvalid && draftMicros !== parseMicros(summary.quantity.micros);
   // Review F7: nothing to remove at a zero balance; disable the reason
   // chips rather than let a tap reach a rejected removeQuantity call.
   const isZeroBalance = parseMicros(summary.quantity.micros) <= 0n;
@@ -263,7 +300,16 @@ export default function ItemDetailScreen(): React.JSX.Element {
             >
               <Text style={styles.stepButtonText}>{"−"}</Text>
             </Pressable>
-            <Text style={styles.stepValue}>{draftAmountText}</Text>
+            <TextInput
+              accessibilityLabel="Quantity amount"
+              accessibilityHint={draftInvalid ? AMOUNT_HINT : undefined}
+              keyboardType="decimal-pad"
+              inputMode="decimal"
+              selectTextOnFocus
+              value={draftText}
+              onChangeText={handleAmountTyped}
+              style={[styles.amountInput, draftInvalid ? styles.amountInputInvalid : null]}
+            />
             <Text style={styles.stepUnit}>{summary.quantity.unit}</Text>
             <Pressable
               accessibilityRole="button"
@@ -274,6 +320,11 @@ export default function ItemDetailScreen(): React.JSX.Element {
               <Text style={styles.stepButtonText}>+</Text>
             </Pressable>
           </View>
+          {draftInvalid ? (
+            <Text style={styles.amountHint} accessibilityLiveRegion="polite">
+              {AMOUNT_HINT}
+            </Text>
+          ) : null}
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Save correction"
@@ -388,10 +439,6 @@ export default function ItemDetailScreen(): React.JSX.Element {
       </ScrollView>
     </View>
   );
-}
-
-function formatDraftAmount(draftMicros: bigint): string {
-  return trimAmountText(microsToAmountText(draftMicros));
 }
 
 function Header({
@@ -658,7 +705,23 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   stepButtonText: { fontSize: 20, color: colors.ink, fontFamily: fontFamily.body },
-  stepValue: { fontSize: 20, fontWeight: "700", color: colors.ink, fontFamily: fontFamily.body },
+  amountInput: {
+    flex: 1,
+    minWidth: 72,
+    minHeight: minTouchTarget,
+    borderRadius: radius.sm,
+    borderWidth: 1,
+    borderColor: colors.line,
+    backgroundColor: colors.paper,
+    paddingHorizontal: spacing.sm,
+    textAlign: "center",
+    fontSize: 20,
+    fontWeight: "700",
+    color: colors.ink,
+    fontFamily: fontFamily.body,
+  },
+  amountInputInvalid: { borderColor: colors.danger },
+  amountHint: { fontSize: 12, color: colors.danger, fontFamily: fontFamily.body },
   stepUnit: { fontSize: 13, color: colors.ink3, fontFamily: fontFamily.body },
   primaryButton: {
     minHeight: minTouchTarget,
