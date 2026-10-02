@@ -68,7 +68,7 @@ Stance:
 ## 5. Confidence & confirmation policy
 
 - Per-kind thresholds (initial values `PROPOSED`, tune with data): receipt line auto-accept ≥ 0.9 *still shown* on confirmation screen (§2B mandates the screen regardless); barcode-photo product match ≥ 0.95; vision detections always confirmed (§2C).
-- Confirmations/corrections are recorded and become **evaluation data** for improving normalization — the correction loop is both UX and training signal (§18C).
+- Confirmations/corrections are recorded and become **evaluation data** for improving normalization — the correction loop is both UX and training signal (§18C). The record of a confirmation is a row in the append-only `inventory_confirmations` table (D-028, M2-T5), never an edit of the ledger row it confirms.
 
 ## 6. Evaluation & fixtures
 
