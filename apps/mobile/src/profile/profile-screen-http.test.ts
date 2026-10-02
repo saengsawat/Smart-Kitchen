@@ -21,6 +21,8 @@ vi.mock("../api/client", async (importOriginal) => {
 
 let replaced: unknown[] = [];
 
+vi.mock("react-native-safe-area-context", () => import("../test-support/safe-area-mock"));
+
 vi.mock("expo-router", () => ({
   useRouter: () => ({
     push: () => {},

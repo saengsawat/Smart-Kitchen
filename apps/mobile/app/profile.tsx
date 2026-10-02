@@ -17,6 +17,7 @@ import {
   hasHouseholdCallerActions,
 } from "../src/api/client";
 import { colors, fontFamily, minTouchTarget, radius, spacing } from "../src/design/tokens";
+import { useTabBarClearance } from "../src/navigation/TabBar";
 import { GENERIC_READ_ERROR_MESSAGE } from "../src/inventory/errors";
 import { useToast } from "../src/inventory/Toast";
 import {
@@ -62,6 +63,7 @@ const INVITE_CONFIRM_MESSAGE =
  * this app.
  */
 export default function ProfileScreen(): React.JSX.Element {
+  const tabBarClearance = useTabBarClearance();
   const router = useRouter();
   const { show } = useToast();
 
@@ -341,7 +343,7 @@ export default function ProfileScreen(): React.JSX.Element {
         </Pressable>
         <Text style={styles.title}>Profile &amp; household</Text>
       </View>
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView contentContainerStyle={[styles.content, { paddingBottom: tabBarClearance }]}>
         <View style={styles.identityCard}>
           <View style={styles.identityChip}>
             <Text style={styles.identityChipText}>{cardInitials}</Text>
@@ -574,7 +576,7 @@ const styles = StyleSheet.create({
   },
   iconGlyph: { fontSize: 22, color: colors.ink, lineHeight: 22 },
   title: { fontSize: 20, fontFamily: fontFamily.display, fontWeight: "600", color: colors.ink },
-  content: { paddingHorizontal: spacing.lg, paddingBottom: spacing.xxl * 2, gap: spacing.sm },
+  content: { paddingHorizontal: spacing.lg, gap: spacing.sm },
   loadingScreen: { alignItems: "center", justifyContent: "center" },
 
   identityCard: {

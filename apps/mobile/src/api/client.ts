@@ -1191,15 +1191,15 @@ export class HttpApiClient implements ApiClient {
 
   constructor(baseUrl: string) {
     this.baseUrl = baseUrl;
-    // M3-T4d: `.returningUser()`, not `.newUser()` — only for
-    // `confirmAiProposal`'s pre-existing, still-fixture-only inventory (a
-    // gap outside this ticket's scope) — then immediately stripped of its
-    // household: this client's household comes only from the server
-    // (invariant: never assume a household it did not get from the
-    // server), and `.returningUser()`'s household is the already-onboarded
-    // Chen fixture, a false positive this client must not start with.
-    // M2-T5: `confirmAiProposal` no longer reads the delegate's inventory;
-    // switching this to `.newUser()` is a backlog follow-up, not done here.
+    // M3-T4d: `.returningUser()`, not `.newUser()`; the delegate now backs
+    // only the client-local restrictions/preferences store (`confirmAiProposal`
+    // calls its real endpoint since M2-T5, so nothing reads the delegate's
+    // inventory; switching this to `.newUser()` is a backlog follow-up). It
+    // is immediately stripped of its household: this client's household
+    // comes only from the server (invariant: never assume a household it did
+    // not get from the server), and `.returningUser()`'s household is the
+    // already-onboarded Chen fixture, a false positive this client must not
+    // start with.
     this.delegate = FixtureApiClient.returningUser();
     this.delegate.clearHouseholdUntilServerSaysOtherwise();
   }

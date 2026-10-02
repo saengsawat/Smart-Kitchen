@@ -25,8 +25,12 @@ import { flushPending } from "../test-support/flush";
 import { ToastHost, ToastProvider } from "../inventory/Toast";
 import { apiClient, FIXTURE_JOIN_CODE, hasDevOfflineToggle } from "../api/client";
 import { sharedShoppingQueue } from "./shared-queue";
+import { setMockBottomInset } from "../test-support/safe-area-mock";
+import { tabBarClearanceFor } from "../navigation/TabBar";
 
 let pushed: unknown[] = [];
+
+vi.mock("react-native-safe-area-context", () => import("../test-support/safe-area-mock"));
 
 vi.mock("expo-router", () => ({
   useRouter: () => ({
@@ -548,5 +552,32 @@ describe("S11 review round 2 fixes", () => {
     expect(result.queryByText("Chicken breast checked off · add it to the pantry?")).toBeNull();
     expect(result.queryByLabelText("Add Chicken breast to inventory")).toBeNull();
     expect(result.queryByText("Add when you're back online.")).toBeNull();
+  });
+});
+
+/** BUG-003: the clearance helpers shared by the per-screen padding tests. */
+function contentPaddingBottom(result: ReturnType<typeof render>): unknown {
+  const scroll = result.UNSAFE_getByType("ScrollView" as unknown as React.ComponentType);
+  const list: readonly unknown[] = Array.isArray(scroll.props.contentContainerStyle)
+    ? scroll.props.contentContainerStyle
+    : [scroll.props.contentContainerStyle];
+  const flat: Record<string, unknown> = {};
+  for (const entry of list) {
+    if (entry && typeof entry === "object") Object.assign(flat, entry);
+  }
+  return flat.paddingBottom;
+}
+
+describe("S11 · tab bar clearance (BUG-003)", () => {
+  it("pads the scroll content by the tab bar's footprint for a non-zero bottom inset", async () => {
+    setMockBottomInset(34);
+    try {
+      const result = await renderScreen();
+      await flushPending();
+      expect(contentPaddingBottom(result)).toBe(tabBarClearanceFor(34));
+      expect(tabBarClearanceFor(34)).toBe(134);
+    } finally {
+      setMockBottomInset(0);
+    }
   });
 });

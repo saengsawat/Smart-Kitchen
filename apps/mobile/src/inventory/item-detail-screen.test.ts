@@ -19,12 +19,18 @@ import type {
   InventoryWriteRequestDto,
   InventoryWriteResponseDto,
 } from "@smart-kitchen/contracts";
+import { apiClient } from "../api/client";
+import { GENERIC_LEDGER_ERROR_MESSAGE } from "./errors";
 import { flushPending } from "../test-support/flush";
 import { ToastHost, ToastProvider } from "./Toast";
+import { setMockBottomInset } from "../test-support/safe-area-mock";
+import { tabBarClearanceFor } from "../navigation/TabBar";
 
 const ITEM_ID = "fixture-item-strawberries"; // known to the HttpApiClient's internal fixture delegate too (confirmAiProposal)
 
 let searchParams: { itemId: string } = { itemId: ITEM_ID };
+
+vi.mock("react-native-safe-area-context", () => import("../test-support/safe-area-mock"));
 
 vi.mock("expo-router", () => ({
   useRouter: () => ({ push: () => {}, replace: () => {}, canGoBack: () => false, back: () => {} }),
@@ -307,7 +313,7 @@ describe("S5 · item detail (component)", () => {
       const confirmUrls: string[] = [];
       globalThis.fetch = ((url: string, init?: RequestInit) => {
         // M2-T5: Confirm is a real POST now (`{ item }` envelope), no longer
-        // the fixture delegate.
+        // the fixture delegate (BUG-004 stubbed it while there was no endpoint).
         if (init?.method === "POST") {
           confirmUrls.push(url);
           return Promise.resolve(
@@ -331,5 +337,72 @@ describe("S5 · item detail (component)", () => {
       ]);
       expect(result.queryByText("Needs your confirmation")).toBeNull();
     });
+
+    it("a failed confirm shows the generic ledger fallback, marks nothing confirmed, does not re-read, leaks no rejection (BUG-004)", async () => {
+      let getCalls = 0;
+      globalThis.fetch = ((_url: string, init?: RequestInit) => {
+        // M2-T5: the real endpoint refuses (here a 409 NOT_A_PROPOSAL, the
+        // answer a stale screen gets); the client rejects with the code.
+        if (init?.method === "POST") {
+          return Promise.resolve(
+            new Response(
+              JSON.stringify({
+                error: { code: "NOT_A_PROPOSAL", message: "server sentence", correlationId: "c1" },
+              }),
+              { status: 409 },
+            ),
+          );
+        }
+        getCalls += 1;
+        return Promise.resolve(
+          new Response(JSON.stringify(sampleDetail("AI_INTERPRETATION")), { status: 200 }),
+        );
+      }) as typeof fetch;
+
+      // vitest fails the run on an unhandled rejection (apps/mobile lint bans
+      // the `process` global for our own listener).
+      const result = await renderScreen();
+      await flushPending();
+      expect(result.getByText("Needs your confirmation")).toBeTruthy();
+      const getsBefore = getCalls;
+
+      fireEvent.press(result.getByLabelText("Confirm Strawberries"));
+      await flushPending(5);
+      await new Promise<void>((resolve) => setTimeout(resolve, 10));
+
+      expect(result.getByText(GENERIC_LEDGER_ERROR_MESSAGE)).toBeTruthy();
+      expect(result.queryByText("server sentence")).toBeNull();
+      expect(result.getByText("Needs your confirmation")).toBeTruthy();
+      expect(getCalls).toBe(getsBefore);
+    });
+  });
+});
+
+/** BUG-003: the clearance helpers shared by the per-screen padding tests. */
+function contentPaddingBottom(result: ReturnType<typeof render>): unknown {
+  const scroll = result.UNSAFE_getByType("ScrollView" as unknown as React.ComponentType);
+  const list: readonly unknown[] = Array.isArray(scroll.props.contentContainerStyle)
+    ? scroll.props.contentContainerStyle
+    : [scroll.props.contentContainerStyle];
+  const flat: Record<string, unknown> = {};
+  for (const entry of list) {
+    if (entry && typeof entry === "object") Object.assign(flat, entry);
+  }
+  return flat.paddingBottom;
+}
+
+describe("S5 · tab bar clearance (BUG-003)", () => {
+  it("pads the scroll content by the tab bar's footprint for a non-zero bottom inset", async () => {
+    setMockBottomInset(34);
+    try {
+      globalThis.fetch = () =>
+        Promise.resolve(new Response(JSON.stringify(sampleDetail("KNOWN_FACT")), { status: 200 }));
+      const result = await renderScreen();
+      await flushPending();
+      expect(contentPaddingBottom(result)).toBe(tabBarClearanceFor(34));
+      expect(tabBarClearanceFor(34)).toBe(134);
+    } finally {
+      setMockBottomInset(0);
+    }
   });
 });

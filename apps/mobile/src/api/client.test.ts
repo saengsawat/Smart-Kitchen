@@ -2341,12 +2341,15 @@ describe("HttpApiClient.confirmAiProposal (M2-T5: real POST /v1/inventory/items/
       return Promise.resolve(refused(404, "NOT_FOUND"));
     };
     const client = new HttpApiClient("http://localhost:4000");
+    const delegate = (client as unknown as { delegate: FixtureApiClient }).delegate;
+    const delegateSpy = vi.spyOn(delegate, "confirmAiProposal");
     // The delegate starts from `returningUser()`, which knows this id; the
-    // HTTP client must not resolve it locally.
+    // HTTP client must not resolve it locally (the property BUG-004 pinned).
     await expect(client.confirmAiProposal("fixture-item-strawberries")).rejects.toMatchObject({
       code: "NOT_FOUND",
     });
     expect(called).toBe(1);
+    expect(delegateSpy).not.toHaveBeenCalled();
   });
 
   it("retries one network failure with the same client key", async () => {

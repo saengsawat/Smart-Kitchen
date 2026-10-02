@@ -24,6 +24,9 @@ vi.mock("../api/client", async (importOriginal) => {
   return { ...actual, apiClient: new actual.HttpApiClient("http://localhost:4000") };
 });
 
+// BUG-003: S4 reads the bottom inset; the shared stand-in, default 0.
+vi.mock("react-native-safe-area-context", () => import("../test-support/safe-area-mock"));
+
 vi.mock("expo-router", () => ({
   useRouter: () => ({ push: () => {}, replace: () => {}, canGoBack: () => false, back: () => {} }),
 }));
