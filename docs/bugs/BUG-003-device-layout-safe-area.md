@@ -1,7 +1,7 @@
 # BUG-003: Scan screen and list screens collide with the phone's bottom bar (Android)
 
 **Reported:** 2026-10-01 by Andy (PO), second on-device test, Galaxy phone with the Android navigation bar.
-**Status:** OPEN, dispatched 2026-10-01 (Sonnet / Sonnet). Three layout findings with one cause: nothing at the bottom of these screens accounts for the bottom safe-area inset or the floating tab bar's height.
+**Status:** FIXED 2026-10-01 (squash `88881e1`, review PASS, fix round, re-check PASS). One cause, one fix: a tab-bar clearance hook (`useTabBarClearance`, 66 + 18 + inset + 16) pads S4, S5, S6 (legend), S11 and S12; the S7 typed-code sheet pads by the bottom inset inside a keyboard avoider; the S7 camera panel is capped at 55% of the window with the brackets centred and the hint under it. Verified in the browser at a phone viewport; the Android inset and keyboard behaviour are on the device pass. Handoff: docs/handoff/BUG-003.{worker,review}.md.
 **Code at:** main `84ff332`.
 
 ## What Andy saw
@@ -38,6 +38,6 @@
 
 Any string change; the scan logic; the stepper; the tab bar's design; Home and Menu (no scroll today; they get the hook when they do).
 
-## Still unknown
+## Owed to the device pass
 
-Whether iOS shows the same (the inset logic is the same; the device pass covers it).
+Android: the sheet clears the navigation bar, the keyboard does not collapse the camera panel, S4 and S5 end above the tab bar. iOS: the same with the home indicator inset.

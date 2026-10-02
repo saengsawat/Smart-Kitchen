@@ -259,3 +259,13 @@ Design-direction §2's v1 foundation table is the only place a dark counterpart 
 `--espresso` / `--espresso-2` (bg.hero), `--cream` (text.onHero), `--brand` / `--brand-deep` / `--brand-tint` (accent.brand triad), `--green` / `--green-bg`, `--amber` / `--amber-bg` (both updated hexes from v1), `--rose` / `--rose-bg` (urgency.today, new in v2), `--danger` / `--danger-bg` (updated hex from v1), `--ai` / `--ai-bg`, the freshness-ring ramp, and the Fraunces display face's dark-mode legibility (untested).
 
 **Recommendation for M3:** dark mode (OQ-D6) stays open; this section is the inventory of what a dark pass would need to produce (a re-derivation of the 7-row v1 table against the actual v2 light values, plus a from-scratch dark value for every v2-only token above), not a resolution of it.
+
+## 8. Device layout rules (BUG-003, 2026-10-01)
+
+| Rule | Value | Where |
+|---|---|---|
+| Floating tab bar clearance | `TAB_BAR_HEIGHT + TAB_BAR_BOTTOM_OFFSET + insets.bottom + spacing.lg` (66 + 18 + inset + 16) via `useTabBarClearance()` from `src/navigation/TabBar.tsx` | the content bottom padding of every scrolling screen that shows the bar (S4, S5, S6 legend, S11, S12; Home and Menu when they scroll) |
+| Bottom sheets and bottom-anchored inputs | pad by `insets.bottom` plus the sheet's own padding; keep them visible when the keyboard opens | S7 typed-code sheet today; S8 and the miss panel on the device pass |
+| S7 camera panel | at most 55% of the window height, brackets centred in the panel, hint directly under it, sand below | `app/add/scan.tsx` |
+| Screens that hide the bar | no clearance padding (onboarding, the Add flow) | |
+| S7 hint on sand | `ink2` on `sand`, 6.29:1 (§2 row 5) | `app/add/scan.tsx` |
