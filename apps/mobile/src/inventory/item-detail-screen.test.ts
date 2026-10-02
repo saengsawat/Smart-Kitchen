@@ -304,11 +304,20 @@ describe("S5 · item detail (component)", () => {
   describe("Confirm (Objective (g))", () => {
     it("is reachable from S5 for an AI-tier item, same label as the tray", async () => {
       let getCalls = 0;
-      globalThis.fetch = () => {
+      const confirmUrls: string[] = [];
+      globalThis.fetch = ((url: string, init?: RequestInit) => {
+        // M2-T5: Confirm is a real POST now (`{ item }` envelope), no longer
+        // the fixture delegate.
+        if (init?.method === "POST") {
+          confirmUrls.push(url);
+          return Promise.resolve(
+            new Response(JSON.stringify({ item: sampleDetail("KNOWN_FACT") }), { status: 200 }),
+          );
+        }
         getCalls += 1;
         const tier = getCalls === 1 ? "AI_INTERPRETATION" : "KNOWN_FACT";
         return Promise.resolve(new Response(JSON.stringify(sampleDetail(tier)), { status: 200 }));
-      };
+      }) as typeof fetch;
 
       const result = await renderScreen();
       await flushPending();
@@ -317,6 +326,9 @@ describe("S5 · item detail (component)", () => {
       fireEvent.press(confirmButton);
       await flushPending();
 
+      expect(confirmUrls).toEqual([
+        `http://localhost:4000/v1/inventory/items/${encodeURIComponent(ITEM_ID)}/confirm`,
+      ]);
       expect(result.queryByText("Needs your confirmation")).toBeNull();
     });
   });

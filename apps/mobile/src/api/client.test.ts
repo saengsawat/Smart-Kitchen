@@ -2261,3 +2261,221 @@ describe("HttpApiClient.getCallerSummary / signOut / rotateJoinCode (M3-T6)", ()
     });
   });
 });
+
+describe("HttpApiClient.confirmAiProposal (M2-T5: real POST /v1/inventory/items/{id}/confirm, mocked fetch)", () => {
+  const originalFetch = globalThis.fetch;
+  afterEach(() => {
+    globalThis.fetch = originalFetch;
+  });
+
+  const UUID_SHAPE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+
+  const AI_ROW: InventoryItemSummaryDto = {
+    ...SAMPLE_RESPONSE.items[0]!,
+    itemId: "item-ai",
+    displayName: "Strawberries",
+    provenance: {
+      quantity: {
+        tier: "AI_INTERPRETATION",
+        source: "receipt read “ORG STRWB 1LB”",
+        confidence: null,
+        recordedAt: null,
+      },
+      earliestExpiresAt: null,
+    },
+  };
+
+  const CONFIRMED_ROW: InventoryItemSummaryDto = {
+    ...AI_ROW,
+    provenance: {
+      quantity: {
+        tier: "KNOWN_FACT",
+        source: "receipt read “ORG STRWB 1LB” · confirmed by DC",
+        confidence: null,
+        recordedAt: null,
+      },
+      earliestExpiresAt: null,
+    },
+  };
+
+  const LIST: InventoryItemsResponseDto = { items: [SAMPLE_RESPONSE.items[0]!, AI_ROW] };
+
+  function confirmedResponse(): Response {
+    return new Response(JSON.stringify({ item: { summary: CONFIRMED_ROW, history: [] } }), {
+      status: 200,
+    });
+  }
+
+  function refused(status: number, code: string): Response {
+    return new Response(
+      JSON.stringify({ error: { code, message: "server sentence", correlationId: "c1" } }),
+      { status },
+    );
+  }
+
+  it("POSTs the item's confirm path with the bearer and a body carrying only a fresh client key", async () => {
+    const calls: { url: string; init: RequestInit | undefined }[] = [];
+    globalThis.fetch = ((url: string, init?: RequestInit) => {
+      calls.push({ url, init });
+      return Promise.resolve(confirmedResponse());
+    }) as typeof fetch;
+
+    const client = new HttpApiClient("http://localhost:4000");
+    await client.confirmAiProposal("item-ai");
+
+    expect(calls).toHaveLength(1);
+    expect(calls[0]?.url).toBe("http://localhost:4000/v1/inventory/items/item-ai/confirm");
+    expect(calls[0]?.init?.method).toBe("POST");
+    expect((calls[0]?.init?.headers as Record<string, string>).Authorization).toBe(
+      `Bearer ${FIXTURE_IDENTITY_TOKEN}`,
+    );
+    const body = parsedBody<Record<string, unknown>>(calls[0]?.init);
+    expect(Object.keys(body)).toEqual(["clientKey"]);
+    expect(body["clientKey"]).toMatch(UUID_SHAPE);
+  });
+
+  it("goes to the network even for a fixture item id, never to the internal fixture delegate", async () => {
+    let called = 0;
+    globalThis.fetch = () => {
+      called += 1;
+      return Promise.resolve(refused(404, "NOT_FOUND"));
+    };
+    const client = new HttpApiClient("http://localhost:4000");
+    // The delegate starts from `returningUser()`, which knows this id; the
+    // HTTP client must not resolve it locally.
+    await expect(client.confirmAiProposal("fixture-item-strawberries")).rejects.toMatchObject({
+      code: "NOT_FOUND",
+    });
+    expect(called).toBe(1);
+  });
+
+  it("retries one network failure with the same client key", async () => {
+    const keys: string[] = [];
+    let attempt = 0;
+    globalThis.fetch = ((_url: string, init?: RequestInit) => {
+      attempt += 1;
+      keys.push(parsedBody<{ clientKey: string }>(init).clientKey);
+      if (attempt === 1) return Promise.reject(new TypeError("Network request failed"));
+      return Promise.resolve(confirmedResponse());
+    }) as typeof fetch;
+
+    const client = new HttpApiClient("http://localhost:4000");
+    await client.confirmAiProposal("item-ai");
+
+    expect(keys).toHaveLength(2);
+    expect(keys[0]).toBe(keys[1]);
+  });
+
+  it("gives up after the one retry and rejects with the network error", async () => {
+    let attempt = 0;
+    globalThis.fetch = () => {
+      attempt += 1;
+      return Promise.reject(new TypeError("Network request failed"));
+    };
+    const client = new HttpApiClient("http://localhost:4000");
+    await expect(client.confirmAiProposal("item-ai")).rejects.toThrow("Network request failed");
+    expect(attempt).toBe(2);
+  });
+
+  it.each([
+    ["409 NOT_A_PROPOSAL", 409, "NOT_A_PROPOSAL"],
+    ["404 NOT_FOUND", 404, "NOT_FOUND"],
+    ["401 UNAUTHENTICATED", 401, "UNAUTHENTICATED"],
+  ])(
+    "a %s is thrown as LedgerRefusedError with only the code, never retried, never the server sentence",
+    async (_case, status, code) => {
+      let called = 0;
+      globalThis.fetch = () => {
+        called += 1;
+        return Promise.resolve(refused(status, code));
+      };
+      const client = new HttpApiClient("http://localhost:4000");
+
+      const error = await client.confirmAiProposal("item-ai").catch((caught: unknown) => caught);
+
+      expect(error).toBeInstanceOf(LedgerRefusedError);
+      expect((error as LedgerRefusedError).code).toBe(code);
+      expect(messageForLedgerError(error)).not.toContain("server sentence");
+      expect(called).toBe(1);
+    },
+  );
+
+  it("a 400 with a ledger code surfaces the ledger code", async () => {
+    globalThis.fetch = () =>
+      Promise.resolve(
+        new Response(
+          JSON.stringify({
+            error: {
+              code: "BAD_REQUEST",
+              message: "That change could not be recorded.",
+              correlationId: "c1",
+              ledgerCode: "INVALID_IDEMPOTENCY_KEY",
+            },
+          }),
+          { status: 400 },
+        ),
+      );
+    const client = new HttpApiClient("http://localhost:4000");
+    await expect(client.confirmAiProposal("item-ai")).rejects.toMatchObject({
+      code: "INVALID_IDEMPOTENCY_KEY",
+    });
+  });
+
+  it("invalidates the summary cache: an offline reload after a confirm serves the confirmed row, never the AI tier", async () => {
+    let online = true;
+    globalThis.fetch = ((url: string, init?: RequestInit) => {
+      if (!online) return Promise.reject(new TypeError("Network request failed"));
+      if (init?.method === "POST") return Promise.resolve(confirmedResponse());
+      expect(url).toBe(`http://localhost:4000${INVENTORY_ITEMS_PATH}`);
+      return Promise.resolve(new Response(JSON.stringify(LIST), { status: 200 }));
+    }) as typeof fetch;
+
+    const client = new HttpApiClient("http://localhost:4000");
+    const before = await client.getInventoryItems();
+    expect(before.find((item) => item.itemId === "item-ai")?.provenance.quantity?.tier).toBe(
+      "AI_INTERPRETATION",
+    );
+
+    await client.confirmAiProposal("item-ai");
+    online = false;
+    const after = await client.getInventoryItems();
+
+    expect(client.isInventoryStale()).toBe(true);
+    expect(after.find((item) => item.itemId === "item-ai")).toEqual(CONFIRMED_ROW);
+    // Every other cached row is left exactly as it was.
+    expect(after.find((item) => item.itemId === "item-1")).toEqual(SAMPLE_RESPONSE.items[0]);
+  });
+
+  it("does not invent a cache when none was loaded yet", async () => {
+    let online = true;
+    globalThis.fetch = () => {
+      if (!online) return Promise.reject(new TypeError("Network request failed"));
+      return Promise.resolve(confirmedResponse());
+    };
+    const client = new HttpApiClient("http://localhost:4000");
+    await client.confirmAiProposal("item-ai");
+    online = false;
+    await expect(client.getInventoryItems()).rejects.toThrow();
+  });
+
+  it("a malformed 200 body is an error and leaves the cache untouched", async () => {
+    let confirmCalls = 0;
+    let online = true;
+    globalThis.fetch = ((_url: string, init?: RequestInit) => {
+      if (!online) return Promise.reject(new TypeError("Network request failed"));
+      if (init?.method === "POST") {
+        confirmCalls += 1;
+        return Promise.resolve(new Response(JSON.stringify({ items: [] }), { status: 200 }));
+      }
+      return Promise.resolve(new Response(JSON.stringify(LIST), { status: 200 }));
+    }) as typeof fetch;
+
+    const client = new HttpApiClient("http://localhost:4000");
+    await client.getInventoryItems();
+    await expect(client.confirmAiProposal("item-ai")).rejects.toThrow(/unexpected response body/);
+    expect(confirmCalls).toBe(1);
+    online = false;
+    const cached = await client.getInventoryItems();
+    expect(cached.find((item) => item.itemId === "item-ai")).toEqual(AI_ROW);
+  });
+});

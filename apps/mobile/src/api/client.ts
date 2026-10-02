@@ -42,10 +42,9 @@
  * {@link FixtureApiClient.syncHouseholdFromServer}, which overwrites the
  * household's identity/members/roles from the wire but preserves whatever
  * restrictions/preferences this session already saved for a member who is
- * still present. `confirmAiProposal` still has no endpoint (M2-T3 doesn't
- * add one), so it keeps delegating to the same fixture instance too — its
- * `this.inventory` is unrelated to real HTTP inventory items, a pre-existing
- * gap this ticket does not close (see the worker report).
+ * still present. `confirmAiProposal` calls its real endpoint since M2-T5,
+ * so nothing on this client reads the delegate's fixture inventory any more
+ * (retiring that leftover is a backlog follow-up, see the M2-T5 report).
  *
  * ## Idempotency keys and retries (M3-T4a)
  *
@@ -63,6 +62,8 @@ import type {
   AddShoppingRowToInventoryRequestDto,
   ApiErrorBodyDto,
   CheckShoppingRowRequestDto,
+  ConfirmAiProposalRequestDto,
+  ConfirmAiProposalResponseDto,
   CreateHouseholdRequestDto,
   CreateHouseholdResponseDto,
   CreateItemRequestDto,
@@ -92,6 +93,7 @@ import {
   HOUSEHOLD_ME_PATH,
   HOUSEHOLDS_PATH,
   INVENTORY_ITEMS_PATH,
+  inventoryItemConfirmPath,
   inventoryItemPath,
   inventoryItemTransactionsPath,
   inventoryTransactionUndoPath,
@@ -252,6 +254,14 @@ function isInventoryItemDetailResponse(body: unknown): body is InventoryItemDeta
     candidate.summary !== null &&
     Array.isArray(candidate.history)
   );
+}
+
+/** Same shallow-shape-guard rule (M2-T5), for the confirm endpoint's `{ item }` envelope. */
+function isConfirmAiProposalResponse(body: unknown): body is ConfirmAiProposalResponseDto {
+  if (typeof body !== "object" || body === null) {
+    return false;
+  }
+  return isInventoryItemDetailResponse((body as { item?: unknown }).item);
 }
 
 /** Same shallow-shape-guard rule, for the write/undo endpoints' shared response shape. */
@@ -551,7 +561,11 @@ export interface ApiClient {
    * fixture no longer searches every item's history to find it).
    */
   undo(itemId: string, transactionId: string): Promise<void>;
-  /** S4's "Confirm" action on an AI-tier row: promotes it to Known Fact. Fixture only. */
+  /**
+   * S4's "Confirm" action on an AI-tier row: promotes it to Known Fact. The
+   * fixture flips its in-memory flag; `HttpApiClient` calls
+   * `POST /v1/inventory/items/{itemId}/confirm` (M2-T5).
+   */
   confirmAiProposal(itemId: string): Promise<void>;
   /**
    * S7/S8: resolves a scanned or typed code to a product plus its household
@@ -1161,9 +1175,9 @@ const MAX_NETWORK_RETRIES = 1;
 /**
  * Real HTTP client for the M2-T1/M2-T2 inventory endpoints and the M2-T3
  * household/item-creation endpoints (M3-T4d), used when
- * `EXPO_PUBLIC_API_URL` is set. Onboarding's restrictions half and
- * `confirmAiProposal` delegate to an internal fixture client — see this
- * module's doc comment for why.
+ * `EXPO_PUBLIC_API_URL` is set. Onboarding's restrictions half delegates to
+ * an internal fixture client — see this module's doc comment for why.
+ * `confirmAiProposal` calls the M2-T5 endpoint.
  */
 export class HttpApiClient implements ApiClient {
   private readonly baseUrl: string;
@@ -1184,6 +1198,8 @@ export class HttpApiClient implements ApiClient {
     // (invariant: never assume a household it did not get from the
     // server), and `.returningUser()`'s household is the already-onboarded
     // Chen fixture, a false positive this client must not start with.
+    // M2-T5: `confirmAiProposal` no longer reads the delegate's inventory;
+    // switching this to `.newUser()` is a backlog follow-up, not done here.
     this.delegate = FixtureApiClient.returningUser();
     this.delegate.clearHouseholdUntilServerSaysOtherwise();
   }
@@ -1570,8 +1586,57 @@ export class HttpApiClient implements ApiClient {
     );
   }
 
-  confirmAiProposal(itemId: string): Promise<void> {
-    return this.delegate.confirmAiProposal(itemId);
+  /**
+   * `POST /v1/inventory/items/{itemId}/confirm` (M2-T5, D-028). One client
+   * key per call, minted before the first attempt and reused unchanged on
+   * the one network retry, same rule as every write here (the server is
+   * idempotent by state anyway: a second confirm records nothing and answers
+   * the same body). A well-formed refusal (404, 409 `NOT_A_PROPOSAL`, a 400
+   * with a ledger code) is thrown as a {@link LedgerRefusedError} carrying
+   * only the code, never retried and never the server's message.
+   *
+   * On success the summary cache is invalidated for this item by replacing
+   * its cached row with the server's post-confirm summary, so the stale-cache
+   * fallback (copy-deck §7 S4) can never serve the pre-confirm AI tier again
+   * and S4's tray drops the row on its next load even if that load falls back
+   * to the cache. Dropping the whole cache instead would turn an offline
+   * reload right after a confirm into the cold-start error screen.
+   */
+  async confirmAiProposal(itemId: string): Promise<void> {
+    const url = `${this.baseUrl}${inventoryItemConfirmPath(itemId)}`;
+    const body: ConfirmAiProposalRequestDto = { clientKey: nextIdempotencyKey() };
+    let attempt = 0;
+    for (;;) {
+      let response: Response;
+      try {
+        response = await fetch(url, {
+          method: "POST",
+          headers: { ...this.authHeaders(), "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+      } catch (networkError) {
+        if (attempt >= MAX_NETWORK_RETRIES) {
+          throw toError(networkError);
+        }
+        attempt += 1;
+        continue;
+      }
+      if (!response.ok) {
+        const errorBody: unknown = await response.json().catch(() => null);
+        throw new LedgerRefusedError(extractErrorCode(errorBody) ?? "INTERNAL");
+      }
+      const parsedBody: unknown = await response.json();
+      if (!isConfirmAiProposalResponse(parsedBody)) {
+        throw new Error(`POST ${url} returned an unexpected response body`);
+      }
+      const confirmed = parsedBody.item.summary;
+      if (this.cachedItems) {
+        this.cachedItems = this.cachedItems.map((item) =>
+          item.itemId === confirmed.itemId ? confirmed : item,
+        );
+      }
+      return;
+    }
   }
 
   /**
