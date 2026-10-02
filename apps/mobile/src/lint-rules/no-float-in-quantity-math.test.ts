@@ -44,6 +44,18 @@ const GUARDED_FILES = [
   path.join(repoRoot, "apps", "mobile", "src", "inventory", "quantity.ts"),
 ];
 
+/**
+ * M3-T7 review F1: the two screens that turn typed text into amounts. They
+ * legitimately use `Math.round`/`min`/`max` for layout and the integer
+ * package count, so `Math.*` is not banned wholesale there; the rounding
+ * and truncating members that would turn a typed amount into a float
+ * (`trunc`, `floor`, `ceil`) are, along with every parse and `.toFixed`.
+ */
+const SCREEN_FILES = [
+  path.join(repoRoot, "apps", "mobile", "app", "inventory", "[itemId].tsx"),
+  path.join(repoRoot, "apps", "mobile", "app", "add", "scan.tsx"),
+];
+
 /** Same simple block/line-comment stripper as `no-screening-import.test.ts` — good enough for a grep-style check, not a full tokenizer. */
 function stripComments(text: string): string {
   return text.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "");
@@ -71,9 +83,58 @@ const FORBIDDEN_PATTERNS: readonly { readonly name: string; readonly pattern: Re
   { name: "Math.*", pattern: /\bMath\./ },
 ];
 
-function violationsIn(code: string): string[] {
+const SCREEN_FORBIDDEN_PATTERNS: readonly { readonly name: string; readonly pattern: RegExp }[] = [
+  ...FORBIDDEN_PATTERNS.filter((p) => p.name !== "Math.*"),
+  // A leading-plus conversion: a `+` with nothing in front of it (start, an
+  // operator or an opening bracket) before an identifier or `(`. Binary `+`
+  // has an operand before it, `+=`/`++` are followed by `=`/`+`.
+  {
+    name: "leading-plus conversion",
+    pattern: /(?:^|[=(,:?&|!*/%<>[{;+-]|\breturn\b)\s*\+\s*[A-Za-z_$(]/,
+  },
+  // Plain-number scale literals; the bigint forms (`1_000_000n`) stay allowed
+  // because `\b` finds no boundary between `0` and `n`.
+  { name: "plain scale literal 1e6", pattern: /\b1e6\b/i },
+  { name: "plain scale literal 1_000_000", pattern: /\b1_000_000\b/ },
+  { name: "plain scale literal 1000000", pattern: /\b1000000\b/ },
+];
+
+/**
+ * On the screens `Math` is allow-listed by name: `Math.min(` and `Math.max(`
+ * (layout and the integer package count), and `Math.round(` only as the one
+ * expression `Math.round(windowHeight * CAMERA_PANEL_MAX_FRACTION)` in
+ * `scan.tsx` (camera panel height). Any other `Math.*` is a violation.
+ */
+const ALLOWED_SCREEN_ROUND = "Math.round(windowHeight * CAMERA_PANEL_MAX_FRACTION)";
+
+function disallowedMath(code: string): string[] {
   const found: string[] = [];
-  for (const { name, pattern } of FORBIDDEN_PATTERNS) {
+  for (const match of code.matchAll(/\bMath\.(\w+)\s*\(/g)) {
+    const member = match[1]!;
+    if (member === "min" || member === "max") {
+      continue;
+    }
+    if (member === "round" && code.startsWith(ALLOWED_SCREEN_ROUND, match.index)) {
+      continue;
+    }
+    found.push(`Math.${member}`);
+  }
+  for (const match of code.matchAll(/\bMath\b(?!\.\w+\s*\()/g)) {
+    found.push(`Math (bare use at ${String(match.index)})`);
+  }
+  return found;
+}
+
+function screenViolationsIn(code: string): string[] {
+  return [...violationsIn(code, SCREEN_FORBIDDEN_PATTERNS), ...disallowedMath(code)];
+}
+
+function violationsIn(
+  code: string,
+  patterns: readonly { readonly name: string; readonly pattern: RegExp }[] = FORBIDDEN_PATTERNS,
+): string[] {
+  const found: string[] = [];
+  for (const { name, pattern } of patterns) {
     if (pattern.test(code)) {
       found.push(name);
     }
@@ -85,6 +146,42 @@ describe("src/scan/quantity.ts and src/inventory/quantity.ts never route through
   it.each(GUARDED_FILES)("%s contains none of Number()/parseFloat/parseInt/.toFixed()", (file) => {
     const code = stripComments(readFileSync(file, "utf8"));
     expect(violationsIn(code)).toEqual([]);
+  });
+
+  it.each(SCREEN_FILES)(
+    "%s (typed amounts to micros) contains no float parse, .toFixed or truncating Math (M3-T7 F1)",
+    (file) => {
+      const code = stripComments(readFileSync(file, "utf8"));
+      expect(screenViolationsIn(code)).toEqual([]);
+    },
+  );
+
+  it("mutation check: the screen guard catches the float amount paths the review mutants used", () => {
+    expect(screenViolationsIn("String(Math.trunc(Number(draftText) * 1e6))")).toEqual(
+      expect.arrayContaining(["Number(...)", "Math.trunc", "plain scale literal 1e6"]),
+    );
+    expect(screenViolationsIn("String(Number(microsToAmountText(m)))")).toContain("Number(...)");
+    // The leading-plus + Math.round escapes from the round 2 re-check.
+    expect(screenViolationsIn("BigInt(Math.round(+draftText * 1e6)).toString()")).toEqual(
+      expect.arrayContaining(["leading-plus conversion", "Math.round", "plain scale literal 1e6"]),
+    );
+    expect(
+      screenViolationsIn("String(Math.round(+microsToAmountText(size.micros) * 1e6) / 1e6)"),
+    ).toEqual(expect.arrayContaining(["leading-plus conversion", "Math.round"]));
+    expect(screenViolationsIn("const x = (+text) * 1_000_000;")).toEqual(
+      expect.arrayContaining(["leading-plus conversion", "plain scale literal 1_000_000"]),
+    );
+  });
+
+  it("the screen guard allows what the screens legitimately use", () => {
+    const ok = [
+      "Math.min(140, Math.max(8, next))",
+      "Math.max(1, prev - 1)",
+      "const h = Math.round(windowHeight * CAMERA_PANEL_MAX_FRACTION);",
+      "const n = a + b; i += 1; i++; const m = 1_000_000n * x; <Text>+</Text>",
+    ].join("\n");
+    expect(screenViolationsIn(ok)).toEqual([]);
+    expect(screenViolationsIn("Math.round(other * 2)")).toContain("Math.round");
   });
 
   it("Number.isInteger and Number.isNaN are not flagged (pure predicates on an already-integer value)", () => {

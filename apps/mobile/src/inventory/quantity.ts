@@ -148,3 +148,39 @@ export function formatQuantityDisplay(
   const prefix = provenanceTier === "ESTIMATED" ? "~" : "";
   return `${prefix}${trimmed} ${pluralizeUnit(quantity.unit, trimmed)}`;
 }
+
+/**
+ * The largest magnitude the ledger accepts (`MAX_QUANTITY_MICROS` in
+ * `packages/domain/src/inventory/quantity.ts`, 100,000,000 whole units). The
+ * client cannot import the domain package (M3-T1/M3-T3 invariant), so the
+ * value is restated here and pinned by this module's tests; the server still
+ * refuses anything out of range on its own.
+ */
+export const MAX_TYPED_QUANTITY_MICROS = 100_000_000_000_000n;
+
+const TYPED_AMOUNT_PATTERN = /^(?:(\d+)(?:\.(\d{0,6}))?|\.(\d{1,6}))$/;
+
+/**
+ * Parses text a person typed into an amount field (M3-T7) into exact micros,
+ * or `null` when it is not a usable amount. Accepted: plain non-negative
+ * decimal text with at most six fractional digits ("9", "9.25", ".5", "9."),
+ * not above {@link MAX_TYPED_QUANTITY_MICROS}. Everything else is `null`: a
+ * sign, an exponent, a comma, a unit suffix, a seventh decimal (never
+ * silently truncated), or empty text. The digits become micros text and go
+ * through {@link parseMicros}; no `Number` is ever built (rule 7).
+ */
+export function parseTypedAmount(text: string): bigint | null {
+  const match = TYPED_AMOUNT_PATTERN.exec(text.trim());
+  if (!match) {
+    return null;
+  }
+  const whole = match[1] ?? "0";
+  const fraction = (match[2] ?? match[3] ?? "").padEnd(6, "0");
+  const micros = parseMicros(`${whole}${fraction}`);
+  return micros > MAX_TYPED_QUANTITY_MICROS ? null : micros;
+}
+
+/** The text an amount field shows for exact micros: `9250000n` -> `"9.25"`, `2000000n` -> `"2"`. */
+export function microsToTypedText(micros: bigint): string {
+  return trimAmountText(microsToAmountText(micros));
+}
