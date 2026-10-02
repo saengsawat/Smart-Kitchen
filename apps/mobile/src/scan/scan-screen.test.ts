@@ -34,6 +34,8 @@ import {
   __setMockCameraPermission,
 } from "../test-support/expo-camera-mock";
 import { flushPending } from "../test-support/flush";
+import { setMockBottomInset } from "../test-support/safe-area-mock";
+import { setMockWindowDimensions } from "../test-support/react-native-mock";
 import { ToastHost, ToastProvider } from "../inventory/Toast";
 import { colors } from "../design/tokens";
 import type {
@@ -48,6 +50,8 @@ import { GENERIC_LEDGER_ERROR_MESSAGE, GENERIC_READ_ERROR_MESSAGE } from "../inv
 
 let pushed: unknown[] = [];
 let replaced: unknown[] = [];
+
+vi.mock("react-native-safe-area-context", () => import("../test-support/safe-area-mock"));
 
 vi.mock("expo-router", () => ({
   useRouter: () => ({
@@ -1060,5 +1064,61 @@ describe("S7 · product-lookup refusals (M3-T4e Objective (a), copy-deck.md §8)
     } finally {
       apiClient.lookupProduct = original;
     }
+  });
+});
+
+describe("S7 · bottom inset and camera size (BUG-003)", () => {
+  afterEach(() => {
+    setMockBottomInset(0);
+    setMockWindowDimensions(390, 844);
+  });
+
+  it("pads the typed-code sheet's bottom by the safe-area inset plus spacing.md", async () => {
+    setMockBottomInset(34);
+    const withInset = await renderScreen();
+    expect(
+      flattenStyle(withInset.getByTestId("scan-fallback-sheet").props.style).paddingBottom,
+    ).toBe(34 + 12);
+    cleanup();
+
+    setMockBottomInset(0);
+    const noInset = await renderScreen();
+    expect(flattenStyle(noInset.getByTestId("scan-fallback-sheet").props.style).paddingBottom).toBe(
+      12,
+    );
+  });
+
+  it("caps the camera panel at 55% of the window height", async () => {
+    setMockWindowDimensions(400, 800);
+    const result = await renderScreen();
+    expect(flattenStyle(result.getByTestId("scan-camera-panel").props.style).height).toBe(440);
+    cleanup();
+
+    setMockWindowDimensions(390, 1000);
+    const tall = await renderScreen();
+    expect(flattenStyle(tall.getByTestId("scan-camera-panel").props.style).height).toBe(550);
+  });
+
+  it("keeps the hint under the panel, not inside it, and the frame inside it", async () => {
+    __setMockCameraPermission({ granted: true, canAskAgain: true, status: "granted" });
+    const result = await renderScreen();
+    const panel = result.getByTestId("scan-camera-panel");
+    expect(result.getByText("Point the camera at a barcode")).toBeTruthy();
+    expect(panel.findAll((n) => n.props.children === "Point the camera at a barcode")).toHaveLength(
+      0,
+    );
+    expect(panel.findAll((n) => n.props.pointerEvents === "none")).not.toHaveLength(0);
+  });
+
+  it("centres the brackets frame in the panel and lets the panel shrink for the keyboard", async () => {
+    __setMockCameraPermission({ granted: true, canAskAgain: true, status: "granted" });
+    const result = await renderScreen();
+    const panel = result.getByTestId("scan-camera-panel");
+    expect(flattenStyle(panel.props.style).flexShrink).toBe(1);
+    const frame = panel.findAll((n) => n.props.pointerEvents === "none")[0];
+    const style = flattenStyle(frame?.props.style);
+    expect(style.top).toBe("50%");
+    expect(style.height).toBe(150);
+    expect(style.marginTop).toBe(-75);
   });
 });
