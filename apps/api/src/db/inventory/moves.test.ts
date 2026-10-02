@@ -146,8 +146,17 @@ describe.skipIf(!dbTestsEnabled)(SUITE, () => {
       return rows.rows.map((row) => row.json);
     };
     return {
-      transactions: await read("to_jsonb(r)", "inventory_transactions"),
-      lots: await read("to_jsonb(r)", "inventory_lots"),
+      // ctid and xmin as well as content: a no-op UPDATE rewrites the tuple, so
+      // it would change both while leaving to_jsonb identical (the M2-T5 precedent).
+      transactions: await read(
+        "r.ctid::text || '|' || r.xmin::text || '|' || to_jsonb(r)::text",
+        "inventory_transactions",
+      ),
+      lots: await read(
+        "r.ctid::text || '|' || r.xmin::text || '|' || to_jsonb(r)::text",
+        "inventory_lots",
+      ),
+      // Content only: a move legitimately rewrites the item tuple (storage_location).
       itemsWithoutLocation: await read("to_jsonb(r) - 'storage_location'", "inventory_items"),
     };
   }
@@ -579,6 +588,53 @@ describe.skipIf(!dbTestsEnabled)(SUITE, () => {
   });
 
   describe("concurrency", () => {
+    it("a move that waited on the item lock is stamped after the move it waited for (clock_timestamp, not now)", async () => {
+      // E begins its transaction first, then F moves the item and holds the
+      // lock, then E tries to move the same item and blocks until F commits.
+      // With DEFAULT now() E would carry its earlier transaction start and sort
+      // before F: the history would list the chain out of order and the
+      // create-replay LATERAL would pick the wrong "first move".
+      const item = await itemIn(home, "FRIDGE");
+      let eReady: () => void = () => {};
+      let fHolds: () => void = () => {};
+      const eReadyP = new Promise<void>((resolve) => (eReady = resolve));
+      const fHoldsP = new Promise<void>((resolve) => (fHolds = resolve));
+      const sleep = (ms: number): Promise<void> =>
+        new Promise((resolve) => setTimeout(resolve, ms));
+
+      const e = asTenant(home.householdId, async (client) => {
+        await client.query("SELECT 1");
+        eReady();
+        await fHoldsP;
+        return moveItem(client, home.householdId, item.itemId, {
+          toLocation: "FREEZER",
+          idempotencyKey: "order-e",
+          actorUserId: home.userId,
+        });
+      });
+      const f = asTenant(home.householdId, async (client) => {
+        await eReadyP;
+        const result = await moveItem(client, home.householdId, item.itemId, {
+          toLocation: "PANTRY",
+          idempotencyKey: "order-f",
+          actorUserId: home.userId,
+        });
+        fHolds();
+        // Hold the lock until E is well into its blocked move.
+        await sleep(600);
+        return result;
+      });
+      await Promise.all([e, f]);
+
+      const rows = await movesOf(item.itemId);
+      expect(rows.map((row) => [row.client_key, row.from_location, row.to_location])).toEqual([
+        ["order-f", "FRIDGE", "PANTRY"],
+        ["order-e", "PANTRY", "FREEZER"],
+      ]);
+      const times = rows.map((row) => row.occurred_at.getTime());
+      expect(times[0]).toBeLessThanOrEqual(times[1] ?? 0);
+    });
+
     it("two different moves of one item serialise on the item lock: one wins, the other reads the new location", async () => {
       const item = await itemIn(home, "FRIDGE");
       const results = await Promise.allSettled([

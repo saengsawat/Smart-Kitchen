@@ -42,7 +42,7 @@
 -- WHAT DOWN DOES
 --
 -- Revokes the grants, drops the policy and the table (its triggers go with
--- it) and both trigger functions. Every recorded move is lost with the table;
+-- it) and the trigger function. Every recorded move is lost with the table;
 -- the items keep whatever `storage_location` they hold now, and the ledger is
 -- untouched in both directions.
 

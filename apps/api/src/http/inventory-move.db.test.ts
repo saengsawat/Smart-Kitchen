@@ -170,8 +170,14 @@ describe.skipIf(!dbTestsEnabled)(SUITE, () => {
   }
 
   async function image(table: string, extra = ""): Promise<string[]> {
+    // Items: content only (a move legitimately rewrites the item tuple). Every
+    // other table also carries ctid and xmin, so a no-op UPDATE would show.
+    const select =
+      table === "inventory_items"
+        ? `(to_jsonb(t)${extra})::text`
+        : `t.ctid::text || '|' || t.xmin::text || '|' || to_jsonb(t)::text`;
     const rows = await db.pool.query<{ json: string }>(
-      `SELECT (to_jsonb(t)${extra})::text AS json FROM ${table} AS t ORDER BY id`,
+      `SELECT ${select} AS json FROM ${table} AS t ORDER BY id`,
     );
     return rows.rows.map((row) => row.json);
   }
@@ -536,7 +542,7 @@ describe.skipIf(!dbTestsEnabled)(SUITE, () => {
     it("every lot and every item column except storage_location is untouched by a move", async () => {
       // The Eggs' own ledger write moves its snapshot columns; everything else must match.
       const lotsNow = await db.pool.query<{ json: string }>(
-        `SELECT to_jsonb(t)::text AS json FROM inventory_lots AS t
+        `SELECT t.ctid::text || '|' || t.xmin::text || '|' || to_jsonb(t)::text AS json FROM inventory_lots AS t
           WHERE t.item_id <> $1 ORDER BY id`,
         [EGGS],
       );

@@ -9,7 +9,7 @@
  * `.test.ts` with `React.createElement`, like its siblings.
  */
 import React from "react";
-import { cleanup, fireEvent, render } from "@testing-library/react-native";
+import { act, cleanup, fireEvent, render } from "@testing-library/react-native";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { apiClient, FIXTURE_JOIN_CODE } from "../api/client";
 import { flushPending } from "../test-support/flush";
@@ -131,7 +131,7 @@ describe("S5 · Move to (M2-T6)", () => {
     expect(result.getByLabelText("Move to Pantry")).toBeTruthy();
   });
 
-  it("a double tap sends one move: the chips are disabled while the request is in flight", async () => {
+  it("taps inside one frame send one move: the guard is a ref, and the chips are disabled while the request is in flight", async () => {
     const result = await renderScreen();
     let release: () => void = () => {};
     const spy = vi.spyOn(apiClient, "moveItem").mockImplementation(
@@ -141,9 +141,13 @@ describe("S5 · Move to (M2-T6)", () => {
         }),
     );
 
-    fireEvent.press(result.getByLabelText("Move to Pantry"));
-    fireEvent.press(result.getByLabelText("Move to Pantry"));
-    fireEvent.press(result.getByLabelText("Move to Freezer"));
+    // All three taps inside one act(): no re-render between them, so a
+    // guard held in React state would let every one through.
+    act(() => {
+      fireEvent.press(result.getByLabelText("Move to Pantry"));
+      fireEvent.press(result.getByLabelText("Move to Pantry"));
+      fireEvent.press(result.getByLabelText("Move to Freezer"));
+    });
     await flushPending();
     expect(spy).toHaveBeenCalledTimes(1);
 

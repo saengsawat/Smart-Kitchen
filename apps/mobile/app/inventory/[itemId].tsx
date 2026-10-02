@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   AccessibilityInfo,
   Pressable,
@@ -82,6 +82,9 @@ export default function ItemDetailScreen(): React.JSX.Element {
   const [removalError, setRemovalError] = useState<string | null>(null);
   // M2-T6: true while a move is in flight, so a double tap sends one request.
   const [moving, setMoving] = useState(false);
+  // The guard itself is a ref: state updates are batched, so two taps inside
+  // one frame would both read `moving === false`.
+  const movingRef = useRef(false);
 
   const resetDraft = useCallback((micros: bigint): void => {
     setDraftMicros(micros);
@@ -238,9 +241,10 @@ export default function ItemDetailScreen(): React.JSX.Element {
   }
 
   async function handleMove(toLocation: StorageLocationDto): Promise<void> {
-    if (!itemId || moving) {
+    if (!itemId || movingRef.current) {
       return;
     }
+    movingRef.current = true;
     setMoving(true);
     try {
       try {
@@ -264,6 +268,7 @@ export default function ItemDetailScreen(): React.JSX.Element {
       setDetail(updated);
       show(`Moved to ${LOCATION_LABELS[toLocation]}`);
     } finally {
+      movingRef.current = false;
       setMoving(false);
     }
   }
