@@ -17,7 +17,7 @@ Inventory is the product (brief §18C). §7 requires a historical record of cons
 **A.** This is the single most architecture-defining choice in the system and the one we ask the product owner to ratify first.
 
 ## Consequences
-Ledger tables are append-only (no UPDATE/DELETE for app role); `packages/domain` owns transaction types and derivation; INV-LEDGER-1..4 become permanent property tests; storage grows linearly (cheap; archive strategy is a someday-problem).
+Ledger tables are append-only (no UPDATE/DELETE for app role); `packages/domain` owns transaction types and derivation; INV-LEDGER-1..4 become permanent property tests; storage grows linearly (cheap; archive strategy is a someday-problem). **Facts about a transaction that arrive later (D-028, 2026-10-01):** a user confirming an AI-interpreted row, or any other after-the-fact provenance, is its own row in a sibling append-only table (`inventory_confirmations` first) joined at read time; a ledger row is never edited, and a non-quantity fact is never a zero-delta transaction.
 
 ## Open questions
 - ~~Snapshot maintenance: app-transaction vs DB trigger~~ — **RESOLVED (M1-T2, 2026-09-10): DB trigger.** Snapshots are maintained by an `AFTER INSERT` trigger in the same statement as the append, and the runtime role holds **no UPDATE privilege on any snapshot column** — appending a transaction is structurally the only way a quantity can move (CLAUDE.md rule 10 as a privilege boundary, not a convention). Non-negativity is a deferred, `SECURITY DEFINER`, fail-closed constraint trigger (an overshoot and its clamp are legitimately negative between inserts). Reconciliation remains a query + invariant test; the read path additionally refuses snapshot drift and corrupt rows via `rehydrateInventoryItem`.

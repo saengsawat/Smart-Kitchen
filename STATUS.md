@@ -11,7 +11,7 @@ _Last updated: 2026-10-01 (batch A closed except R-6; BUG-001 and BUG-002 fixed;
 | R-6 | Shelf-life data research: USDA FoodKeeper coverage, licence and the estimation rule (docs only) | Sonnet / Sonnet | dispatched 2026-09-29, blocked on the FoodKeeper download (PO, browser) |
 | BUG-003 | Scan sheet under the Android navigation bar, camera panel too tall, list screens under the floating tab bar (docs/bugs/BUG-003) | Sonnet / Sonnet | dispatched 2026-10-01 |
 | BUG-004 | Confirm on an AI proposal throws an uncaught rejection over the API (docs/bugs/BUG-004; crash guard, M2-T5 is the real confirm) | Sonnet / Sonnet | dispatched 2026-10-01 |
-| M2-T5 | Confirm an AI proposal over the API: endpoint, provenance confirmation, client wiring | Opus / Opus | dispatched 2026-10-01 (client part after BUG-004) |
+| M2-T5 | Confirm an AI proposal over the API: endpoint, confirmations table (D-028, migration 0010), client wiring | Opus / Opus | dispatched 2026-10-01; stopped on an ARCHITECTURE CONFLICT the same hour (the ticket asked for a ledger-row edit), resumed under D-028 (client part after BUG-004) |
 
 **Batch A status (2026-10-01):** M7-T1, M3-T6, M9-D1, M9-T0 and M2-T4b accepted; R-6 blocked on the FoodKeeper download (the USDA host answers 403 to non-browser clients; Andy downloads the two files in a browser and names the folder). BUG-002 fixed. **Owed from the PO, one line each:** ratify D-026 as amended (dual emission) and D-027 (browser-origin allowlist, built as proposed); the FoodKeeper files for R-6; the Android re-run of the S2 flow once BUG-001 merges.
 
