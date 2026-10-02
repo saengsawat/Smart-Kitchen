@@ -158,7 +158,7 @@ This is the one surface allowed to state the negative "can't mark ... safe" dire
 
 ## §4. Provenance chips and legend
 
-> **Confirmed source (M2-T5, 2026-10-01):** when a surface shows a confirmed AI reading's source it reads "{original source} · confirmed by {initials}" (or "{source} · confirmed" when the confirmer cannot be shown), following the "Known Fact · {source}" pattern below. No screen string changed in M2-T5; the server's own sentence is never rendered.
+> **Confirmed source (M2-T5, 2026-10-01):** when a surface shows a confirmed AI reading's source it reads "{original source} · confirmed by {initials}" (or "{source} · confirmed" when the confirmer cannot be shown), following the "Known Fact · {source}" pattern below. No screen string changed in M2-T5; the server's own sentence is never rendered. **Moves (M2-T6):** a location move is the member's own recorded action, not a fallible fact about a quantity or a date; its history row carries no chip.
 
 Three tiers (`ProvenanceTier`, shared by allergens and inventory). The AI chip is an **action** ("Confirm"), never a passive label (design-direction §7 adoption note).
 
@@ -260,6 +260,7 @@ Per P8 (every screen designs its non-happy states first). Format: headline, one 
 - **Removal rows:** action label ("Discarded", "Consumed", "Expired", "Donated") with a caption `reason: {reason}` in lower case, prototype wording. Ledger rows for a cooked meal read "Cooked in {recipe}" (§5 vocabulary; the prototype's "Used in" loses under §5).
 - **History order:** the S5 history list is newest first; the "Why {qty}?" narrative is chronological. Two widgets, each single-ordered (ruling at M3-T3 acceptance).
 - **Not built yet:** the S4 search icon is hidden until M4 (P10); the tray's Edit opens the item.
+- **Move to (M2-T6, 2026-10-02):** a "Move to" row under "Use or remove" offers the other locations (chips "Fridge", "Freezer", "Pantry", "Other"; accessibility label "Move to {Location}"). A successful move toasts "Moved to {Location}" and adds a "Moved to {Location}" row to history, newest first, with "from {Location}" as its caption (omitted when the item had no location before), the mover's initials and no amount; a move row wears no provenance chip (it is the member's own recorded action, not a claim about a quantity or a date). Move failed: the §8 generic write fallback; `SAME_LOCATION` (a stale screen) shows the same fallback and the server's sentence is never rendered. Move saved but the re-read failed: the §8 generic read fallback. Not built: no Undo on the move toast; moving back is another tap.
 - **Amount field (M3-T7, 2026-10-02):** the amount beside the stepper is a number field. Text that is not a usable amount (empty, letters, a minus sign, a comma, more than six decimals, above 100,000,000) shows "Enter a number, like 2 or 0.5." under the stepper and Save correction stays disabled. The stepper still steps 0.25 from whatever is typed; count units accept decimals.
 
 ### S6 · Add hub (added at M3-T4b acceptance, 2026-09-23)
