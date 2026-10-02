@@ -1,9 +1,31 @@
 import { Link, usePathname } from "expo-router";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { colors, minTouchTarget, radius } from "../design/tokens";
+import { colors, minTouchTarget, radius, spacing } from "../design/tokens";
 import { ScanIcon, TabIcon } from "./TabIcon";
 import { CENTER_ACTION, TAB_ORDER, isActiveRoute } from "./tabs";
+
+/** The floating bar's own height and its gap above the bottom inset (px). */
+export const TAB_BAR_HEIGHT = 66;
+export const TAB_BAR_BOTTOM_OFFSET = 18;
+
+/**
+ * The bar's full footprint for a given bottom safe-area inset: height plus
+ * bottom offset plus the inset plus one `spacing.lg` of breathing room.
+ * Pure so tests can pin the formula without rendering.
+ */
+export function tabBarClearanceFor(bottomInset: number): number {
+  return TAB_BAR_HEIGHT + TAB_BAR_BOTTOM_OFFSET + bottomInset + spacing.lg;
+}
+
+/**
+ * Bottom padding every scrolling screen that shows the tab bar must give its
+ * content (S4, S5, S11, S12) so the last row clears the floating bar (BUG-003).
+ */
+export function useTabBarClearance(): number {
+  const insets = useSafeAreaInsets();
+  return tabBarClearanceFor(insets.bottom);
+}
 
 /**
  * The five-slot floating tab bar (M3-T1), matching prototype v4's `.nav` /
@@ -18,7 +40,10 @@ export function TabBar(): React.JSX.Element {
   const right = TAB_ORDER.slice(2);
 
   return (
-    <View pointerEvents="box-none" style={[styles.wrap, { bottom: 18 + insets.bottom }]}>
+    <View
+      pointerEvents="box-none"
+      style={[styles.wrap, { bottom: TAB_BAR_BOTTOM_OFFSET + insets.bottom }]}
+    >
       <View style={styles.bar}>
         {left.map((tab) => (
           <TabButton
@@ -91,7 +116,7 @@ const styles = StyleSheet.create({
   },
   bar: {
     width: "100%",
-    height: 66,
+    height: TAB_BAR_HEIGHT,
     backgroundColor: colors.paper,
     borderWidth: 1,
     borderColor: colors.line,

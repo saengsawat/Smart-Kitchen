@@ -5,6 +5,7 @@ import type { ShoppingListDto, ShoppingRowDto } from "@smart-kitchen/contracts";
 import { apiClient, hasDevOfflineToggle } from "../src/api/client";
 import { nextIdempotencyKey } from "../src/api/idempotency";
 import { colors, fontFamily, minTouchTarget, radius, spacing } from "../src/design/tokens";
+import { useTabBarClearance } from "../src/navigation/TabBar";
 import { GENERIC_READ_ERROR_MESSAGE, messageForLedgerError } from "../src/inventory/errors";
 import { LOCATION_LABELS } from "../src/inventory/list-view";
 import { useReducedMotion, pressScaleStyle } from "../src/inventory/motion";
@@ -133,6 +134,7 @@ function applyQueuedOverlay(list: ShoppingListDto): ShoppingListDto {
  * redundant, misleading success toast.
  */
 export default function ShoppingScreen(): React.JSX.Element {
+  const tabBarClearance = useTabBarClearance();
   const router = useRouter();
   const reducedMotion = useReducedMotion();
   const { show } = useToast();
@@ -431,7 +433,7 @@ export default function ShoppingScreen(): React.JSX.Element {
           </Pressable>
         </View>
       ) : (
-        <ScrollView contentContainerStyle={styles.content}>
+        <ScrollView contentContainerStyle={[styles.content, { paddingBottom: tabBarClearance }]}>
           {view.groups.map((group, index) => (
             <View key={`${group.group}-${String(index)}`}>
               <View style={styles.groupHeader}>
@@ -753,7 +755,6 @@ const styles = StyleSheet.create({
   content: {
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.sm,
-    paddingBottom: spacing.xxl * 2,
   },
   groupHeader: { paddingTop: spacing.md, paddingBottom: spacing.xs },
   groupTitle: {

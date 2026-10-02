@@ -25,6 +25,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { flushPending } from "../test-support/flush";
 import { FIXTURE_IDENTITY_EMAIL, FIXTURE_JOIN_CODE } from "../api/client";
 import { ToastProvider } from "../inventory/Toast";
+import { setMockBottomInset } from "../test-support/safe-area-mock";
+import { tabBarClearanceFor } from "../navigation/TabBar";
 
 let fixtureClient: import("../api/client").FixtureApiClient;
 
@@ -40,6 +42,8 @@ vi.mock("../api/client", async (importOriginal) => {
 
 let replaced: unknown[] = [];
 let canGoBack = true;
+
+vi.mock("react-native-safe-area-context", () => import("../test-support/safe-area-mock"));
 
 vi.mock("expo-router", () => ({
   useRouter: () => ({
@@ -204,5 +208,32 @@ describe("S12 · profile & household, fixture path", () => {
   it("Back is reachable and does not throw when there is a previous screen", async () => {
     const result = await renderScreen();
     expect(() => fireEvent.press(result.getByLabelText("Back"))).not.toThrow();
+  });
+});
+
+/** BUG-003: the clearance helpers shared by the per-screen padding tests. */
+function contentPaddingBottom(result: ReturnType<typeof render>): unknown {
+  const scroll = result.UNSAFE_getByType("ScrollView" as unknown as React.ComponentType);
+  const list: readonly unknown[] = Array.isArray(scroll.props.contentContainerStyle)
+    ? scroll.props.contentContainerStyle
+    : [scroll.props.contentContainerStyle];
+  const flat: Record<string, unknown> = {};
+  for (const entry of list) {
+    if (entry && typeof entry === "object") Object.assign(flat, entry);
+  }
+  return flat.paddingBottom;
+}
+
+describe("S12 · tab bar clearance (BUG-003)", () => {
+  it("pads the scroll content by the tab bar's footprint for a non-zero bottom inset", async () => {
+    setMockBottomInset(34);
+    try {
+      const result = await renderScreen();
+      await flushPending();
+      expect(contentPaddingBottom(result)).toBe(tabBarClearanceFor(34));
+      expect(tabBarClearanceFor(34)).toBe(134);
+    } finally {
+      setMockBottomInset(0);
+    }
   });
 });

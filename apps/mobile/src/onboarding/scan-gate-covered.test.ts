@@ -54,6 +54,8 @@ vi.mock("expo-camera", () => ({
   CameraView: (props: Record<string, unknown>) => React.createElement("CameraView", props),
 }));
 
+vi.mock("react-native-safe-area-context", () => import("../test-support/safe-area-mock"));
+
 vi.mock("expo-router", () => ({
   useRouter: () => ({
     push: () => {},
