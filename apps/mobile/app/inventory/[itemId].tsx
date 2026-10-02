@@ -126,6 +126,10 @@ export default function ItemDetailScreen(): React.JSX.Element {
     setDraftText(text);
     const parsed = parseTypedAmount(text);
     if (parsed === null) {
+      if (!draftInvalid) {
+        // Live regions are Android-only; this reaches iOS and Android alike.
+        AccessibilityInfo.announceForAccessibility(AMOUNT_HINT);
+      }
       setDraftInvalid(true);
       return;
     }

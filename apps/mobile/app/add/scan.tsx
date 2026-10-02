@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import {
+  AccessibilityInfo,
   KeyboardAvoidingView,
   Linking,
   Platform,
@@ -203,6 +204,13 @@ export default function ScanScreen(): React.JSX.Element {
   }
 
   function updateTypedSize(text: string | null): void {
+    if (
+      resolveTypedSize(text).kind === "invalid" &&
+      resolveTypedSize(typedSize).kind !== "invalid"
+    ) {
+      // Live regions are Android-only; this reaches iOS and Android alike.
+      AccessibilityInfo.announceForAccessibility(SIZE_HINT);
+    }
     setTypedSize(text);
     forgetHeldKey();
   }
@@ -1088,7 +1096,7 @@ function PackageSizeField({
     <>
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel="Edit package size"
+        accessibilityLabel={`Edit package size, ${lineText}`}
         onPress={() => {
           // The field shows the record's quantity until something is typed.
           if (typedSize === "") {
@@ -1459,7 +1467,11 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: colors.line,
   },
-  sizeLine: { minHeight: minTouchTarget, justifyContent: "center" },
+  sizeLine: {
+    minHeight: minTouchTarget,
+    minWidth: minTouchTarget,
+    justifyContent: "center",
+  },
   sizeInput: {
     minWidth: 88,
     minHeight: minTouchTarget,

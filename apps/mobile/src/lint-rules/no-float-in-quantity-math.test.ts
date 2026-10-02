@@ -44,6 +44,18 @@ const GUARDED_FILES = [
   path.join(repoRoot, "apps", "mobile", "src", "inventory", "quantity.ts"),
 ];
 
+/**
+ * M3-T7 review F1: the two screens that turn typed text into amounts. They
+ * legitimately use `Math.round`/`min`/`max` for layout and the integer
+ * package count, so `Math.*` is not banned wholesale there; the rounding
+ * and truncating members that would turn a typed amount into a float
+ * (`trunc`, `floor`, `ceil`) are, along with every parse and `.toFixed`.
+ */
+const SCREEN_FILES = [
+  path.join(repoRoot, "apps", "mobile", "app", "inventory", "[itemId].tsx"),
+  path.join(repoRoot, "apps", "mobile", "app", "add", "scan.tsx"),
+];
+
 /** Same simple block/line-comment stripper as `no-screening-import.test.ts` — good enough for a grep-style check, not a full tokenizer. */
 function stripComments(text: string): string {
   return text.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "");
@@ -71,9 +83,17 @@ const FORBIDDEN_PATTERNS: readonly { readonly name: string; readonly pattern: Re
   { name: "Math.*", pattern: /\bMath\./ },
 ];
 
-function violationsIn(code: string): string[] {
+const SCREEN_FORBIDDEN_PATTERNS: readonly { readonly name: string; readonly pattern: RegExp }[] = [
+  ...FORBIDDEN_PATTERNS.filter((p) => p.name !== "Math.*"),
+  { name: "Math.trunc/floor/ceil", pattern: /\bMath\.(trunc|floor|ceil)\b/ },
+];
+
+function violationsIn(
+  code: string,
+  patterns: readonly { readonly name: string; readonly pattern: RegExp }[] = FORBIDDEN_PATTERNS,
+): string[] {
   const found: string[] = [];
-  for (const { name, pattern } of FORBIDDEN_PATTERNS) {
+  for (const { name, pattern } of patterns) {
     if (pattern.test(code)) {
       found.push(name);
     }
@@ -85,6 +105,23 @@ describe("src/scan/quantity.ts and src/inventory/quantity.ts never route through
   it.each(GUARDED_FILES)("%s contains none of Number()/parseFloat/parseInt/.toFixed()", (file) => {
     const code = stripComments(readFileSync(file, "utf8"));
     expect(violationsIn(code)).toEqual([]);
+  });
+
+  it.each(SCREEN_FILES)(
+    "%s (typed amounts to micros) contains no float parse, .toFixed or truncating Math (M3-T7 F1)",
+    (file) => {
+      const code = stripComments(readFileSync(file, "utf8"));
+      expect(violationsIn(code, SCREEN_FORBIDDEN_PATTERNS)).toEqual([]);
+    },
+  );
+
+  it("mutation check: the screen guard catches the float amount paths the review mutants used", () => {
+    expect(
+      violationsIn("String(Math.trunc(Number(draftText) * 1e6))", SCREEN_FORBIDDEN_PATTERNS),
+    ).toEqual(expect.arrayContaining(["Number(...)", "Math.trunc/floor/ceil"]));
+    expect(
+      violationsIn("String(Number(microsToAmountText(m)))", SCREEN_FORBIDDEN_PATTERNS),
+    ).toContain("Number(...)");
   });
 
   it("Number.isInteger and Number.isNaN are not flagged (pure predicates on an already-integer value)", () => {

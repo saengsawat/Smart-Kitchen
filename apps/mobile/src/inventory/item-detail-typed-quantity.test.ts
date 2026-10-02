@@ -8,6 +8,7 @@
 import React from "react";
 import { cleanup, fireEvent, render } from "@testing-library/react-native";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { AccessibilityInfo } from "react-native";
 import { apiClient, FIXTURE_JOIN_CODE } from "../api/client";
 import { flushPending } from "../test-support/flush";
 import { ToastHost, ToastProvider } from "./Toast";
@@ -163,5 +164,47 @@ describe("S5 · typed amount (M3-T7 a)", () => {
     fireEvent.press(result.getByLabelText("Increase quantity by 0.25"));
     expect(fieldValue(result)).toBe("8.25");
     expect(result.queryByText(HINT)).toBeNull();
+  });
+
+  it("1.005 reaches the correction as exactly 1005000 micros (a float path would send 1004999)", async () => {
+    const result = await renderScreen();
+    const spy = vi.spyOn(apiClient, "correctQuantity");
+    fireEvent.changeText(result.getByLabelText("Quantity amount"), "1.005");
+    fireEvent.press(result.getByLabelText("Save correction"));
+    await flushPending();
+    expect(spy).toHaveBeenCalledWith(EGGS, "1005000");
+  });
+
+  it("Save is disabled by the invalid text itself, even when the last usable draft differs from the current amount", async () => {
+    const result = await renderScreen();
+    fireEvent.changeText(result.getByLabelText("Quantity amount"), "7.5");
+    expect(isDisabled(result.getByLabelText("Save correction"))).toBe(false);
+    fireEvent.changeText(result.getByLabelText("Quantity amount"), "7.5x");
+    expect(isDisabled(result.getByLabelText("Save correction"))).toBe(true);
+  });
+
+  it("the amount field is at least 44 high", async () => {
+    const result = await renderScreen();
+    const style = result.getByLabelText("Quantity amount").props.style as unknown;
+    const flat: Record<string, unknown> = {};
+    for (const entry of Array.isArray(style) ? style : [style]) {
+      if (entry && typeof entry === "object") Object.assign(flat, entry);
+    }
+    expect(flat.minHeight).toBe(44);
+  });
+
+  it("an unusable amount announces the hint once as it turns invalid, in a polite live region", async () => {
+    const result = await renderScreen();
+    const announce = vi.spyOn(AccessibilityInfo, "announceForAccessibility");
+    fireEvent.changeText(result.getByLabelText("Quantity amount"), "7");
+    expect(announce).not.toHaveBeenCalled();
+    fireEvent.changeText(result.getByLabelText("Quantity amount"), "7x");
+    fireEvent.changeText(result.getByLabelText("Quantity amount"), "7xy");
+    expect(announce).toHaveBeenCalledTimes(1);
+    expect(announce).toHaveBeenCalledWith(HINT);
+    expect(
+      (result.getByText(HINT).props as { accessibilityLiveRegion?: string })
+        .accessibilityLiveRegion,
+    ).toBe("polite");
   });
 });

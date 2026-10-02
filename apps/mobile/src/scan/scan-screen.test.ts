@@ -37,6 +37,7 @@ import { flushPending } from "../test-support/flush";
 import { setMockBottomInset } from "../test-support/safe-area-mock";
 import { setMockWindowDimensions } from "../test-support/react-native-mock";
 import { ToastHost, ToastProvider } from "../inventory/Toast";
+import { AccessibilityInfo } from "react-native";
 import { colors } from "../design/tokens";
 import type {
   CreateItemRequestDto,
@@ -1153,7 +1154,7 @@ function spyCreate(): CreateItemRequestDto[] {
 
 describe("S8 · editable package size (M3-T7 b)", () => {
   function openSizeField(result: ReturnType<typeof render>): void {
-    fireEvent.press(result.getByLabelText("Edit package size"));
+    fireEvent.press(result.getByLabelText(/^Edit package size/));
   }
 
   it("shows the record's size with its own Estimated chip until something is typed; opening the field pre-fills the record's quantity and changes nothing", async () => {
@@ -1267,7 +1268,7 @@ describe("S8 · editable package size (M3-T7 b)", () => {
       const result = await renderScreen();
       await lookUp(result, "096619555505");
       expect(result.getByText("1 package of 125 qt")).toBeTruthy();
-      expect(result.queryByLabelText("Edit package size")).toBeNull();
+      expect(result.queryByLabelText(/^Edit package size/)).toBeNull();
       expect(result.queryByLabelText("Package size")).toBeNull();
       expect(result.queryByText("✓ Fact")).toBeNull();
       expect(result.getAllByText("≈ Est.")).toHaveLength(4);
@@ -1326,15 +1327,43 @@ describe("S8 · editable package size (M3-T7 b)", () => {
     });
   });
 
-  it("the size tap target and field are at least 44 high", async () => {
+  it("the size tap target is at least 44 by 44 and the field at least 44 high", async () => {
     await withLookup(yogurtProduct("g"), async () => {
       const result = await renderScreen();
       await lookUp(result, "096619555505");
-      const style = flattenStyle(result.getByLabelText("Edit package size").props.style);
+      const style = flattenStyle(result.getByLabelText(/^Edit package size/).props.style);
       expect(style.minHeight).toBe(44);
+      expect(style.minWidth).toBe(44);
       openSizeField(result);
       const input = flattenStyle(result.getByLabelText("Package size").props.style);
       expect(input.minHeight).toBe(44);
+    });
+  });
+
+  it("the size button's label keeps the size a screen reader should hear", async () => {
+    await withLookup(yogurtProduct("g"), async () => {
+      const result = await renderScreen();
+      await lookUp(result, "096619555505");
+      expect(result.getByLabelText("Edit package size, 125 g")).toBeTruthy();
+    });
+  });
+
+  it("an unusable size announces the hint once as it turns invalid, in a polite live region", async () => {
+    await withLookup(yogurtProduct("g"), async () => {
+      const result = await renderScreen();
+      await lookUp(result, "096619555505");
+      const announce = vi.spyOn(AccessibilityInfo, "announceForAccessibility");
+      openSizeField(result);
+      fireEvent.changeText(result.getByLabelText("Package size"), "5");
+      expect(announce).not.toHaveBeenCalled();
+      fireEvent.changeText(result.getByLabelText("Package size"), "5x");
+      fireEvent.changeText(result.getByLabelText("Package size"), "5xy");
+      expect(announce).toHaveBeenCalledTimes(1);
+      expect(announce).toHaveBeenCalledWith(SIZE_HINT);
+      expect(
+        (result.getByText(SIZE_HINT).props as { accessibilityLiveRegion?: string })
+          .accessibilityLiveRegion,
+      ).toBe("polite");
     });
   });
 });
