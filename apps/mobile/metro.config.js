@@ -28,6 +28,31 @@ config.resolver.nodeModulesPaths = [
   path.resolve(workspaceRoot, "node_modules"),
 ];
 
+// BUG-005: keep Metro's crawl out of agent worktrees and git internals.
+// watchFolders = [workspaceRoot] means Metro crawls everything under the
+// workspace root. Finished agent worktrees live in .claude/worktrees/ and each
+// one carries a full node_modules (about 45,000 files), so 34 of them put
+// about 1.5 million files in the crawl. With no watchman on the machine the
+// initial crawl outlasted the first bundle request, which was then served
+// before Metro's resolution cache existed and failed with "Cannot read
+// properties of undefined (reading 'get')". Nothing in Metro's or Expo's
+// defaults excludes .claude/, so exclude it here, plus .git/ which has no
+// business in a bundle either. Block list entries are RegExps tested against
+// the absolute path with the platform separator, so the separator is escaped
+// the same way Metro's own exclusionList helper does it. Expo's defaults in
+// config.resolver.blockList (the two .expo entries and Metro's __tests__
+// rule) are kept: the new entries are appended, not substituted.
+const escapeForRegExp = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+const workspaceDir = (name) =>
+  new RegExp(
+    `^${escapeForRegExp(path.join(workspaceRoot, name))}(?:${escapeForRegExp(path.sep)}.*)?$`,
+  );
+config.resolver.blockList = [
+  ...[].concat(config.resolver.blockList ?? []),
+  workspaceDir(".claude"),
+  workspaceDir(".git"),
+];
+
 // Retargeted from M2-T1 acceptance, carried by M3-T3, landed here at M3-T4a:
 // workspace packages (@smart-kitchen/contracts) resolve through their
 // package.json "exports" -> "default" condition, which points at "dist/",
