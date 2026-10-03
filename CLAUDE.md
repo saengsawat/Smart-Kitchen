@@ -4,7 +4,7 @@ This repo is the project's durable memory. These rules bind every session (human
 
 ## Read before you write
 
-1. Before changing anything, read [STATUS.md](STATUS.md), the relevant ticket in [BACKLOG.md](BACKLOG.md), and the docs that ticket references. For architecture work, also the matching ADR in [docs/adr/](docs/adr/README.md).
+1. Before changing anything, read your ticket's own section in [BACKLOG.md](BACKLOG.md) (only that section; finished tickets live in [BACKLOG_ARCHIVE.md](BACKLOG_ARCHIVE.md)) and the docs that ticket references. The architect also reads [STATUS.md](STATUS.md); a dispatched worker or reviewer gets what it needs from its brief (rule 28a) and doesn't load all of STATUS or BACKLOG. For architecture work, also the matching ADR in [docs/adr/](docs/adr/README.md).
 2. Requirements live in [PRODUCT.md](PRODUCT.md) / [docs/prd/MVP_PRD.md](docs/prd/MVP_PRD.md). The original brief ([docs/source/](docs/source/product-brief.extracted.md)) is authoritative for *product intent only* — not architecture or MVP scope. Never alter files in `docs/source/`.
 
 ## Never guess, never invent
@@ -42,7 +42,9 @@ This repo is the project's durable memory. These rules bind every session (human
 
 ### Model selection
 23. **Default routine work to Sonnet** (UI, CRUD, API wiring, straightforward integration, tooling/config). **Use or escalate to Opus** — for implementation, review, or both — when a ticket carries substantial domain, data-integrity, security, concurrency, or synchronization risk, including: inventory ledger/reconciliation and inventory arithmetic; idempotency semantics (e.g. receipt processing, retried commands); household authorization/tenancy isolation; offline sync & conflict handling; allergen enforcement; schema migrations affecting inventory history; concurrency-sensitive inventory updates.
-24. **Every ticket carries model recommendations.** Each ticket in [BACKLOG.md](BACKLOG.md) includes `Implementation model: Sonnet|Opus — reason` and `Review model: Sonnet|Opus — reason` (template there). The architect sets these; deviating requires architect sign-off recorded on the ticket. Review escalates to Opus whenever the ticket touches the rule-23 high-risk list or implementation was escalated to Opus.
+24. **Every ticket carries model recommendations.** Each ticket in [BACKLOG.md](BACKLOG.md) includes `Implementation model: Sonnet|Opus — reason` and `Review model: Sonnet|Opus — reason` (template there). The architect sets these; deviating requires architect sign-off recorded on the ticket. Review escalates to Opus whenever the ticket touches the rule-23 high-risk list or implementation was escalated to Opus; every other ticket is reviewed by Sonnet.
+24a. **Re-checks stay small (PO, 2026-10-03).** After PASS WITH FIXES, the re-check covers only the fixes, not the whole ticket again. It uses Sonnet unless a fix touches the rule-23 list, in which case it stays Opus.
+24b. **Effort level (PO, 2026-10-03).** Medium for implementing and reviewing a well-specified ticket; high for planning, architecture work and hard bugs; never max. Effort is fixed per agent type, not per dispatch, so dispatch through `.claude/agents/`: `sk-worker` and `sk-reviewer` (medium), `sk-investigator` (high). The model is still picked per dispatch from the ticket's model lines.
 
 ### Architecture conflicts
 25. **Workers never modify or bypass ADRs, DECISIONS.md, architectural invariants (INV-*), or this file to complete a ticket.** If the ticket as written conflicts with an ADR, architecture rule, or ticket invariant, stop — do not continue with the conflicting implementation — and report:
@@ -63,6 +65,7 @@ This repo is the project's durable memory. These rules bind every session (human
 
 ### Dispatch & handoff (adopted 2026-09-08, PO-approved)
 28. **Architect-dispatched agents.** Workers and reviewers are normally dispatched by the architect as sub-agents with the ticket's designated model; separate agent contexts satisfy rule 22's implementer/reviewer separation. Separate human-run sessions remain equally valid.
+28a. **Lean briefs (PO, 2026-10-03).** Every agent re-sends everything it has loaded on every step, so the brief carries the ticket section text, the file paths it needs, and the relevant STATUS lines. Agents don't read all of BACKLOG.md, BACKLOG_ARCHIVE.md or STATUS.md. When a ticket is accepted as DONE, the architect moves its section to BACKLOG_ARCHIVE.md in the acceptance docs commit.
 29. **Reports are repo records, not chat.** Every worker's final commit on its branch adds `docs/handoff/<TICKET>.worker.md` (its completion report — always within file scope by definition). Reviewers stay read-only: they return their report to the architect, who commits it as `docs/handoff/<TICKET>.review.md` at acceptance. Handoff reports are audit records; requirements live only in tickets/PRD/ADRs.
 30. **Doc updates a ticket's DoD requires** (e.g. refining domain-model.md) are **proposed in the worker's report** and applied by the architect at acceptance — workers still never edit `docs/**` directly (rule 25 boundary preserved).
 
