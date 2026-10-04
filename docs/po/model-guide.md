@@ -30,3 +30,30 @@ rules 23, 24, 24a, 24b and 28a; this page is the plain-English version.
   its whole history on every step, so it gets more expensive the longer it runs.
 - Going away for more than about an hour? Type `/compact` first, or start a
   new session when you're back.
+
+## When to start a new architect session
+
+Type `/context` in Claude Code to see how big the session is.
+
+| Context size | What to do |
+| --- | --- |
+| Under 150k | Keep going |
+| 150k to 250k | Finish the current ticket, then start a new session |
+| Over 250k | Start a new session as soon as the current step is done |
+
+Better than any number: start fresh after every accepted batch. Everything is
+saved in STATUS, the tickets and the handoff files, so nothing is lost, and the
+new session starts at about 30k to 50k. On 2026-10-03 the architect reached
+597k, two to four times past where it should have restarted.
+
+## When the architect is mid-batch
+
+Going over 250k now and then to finish a batch is fine. Stopping halfway costs
+more than finishing. The workers' and reviewers' tokens don't add to the
+architect's context; only what they send back does. To keep it from growing in
+the first place, `/next` tells the architect to:
+
+- take at most 3 tickets per session,
+- ask agents for short chat summaries and keep the full reports in
+  `docs/handoff/` files,
+- stop after the batch is accepted and tell you to start a fresh session.
