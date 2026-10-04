@@ -1,7 +1,7 @@
 # BUG-005: Metro serves the bundle before its project index is ready because the watch folder includes the agent worktrees
 
 **Reported:** 2026-10-02 by Andy (PO), opening the app in Expo Go on the phone after pulling main at 4e54a1f.
-**Status:** OPEN, dispatched 2026-10-03 (Sonnet / Sonnet, sk-worker and sk-reviewer).
+**Status:** FIXED 2026-10-03 (squash `f8a5b51`, review PASS). `apps/mobile/metro.config.js` blocks `.claude/**` and `.git/**` under the workspace root, pinned by a config test; the 34 worktrees were pruned first and CONTRIBUTING.md carries the rule. Handoff: docs/handoff/BUG-005.{worker,review}.md.
 **Code at:** main `e6f5d29`.
 
 ## What Andy saw

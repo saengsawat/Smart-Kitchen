@@ -117,11 +117,16 @@ is taken locally.
 
 CI runs gitleaks over every pushed commit. It flags the *shape* of a secret, not only real ones: a curl example with a literal `Authorization: Bearer <token>` header trips its `curl-auth-header` rule even when the token is a published fixture value. Put tokens in a variable in docs and scripts (`$token = "fixture.dean.chen"` then `-H "Authorization: Bearer $token"`). To check locally before pushing, download the gitleaks release binary and run `gitleaks git --log-opts="origin/main..HEAD"` in the repo (M2-T4a acceptance, 2026-09-29).
 
+## Agent worktrees and Metro (BUG-005)
+
+Agent sessions check out branches under `.claude/worktrees/`, inside Metro's watch folder (the workspace root). Each one carries a full `node_modules` (about 45,000 files); with dozens of them Metro's Node crawler (no watchman on Windows) does not finish indexing before Expo Go asks for the bundle and answers 500 ("Cannot read properties of undefined (reading 'get')" in `DependencyGraph.js`). `metro.config.js` now blocks `.claude/**` and `.git/**`, and the architect prunes finished worktrees after each acceptance (`git worktree remove --force <path>` then `git worktree prune`). If Expo Go shows that error, check `git worktree list` first.
+
 ## Dependency audit exceptions
 
 CI fails on any high or critical advisory (`pnpm audit --audit-level=high`). Fix order: bump the direct dependency within its major (rule 11, no new package), else pin the transitive package with an `overrides` entry in `pnpm-workspace.yaml`, else, only when no patched version exists anywhere, add the advisory to `auditConfig.ignoreGhsas` in `pnpm-workspace.yaml` with a comment naming the advisory, why it does not reach shipped code, and when to remove it. Every exception is listed here and re-checked at each bump of its parent.
 
 - `GHSA-86w9-cpqp-85rv` node-forge (2026-10-01): no patched version; reached only through `@expo/cli` and `@expo/code-signing-certificates` (dev server code signing), not bundled by Metro, not an API dependency. Remove when a patched node-forge exists or Expo drops it.
+- `GHSA-vfj7-8cjw-p6xm` braces (2026-10-03): no patched version; stack exhaustion on deeply nested glob patterns; reached only through Metro's file map (micromatch) and other dev tooling, zero paths from the API's production dependencies. Remove when a patched braces exists.
 
 ## Seeding a development database (M2-T2)
 

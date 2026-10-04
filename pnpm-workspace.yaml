@@ -30,3 +30,8 @@ overrides:
 auditConfig:
   ignoreGhsas:
     - GHSA-86w9-cpqp-85rv
+# GHSA-vfj7-8cjw-p6xm braces (2026-10-03): stack exhaustion on deeply nested
+# glob patterns; no patched version published. Reached only through Metro's
+# file map (micromatch) and other dev tooling; zero paths from the API's
+# production dependencies. Remove when a patched braces exists.
+    - GHSA-vfj7-8cjw-p6xm
