@@ -1,12 +1,14 @@
 import { describe, expect, it } from "vitest";
 import {
   INVENTORY_ITEM_CONFIRM_ROUTE,
+  MAX_LOT_LABEL_LENGTH_DTO,
   INVENTORY_ITEM_MOVE_ROUTE,
   TRANSACTION_TYPES_DTO,
   inventoryItemConfirmPath,
   inventoryItemMovePath,
 } from "./inventory.js";
 import type {
+  CreateItemRequestDto,
   ConfirmAiProposalRequestDto,
   ConfirmAiProposalResponseDto,
   InventoryItemDetailDto,
@@ -148,5 +150,37 @@ describe("MoveItem DTOs (M2-T6, D-024 row 1)", () => {
       actor: { kind: "user" },
     };
     expect(moved.fromLocation).toBeNull();
+  });
+});
+
+describe("CreateItemRequestDto lot label and quantity origin (M2-T7)", () => {
+  const base: CreateItemRequestDto = {
+    idempotencyKey: "k-1",
+    source: "BARCODE",
+    displayName: "Rice",
+    storageLocation: "PANTRY",
+    unit: "g",
+    amount: "248",
+    quantityProvenance: { tier: "KNOWN_FACT", source: "typed", confidence: null, recordedAt: null },
+    productRef: "0123456789012",
+  };
+
+  it("both fields are optional, so a product-data create carries neither", () => {
+    expect(base.lotLabel).toBeUndefined();
+    expect(base.quantityOrigin).toBeUndefined();
+  });
+
+  it("a typed-size create carries a label and the typed origin", () => {
+    const typed: CreateItemRequestDto = {
+      ...base,
+      lotLabel: "248 g",
+      quantityOrigin: "USER_TYPED",
+    };
+    expect(typed.lotLabel).toBe("248 g");
+    expect(typed.quantityOrigin).toBe("USER_TYPED");
+  });
+
+  it("the label bound is 64 characters", () => {
+    expect(MAX_LOT_LABEL_LENGTH_DTO).toBe(64);
   });
 });

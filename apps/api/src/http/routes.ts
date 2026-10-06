@@ -176,6 +176,12 @@ const CREATE_ITEM_BODY_SCHEMA = {
     productRef: { type: "string", minLength: 1, maxLength: 128 },
     bestByDate: { type: ["string", "null"], maxLength: 64 },
     bestByProvenance: { anyOf: [{ type: "null" }, PROVENANCE_SCHEMA] },
+    // M2-T7: the label and origin rules (trim, length, control characters,
+    // the two origin values, BARCODE only) live in `planCreation`, so a bad
+    // value answers INVALID_FIELD with the field named. The caps here only
+    // bound the body.
+    lotLabel: { type: "string", maxLength: 256 },
+    quantityOrigin: { type: "string", maxLength: 32 },
   },
 } as const;
 
@@ -286,6 +292,8 @@ export function registerRoutes(app: FastifyInstance, deps: RouteDeps): void {
               amount: body.amount,
               quantityProvenance: body.quantityProvenance,
               ...(body.productRef === undefined ? {} : { productRef: body.productRef }),
+              ...(body.lotLabel === undefined ? {} : { lotLabel: body.lotLabel }),
+              ...(body.quantityOrigin === undefined ? {} : { quantityOrigin: body.quantityOrigin }),
               ...(body.bestByDate === undefined ? {} : { bestByDate: body.bestByDate }),
               ...(body.bestByProvenance === undefined
                 ? {}

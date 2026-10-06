@@ -789,6 +789,9 @@ describe.skipIf(!dbTestsEnabled)(SUITE, () => {
       // Review F2: pin the unit and product comparisons.
       ["a different unit", { unit: "kg" }],
       ["a different product", { productRef: "dairy-099" }],
+      // M2-T7: the label and origin are compared like every other planned field.
+      ["a label where there was none", { lotLabel: "907 g" }],
+      ["a typed origin where there was none", { quantityOrigin: "USER_TYPED" }],
     ] as const)("the same key with %s is 409 and writes nothing", async (_case, override) => {
       const body = JSON.parse(JSON.stringify({ ...yogurt, ...override })) as CreateItemRequestDto;
       const answer = await call<ApiErrorBodyDto>(app, "POST", INVENTORY_ITEMS_PATH, DEAN, body);
@@ -798,6 +801,123 @@ describe.skipIf(!dbTestsEnabled)(SUITE, () => {
         ledgerCode: "IDEMPOTENCY_KEY_CONFLICT",
       });
       expect(await count("SELECT count(*)::text AS count FROM inventory_items")).toBe(1);
+    });
+
+    describe("lot label and quantity origin (M2-T7)", () => {
+      const typed: CreateItemRequestDto = {
+        ...yogurt,
+        idempotencyKey: "scan-typed-1",
+        displayName: "Typed-size rice",
+        lotLabel: "  248 g ",
+        quantityOrigin: "USER_TYPED",
+      };
+      let typedId: string;
+
+      it("a typed-size scan lands with the label and the typed-size source, tier as sent", async () => {
+        const created = await call<InventoryItemSummaryDto>(
+          app,
+          "POST",
+          INVENTORY_ITEMS_PATH,
+          DEAN,
+          typed,
+        );
+        expect(created.statusCode).toBe(201);
+        typedId = created.body.itemId;
+        expect(created.body.lots[0]?.label).toBe("248 g");
+        const stored = await db.pool.query<{ label: string | null }>(
+          "SELECT label FROM inventory_lots WHERE item_id = $1",
+          [typedId],
+        );
+        expect(stored.rows[0]?.label).toBe("248 g");
+        const detail = await call<InventoryItemDetailDto>(
+          app,
+          "GET",
+          inventoryItemPath(typedId),
+          DEAN,
+        );
+        expect(detail.body.summary.lots[0]?.label).toBe("248 g");
+        expect(detail.body.history[0]).toMatchObject({
+          provenance: { tier: "KNOWN_FACT", source: "barcode-scan-typed-size" },
+        });
+      });
+
+      it("a product-data scan lands as before: no label, barcode-scan (PRODUCT_DATA too)", async () => {
+        const created = await call<InventoryItemSummaryDto>(
+          app,
+          "POST",
+          INVENTORY_ITEMS_PATH,
+          DEAN,
+          {
+            ...yogurt,
+            idempotencyKey: "scan-product-data-1",
+            displayName: "Product-data rice",
+            quantityOrigin: "PRODUCT_DATA",
+          },
+        );
+        expect(created.statusCode).toBe(201);
+        expect(created.body.lots[0]?.label).toBeNull();
+        const detail = await call<InventoryItemDetailDto>(
+          app,
+          "GET",
+          inventoryItemPath(created.body.itemId),
+          DEAN,
+        );
+        expect(detail.body.history[0]).toMatchObject({
+          provenance: { source: "barcode-scan" },
+        });
+      });
+
+      it("a replay with the same label and origin (label untrimmed again) is a replay", async () => {
+        const again = await call<InventoryItemSummaryDto>(app, "POST", INVENTORY_ITEMS_PATH, DEAN, {
+          ...typed,
+          lotLabel: "248 g",
+        });
+        expect(again.statusCode).toBe(200);
+        expect(again.body.itemId).toBe(typedId);
+        expect(
+          await count(
+            "SELECT count(*)::text AS count FROM inventory_transactions WHERE item_id = $1",
+            [typedId],
+          ),
+        ).toBe(1);
+      });
+
+      it.each([
+        ["a changed label", { lotLabel: "250 g" }],
+        ["no label", { lotLabel: undefined }],
+        ["a changed origin", { quantityOrigin: "PRODUCT_DATA" }],
+        ["no origin", { quantityOrigin: undefined }],
+      ] as const)(
+        "the same key with %s is 409 IDEMPOTENCY_KEY_CONFLICT",
+        async (_case, override) => {
+          const body = JSON.parse(
+            JSON.stringify({ ...typed, ...override }),
+          ) as CreateItemRequestDto;
+          const answer = await call<ApiErrorBodyDto>(app, "POST", INVENTORY_ITEMS_PATH, DEAN, body);
+          expect(answer.statusCode).toBe(409);
+          expect(answer.body.error.ledgerCode).toBe("IDEMPOTENCY_KEY_CONFLICT");
+        },
+      );
+
+      it.each([
+        ["an empty label", { lotLabel: "   " }],
+        ["a 65-character label", { lotLabel: "x".repeat(65) }],
+        ["a control character in the label", { lotLabel: "a\nb" }],
+        ["an unknown origin", { quantityOrigin: "barcode-scan-typed-size" }],
+        [
+          "an origin on a manual create",
+          { source: "MANUAL", productRef: undefined, quantityOrigin: "USER_TYPED" },
+        ],
+      ] as const)("refuses %s with INVALID_FIELD and writes nothing", async (_case, override) => {
+        const before = await count("SELECT count(*)::text AS count FROM inventory_items");
+        const body = JSON.parse(
+          JSON.stringify({ ...yogurt, idempotencyKey: "scan-refused-1", ...override }),
+        ) as CreateItemRequestDto;
+        const answer = await call<ApiErrorBodyDto>(app, "POST", INVENTORY_ITEMS_PATH, DEAN, body);
+        expect(answer.statusCode).toBe(400);
+        expect(answer.body.error.ledgerCode).toBe("INVALID_FIELD");
+        expect(await count("SELECT count(*)::text AS count FROM inventory_items")).toBe(before);
+      });
     });
 
     it("the same best-by written as a bare date is still a replay (review F2: canonicalisation)", async () => {

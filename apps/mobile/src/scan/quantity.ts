@@ -73,6 +73,8 @@ export interface ScanPackageSizeInput {
   readonly tier: ProvenanceTierDto;
   /** The record's own provenance source for the size field (e.g. "open-food-facts", "manufacturer-label"). */
   readonly source: string;
+  /** M2-T7: true when `qty` is a size the user typed on S8, not the record's own. */
+  readonly userTyped?: boolean;
 }
 
 /** The quantity's provenance source when the amount is just the count the user entered, no size involved. */
@@ -85,6 +87,19 @@ export interface ScanQuantityPlan {
   readonly tier: "KNOWN_FACT" | "ESTIMATED";
   /** `quantityProvenance.source` for `createItem` — see {@link planScanQuantity}'s doc comment. */
   readonly source: string;
+  /**
+   * M2-T7: what `createItem` sends beyond the quantity. A typed package size
+   * (used, so its unit was a supported one) sends `quantityOrigin:
+   * "USER_TYPED"` and the lot label "{qty} {unit}"; every other plan sends
+   * neither (`undefined`), so a product-data scan lands as before.
+   */
+  readonly origin?: ScanQuantityOrigin;
+}
+
+/** The two extra `createItem` fields a typed package size adds (M2-T7). */
+export interface ScanQuantityOrigin {
+  readonly quantityOrigin: "USER_TYPED";
+  readonly lotLabel: string;
 }
 
 /**
@@ -143,6 +158,14 @@ export function planScanQuantity(
       // an unconfirmed AI figure as a Known Fact quantity.
       tier: packageSize.tier === "KNOWN_FACT" ? "KNOWN_FACT" : "ESTIMATED",
       source: packageSize.source,
+      ...(packageSize.userTyped === true
+        ? {
+            origin: {
+              quantityOrigin: "USER_TYPED" as const,
+              lotLabel: `${packageSize.qty} ${packageSize.unit}`,
+            },
+          }
+        : {}),
     };
   }
   return {

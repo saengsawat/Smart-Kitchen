@@ -27,6 +27,7 @@ export {
   type ConfirmAiProposalResponseDto,
   type CreateItemRequestDto,
   type CreateItemSourceDto,
+  type CreateItemQuantityOriginDto,
   type FieldProvenanceDto,
   type InventoryHistoryEntryDto,
   type InventoryItemDetailDto,
@@ -110,7 +111,7 @@ export {
   type JoinHouseholdResponseDto,
   type RotateJoinCodeResponseDto,
 } from "./household.js";
-export { CREATE_ITEM_UNITS_DTO } from "./inventory.js";
+export { CREATE_ITEM_UNITS_DTO, MAX_LOT_LABEL_LENGTH_DTO } from "./inventory.js";
 export {
   type ShoppingListDto,
   type ShoppingMemberDto,

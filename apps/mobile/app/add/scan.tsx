@@ -396,6 +396,7 @@ export default function ScanScreen(): React.JSX.Element {
                 size.kind === "valid"
                   ? USER_ENTRY_SOURCE
                   : (packageSize.provenance.source ?? SCANNED_BARCODE_QUANTITY_SOURCE),
+              userTyped: size.kind === "valid",
             }
           : undefined,
         count,
@@ -424,6 +425,11 @@ export default function ScanScreen(): React.JSX.Element {
         productRef: product.productId,
         bestByDate: product.bestBy?.value ?? null,
         bestByProvenance: product.bestBy?.provenance ?? null,
+        // M2-T7: a typed package size says so, and labels the lot "248 g";
+        // a product-data scan sends neither field.
+        ...(plan.origin === undefined
+          ? {}
+          : { quantityOrigin: plan.origin.quantityOrigin, lotLabel: plan.origin.lotLabel }),
       });
       heldIdempotencyKey.current = null; // done: a later Add (a new scan) starts fresh
       recordRecentlyAdded(summary);

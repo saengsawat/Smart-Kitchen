@@ -466,6 +466,17 @@ export function inventoryItemMovePath(itemId: string): string {
 export type CreateItemSourceDto = "BARCODE" | "MANUAL";
 
 /**
+ * Where a scanned item's quantity came from (M2-T7): the product's own data
+ * (`PRODUCT_DATA`, the default) or a package size the user typed on S8
+ * (`USER_TYPED`). The server maps it to its own provenance source identifier;
+ * it never stores a client-supplied source string.
+ */
+export type CreateItemQuantityOriginDto = "PRODUCT_DATA" | "USER_TYPED";
+
+/** Longest lot label `POST /v1/inventory/items` accepts, after trimming. */
+export const MAX_LOT_LABEL_LENGTH_DTO = 64;
+
+/**
  * Body of `POST /v1/inventory/items` (built in M2-T3; M3-T4b wrote the
  * shape first). `apps/mobile`'s fixture `ApiClient` implements the same
  * request against its in-memory ledger (`src/inventory/ledger.ts`), and
@@ -510,6 +521,19 @@ export interface CreateItemRequestDto {
   /** When a best-by fact/estimate is on file; `null`/omitted when none is (never invented, CLAUDE.md rule 3). */
   readonly bestByDate?: string | null;
   readonly bestByProvenance?: FieldProvenanceDto | null;
+  /**
+   * Optional label for the created lot (M2-T7), trimmed, 1 to
+   * {@link MAX_LOT_LABEL_LENGTH_DTO} characters, no control characters;
+   * otherwise `INVALID_FIELD` on `lotLabel`. S8 sends "{qty} {unit}" when the
+   * user typed the package size, nothing otherwise.
+   */
+  readonly lotLabel?: string;
+  /**
+   * `BARCODE` only (refused on `MANUAL`, M2-T7). `PRODUCT_DATA` or absent
+   * records the `barcode-scan` source; `USER_TYPED` records
+   * `barcode-scan-typed-size`. The tier stays as sent in `quantityProvenance`.
+   */
+  readonly quantityOrigin?: CreateItemQuantityOriginDto;
 }
 
 /**

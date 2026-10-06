@@ -67,11 +67,20 @@ import {
 /** Provenance source recorded on the first row of a scanned item. */
 export const BARCODE_SCAN_SOURCE = "barcode-scan";
 
+/**
+ * Provenance source recorded on the first row of a scanned item whose package
+ * size the user typed (M2-T7). The server's own identifier, never client text.
+ */
+export const BARCODE_SCAN_TYPED_SIZE_SOURCE = "barcode-scan-typed-size";
+
 /** Provenance source recorded on the first row of a manually added item. Same as M2-T2's. */
 export const MANUAL_ENTRY_CREATE_SOURCE = "manual-entry";
 
 /** Longest display name accepted, after trimming. */
 export const MAX_DISPLAY_NAME_LENGTH = 120;
+
+/** Longest lot label accepted, after trimming. */
+export const MAX_LOT_LABEL_LENGTH = 64;
 
 /** Longest product reference accepted. */
 export const MAX_PRODUCT_REF_LENGTH = 128;
@@ -128,6 +137,10 @@ export interface CreateItemCommand {
   readonly productRef?: string;
   readonly bestByDate?: string | null;
   readonly bestByProvenance?: RequestProvenance | null;
+  /** M2-T7: optional lot label, validated by {@link planCreation}. */
+  readonly lotLabel?: string;
+  /** M2-T7: `BARCODE` only; a string here so the service, not the transport, refuses an unknown value. */
+  readonly quantityOrigin?: string;
   /** Server clock; also the row's `occurredAt`, since the request states none. */
   readonly recordedAt: string;
   /** The session's user. Never a request field. */
@@ -161,6 +174,7 @@ interface PlannedCreation {
   readonly tier: ProvenanceTierDto;
   readonly provenanceSource: string;
   readonly productRef: string | null;
+  readonly lotLabel: string | null;
   readonly expiresAt: string | null;
   readonly expiryTier: ProvenanceTierDto | null;
 }
@@ -236,6 +250,43 @@ export function planCreation(command: CreateItemCommand): PlannedCreation {
     reject("INVALID_FIELD", "a manually added item has no scanned product", "productRef");
   }
 
+  let provenanceSource = MANUAL_ENTRY_CREATE_SOURCE;
+  if (command.source === "BARCODE") {
+    provenanceSource = BARCODE_SCAN_SOURCE;
+    if (command.quantityOrigin === "USER_TYPED") {
+      provenanceSource = BARCODE_SCAN_TYPED_SIZE_SOURCE;
+    } else if (command.quantityOrigin !== undefined && command.quantityOrigin !== "PRODUCT_DATA") {
+      reject(
+        "INVALID_FIELD",
+        "quantityOrigin must be PRODUCT_DATA or USER_TYPED",
+        "quantityOrigin",
+      );
+    }
+  } else if (command.quantityOrigin !== undefined) {
+    reject(
+      "INVALID_FIELD",
+      "a manually added item has no scanned quantity origin",
+      "quantityOrigin",
+    );
+  }
+
+  let lotLabel: string | null = null;
+  if (command.lotLabel !== undefined) {
+    const label = command.lotLabel.trim();
+    if (
+      label === "" ||
+      [...label].length > MAX_LOT_LABEL_LENGTH ||
+      CONTROL_CHARACTERS.test(label)
+    ) {
+      reject(
+        "INVALID_FIELD",
+        `lotLabel must be 1 to ${String(MAX_LOT_LABEL_LENGTH)} printable characters`,
+        "lotLabel",
+      );
+    }
+    lotLabel = label;
+  }
+
   const bestBy = command.bestByDate ?? null;
   const bestByProvenance = command.bestByProvenance ?? null;
   if ((bestBy === null) !== (bestByProvenance === null)) {
@@ -266,9 +317,9 @@ export function planCreation(command: CreateItemCommand): PlannedCreation {
     unit: command.unit,
     micros,
     tier: quantity.tier,
-    provenanceSource:
-      command.source === "BARCODE" ? BARCODE_SCAN_SOURCE : MANUAL_ENTRY_CREATE_SOURCE,
+    provenanceSource,
     productRef,
+    lotLabel,
     expiresAt,
     expiryTier: bestByProvenance?.tier ?? null,
   };
@@ -287,6 +338,7 @@ interface StoredCreation {
   readonly display_name: string | null;
   readonly storage_location: string | null;
   readonly product_ref: string | null;
+  readonly lot_label: string | null;
   readonly expires_at: Date | null;
   readonly expiry_tier: string | null;
 }
@@ -306,7 +358,7 @@ async function findByKey(
             -- the first move's source.
             CASE WHEN fm.moved THEN fm.from_location ELSE i.storage_location END AS storage_location,
             i.product_ref,
-            l.expires_at, l.expiry_tier
+            l.label AS lot_label, l.expires_at, l.expiry_tier
        FROM inventory_transactions AS t
        JOIN inventory_items AS i ON i.household_id = t.household_id AND i.id = t.item_id
        LEFT JOIN LATERAL (
@@ -341,6 +393,7 @@ function sameCreation(
     stored.display_name === planned.displayName &&
     stored.storage_location === planned.storageLocation &&
     stored.product_ref === planned.productRef &&
+    stored.lot_label === planned.lotLabel &&
     storedExpiry === planned.expiresAt &&
     stored.expiry_tier === planned.expiryTier
   );
@@ -398,6 +451,7 @@ export async function createInventoryItemWithStock(
         {
           lotId: ids.lotId,
           acquiredAt: command.recordedAt,
+          ...(planned.lotLabel === null ? {} : { label: planned.lotLabel }),
           ...(planned.expiresAt === null ? {} : { expiresAt: planned.expiresAt }),
           ...(planned.expiryTier === null ? {} : { expiryTier: planned.expiryTier }),
         },

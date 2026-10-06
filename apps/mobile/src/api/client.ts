@@ -97,6 +97,7 @@ import {
   HOUSEHOLD_ME_PATH,
   HOUSEHOLDS_PATH,
   INVENTORY_ITEMS_PATH,
+  MAX_LOT_LABEL_LENGTH_DTO,
   inventoryItemConfirmPath,
   inventoryItemMovePath,
   inventoryItemPath,
@@ -1023,6 +1024,23 @@ export class FixtureApiClient implements ApiClient {
 
   createItem(input: CreateItemRequestDto): Promise<InventoryItemSummaryDto> {
     try {
+      // M2-T7: mirrors the server's refusals (create-service.ts planCreation).
+      const lotLabel = input.lotLabel === undefined ? null : input.lotLabel.trim();
+      if (
+        lotLabel !== null &&
+        (lotLabel === "" ||
+          [...lotLabel].length > MAX_LOT_LABEL_LENGTH_DTO ||
+          /\p{Cc}/u.test(lotLabel))
+      ) {
+        throw new LedgerRefusedError("INVALID_FIELD");
+      }
+      if (
+        input.quantityOrigin !== undefined &&
+        (input.source !== "BARCODE" ||
+          (input.quantityOrigin !== "PRODUCT_DATA" && input.quantityOrigin !== "USER_TYPED"))
+      ) {
+        throw new LedgerRefusedError("INVALID_FIELD");
+      }
       const itemId = nextFixtureItemId(input.source === "BARCODE" ? "scan" : "manual");
       const recordedAt = new Date().toISOString();
       const item = createFixtureItem({
@@ -1040,8 +1058,12 @@ export class FixtureApiClient implements ApiClient {
         expiresAtProvenance: input.bestByProvenance ?? null,
         productRef: input.productRef ?? null,
       });
-      this.inventory.set(itemId, item);
-      return Promise.resolve(toSummaryDto(item));
+      const labelled =
+        lotLabel === null
+          ? item
+          : { ...item, lots: item.lots.map((lot) => ({ ...lot, label: lotLabel })) };
+      this.inventory.set(itemId, labelled);
+      return Promise.resolve(toSummaryDto(labelled));
     } catch (error) {
       return Promise.reject(toError(error));
     }

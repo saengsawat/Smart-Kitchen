@@ -1194,6 +1194,9 @@ describe("S8 · editable package size (M3-T7 b)", () => {
       expect(calls[0]?.unit).toBe("g");
       expect(calls[0]?.quantityProvenance.tier).toBe("KNOWN_FACT");
       expect(calls[0]?.quantityProvenance.source).toBe("user-entry");
+      // M2-T7: the typed path says so and labels the lot with the typed size.
+      expect(calls[0]?.quantityOrigin).toBe("USER_TYPED");
+      expect(calls[0]?.lotLabel).toBe("500 g");
       const items = await apiClient.getInventoryItems();
       const created = items.find((item) => item.displayName === "Plain Greek Yogurt");
       expect(created?.quantity.micros).toBe("1000000000");
@@ -1237,6 +1240,9 @@ describe("S8 · editable package size (M3-T7 b)", () => {
       expect(calls[0]?.amount).toBe("125");
       expect(calls[0]?.quantityProvenance.tier).toBe("ESTIMATED");
       expect(calls[0]?.quantityProvenance.source).toBe("open-food-facts");
+      // M2-T7: the product-data path sends neither new field.
+      expect(calls[0] !== undefined && "quantityOrigin" in calls[0]).toBe(false);
+      expect(calls[0] !== undefined && "lotLabel" in calls[0]).toBe(false);
     });
   });
 

@@ -116,6 +116,30 @@ describe("planScanQuantity (M3-T4e Objectives (d)/(e), review round 1 F1/F3 ruli
     });
   });
 
+  it("a typed size adds the USER_TYPED origin and a label of the size (M2-T7), the record's size adds neither", () => {
+    const typed = planScanQuantity(
+      { qty: "248", unit: "g", tier: "KNOWN_FACT", source: "user-entry", userTyped: true },
+      2,
+    );
+    expect(typed.origin).toEqual({ quantityOrigin: "USER_TYPED", lotLabel: "248 g" });
+    expect(typed.amountMicros).toBe(496_000_000n);
+    const product = planScanQuantity(
+      { qty: "248", unit: "g", tier: "ESTIMATED", source: "open-food-facts" },
+      2,
+    );
+    expect(product.origin).toBeUndefined();
+    expect("origin" in product).toBe(false);
+  });
+
+  it("a typed size in an unsupported unit falls to the count-only branch and sends no origin (M2-T7)", () => {
+    const plan = planScanQuantity(
+      { qty: "2", unit: "qt", tier: "KNOWN_FACT", source: "user-entry", userTyped: true },
+      1,
+    );
+    expect(plan.unit).toBe("each");
+    expect(plan.origin).toBeUndefined();
+  });
+
   it("an Estimated package size (Open Food Facts, D-025) in a supported unit gives an Estimated quantity, source open-food-facts", () => {
     const plan = planScanQuantity(
       { qty: "793.8", unit: "g", tier: "ESTIMATED", source: "open-food-facts" },

@@ -11,6 +11,7 @@ import { lookupUnit } from "@smart-kitchen/domain";
 import { describe, expect, it } from "vitest";
 import {
   BARCODE_SCAN_SOURCE,
+  BARCODE_SCAN_TYPED_SIZE_SOURCE,
   canonicalBestBy,
   MANUAL_ENTRY_CREATE_SOURCE,
   planCreation,
@@ -185,6 +186,72 @@ describe("planCreation: refusals", () => {
       code: "INVALID_FIELD",
       field: "productRef",
     });
+  });
+});
+
+describe("planCreation: lot label and quantity origin (M2-T7)", () => {
+  it("no label and no origin keeps today's plan: no label, barcode-scan", () => {
+    const planned = planCreation(BASE);
+    expect(planned.lotLabel).toBeNull();
+    expect(planned.provenanceSource).toBe(BARCODE_SCAN_SOURCE);
+  });
+
+  it("trims the label", () => {
+    expect(planCreation({ ...BASE, lotLabel: "  248 g  " }).lotLabel).toBe("248 g");
+  });
+
+  it("accepts a 64-character label and refuses 65, counting characters not code units", () => {
+    expect(planCreation({ ...BASE, lotLabel: "x".repeat(64) }).lotLabel).toHaveLength(64);
+    expect(planCreation({ ...BASE, lotLabel: "\u{1F95B}".repeat(64) }).lotLabel).not.toBeNull();
+    expect(refusal({ ...BASE, lotLabel: "x".repeat(65) })).toEqual({
+      code: "INVALID_FIELD",
+      field: "lotLabel",
+    });
+  });
+
+  it.each(["", "   ", "a\nb", "a\u0000b", "\u007f"])("refuses the label %j", (label) => {
+    expect(refusal({ ...BASE, lotLabel: label })).toEqual({
+      code: "INVALID_FIELD",
+      field: "lotLabel",
+    });
+  });
+
+  it("USER_TYPED maps to barcode-scan-typed-size; PRODUCT_DATA keeps barcode-scan", () => {
+    expect(planCreation({ ...BASE, quantityOrigin: "USER_TYPED" }).provenanceSource).toBe(
+      BARCODE_SCAN_TYPED_SIZE_SOURCE,
+    );
+    expect(BARCODE_SCAN_TYPED_SIZE_SOURCE).toBe("barcode-scan-typed-size");
+    expect(planCreation({ ...BASE, quantityOrigin: "PRODUCT_DATA" }).provenanceSource).toBe(
+      BARCODE_SCAN_SOURCE,
+    );
+  });
+
+  it("the tier stays as sent whatever the origin", () => {
+    expect(
+      planCreation({
+        ...BASE,
+        quantityOrigin: "USER_TYPED",
+        quantityProvenance: { ...BASE.quantityProvenance, tier: "ESTIMATED" },
+      }).tier,
+    ).toBe("ESTIMATED");
+  });
+
+  it("refuses an unknown origin and any origin on a manual create", () => {
+    expect(refusal({ ...BASE, quantityOrigin: "barcode-scan" })).toEqual({
+      code: "INVALID_FIELD",
+      field: "quantityOrigin",
+    });
+    for (const quantityOrigin of ["USER_TYPED", "PRODUCT_DATA"]) {
+      expect(
+        refusal({
+          ...withoutProductRef(BASE),
+          source: "MANUAL",
+          bestByDate: null,
+          bestByProvenance: null,
+          quantityOrigin,
+        }),
+      ).toEqual({ code: "INVALID_FIELD", field: "quantityOrigin" });
+    }
   });
 });
 

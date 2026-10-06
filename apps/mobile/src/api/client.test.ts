@@ -1051,6 +1051,72 @@ describe("lookupProduct / createItem (M3-T4b)", () => {
       expect(detail?.history[0]?.type).toBe("PURCHASE");
     });
 
+    describe("createItem lot label and quantity origin (M2-T7, fixture mirrors the server)", () => {
+      const scan: CreateItemRequestDto = {
+        idempotencyKey: "key-label",
+        source: "BARCODE",
+        displayName: "Rice",
+        storageLocation: "PANTRY",
+        unit: "g",
+        amount: "248",
+        quantityProvenance: {
+          tier: "KNOWN_FACT",
+          source: "user-entry",
+          confidence: null,
+          recordedAt: null,
+        },
+        productRef: "dairy-003",
+      };
+
+      it("stores the trimmed label on the lot", async () => {
+        const client = FixtureApiClient.newUser();
+        const summary = await client.createItem({
+          ...scan,
+          lotLabel: "  248 g ",
+          quantityOrigin: "USER_TYPED",
+        });
+        expect(summary.lots[0]?.label).toBe("248 g");
+      });
+
+      it("no label leaves the lot label null", async () => {
+        const summary = await FixtureApiClient.newUser().createItem(scan);
+        expect(summary.lots[0]?.label).toBeNull();
+      });
+
+      it.each([
+        ["an empty label", { lotLabel: "   " }],
+        ["a 65-character label", { lotLabel: "x".repeat(65) }],
+        ["a control character", { lotLabel: "a\nb" }],
+        ["an unknown origin", { quantityOrigin: "OTHER" as never }],
+        [
+          "an origin on a manual create",
+          { source: "MANUAL", productRef: undefined, quantityOrigin: "USER_TYPED" },
+        ],
+      ] as const)("refuses %s with INVALID_FIELD", async (_case, override) => {
+        const client = FixtureApiClient.newUser();
+        await expect(client.createItem({ ...scan, ...override })).rejects.toMatchObject({
+          code: "INVALID_FIELD",
+        });
+        expect(await client.getInventoryItems()).toHaveLength(0);
+      });
+
+      it("the real client sends both fields verbatim on the typed path and neither on the product path", async () => {
+        const bodies: CreateItemRequestDto[] = [];
+        globalThis.fetch = ((_url: string, init?: RequestInit) => {
+          bodies.push(JSON.parse(init?.body as string) as CreateItemRequestDto);
+          return Promise.resolve(new Response("{}", { status: 500 }));
+        }) as typeof fetch;
+        const client = new HttpApiClient("http://localhost:4000");
+        await client
+          .createItem({ ...scan, lotLabel: "248 g", quantityOrigin: "USER_TYPED" })
+          .catch(() => undefined);
+        await client.createItem(scan).catch(() => undefined);
+        expect(bodies[0]).toMatchObject({ lotLabel: "248 g", quantityOrigin: "USER_TYPED" });
+        expect("lotLabel" in bodies[1]!).toBe(false);
+        expect("quantityOrigin" in bodies[1]!).toBe(false);
+      });
+    });
+
     it("createItem (MANUAL) appends an INITIAL_STOCK row", async () => {
       const client = FixtureApiClient.newUser();
       const summary = await client.createItem({
