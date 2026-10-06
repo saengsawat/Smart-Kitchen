@@ -549,3 +549,16 @@ Tickets marked DONE, moved out of [BACKLOG.md](BACKLOG.md) on 2026-10-03 so agen
 #### M9-D1 — Architecture documentation pass (architect, docs only) ✅ DONE 2026-09-30
 *Applied by the architect: ARCHITECTURE status line, §2 heading and shape, §3 table rows for client, backend and database, §7 item 3; ADR-004 target line; ADR-010 progress note; ADR README statuses. No decision changed.*
 ARCHITECTURE.md: the top status line (three ADRs are DECIDED), §2 shape (Expo and Node/Fastify decided), the §3 technology table rows for client, backend and database, §7 item 3 ("candidate Postgres RLS" is real since M1-T2). ADR-004: a note that D-022 built the stubbed identity port in front of it. ADR-010: M3-T5 built the in-session queue that option C describes; persistence across restarts is M7-T3. ADR README status table re-synced. No decisions change; rule 15 housekeeping. Owner: architect, after the batch A merges.
+
+#### M3-T8: Lint block for app scripts; shared camera stand-in for the S7 gate tests (BUG-001 follow-ups) ✅ DONE 2026-10-06
+- **Implementation model:** Sonnet. Tooling and test infrastructure only.
+- **Review model:** Sonnet. Routine; the reviewer checks no gate test lost an assertion in the move (rule 13).
+- **Objective:** (a) `eslint.config.js` gains a block for `apps/*/scripts/**/*.mjs` (standalone Node ESM scripts: Node globals, module syntax, outside the app's type-aware config), so `apps/mobile/scripts/web-demo-smoke.mjs` lints as modern ESM; the script may be modernised where the old-syntax workarounds were only for lint, and must still run; (b) extend `apps/mobile/src/test-support/expo-camera-mock.ts` so `useCameraPermissions` records the options it was called with, counts permission requests, and honours a `get` option (returns the current state without a request); (c) move the four S7 gate tests in `apps/mobile/src/onboarding/scan-gate-covered.test.ts` onto the stand-in's new hooks; (d) add the covered-to-uncovered transition test on one mounted S7 (no permission request while covered; exactly one after the gate lifts).
+- **Context:** BUG-001 follow-up entry in this file's follow-ups section; `apps/mobile/app/add/scan.tsx` (read only); CONTRIBUTING.md on the web demo smoke.
+- **Dependencies:** none. Runs in parallel with M2-T4c.
+- **Invariants:** no gate assertion removed or weakened; the stand-in still defaults to granted; no app source changes.
+- **Acceptance criteria:** (a) to (d) hold; `pnpm lint`, `pnpm typecheck` and the mobile tests pass; `node apps/mobile/scripts/web-demo-smoke.mjs` still parses (`node --check`).
+- **Tests required:** the moved gate tests and the new transition test.
+- **File scope:** `eslint.config.js`, `apps/mobile/scripts/web-demo-smoke.mjs`, `apps/mobile/src/test-support/expo-camera-mock.ts`, `apps/mobile/src/onboarding/scan-gate-covered.test.ts`, `docs/handoff/M3-T8.worker.md`.
+- **Out of scope:** `scan.tsx` or any screen; the spinner-or-copy UX entry; device passes.
+- **DoD:** rule 26.
