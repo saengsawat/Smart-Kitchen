@@ -132,6 +132,8 @@ observed_at       TIMESTAMPTZ
 confirmed_by      UUID NULL     -- user who confirmed, where confirmation applies
 ```
 
+Server-assigned sources on the first ledger row of a created item (M2-T3, M2-T7): `manual-entry` for S9, `barcode-scan` for a scan whose quantity came from product data, and `barcode-scan-typed-size` for a scan whose package size the user typed on S8 (the request says `quantityOrigin: USER_TYPED`; the tier stays as sent, Known Fact in practice, D-019 and D-025). These are the server's own identifiers and never client text. A typed size also labels the lot "{qty} {unit}" (`inventory_lots.label`, optional `lotLabel` on create, 1 to 64 characters). The create replay compares the stored label, so any future ticket that edits a lot label must compare a creation-time snapshot instead, the way M2-T6 did for the location.
+
 `provenance_confirmed_by` on the ledger is write-once at insert (a row created already confirmed); a confirmation of an existing row lives in the sibling `inventory_confirmations` table (D-028), never as an update.
 
 ## 5. Tenancy isolation & sensitive data
