@@ -1,6 +1,6 @@
 # STATUS.md
 
-_Last updated: 2026-10-06 (M3-T8 accepted; M2-T4c dispatched, M2-T7 queued behind it; earlier: BUG-005 Metro crawl fixed after the architect pruned 34 agent worktrees; the 2026-10-03 workflow (lean briefs, sk-* agents, BACKLOG archive) in force; R-6 blocked on the FoodKeeper download)_
+_Last updated: 2026-10-06 (M3-T8 and M2-T4c accepted; M2-T7 dispatched; earlier: BUG-005 Metro crawl fixed after the architect pruned 34 agent worktrees; the 2026-10-03 workflow (lean briefs, sk-* agents, BACKLOG archive) in force; R-6 blocked on the FoodKeeper download)_
 
 ## Current phase
 **Milestones 0 and 1 complete. M2 (API) and M3 (client) have been building since 2026-09-22 under D-021, D-022 and D-023.** Every locked screen exists on the phone; inventory reads and writes, household create and join, and manual item creation hit real endpoints; product lookup is live end to end (Open Food Facts, server-side); allergen verdicts stay "not checked" until M2-T4 stores restrictions; the shopping list is fixture-backed until M7. 1559 tests with DB / 1488 without (2026-09-24); CI green on `main`. The two blockers are PO decisions, not engineering: **D-024** (Dean's additions triage; a yes per row ratifies D-002 and unblocks the held Menu and Home tickets) and **A3** household permissions (gates M2-T4: restrictions storage and server-side screening). Build reference: prototype v4 (`docs/design/mockups/smart-kitchen-prototype.html`), [copy-deck.md](docs/design/copy-deck.md) (binding; deck wins on safety copy, prototype wins on the rest), [tokens.md](docs/design/tokens.md). Model routing (PO, 2026-09-22/23): Opus for rule-23 tickets with a detailed architect pass at acceptance, Sonnet for routine work, Fable only when super important.
@@ -8,11 +8,10 @@ _Last updated: 2026-10-06 (M3-T8 accepted; M2-T4c dispatched, M2-T7 queued behin
 ## In progress (architect-dispatched, isolated worktrees, disjoint file scopes)
 | Ticket | Title | Models (impl/review) | State |
 |---|---|---|---|
-| M2-T4c | Send the scanned symbology with the lookup; GTIN14 port normalisation | Sonnet / Sonnet | dispatched 2026-10-06 |
-| M2-T7 | Lot label and quantity origin on item create | Sonnet / Opus | ticketed 2026-10-06, waits for M2-T4c (shared `client.ts` and `scan.tsx`) |
+| M2-T7 | Lot label and quantity origin on item create | Sonnet / Opus | dispatched 2026-10-06 |
 | R-6 | Shelf-life data research: USDA FoodKeeper coverage, licence and the estimation rule (docs only) | Sonnet / Sonnet | dispatched 2026-09-29, blocked on the FoodKeeper download (PO, browser) |
 
-**2026-10-06:** M3-T8 accepted (review PASS, Sonnet): app scripts lint block and the shared camera stand-in for the S7 gate tests (BUG-001 follow-ups). CI checked: e260be3 failed its format check, 513870e is fully green.
+**2026-10-06:** M2-T4c accepted (PASS WITH FIXES, Sonnet; the fix: iOS reports a UPC-A as `ean13` with the leading 0 stripped, so the client sends `upc_a` for a 12-digit `ean13`; camera scans now tell the server the symbology, typed codes still guess). M3-T8 accepted (review PASS, Sonnet): app scripts lint block and the shared camera stand-in for the S7 gate tests (BUG-001 follow-ups). CI checked: e260be3 failed its format check, 513870e is fully green.
 
 **Batch A status (2026-10-01):** M7-T1, M3-T6, M9-D1, M9-T0 and M2-T4b accepted; R-6 blocked on the FoodKeeper download (the USDA host answers 403 to non-browser clients; Andy downloads the two files in a browser and names the folder). BUG-002 fixed. **Owed from the PO, one line each:** ratify D-026 as amended (dual emission) and D-027 (browser-origin allowlist, built as proposed); the FoodKeeper files for R-6; the Android re-run of the S2 flow once BUG-001 merges.
 

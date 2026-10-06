@@ -68,3 +68,7 @@ flowchart TB
 2. **API ↔ external providers** — provider responses are untrusted data (schema-validated, provenance-tagged).
 3. **Probabilistic edge ↔ deterministic core** — the load-bearing internal boundary: proposals only, see [ai-architecture.md §1](ai-architecture.md#1-the-boundary-rule).
 4. **Household ↔ household** — tenancy isolation (NFR-1), enforced at API + candidate RLS ([data-model.md §5](data-model.md#5-tenancy-isolation--sensitive-data)).
+
+## Product lookup route (M2-T4a, M2-T4b, M2-T4c)
+
+`GET /v1/products/{code}?type=<symbology>` is a household route; the API calls Open Food Facts server-side (D-025) and the client never does. `type` is optional and carries the symbology the camera read (`upc_a`, `upc_e`, `ean13`, `ean8`). When present the server parses the code as that symbology only: `upc_e` looks up its expanded UPC-A, and a length or check-digit failure, or an unknown or repeated `type`, is 400 `BAD_REQUEST` with the not-a-barcode message. A hint only narrows what parses. When absent (typed entry, older clients) the code is parsed by its shape: a leading 0 tries UPC-E then EAN-8, a leading 1 tries EAN-8 then UPC-E. The scan screen sends `upc_a` when iOS reports `ean13` with 12 digits, because expo-camera on iOS reports a UPC-A as `ean13` and strips its leading 0. The typed fallback on S7 sends no hint. Lookup ports normalise a GTIN-14 with indicator 0 to its EAN-13 and refuse any other indicator, so one product never keys twice.
