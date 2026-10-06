@@ -93,7 +93,13 @@ export default tseslint.config(
   // package's own tsconfig "include" (its own "rootDir": "src"), so without
   // this addition `import.meta` failed to parse there too.
   {
-    files: ["scripts/**/*.mjs", "docs/**/*.mjs", "packages/*/scripts/**/*.mjs"],
+    files: [
+      "scripts/**/*.mjs",
+      "docs/**/*.mjs",
+      "packages/*/scripts/**/*.mjs",
+      // BUG-001 follow-up (M3-T8): apps/mobile/scripts/web-demo-smoke.mjs.
+      "apps/*/scripts/**/*.mjs",
+    ],
     languageOptions: {
       ecmaVersion: "latest",
       sourceType: "module",

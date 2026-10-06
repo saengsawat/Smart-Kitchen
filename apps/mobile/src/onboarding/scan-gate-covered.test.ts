@@ -6,53 +6,32 @@
  * touch the camera: no permission status query, no permission request, no
  * live `CameraView` (and so no `onBarcodeScanned`).
  *
- * `expo-camera` is mocked here, not through the shared
- * `src/test-support/expo-camera-mock.ts`, because these tests need to see
- * the options the screen passes to `useCameraPermissions` and count
- * permission requests, which the shared mock does not expose.
+ * `expo-camera` resolves to the shared `src/test-support/expo-camera-mock.ts`
+ * (vitest alias), whose hooks record the options the screen passes to
+ * `useCameraPermissions`, count permission requests and honour `get`.
  * `.test.ts`, not `.test.tsx`, same reason as the other component tests.
  */
 import React from "react";
 import { cleanup, render } from "@testing-library/react-native";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { flushPending } from "../test-support/flush";
 import { ToastHost, ToastProvider } from "../inventory/Toast";
 import { GateCoveredContext } from "./gate-context";
+import {
+  __getMockCameraPermissionCalls,
+  __getMockCameraPermissionRequests,
+  __resetMockCameraPermission,
+  __setMockCameraPermission,
+  __setMockCameraStatusKnown,
+  type CameraPermissionResponse,
+} from "../test-support/expo-camera-mock";
 
-interface MockPermission {
-  readonly granted: boolean;
-  readonly canAskAgain: boolean;
-  readonly status: string;
-}
-
-const UNDETERMINED: MockPermission = { granted: false, canAskAgain: true, status: "undetermined" };
-const GRANTED: MockPermission = { granted: true, canAskAgain: true, status: "granted" };
-
-let mockPermission: MockPermission = UNDETERMINED;
-let permissionOptions: Array<{ get?: boolean } | undefined> = [];
-let permissionRequests = 0;
-/**
- * The real hook keeps a status it already read: a screen that was shown,
- * then covered (a later navigation's hold or failed read), still holds a
- * known permission. `true` models that; `false` models a cold mount under
- * the cover, where `get: false` means it is never read.
- */
-let statusKnownBeforeCover = false;
-
-vi.mock("expo-camera", () => ({
-  useCameraPermissions: (options?: { get?: boolean }) => {
-    permissionOptions.push(options);
-    const status = options?.get === false && !statusKnownBeforeCover ? null : mockPermission;
-    return [
-      status,
-      () => {
-        permissionRequests += 1;
-        return Promise.resolve(mockPermission);
-      },
-    ];
-  },
-  CameraView: (props: Record<string, unknown>) => React.createElement("CameraView", props),
-}));
+const UNDETERMINED: CameraPermissionResponse = {
+  granted: false,
+  canAskAgain: true,
+  status: "undetermined",
+};
+const GRANTED: CameraPermissionResponse = { granted: true, canAskAgain: true, status: "granted" };
 
 vi.mock("react-native-safe-area-context", () => import("../test-support/safe-area-mock"));
 
@@ -65,29 +44,33 @@ vi.mock("expo-router", () => ({
   }),
 }));
 
+beforeEach(() => {
+  __resetMockCameraPermission();
+  __setMockCameraPermission(UNDETERMINED);
+});
+
 afterEach(() => {
   cleanup();
-  mockPermission = UNDETERMINED;
-  permissionOptions = [];
-  permissionRequests = 0;
-  statusKnownBeforeCover = false;
+  __resetMockCameraPermission();
   vi.restoreAllMocks();
 });
 
-async function renderScan(covered: boolean): Promise<ReturnType<typeof render>> {
+async function scanTree(covered: boolean): Promise<React.ReactElement> {
   const { default: ScanScreen } = await import("../../app/add/scan");
-  const result = render(
+  return React.createElement(
+    GateCoveredContext.Provider,
+    { value: covered },
     React.createElement(
-      GateCoveredContext.Provider,
-      { value: covered },
-      React.createElement(
-        ToastProvider,
-        null,
-        React.createElement(ScanScreen),
-        React.createElement(ToastHost),
-      ),
+      ToastProvider,
+      null,
+      React.createElement(ScanScreen),
+      React.createElement(ToastHost),
     ),
   );
+}
+
+async function renderScan(covered: boolean): Promise<ReturnType<typeof render>> {
+  const result = render(await scanTree(covered));
   await flushPending();
   return result;
 }
@@ -100,21 +83,22 @@ describe("S7 · under a covered onboarding gate (BUG-001 review F2b)", () => {
   it("makes no camera permission query or request while covered", async () => {
     await renderScan(true);
 
-    expect(permissionOptions.length).toBeGreaterThan(0);
-    expect(permissionOptions.every((o) => o?.get === false)).toBe(true);
-    expect(permissionRequests).toBe(0);
+    const calls = __getMockCameraPermissionCalls();
+    expect(calls.length).toBeGreaterThan(0);
+    expect(calls.every((o) => o?.get === false)).toBe(true);
+    expect(__getMockCameraPermissionRequests()).toBe(0);
   });
 
   it("makes no permission request while covered even when the status is already known and not granted", async () => {
-    statusKnownBeforeCover = true;
+    __setMockCameraStatusKnown(true);
     await renderScan(true);
 
-    expect(permissionRequests).toBe(0);
+    expect(__getMockCameraPermissionRequests()).toBe(0);
   });
 
   it("renders no live camera (so no barcode handler) while covered, even with permission already granted", async () => {
-    mockPermission = GRANTED;
-    statusKnownBeforeCover = true;
+    __setMockCameraPermission(GRANTED);
+    __setMockCameraStatusKnown(true);
     const covered = await renderScan(true);
     expect(cameraViews(covered)).toBe(0);
     cleanup();
@@ -126,7 +110,20 @@ describe("S7 · under a covered onboarding gate (BUG-001 review F2b)", () => {
   it("uncovered, it queries and requests permission as before", async () => {
     await renderScan(false);
 
-    expect(permissionOptions.every((o) => o?.get === true)).toBe(true);
-    expect(permissionRequests).toBe(1);
+    expect(__getMockCameraPermissionCalls().every((o) => o?.get === true)).toBe(true);
+    expect(__getMockCameraPermissionRequests()).toBe(1);
+  });
+
+  it("on one mounted S7, makes no request while covered and exactly one after the gate lifts", async () => {
+    const result = render(await scanTree(true));
+    await flushPending();
+    expect(__getMockCameraPermissionRequests()).toBe(0);
+    expect(cameraViews(result)).toBe(0);
+
+    result.rerender(await scanTree(false));
+    await flushPending();
+
+    expect(__getMockCameraPermissionRequests()).toBe(1);
+    expect(__getMockCameraPermissionCalls().at(-1)?.get).toBe(true);
   });
 });

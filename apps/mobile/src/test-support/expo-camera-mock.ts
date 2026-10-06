@@ -52,24 +52,73 @@ const GRANTED: CameraPermissionResponse = {
 };
 
 let mockPermission: CameraPermissionResponse = GRANTED;
+let statusKnownBeforeCover = false;
+let permissionOptions: Array<UseCameraPermissionsOptions | undefined> = [];
+let permissionRequests = 0;
+
+/** Mirrors the options `expo-camera`'s `useCameraPermissions` accepts that this app uses. */
+export interface UseCameraPermissionsOptions {
+  readonly get?: boolean;
+  readonly request?: boolean;
+}
 
 /** Test-only: steer the next `useCameraPermissions()` render (call before `render(...)`). */
 export function __setMockCameraPermission(next: CameraPermissionResponse): void {
   mockPermission = next;
 }
 
-/** Test-only: restore the default (granted) permission state, e.g. in `afterEach`. */
-export function __resetMockCameraPermission(): void {
-  mockPermission = GRANTED;
+/**
+ * Test-only: model a screen that already read the permission status before a
+ * later `get: false` (e.g. a gate cover): the hook then still returns the
+ * current state instead of `null`. Reset by {@link __resetMockCameraPermission}.
+ */
+export function __setMockCameraStatusKnown(known: boolean): void {
+  statusKnownBeforeCover = known;
 }
 
-/** Mirrors `expo-camera`'s `useCameraPermissions(): [CameraPermissionResponse, () => Promise<CameraPermissionResponse>]`. */
-export function useCameraPermissions(): [
-  CameraPermissionResponse,
-  () => Promise<CameraPermissionResponse>,
-] {
-  const [permission, setPermission] = React.useState(mockPermission);
+/** Test-only: the options each `useCameraPermissions(...)` call received, in call order. */
+export function __getMockCameraPermissionCalls(): ReadonlyArray<
+  UseCameraPermissionsOptions | undefined
+> {
+  return permissionOptions;
+}
+
+/** Test-only: how many times the hook's `request()` function was called. */
+export function __getMockCameraPermissionRequests(): number {
+  return permissionRequests;
+}
+
+/**
+ * Test-only: restore the defaults (granted, status not pre-known, no recorded
+ * calls or requests), e.g. in `afterEach`.
+ */
+export function __resetMockCameraPermission(): void {
+  mockPermission = GRANTED;
+  statusKnownBeforeCover = false;
+  permissionOptions = [];
+  permissionRequests = 0;
+}
+
+/**
+ * Mirrors `expo-camera`'s `useCameraPermissions(options?): [CameraPermissionResponse | null, () => Promise<CameraPermissionResponse>]`.
+ * Records the options of every call, counts `request()` calls, and honours
+ * `get`: with `get: false` the status is not read (`null`) unless
+ * {@link __setMockCameraStatusKnown} says it was already known; once a later
+ * render passes `get: true` the current state is read, with no request.
+ */
+export function useCameraPermissions(
+  options?: UseCameraPermissionsOptions,
+): [CameraPermissionResponse | null, () => Promise<CameraPermissionResponse>] {
+  permissionOptions.push(options);
+  const getting = options?.get !== false;
+  const [permission, setPermission] = React.useState<CameraPermissionResponse | null>(
+    getting || statusKnownBeforeCover ? mockPermission : null,
+  );
+  React.useEffect(() => {
+    if (getting) setPermission((current) => current ?? mockPermission);
+  }, [getting]);
   const request = React.useCallback(() => {
+    permissionRequests += 1;
     setPermission(mockPermission);
     return Promise.resolve(mockPermission);
   }, []);

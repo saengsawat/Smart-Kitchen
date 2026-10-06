@@ -27,7 +27,6 @@
  * window; SMOKE_VERBOSE=1 echoes the page's own console.log lines.
  * Exit code 0 on a clean run, 1 on any console error, exception or timeout.
  */
-/* global console, process, URL, WebSocket, fetch, setTimeout -- standalone Node script, no eslint.config.js block covers apps/mobile/scripts */
 import { spawn } from "node:child_process";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -157,8 +156,7 @@ async function connect() {
     try {
       const list = await (await fetch(`http://127.0.0.1:${port}/json/list`)).json();
       target = list.find((t) => t.type === "page");
-    } catch (error) {
-      void error; // ES2018 parser here: no optional catch binding
+    } catch {
       await sleep(200);
     }
   }
@@ -281,23 +279,20 @@ async function run() {
         `location.pathname + "\\n" + document.body.innerText.slice(0, 1500)`,
       );
       console.error(`  page at failure: ${where}`);
-    } catch (error) {
-      void error; // ES2018 parser here: no optional catch binding
+    } catch {
       // the page may be gone
     }
   } finally {
     try {
       if (ws) ws.close();
-    } catch (error) {
-      void error; // ES2018 parser here: no optional catch binding
+    } catch {
       // ignore
     }
     chrome.kill();
     await sleep(500);
     try {
       rmSync(profileDir, { recursive: true, force: true });
-    } catch (error) {
-      void error; // ES2018 parser here: no optional catch binding
+    } catch {
       // Chrome may still hold a lock on Windows; the OS temp cleaner gets it.
     }
   }
