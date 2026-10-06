@@ -14,13 +14,15 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { CameraView, useCameraPermissions } from "expo-camera";
-import type {
-  HouseholdDto,
-  ProvenanceTierDto,
-  ScannedProductDto,
-  StorageLocationDto,
+import {
+  asScannableBarcodeType,
+  SCANNABLE_BARCODE_TYPES_DTO,
+  type HouseholdDto,
+  type ProvenanceTierDto,
+  type ScannableBarcodeTypeDto,
+  type ScannedProductDto,
+  type StorageLocationDto,
 } from "@smart-kitchen/contracts";
-import { SCANNABLE_BARCODE_TYPES_DTO } from "@smart-kitchen/contracts";
 import { apiClient } from "../../src/api/client";
 import { colors, fontFamily, minTouchTarget, radius, spacing } from "../../src/design/tokens";
 import { GENERIC_READ_ERROR_MESSAGE, messageForLedgerError } from "../../src/inventory/errors";
@@ -273,7 +275,7 @@ export default function ScanScreen(): React.JSX.Element {
     }
   }
 
-  async function handleCode(code: string): Promise<void> {
+  async function handleCode(code: string, type?: ScannableBarcodeTypeDto): Promise<void> {
     const trimmed = code.trim();
     if (trimmed === "") {
       return;
@@ -281,7 +283,7 @@ export default function ScanScreen(): React.JSX.Element {
     setLastAttemptedCode(trimmed);
     setLookupFailure(null);
     try {
-      const result = await apiClient.lookupProduct(trimmed);
+      const result = await apiClient.lookupProduct(trimmed, type);
       if (result.status === "hit") {
         setPhase({ kind: "confirm", code: trimmed, product: result.product });
         setCount(1);
@@ -544,7 +546,18 @@ export default function ScanScreen(): React.JSX.Element {
                 return;
               }
               scanLockRef.current = true;
-              void handleCode(result.data);
+              // M2-T4c: the symbology the camera read, or no hint at all when
+              // it is not one we scan for (never a wrong one).
+              // iOS never emits upc_a: CameraView reports a UPC-A as ean13
+              // and strips the leading 0 from `data` (expo-camera
+              // ios/Current/BarcodeScannerUtils.swift, "iOS converts upc_a to
+              // ean13 and appends a leading 0"). A 12-digit ean13 is therefore
+              // a UPC-A, and the strict server ean13 branch would refuse it.
+              const hint =
+                result.type === "ean13" && /^\d{12}$/.test(result.data)
+                  ? "upc_a"
+                  : asScannableBarcodeType(result.type);
+              void handleCode(result.data, hint);
             }}
           />
         ) : (

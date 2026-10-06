@@ -31,6 +31,7 @@ import type {
 } from "@smart-kitchen/contracts";
 import {
   assertShoppingRowUnitMatchesItem,
+  type ApiClient,
   createApiClient,
   FIXTURE_IDENTITY_TOKEN,
   FIXTURE_JOIN_CODE,
@@ -1095,6 +1096,31 @@ describe("lookupProduct / createItem (M3-T4b)", () => {
         bestBy: null,
         screening: { status: "NOT_RUN", reason: "HOUSEHOLD_RESTRICTIONS_NOT_STORED" },
       };
+
+      it("M2-T4c: puts the scanned symbology on the URL as the type query parameter, and omits it for a typed code", async () => {
+        const urls: string[] = [];
+        globalThis.fetch = ((url: string) => {
+          urls.push(url);
+          const answer: ProductLookupResultDto = { status: "not-found", code: "04016007" };
+          return Promise.resolve(new Response(JSON.stringify(answer), { status: 200 }));
+        }) as typeof fetch;
+
+        const client = new HttpApiClient("http://localhost:4000");
+        await client.lookupProduct("04016007", "upc_e");
+        await client.lookupProduct("04016007");
+
+        expect(urls).toEqual([
+          "http://localhost:4000/v1/products/04016007?type=upc_e",
+          "http://localhost:4000/v1/products/04016007",
+        ]);
+      });
+
+      it("M2-T4c: the fixture client accepts and ignores the hint", async () => {
+        const client: ApiClient = FixtureApiClient.newUser();
+        const withHint = await client.lookupProduct("060000100810", "upc_a");
+        const without = await client.lookupProduct("060000100810");
+        expect(withHint).toEqual(without);
+      });
 
       it("GETs the product-lookup path with the fixture bearer token, and a hit passes through unchanged", async () => {
         let capturedUrl: string | undefined;

@@ -120,6 +120,7 @@ export {
 } from "./shopping.js";
 export {
   PRODUCT_LOOKUP_ROUTE,
+  asScannableBarcodeType,
   SCREENING_NOT_RUN_REASONS_DTO,
   productLookupPath,
   type ScreeningNotRunReasonDto,

@@ -131,6 +131,42 @@ describe("parseLookupCode", () => {
     expect(parseLookupCode("00096619555504")).toEqual({ kind: "invalid" });
   });
 
+  it("M2-T4c pin: 11234502 without a hint is not an EAN-8, so the leading-1 UPC-E fallback gives UPC-A 112000003452", () => {
+    expect(parseLookupCode("11234502")).toEqual({
+      kind: "barcode",
+      code: { codeType: "UPC_A", code: "112000003452" },
+    });
+  });
+
+  it("M2-T4c: a hint parses as that symbology only", () => {
+    expect(parseLookupCode("04016007", "upc_e")).toEqual({
+      kind: "barcode",
+      code: { codeType: "UPC_A", code: "040000001607" },
+    });
+    expect(parseLookupCode("04016007", "ean8")).toEqual({
+      kind: "barcode",
+      code: { codeType: "EAN8", code: "04016007" },
+    });
+    expect(parseLookupCode("12345670", "upc_e")).toEqual({
+      kind: "barcode",
+      code: { codeType: "UPC_A", code: "123456000070" },
+    });
+    expect(parseLookupCode("096619555505", "upc_a")).toEqual({
+      kind: "barcode",
+      code: { codeType: "UPC_A", code: "096619555505" },
+    });
+    expect(parseLookupCode("3017620422003", "ean13")).toEqual({
+      kind: "barcode",
+      code: { codeType: "EAN13", code: "3017620422003" },
+    });
+    // wrong symbology, bad check digit, unknown type, PLU length: all invalid
+    expect(parseLookupCode("096619555505", "ean13")).toEqual({ kind: "invalid" });
+    expect(parseLookupCode("00000017", "upc_e")).toEqual({ kind: "invalid" });
+    expect(parseLookupCode("04446308", "ean8")).toEqual({ kind: "invalid" });
+    expect(parseLookupCode("04446307", "code39")).toEqual({ kind: "invalid" });
+    expect(parseLookupCode("4011", "ean13")).toEqual({ kind: "invalid" });
+  });
+
   it("PLUs, letters and odd lengths keep their old answers", () => {
     expect(parseLookupCode("4011")).toEqual({ kind: "plu" });
     expect(parseLookupCode("94011")).toEqual({ kind: "plu" });

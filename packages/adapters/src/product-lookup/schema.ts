@@ -92,6 +92,31 @@ export function validateCodeFormat(code: ProductCode): { message: string } | nul
   return null;
 }
 
+/**
+ * M2-T4c: a GTIN14 reaching a lookup port is reduced to the one key a
+ * product has, so one product never keys twice. Indicator `0` is the EAN-13
+ * in its last 13 digits (the check digit is unchanged by the leading zero).
+ * Any other indicator names a case or a pallet, not a consumer item, and is
+ * refused. Any other code type passes through untouched. Call after
+ * {@link validateCodeFormat}.
+ */
+export function normalizeLookupCode(code: ProductCode): ProductCode | { message: string } {
+  if (code.codeType !== "GTIN14") return code;
+  if (!code.code.startsWith("0")) {
+    return {
+      message: `GTIN14 "${code.code}" has packaging indicator ${code.code.slice(0, 1)}: only indicator 0 names a consumer item`,
+    };
+  }
+  return { codeType: "EAN13", code: code.code.slice(1) };
+}
+
+/** Narrowing helper for {@link normalizeLookupCode}'s refusal. */
+export function isLookupCodeRefusal(
+  result: ProductCode | { message: string },
+): result is { message: string } {
+  return "message" in result;
+}
+
 function isPlainObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }

@@ -161,7 +161,19 @@ export type ScreeningOutcomeDto =
  */
 export const PRODUCT_LOOKUP_ROUTE = "/v1/products/:code";
 
-/** The URL a client sends for {@link PRODUCT_LOOKUP_ROUTE}, with the code encoded. */
-export function productLookupPath(code: string): string {
-  return `/v1/products/${encodeURIComponent(code)}`;
+/**
+ * The URL a client sends for {@link PRODUCT_LOOKUP_ROUTE}, with the code
+ * encoded. `type` (M2-T4c) is the symbology the camera read, sent as the
+ * optional `type` query parameter; omit it for a typed code.
+ */
+export function productLookupPath(code: string, type?: ScannableBarcodeTypeDto): string {
+  const path = `/v1/products/${encodeURIComponent(code)}`;
+  return type === undefined ? path : `${path}?type=${encodeURIComponent(type)}`;
+}
+
+/** Narrows an arbitrary value (a camera's `result.type`, a query value) to a scannable symbology, or `undefined`. */
+export function asScannableBarcodeType(value: unknown): ScannableBarcodeTypeDto | undefined {
+  return (SCANNABLE_BARCODE_TYPES_DTO as readonly unknown[]).includes(value)
+    ? (value as ScannableBarcodeTypeDto)
+    : undefined;
 }

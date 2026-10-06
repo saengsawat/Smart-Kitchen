@@ -90,6 +90,38 @@ export function expandUpcEToUpcA(raw: string): string | undefined {
 }
 
 /**
+ * Parses `raw` as exactly the symbology the camera read (M2-T4c). The hint
+ * only narrows: a code that fails that symbology's length or check digit is
+ * invalid (never retried as another symbology), and an unknown `type` is
+ * invalid. `upc_e` expands to its UPC-A; `ean8` stays EAN-8.
+ */
+function parseAsSymbology(raw: string, type: string): ParsedLookupCode {
+  const invalid: ParsedLookupCode = { kind: "invalid" };
+  switch (type) {
+    case "upc_e": {
+      const expanded = expandUpcEToUpcA(raw);
+      return expanded === undefined
+        ? invalid
+        : { kind: "barcode", code: { codeType: "UPC_A", code: expanded } };
+    }
+    case "ean8":
+      return raw.length === 8 && checkDigitHolds(raw)
+        ? { kind: "barcode", code: { codeType: "EAN8", code: raw } }
+        : invalid;
+    case "upc_a":
+      return raw.length === 12 && checkDigitHolds(raw)
+        ? { kind: "barcode", code: { codeType: "UPC_A", code: raw } }
+        : invalid;
+    case "ean13":
+      return raw.length === 13 && checkDigitHolds(raw)
+        ? { kind: "barcode", code: { codeType: "EAN13", code: raw } }
+        : invalid;
+    default:
+      return invalid;
+  }
+}
+
+/**
  * The path segment, validated.
  *
  * - 4 or 5 digits: a PLU, refused (`PLU_NOT_SUPPORTED`), never sent anywhere.
@@ -109,13 +141,19 @@ export function expandUpcEToUpcA(raw: string): string | undefined {
  *   packaging indicator is 0 is the GTIN-13 in its last 13 digits (OFF's own
  *   barcode-normalization note), looked up as that EAN-13. A GTIN-14 with
  *   any other indicator names a case or a pallet, not something a household
- *   scans, and is refused as invalid. The `GTIN14` code type exists in the
- *   adapter and contracts since M2-T4b, but the lookup is always made as the
- *   EAN-13, so no port receives a GTIN14 code today.
+ *   scans, and is refused as invalid. The route always looks the
+ *   code up as that EAN-13; a GTIN14 handed straight to a port is normalised
+ *   the same way by the port itself (M2-T4c).
  * - anything else, including a bad check digit: invalid.
+ *
+ * With a `type` hint (M2-T4c) none of the above guessing happens: the code is
+ * parsed as that symbology only, see {@link parseAsSymbology}. `11234502`
+ * without a hint is the leading-1 UPC-E fallback: it fails the EAN-8 check,
+ * so it parses as UPC-A `112000003452` (pinned in a test).
  */
-export function parseLookupCode(raw: string): ParsedLookupCode {
+export function parseLookupCode(raw: string, type?: string): ParsedLookupCode {
   if (!/^\d+$/.test(raw)) return { kind: "invalid" };
+  if (type !== undefined) return parseAsSymbology(raw, type);
   if (raw.length === 4 || raw.length === 5) return { kind: "plu" };
   if (raw.length === 8) {
     const asEan8: ParsedLookupCode | undefined = checkDigitHolds(raw)

@@ -83,6 +83,7 @@ import type {
   MoveItemResponseDto,
   OnboardingStateDto,
   ProductLookupResultDto,
+  ScannableBarcodeTypeDto,
   RotateJoinCodeResponseDto,
   ShoppingListDto,
   ShoppingRowDto,
@@ -599,7 +600,7 @@ export interface ApiClient {
    * `ProductLookupRefusedError` S7 renders through
    * `src/scan/product-lookup-errors.ts`'s `messageForLookupError`.
    */
-  lookupProduct(code: string): Promise<ProductLookupResultDto>;
+  lookupProduct(code: string, type?: ScannableBarcodeTypeDto): Promise<ProductLookupResultDto>;
   /**
    * S8/S9: creates a new inventory item, appending its first `PURCHASE`
    * (barcode) or `INITIAL_STOCK` (manual) row through the fixture ledger so
@@ -1015,6 +1016,7 @@ export class FixtureApiClient implements ApiClient {
     }
   }
 
+  // The symbology hint (M2-T4c) is accepted by the interface and ignored here: the fixture catalog is keyed by code alone.
   lookupProduct(code: string): Promise<ProductLookupResultDto> {
     return Promise.resolve(fixtureLookupProduct(code));
   }
@@ -1738,8 +1740,11 @@ export class HttpApiClient implements ApiClient {
    * just scans again), so there is no idempotency key to protect here the
    * way {@link createItem}'s write does.
    */
-  async lookupProduct(code: string): Promise<ProductLookupResultDto> {
-    const response = await fetch(`${this.baseUrl}${productLookupPath(code)}`, {
+  async lookupProduct(
+    code: string,
+    type?: ScannableBarcodeTypeDto,
+  ): Promise<ProductLookupResultDto> {
+    const response = await fetch(`${this.baseUrl}${productLookupPath(code, type)}`, {
       headers: this.authHeaders(),
     });
     if (!response.ok) {
@@ -1748,7 +1753,7 @@ export class HttpApiClient implements ApiClient {
     }
     const parsedBody: unknown = await response.json();
     if (!isProductLookupResult(parsedBody)) {
-      throw new Error(`GET ${productLookupPath(code)} returned an unexpected response body`);
+      throw new Error(`GET ${productLookupPath(code, type)} returned an unexpected response body`);
     }
     return parsedBody;
   }

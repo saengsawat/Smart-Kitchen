@@ -9,20 +9,29 @@
  */
 
 import { codeKey, loadFixtureCatalog } from "./fixture-loader.js";
-import { validateCodeFormat } from "./schema.js";
+import { isLookupCodeRefusal, normalizeLookupCode, validateCodeFormat } from "./schema.js";
 import type { ProductLookupPort, ResolveResult } from "./ports.js";
 import type { ProductCode } from "./types.js";
 
 export class FixtureProductLookupPort implements ProductLookupPort {
-  resolve(code: ProductCode): Promise<ResolveResult> {
-    const formatProblem = validateCodeFormat(code);
+  resolve(requested: ProductCode): Promise<ResolveResult> {
+    const formatProblem = validateCodeFormat(requested);
     if (formatProblem) {
       return Promise.resolve({
         status: "error",
-        code,
+        code: requested,
         error: { code: "INVALID_CODE", message: formatProblem.message, field: "code" },
       });
     }
+    const normalized = normalizeLookupCode(requested);
+    if (isLookupCodeRefusal(normalized)) {
+      return Promise.resolve({
+        status: "error",
+        code: requested,
+        error: { code: "INVALID_CODE", message: normalized.message, field: "code" },
+      });
+    }
+    const code = normalized;
 
     const catalog = loadFixtureCatalog();
     if (!catalog.ok) {

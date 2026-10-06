@@ -18,6 +18,7 @@ import {
   productLookupPath,
   type ApiErrorBodyDto,
   type ProductLookupResultDto,
+  type ScannableBarcodeTypeDto,
   type ScreeningOutcomeDto,
 } from "@smart-kitchen/contracts";
 import type { FastifyInstance } from "fastify";
@@ -126,10 +127,11 @@ async function get<T>(
   app: FastifyInstance,
   code: string,
   token: string | undefined,
+  type?: ScannableBarcodeTypeDto,
 ): Promise<{ statusCode: number; body: T }> {
   const response = await app.inject({
     method: "GET",
-    url: productLookupPath(code),
+    url: productLookupPath(code, type),
     headers: token === undefined ? {} : { authorization: `Bearer ${token}` },
   });
   return { statusCode: response.statusCode, body: response.json<T>() };
@@ -380,6 +382,121 @@ describe("codes that never reach the source", () => {
     expect((await get<ProductLookupResultDto>(app, "96385074", DEAN)).statusCode).toBe(200);
     expect((await get<ProductLookupResultDto>(app, "3017620422003", DEAN)).statusCode).toBe(200);
     expect(sent).toHaveLength(2);
+  });
+});
+
+describe("M2-T4c: the symbology hint (type)", () => {
+  async function sentFor(
+    code: string,
+    type: string | undefined,
+  ): Promise<{ statusCode: number; sent: string[]; log: string }> {
+    const { fetch, sent } = replayingFetch();
+    const { app, logLines } = harness(new OpenFoodFactsProductLookupPort({ fetch }));
+    const response = await app.inject({
+      method: "GET",
+      url: `/v1/products/${code}${type === undefined ? "" : `?type=${type}`}`,
+      headers: { authorization: `Bearer ${DEAN}` },
+    });
+    return { statusCode: response.statusCode, sent, log: logLines.join("\n") };
+  }
+
+  it.each([
+    ["upc_a", "096619555505", "/api/v2/product/096619555505.json"],
+    ["ean13", "3017620422003", "/api/v2/product/3017620422003.json"],
+    ["ean8", "96385074", "/api/v2/product/96385074.json"],
+    ["upc_e", "04446307", "/api/v2/product/044000004637.json"],
+  ])("%s with a matching code is looked up as that symbology", async (type, code, path) => {
+    const { statusCode, sent } = await sentFor(code, type);
+    expect(statusCode).toBe(200);
+    expect(sent).toHaveLength(1);
+    expect(sent[0]).toContain(path);
+  });
+
+  it.each([["096619555505"], ["3017620422003"], ["96385074"], ["04446307"]])(
+    "%s without a type is looked up exactly as before",
+    async (code) => {
+      const { statusCode, sent } = await sentFor(code, undefined);
+      expect(statusCode).toBe(200);
+      expect(sent).toHaveLength(1);
+    },
+  );
+
+  it.each([
+    ["upc_a", "096619555504"],
+    ["ean13", "3017620422004"],
+    ["ean8", "96385075"],
+    ["upc_e", "04446308"],
+  ])(
+    "%s with a check digit mismatch is 400, nothing is sent and the code is not logged",
+    async (type, code) => {
+      const { statusCode, sent, log } = await sentFor(code, type);
+      expect(statusCode).toBe(400);
+      expect(sent).toEqual([]);
+      expect(log).toContain('"outcome":"invalid-code"');
+      expect(log).not.toContain(code);
+    },
+  );
+
+  it.each([
+    ["upc_a", "96385074"], // a valid EAN-8 is not a UPC-A
+    ["ean13", "096619555505"], // a valid UPC-A is not an EAN-13
+    ["ean8", "096619555505"],
+    ["upc_e", "096619555505"],
+    ["upc_e", "24446307"], // number system 2
+  ])("%s with a code of the wrong length or shape is 400", async (type, code) => {
+    const { statusCode, sent } = await sentFor(code, type);
+    expect(statusCode).toBe(400);
+    expect(sent).toEqual([]);
+  });
+
+  it.each(["code128", "UPC_A", "", "upc_a,ean8"])(
+    "an unknown type %j is 400 BAD_REQUEST and nothing is sent",
+    async (type) => {
+      const { fetch, sent } = replayingFetch();
+      const { app } = harness(new OpenFoodFactsProductLookupPort({ fetch }));
+      const response = await app.inject({
+        method: "GET",
+        url: `/v1/products/096619555505?type=${encodeURIComponent(type)}`,
+        headers: { authorization: `Bearer ${DEAN}` },
+      });
+      expect(response.statusCode).toBe(400);
+      expect(response.json<ApiErrorBodyDto>().error.code).toBe("BAD_REQUEST");
+      expect(sent).toEqual([]);
+    },
+  );
+
+  it("a repeated type parameter is 400", async () => {
+    const { fetch, sent } = replayingFetch();
+    const { app } = harness(new OpenFoodFactsProductLookupPort({ fetch }));
+    const response = await app.inject({
+      method: "GET",
+      url: "/v1/products/096619555505?type=upc_a&type=upc_a",
+      headers: { authorization: `Bearer ${DEAN}` },
+    });
+    expect(response.statusCode).toBe(400);
+    expect(sent).toEqual([]);
+  });
+
+  it("a code valid as both EAN-8 and UPC-E: type=upc_e looks up the UPC-A, type=ean8 the EAN-8, no type reads by first digit", async () => {
+    // 04016007: UPC-E first without a hint (leading 0).
+    const asE = await sentFor("04016007", "upc_e");
+    expect(asE.sent).toHaveLength(1);
+    expect(asE.sent[0]).toContain("/api/v2/product/040000001607.json");
+    const asEan8 = await sentFor("04016007", "ean8");
+    expect(asEan8.sent[0]).toContain("/api/v2/product/04016007.json");
+    const noHint = await sentFor("04016007", undefined);
+    expect(noHint.sent[0]).toContain("/api/v2/product/040000001607.json");
+    // 12345670: EAN-8 first without a hint (leading 1); the hint can still pick UPC-E.
+    const oneE = await sentFor("12345670", "upc_e");
+    expect(oneE.sent[0]).toContain("/api/v2/product/123456000070.json");
+    const oneNone = await sentFor("12345670", undefined);
+    expect(oneNone.sent[0]).toContain("/api/v2/product/12345670.json");
+  });
+
+  it("11234502 without a type is the leading-1 UPC-E fallback: UPC-A 112000003452", async () => {
+    const { statusCode, sent } = await sentFor("11234502", undefined);
+    expect(statusCode).toBe(200);
+    expect(sent[0]).toContain("/api/v2/product/112000003452.json");
   });
 });
 

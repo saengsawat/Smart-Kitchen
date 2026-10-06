@@ -24,7 +24,7 @@
 
 import type { AdapterError } from "../errors.js";
 import type { ProductLookupPort, ResolveResult } from "../ports.js";
-import { validateCodeFormat } from "../schema.js";
+import { isLookupCodeRefusal, normalizeLookupCode, validateCodeFormat } from "../schema.js";
 import type { ProductCatalogItem, ProductCode } from "../types.js";
 import {
   OFF_CACHE_MAX_ENTRIES,
@@ -112,13 +112,29 @@ export class OpenFoodFactsProductLookupPort implements ProductLookupPort {
     return `${this.baseUrl}/api/v2/product/${encodeURIComponent(code)}.json?fields=${OFF_PRODUCT_FIELDS.join(",")}`;
   }
 
-  resolve(code: ProductCode): Promise<ResolveResult> {
-    const formatProblem = validateCodeFormat(code);
+  resolve(requested: ProductCode): Promise<ResolveResult> {
+    const formatProblem = validateCodeFormat(requested);
     if (formatProblem) {
       return Promise.resolve(
-        errorResult(code, { code: "INVALID_CODE", message: formatProblem.message, field: "code" }),
+        errorResult(requested, {
+          code: "INVALID_CODE",
+          message: formatProblem.message,
+          field: "code",
+        }),
       );
     }
+    // M2-T4c: a GTIN14 is looked up as its EAN-13 (indicator 0) or refused.
+    const normalized = normalizeLookupCode(requested);
+    if (isLookupCodeRefusal(normalized)) {
+      return Promise.resolve(
+        errorResult(requested, {
+          code: "INVALID_CODE",
+          message: normalized.message,
+          field: "code",
+        }),
+      );
+    }
+    const code = normalized;
     if (code.codeType === "PLU") {
       return Promise.resolve(
         errorResult(code, {

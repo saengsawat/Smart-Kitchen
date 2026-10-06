@@ -10,6 +10,11 @@
  * | 400 `BAD_REQUEST` | not a barcode: wrong length, a bad check digit, not digits |
  * | 401 / 403 | no session, or a signed-in caller with no household (`householdRoute`) |
  *
+ * Optional query `type` (M2-T4c): the symbology the camera read, one of
+ * `upc_a`, `upc_e`, `ean13`, `ean8`. When present the code is parsed as that
+ * symbology only (`upc_e` looks up its expanded UPC-A); when absent the code
+ * is parsed by its shape, as before. An unknown `type` is a 400 `BAD_REQUEST`.
+ *
  * Any member may look a product up. The route reads nothing from the
  * database: there is no product table (D-025 (3)), and no household state
  * is involved until M2-T4 runs screening here.
@@ -20,6 +25,7 @@
  */
 
 import {
+  asScannableBarcodeType,
   PRODUCT_LOOKUP_ROUTE,
   type ApiErrorBodyDto,
   type ApiErrorCode,
@@ -67,7 +73,14 @@ export function registerProductRoutes(app: FastifyInstance, deps: ProductRouteDe
       const session = requireSession(request);
       const { code: raw } = request.params as { code: string };
       const routePath = request.routeOptions.url ?? "(no route)";
-      const parsed = parseLookupCode(raw);
+      // M2-T4c: the optional symbology hint. Present but not one of the
+      // scannable types (or repeated): refused like any other invalid code.
+      const { type: rawType } = request.query as { type?: unknown };
+      const type = asScannableBarcodeType(rawType);
+      const parsed =
+        rawType !== undefined && type === undefined
+          ? ({ kind: "invalid" } as const)
+          : parseLookupCode(raw, type);
 
       if (parsed.kind === "plu") {
         request.log.info({ routePath, productCode: raw, outcome: "plu-refused" }, "product.lookup");
