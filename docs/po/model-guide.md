@@ -53,7 +53,7 @@ more than finishing. The workers' and reviewers' tokens don't add to the
 architect's context; only what they send back does. To keep it from growing in
 the first place, `/next` tells the architect to:
 
-- take at most 3 tickets per session,
+- take at most 5 tickets per session (raised from 3 by the PO, 2026-10-07),
 - ask agents for short chat summaries and keep the full reports in
   `docs/handoff/` files,
 - stop after the batch is accepted and tell you to start a fresh session.
