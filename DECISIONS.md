@@ -164,6 +164,19 @@ Owners: `PO` = product owner (Dean), `ENG` = engineering.
 - **Alternatives:** relax append-only for one column (rejected: weakens INV-LEDGER-2 for every future case); a zero-delta confirmation transaction type (rejected: changes the ledger's core shape and the `qty_nonzero` invariant for a non-quantity fact); confirm only the latest row (rejected: an older unconfirmed AI row would keep the item in the tray after the user said it was right).
 - **Consequences:** ADR-008 gains the note that provenance-level facts about a transaction live in sibling append-only tables; M2-T6's migration moves to 0011; ai-architecture §5 points at the table as the confirmation record that feeds evaluation data.
 
+## D-029 — Count units take whole numbers only
+- **Date:** 2026-10-07 · **Status:** DECIDED (Andy, PO, in chat 2026-10-07) · **Owner:** architect, Andy (PO)
+- **Context:** M3-T7 let S5's typed amount and S8's typed size take decimals for every unit. On the phone Andy found 12.5 eggs and 1.5 boxes of tea (2026-10-06). Half an egg isn't real, and a fraction of a box is a guess nobody keeps up to date.
+- **Decision:** amounts in count units (`count`, `each`, and any other COUNT-kind unit in the registry) are whole numbers. The client steps them by 1 and refuses a typed fraction with a hint. The server refuses a fractional count on every write (create, correction, removal), so the screen is never the only guard (rule 6). Mass and volume units keep decimals.
+- **Existing data:** history stays as written (ADR-008, append-only). An item that already holds a fraction can be corrected to a whole number. The architect decides in the ticket whether a removal from a fractional balance is allowed down to zero.
+- **Consequences:** a ticket (Opus implementation and review, rule 23 inventory arithmetic) across contracts, the domain or API validation, S5 and S8; copy for the hint proposed in the ticket.
+
+## D-030 — A passed best-by date reads "expired", not "use today"
+- **Date:** 2026-10-07 · **Status:** DECIDED (Andy, PO, in chat 2026-10-07) · **Owner:** architect, Andy (PO)
+- **Context:** S4 and S5 show "use today" for an item whose date has already passed (copy-deck S5 "Expired: not yet designed"). On the phone every seeded fridge item read "use today" once its September date had passed.
+- **Decision:** "use today" is for a date that is today. A date in the past reads "expired". The architect proposes the exact strings in the ticket and keeps provenance honest: a passed Estimated date must not read as certain as a Known Fact date (P-rules, copy-deck §4), so its wording is proposed in the ticket and added to the copy deck at acceptance.
+- **Consequences:** a Sonnet ticket on S4 and S5 display (no data change); copy-deck S5 "Expired" line updated at acceptance.
+
 ---
 
 ## Open product-owner questions (not yet decisions)
