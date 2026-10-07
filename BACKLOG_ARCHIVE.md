@@ -681,3 +681,16 @@ ARCHITECTURE.md: the top status line (three ADRs are DECIDED), §2 shape (Expo a
 - **File scope:** `packages/contracts/src/units.ts`, `packages/contracts/src/index.ts` (if exports are listed there), one new consistency test file, `apps/mobile/src/inventory/quantity.ts` (the alias block and `isCountUnit` only), `apps/mobile/src/inventory/quantity.test.ts`, `docs/handoff/M9-T2.worker.md`.
 - **Out of scope:** the server's D-029 check; the S8 package-size fraction case; other unit kinds.
 - **DoD:** rule 26.
+
+#### M3-T10: Top safe-area inset on every screen (BUG-007 follow-up) ✅ DONE 2026-10-07 (c825350, review PASS, Sonnet)
+- **Implementation model:** Sonnet. Layout only, no domain logic.
+- **Review model:** Sonnet. Not on the rule-23 list.
+- **Objective:** every screen clears the status bar the way Home does since BUG-007, with one convention.
+- **Context:** BUG-007 (commit 82a03a0) gave Home `insets.top + spacing.md` from `useSafeAreaInsets()`. The other screens pad a fixed `spacing.xl` and clip on tall status bars (notch, Dynamic Island, Android cutouts): `app/inventory.tsx`, `app/inventory/[itemId].tsx`, `app/shopping.tsx`, `app/profile.tsx`, `app/legend.tsx`, `app/add.tsx`, `app/add/manual.tsx`, `app/add/scan.tsx` (two places), `app/onboarding/account.tsx`, `app/onboarding/allergies.tsx` (all under `apps/mobile/`). Shared mock: `apps/mobile/src/test-support/safe-area-mock.ts`. Copy Home's pattern.
+- **Dependencies:** runs after M3-T12 merges (both touch `scan.tsx` and `[itemId].tsx`); fork from the sha the architect gives you.
+- **Invariants:** no copy changes; bottom inset and `useTabBarClearance()` handling untouched; no new dependency; no em dashes.
+- **Acceptance criteria:** each listed screen's top padding is `insets.top + spacing.md` (on S7 a full-bleed camera view stays full-bleed and the overlay controls clear the inset); `safe-area-mock.ts` gains a top setter with a reset so tests can set a tall top inset; a test per screen, or one table test over the screens, proves the top padding follows the inset; existing tests pass.
+- **Tests required:** as above; full mobile test, typecheck and lint.
+- **File scope:** the eleven screen files above, `apps/mobile/src/test-support/safe-area-mock.ts`, their tests (new or existing under `apps/mobile/**`), `docs/handoff/M3-T10.worker.md`.
+- **Out of scope:** Home and Menu; migrating the older per-file safe-area mocks (BUG-003 follow-up); tokens.md (the architect adds the §8 top-inset line at acceptance from the report).
+- **DoD:** rule 26; the report lists any screen where the convention did not fit and why.

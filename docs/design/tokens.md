@@ -268,4 +268,5 @@ Design-direction §2's v1 foundation table is the only place a dark counterpart 
 | Bottom sheets and bottom-anchored inputs | pad by `insets.bottom` plus the sheet's own padding; keep them visible when the keyboard opens | S7 typed-code sheet today; S8 and the miss panel on the device pass |
 | S7 camera panel | at most 55% of the window height, brackets centred in the panel, hint directly under it, sand below | `app/add/scan.tsx` |
 | Screens that hide the bar | no clearance padding (onboarding, the Add flow) | |
+| Top inset (M3-T10, 2026-10-07) | every screen header pads `insets.top + spacing.md` from `useSafeAreaInsets()`, never a fixed `spacing.xl`; on S7 the camera stays full-bleed and only the overlay controls pad | every screen under `app/` |
 | S7 hint on sand | `ink2` on `sand`, 6.29:1 (§2 row 5) | `app/add/scan.tsx` |
