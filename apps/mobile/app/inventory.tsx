@@ -6,7 +6,7 @@ import { apiClient } from "../src/api/client";
 import { colors, fontFamily, minTouchTarget, radius, spacing } from "../src/design/tokens";
 import { useTabBarClearance } from "../src/navigation/TabBar";
 import { CENTER_ACTION } from "../src/navigation/tabs";
-import { daysUntil, expiryUrgencyText, freshnessRing } from "../src/inventory/expiry";
+import { daysUntil, expiryDisplayText, freshnessRing } from "../src/inventory/expiry";
 import {
   buildInventoryListView,
   LOCATION_LABELS,
@@ -406,7 +406,7 @@ function InventoryRow({
   const qty = formatQuantityDisplay(item.quantity, item.lots, tier);
   const days = item.earliestExpiresAt === null ? null : daysUntil(now, item.earliestExpiresAt);
   const ring = freshnessRing(days);
-  const urgency = expiryUrgencyText(days);
+  const urgency = expiryDisplayText(days, item.provenance.earliestExpiresAt?.tier);
   const chip = tier ? ROW_CHIP_TEXT[tier] : null;
   const name = item.displayName ?? "Item";
   // Review F8: the chip is a separate element (and, for AI, its own

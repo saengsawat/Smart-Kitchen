@@ -9,6 +9,8 @@
  * clock so this stays a pure, testable function.
  */
 
+import type { ProvenanceTierDto } from "@smart-kitchen/contracts";
+
 export type FreshnessRing = "now" | "soon" | "fresh" | "none";
 
 /** Whole days from `takenAt` to `expiresAt`, rounded up (a same-day expiry is day 0, "use today"). */
@@ -48,6 +50,9 @@ export function expiryUrgencyText(days: number | null): string | null {
   if (days === null) {
     return null;
   }
+  if (days < 0) {
+    return "expired";
+  }
   if (days <= 1) {
     return "use today";
   }
@@ -58,4 +63,29 @@ export function expiryUrgencyText(days: number | null): string | null {
     return `${Math.round(days / 7)} weeks`;
   }
   return `${Math.round(days / 30)} months`;
+}
+
+/**
+ * D-030 display text for an expiry. A date later today (days 0 or 1) keeps
+ * "use today"; a past date (`days < 0`) reads "expired" only when the date is a
+ * Known Fact, and "may be expired" for Estimated, AI-interpreted or missing
+ * provenance, so an estimate never reads as certain. Future dates are
+ * unchanged. `null` days means no known expiry and renders no text.
+ */
+export function expiryDisplayText(
+  days: number | null,
+  tier: ProvenanceTierDto | null | undefined,
+): string | null {
+  if (days !== null && days < 0) {
+    return tier === "KNOWN_FACT" ? "expired" : "may be expired";
+  }
+  return expiryUrgencyText(days);
+}
+
+/** S5 lot caption wording: "expires today" / "expires in 3 days" / "expired" / "may be expired". */
+export function lotCaptionExpiry(urgency: string): string {
+  if (urgency === "expired" || urgency === "may be expired") {
+    return urgency;
+  }
+  return `expires ${urgency === "use today" ? "today" : `in ${urgency}`}`;
 }

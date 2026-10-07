@@ -27,7 +27,12 @@ import {
   movedRowTitle,
   otherLocations,
 } from "../../src/inventory/history";
-import { daysUntil, expiryUrgencyText, freshnessRing } from "../../src/inventory/expiry";
+import {
+  daysUntil,
+  expiryDisplayText,
+  freshnessRing,
+  lotCaptionExpiry,
+} from "../../src/inventory/expiry";
 import { useReducedMotion, pressScaleStyle } from "../../src/inventory/motion";
 import { chipAccessibilityLabel, ROW_CHIP_TEXT } from "../../src/inventory/provenance";
 import {
@@ -483,7 +488,7 @@ export default function ItemDetailScreen(): React.JSX.Element {
               const days =
                 lot.expiresAt === null ? null : daysUntil(new Date().toISOString(), lot.expiresAt);
               const ring = freshnessRing(days);
-              const urgency = expiryUrgencyText(days);
+              const urgency = expiryDisplayText(days, lotTier);
               return (
                 <View key={lot.lotId} style={styles.lotRow}>
                   <View style={[styles.lotRing, ringStyleFor(ring)]} />
@@ -493,9 +498,7 @@ export default function ItemDetailScreen(): React.JSX.Element {
                     </Text>
                     <Text style={styles.lotCaption}>
                       {lot.label ?? "acquired"}
-                      {urgency
-                        ? ` · expires ${urgency === "use today" ? "today" : `in ${urgency}`}`
-                        : ""}
+                      {urgency ? ` · ${lotCaptionExpiry(urgency)}` : ""}
                     </Text>
                   </View>
                   {lotTier ? (
