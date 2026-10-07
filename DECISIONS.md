@@ -170,6 +170,7 @@ Owners: `PO` = product owner (Dean), `ENG` = engineering.
 - **Decision:** amounts in count units (`count`, `each`, and any other COUNT-kind unit in the registry) are whole numbers. The client steps them by 1 and refuses a typed fraction with a hint. The server refuses a fractional count on every write (create, correction, removal), so the screen is never the only guard (rule 6). Mass and volume units keep decimals.
 - **Existing data:** history stays as written (ADR-008, append-only). An item that already holds a fraction can be corrected to a whole number. The architect decides in the ticket whether a removal from a fractional balance is allowed down to zero.
 - **Consequences:** a ticket (Opus implementation and review, rule 23 inventory arithmetic) across contracts, the domain or API validation, S5 and S8; copy for the hint proposed in the ticket.
+- **Built (M2-T8, accepted 2026-10-07):** enforced at the API on new statements only (create, `ADJUSTMENT` target or resulting balance, removals) with 400 `COUNT_NOT_WHOLE`; architect ruling for the open point: a removal is the full balance, or a whole amount that leaves a whole balance. Ledger rows of any precision stay valid; replays of writes accepted before D-029 are judged by the ledger (200 or 409), never by the rule. The shopping Add takes no client amount and is unchanged.
 
 ## D-030 — A passed best-by date reads "expired", not "use today"
 - **Date:** 2026-10-07 · **Status:** DECIDED (Andy, PO, in chat 2026-10-07) · **Owner:** architect, Andy (PO)
