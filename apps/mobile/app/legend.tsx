@@ -1,4 +1,5 @@
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { colors, fontFamily, minTouchTarget, spacing } from "../src/design/tokens";
 import { useTabBarClearance } from "../src/navigation/TabBar";
@@ -23,6 +24,8 @@ import { LEGEND_CLOSING_LINE, LEGEND_LINES, ROW_CHIP_TEXT } from "../src/invento
  * this sentence in copy-deck.md §10's exception table at acceptance.
  */
 export default function LegendScreen(): React.JSX.Element {
+  // M3-T10: the header clears the status bar, as Home does (BUG-007).
+  const insets = useSafeAreaInsets();
   const tabBarClearance = useTabBarClearance();
   const router = useRouter();
 
@@ -36,7 +39,7 @@ export default function LegendScreen(): React.JSX.Element {
 
   return (
     <View style={styles.screen}>
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: insets.top + spacing.md }]}>
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Back"
@@ -75,7 +78,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: spacing.md,
     paddingHorizontal: spacing.lg,
-    paddingTop: spacing.xl,
     paddingBottom: spacing.md,
   },
   iconButton: {

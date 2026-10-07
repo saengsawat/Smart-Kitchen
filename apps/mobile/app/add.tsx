@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { colors, fontFamily, minTouchTarget, radius, spacing } from "../src/design/tokens";
 import { chipAccessibilityLabel, ROW_CHIP_TEXT } from "../src/inventory/provenance";
@@ -17,6 +18,8 @@ import { getRecentlyAdded } from "../src/scan/recently-added";
  * explain themselves on tap (P10) rather than a dead "not in mockup" toast.
  */
 export default function AddHubScreen(): React.JSX.Element {
+  // M3-T10: the header clears the status bar, as Home does (BUG-007).
+  const insets = useSafeAreaInsets();
   const router = useRouter();
   const { show } = useToast();
   // Read once, at mount: expo-router's stack pushes a fresh instance of this
@@ -35,7 +38,7 @@ export default function AddHubScreen(): React.JSX.Element {
 
   return (
     <View style={styles.screen}>
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: insets.top + spacing.md }]}>
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Back"
@@ -143,7 +146,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: spacing.md,
     paddingHorizontal: spacing.lg,
-    paddingTop: spacing.xl,
     paddingBottom: spacing.md,
   },
   iconButton: {

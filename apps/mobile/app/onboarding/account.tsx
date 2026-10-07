@@ -8,6 +8,7 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { apiClient, hasDevOfflineToggle } from "../../src/api/client";
 import { colors, fontFamily, minTouchTarget, radius, spacing } from "../../src/design/tokens";
@@ -49,6 +50,8 @@ const HOUSEHOLD_NAME_REFUSAL_MESSAGE = "Give the household a name of 1 to 60 cha
  * screen goes straight to S2 exactly as it always did.
  */
 export default function AccountScreen(): React.JSX.Element {
+  // M3-T10: the header clears the status bar, as Home does (BUG-007).
+  const insets = useSafeAreaInsets();
   const router = useRouter();
   const [signedIn, setSignedIn] = useState(false);
   const [googleExplained, setGoogleExplained] = useState(false);
@@ -203,7 +206,7 @@ export default function AccountScreen(): React.JSX.Element {
 
   return (
     <View style={styles.screen}>
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: insets.top + spacing.md }]}>
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Back"
@@ -367,7 +370,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: spacing.md,
     paddingHorizontal: spacing.lg,
-    paddingTop: spacing.xl,
     paddingBottom: spacing.md,
   },
   iconButton: {

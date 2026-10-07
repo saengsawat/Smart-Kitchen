@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import type { InventoryItemSummaryDto } from "@smart-kitchen/contracts";
 import { apiClient } from "../src/api/client";
@@ -40,6 +41,8 @@ const LOCATION_TAB_LABELS: Readonly<Record<LocationFilter, string>> = {
  * rather than assuming one.
  */
 export default function InventoryScreen(): React.JSX.Element {
+  // M3-T10: the header clears the status bar, as Home does (BUG-007).
+  const insets = useSafeAreaInsets();
   const tabBarClearance = useTabBarClearance();
   const router = useRouter();
   const reducedMotion = useReducedMotion();
@@ -147,7 +150,7 @@ export default function InventoryScreen(): React.JSX.Element {
 
   return (
     <View style={styles.screen}>
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: insets.top + spacing.md }]}>
         <View style={styles.headerText}>
           <Text style={styles.title}>Inventory</Text>
           {isFirstRun ? (
@@ -475,7 +478,6 @@ const styles = StyleSheet.create({
     alignItems: "flex-start",
     justifyContent: "space-between",
     paddingHorizontal: spacing.lg,
-    paddingTop: spacing.xl,
     paddingBottom: spacing.sm,
   },
   headerText: { flex: 1, gap: 2 },

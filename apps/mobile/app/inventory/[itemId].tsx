@@ -8,6 +8,7 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import type {
   InventoryItemDetailDto,
@@ -551,8 +552,10 @@ function Header({
   title: string;
   chip: ProvenanceTierDto | null;
 }): React.JSX.Element {
+  // M3-T10: the header clears the status bar, as Home does (BUG-007).
+  const insets = useSafeAreaInsets();
   return (
-    <View style={styles.header}>
+    <View style={[styles.header, { paddingTop: insets.top + spacing.md }]}>
       <Pressable
         accessibilityRole="button"
         accessibilityLabel="Back"
@@ -696,7 +699,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: spacing.md,
     paddingHorizontal: spacing.lg,
-    paddingTop: spacing.xl,
     paddingBottom: spacing.md,
   },
   iconButton: {

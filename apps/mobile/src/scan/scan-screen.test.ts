@@ -34,11 +34,16 @@ import {
   __setMockCameraPermission,
 } from "../test-support/expo-camera-mock";
 import { flushPending } from "../test-support/flush";
-import { setMockBottomInset } from "../test-support/safe-area-mock";
+import {
+  resetMockInsets,
+  setMockBottomInset,
+  setMockTopInset,
+} from "../test-support/safe-area-mock";
+import { paddingTopAbove } from "../test-support/top-padding";
 import { setMockWindowDimensions } from "../test-support/react-native-mock";
 import { ToastHost, ToastProvider } from "../inventory/Toast";
 import { AccessibilityInfo } from "react-native";
-import { colors } from "../design/tokens";
+import { colors, spacing } from "../design/tokens";
 import type {
   CreateItemRequestDto,
   InventoryItemSummaryDto,
@@ -1448,5 +1453,41 @@ describe("S8 · count-unit package size takes whole numbers (M2-T8, D-029)", () 
       await flushPending();
       expect(result.getByText("Use a whole number for this item.")).toBeTruthy();
     });
+  });
+});
+
+describe("S7 · top inset (M3-T10)", () => {
+  afterEach(() => {
+    resetMockInsets();
+  });
+
+  it("the camera overlay controls clear the inset while the camera stays full-bleed", async () => {
+    __setMockCameraPermission({ granted: true, canAskAgain: true, status: "granted" });
+    setMockTopInset(44);
+    const result = await renderScreen();
+    expect(paddingTopAbove(result.getByText("Scan barcode").parent)).toBe(44 + spacing.md);
+    // Full-bleed: nothing above the overlay row pads the top, so the camera
+    // still runs under the status bar.
+    let overlay = result.getByText("Scan barcode").parent;
+    while (overlay && flattenStyle(overlay.props.style).paddingTop === undefined) {
+      overlay = overlay.parent;
+    }
+    expect(overlay).toBeTruthy();
+    // (Composite wrappers repeat the same style, so step past those first.)
+    let above = overlay?.parent ?? null;
+    while (above && above.props.style === overlay?.props.style) above = above.parent;
+    expect(paddingTopAbove(above)).toBeUndefined();
+  });
+
+  it("the miss header and the confirm header clear the inset", async () => {
+    setMockTopInset(44);
+    const miss = await renderScreen();
+    await lookUp(miss, "040000519073");
+    expect(paddingTopAbove(miss.getByText("Scan barcode").parent)).toBe(44 + spacing.md);
+    cleanup();
+
+    const confirm = await renderScreen();
+    await lookUp(confirm, "060000100810");
+    expect(paddingTopAbove(confirm.getByText("Confirm item").parent)).toBe(44 + spacing.md);
   });
 });

@@ -504,7 +504,7 @@ export default function ScanScreen(): React.JSX.Element {
   if (phase.kind === "miss") {
     return (
       <View style={styles.screen}>
-        <View style={styles.header}>
+        <View style={[styles.header, { paddingTop: insets.top + spacing.md }]}>
           <BackButton onPress={handleBack} />
           <Text style={styles.headerTitle}>Scan barcode</Text>
         </View>
@@ -597,7 +597,7 @@ export default function ScanScreen(): React.JSX.Element {
         ) : (
           <View style={styles.cameraFill} />
         )}
-        <View style={styles.camTop}>
+        <View style={[styles.camTop, { paddingTop: insets.top + spacing.md }]}>
           <BackButton onPress={handleBack} light />
           <Text style={styles.camTitle}>Scan barcode</Text>
           <View style={{ width: minTouchTarget }} />
@@ -748,6 +748,8 @@ function ConfirmSheet({
   onAdd: () => void;
   onBack: () => void;
 }): React.JSX.Element {
+  // M3-T10: the header clears the status bar, as Home does (BUG-007).
+  const insets = useSafeAreaInsets();
   // Review R4: a verdict is never shown with unnamed members, and Add is
   // disabled the whole time the household hasn't loaded — whether that's
   // still in flight or has failed outright. M3-T4e Objective (f): also
@@ -779,7 +781,7 @@ function ConfirmSheet({
 
   return (
     <View style={styles.screen}>
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: insets.top + spacing.md }]}>
         <BackButton onPress={onBack} />
         <Text style={styles.headerTitle}>Confirm item</Text>
       </View>
@@ -1203,7 +1205,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: spacing.md,
     paddingHorizontal: spacing.lg,
-    paddingTop: spacing.xl,
     paddingBottom: spacing.md,
   },
   iconButton: {
@@ -1236,7 +1237,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: spacing.lg,
-    paddingTop: spacing.xl,
   },
   camTitle: { color: colors.cream, fontWeight: "700", fontSize: 15, fontFamily: fontFamily.body },
   // BUG-003: the camera panel keeps the prototype's espresso camera look but

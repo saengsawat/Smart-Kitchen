@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import type { ShoppingListDto, ShoppingRowDto } from "@smart-kitchen/contracts";
 import { apiClient, hasDevOfflineToggle } from "../src/api/client";
@@ -134,6 +135,8 @@ function applyQueuedOverlay(list: ShoppingListDto): ShoppingListDto {
  * redundant, misleading success toast.
  */
 export default function ShoppingScreen(): React.JSX.Element {
+  // M3-T10: the header clears the status bar, as Home does (BUG-007).
+  const insets = useSafeAreaInsets();
   const tabBarClearance = useTabBarClearance();
   const router = useRouter();
   const reducedMotion = useReducedMotion();
@@ -371,7 +374,7 @@ export default function ShoppingScreen(): React.JSX.Element {
 
   return (
     <View style={styles.screen}>
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: insets.top + spacing.md }]}>
         <View style={styles.headerText}>
           <Text style={styles.title}>Shopping</Text>
           <Text style={styles.sub}>
@@ -664,7 +667,6 @@ const styles = StyleSheet.create({
     alignItems: "flex-start",
     justifyContent: "space-between",
     paddingHorizontal: spacing.lg,
-    paddingTop: spacing.xl,
     paddingBottom: spacing.sm,
     gap: spacing.sm,
   },

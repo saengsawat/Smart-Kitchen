@@ -8,6 +8,7 @@ import {
   Text,
   View,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { apiClient } from "../../src/api/client";
 import { colors, fontFamily, minTouchTarget, radius, spacing } from "../../src/design/tokens";
@@ -46,6 +47,8 @@ const PREFERENCE_OPTIONS = ["Vegetarian", "High protein", "Kid-friendly"] as con
  * call for the architect/PO to confirm or split out.
  */
 export default function AllergiesScreen(): React.JSX.Element {
+  // M3-T10: the header clears the status bar, as Home does (BUG-007).
+  const insets = useSafeAreaInsets();
   const router = useRouter();
   const [drafts, setDrafts] = useState<readonly MemberAllergyDraft[] | null>(null);
   const [preferences, setPreferences] = useState<readonly string[]>([]);
@@ -177,7 +180,7 @@ export default function AllergiesScreen(): React.JSX.Element {
 
   return (
     <View style={styles.screen}>
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: insets.top + spacing.md }]}>
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Back"
@@ -284,7 +287,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: spacing.md,
     paddingHorizontal: spacing.lg,
-    paddingTop: spacing.xl,
     paddingBottom: spacing.md,
   },
   iconButton: {

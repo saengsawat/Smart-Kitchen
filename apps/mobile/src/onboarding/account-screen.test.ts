@@ -20,6 +20,8 @@ import { apiClient, type FixtureApiClient } from "../api/client";
 
 let pushed: unknown[] = [];
 
+vi.mock("react-native-safe-area-context", () => import("../test-support/safe-area-mock"));
+
 vi.mock("expo-router", () => ({
   useRouter: () => ({
     push: (href: unknown) => pushed.push(href),

@@ -12,6 +12,8 @@ import { flushPending } from "../test-support/flush";
 // Forces the screen (which imports the module-level `apiClient` singleton
 // directly) onto a real HttpApiClient for this file, same pattern as
 // item-detail-screen.test.ts.
+vi.mock("react-native-safe-area-context", () => import("../test-support/safe-area-mock"));
+
 vi.mock("../api/client", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../api/client")>();
   return { ...actual, apiClient: new actual.HttpApiClient("http://localhost:4000") };

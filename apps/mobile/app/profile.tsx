@@ -8,6 +8,7 @@ import {
   Text,
   View,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import type { HouseholdDto, MemberDto } from "@smart-kitchen/contracts";
 import {
@@ -63,6 +64,8 @@ const INVITE_CONFIRM_MESSAGE =
  * this app.
  */
 export default function ProfileScreen(): React.JSX.Element {
+  // M3-T10: the header clears the status bar, as Home does (BUG-007).
+  const insets = useSafeAreaInsets();
   const tabBarClearance = useTabBarClearance();
   const router = useRouter();
   const { show } = useToast();
@@ -331,7 +334,7 @@ export default function ProfileScreen(): React.JSX.Element {
 
   return (
     <View style={styles.screen}>
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: insets.top + spacing.md }]}>
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Back"
@@ -561,7 +564,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: spacing.md,
     paddingHorizontal: spacing.lg,
-    paddingTop: spacing.xl,
     paddingBottom: spacing.md,
   },
   iconButton: {
