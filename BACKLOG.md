@@ -70,7 +70,7 @@ _Finished tickets moved to [BACKLOG_ARCHIVE.md](BACKLOG_ARCHIVE.md): M3-T1, M3-T
 
 #### Pending D-024 (Dean's additions, 2026-09-22; see docs/po/dean-additions-2026-09-22.md): if accepted, M3-T3 gains a follow-up ticket (move item Fridge ⇄ Freezer as a recorded location event; "Remove from inventory" wording and hide rule; "Always keep N on hand" setting), M3-T5 adds allergen verdict chips on shopping rows and the origin display call, M3-T6 adds the unit-of-measure preference, M2-T2 adds the `MOVE` event and `minOnHand`, M7 adds executed-in-full with category default locations and the par-level gap rule, and the Menu tickets add favourites and the defrost card.
 
-_Finished tickets moved to [BACKLOG_ARCHIVE.md](BACKLOG_ARCHIVE.md): M3-T4a, M3-T4b, M2-T3, M3-T4c, M2-T3a, M3-T5, M2-T4a, M3-T4d, M3-T4e, M3-T6, M3-T7, M7-T1, M3-T8, M2-T4c, M2-T7._
+_Finished tickets moved to [BACKLOG_ARCHIVE.md](BACKLOG_ARCHIVE.md): M3-T4a, M3-T4b, M2-T3, M3-T4c, M2-T3a, M3-T5, M2-T4a, M3-T4d, M3-T4e, M3-T6, M3-T7, M7-T1, M3-T8, M2-T4c, M2-T7, M3-T9._
 
 #### R-6 — Shelf-life data research: USDA FoodKeeper coverage, licence and the estimation rule (docs only)
 - **Implementation model:** Sonnet. A research spike in the R-1 pattern: a script, a raw capture, a findings document; no app code.
@@ -109,24 +109,6 @@ _Finished tickets moved to [BACKLOG_ARCHIVE.md](BACKLOG_ARCHIVE.md): M3-T4a, M3-
 - **Out of scope:** a per-product "sold by the half" unit; converting count to mass; rewriting existing fractional rows; the `ApiError` client type (separate follow-up).
 - **DoD:** rule 26; the report proposes the copy-deck lines (S5 amount field, §8 `COUNT_NOT_WHOLE`) for the architect to apply.
 
-#### M3-T9 — A passed best-by reads "expired" (D-030), S4 and S5
-- **Implementation model:** Sonnet. Display-only change in one pure helper and two screens; no data change.
-- **Review model:** Sonnet. Not on the rule-23 list; the reviewer checks the provenance honesty of the strings.
-- **Decision basis:** D-030 (Andy, PO, 2026-10-07); copy-deck §4 (tiers) and the S5 "Expired" line; P-rules (an estimate never reads as certain).
-- **Objective:** a date that is today keeps "use today"; a date in the past reads "expired" when the date is a Known Fact, and "may be expired" when it is Estimated, AI-interpreted or has no provenance. Proposed strings (architect; added to the copy deck at acceptance):
-  - S4 row, after the quantity: "expired" or "may be expired" (today: "use today", unchanged).
-  - S5 lot caption: "{label} · expired" or "{label} · may be expired" (today: "{label} · expires today", unchanged).
-  - Accessibility labels carry the same words.
-- **Logic:** `daysUntil` gives 0 for a date later today and a negative number for a past date; "past" means `days < 0`. The freshness ring for a past date stays "now" (rose). S4 reads `item.provenance.earliestExpiresAt?.tier`, S5 reads `lot.expiresAtProvenance?.tier`; only `KNOWN_FACT` reads "expired".
-- **Context:** `apps/mobile/src/inventory/expiry.ts` and `expiry.test.ts`, `apps/mobile/app/inventory.tsx` (row around `expiryUrgencyText`), `apps/mobile/app/inventory/[itemId].tsx` (the Lots block, around `expiryUrgencyText`), `packages/contracts/src/inventory.ts` (provenance fields, read only), copy-deck S5.
-- **Dependencies:** none. Runs alongside M2-T8, which also edits `[itemId].tsx`; touch only the Lots block there.
-- **Invariants:** no data change; no other screen's wording changes; the helper stays pure (time passed in).
-- **Acceptance criteria:** the strings above render for today, past Known Fact, past Estimated, past AI and past with null provenance on S4 and S5; future dates unchanged.
-- **Tests required:** helper unit tests for each case including the day boundary; S4 and S5 component tests for "expired" and "may be expired".
-- **File scope:** `apps/mobile/src/inventory/expiry.ts`, `expiry.test.ts`, `apps/mobile/app/inventory.tsx`, `apps/mobile/app/inventory/[itemId].tsx` (Lots block only), the S4 and S5 component tests under `apps/mobile/src/inventory/`, `docs/handoff/M3-T9.worker.md`.
-- **Out of scope:** expiry estimation (M8); a separate "expired" section or sort order; notifications.
-- **DoD:** rule 26; copy-deck S5 "Expired" line replaced with the strings at acceptance.
-
 _Finished tickets moved to [BACKLOG_ARCHIVE.md](BACKLOG_ARCHIVE.md): M2-T4b, M2-T5, M2-T6, M9-T0, M9-D1._
 
 ### M4 — Barcode/product enrichment
@@ -150,6 +132,7 @@ Alerting, cost caps enforcement, load/perf pass, security deep-set (isolation fu
 ---
 
 ## Accepted follow-ups from completed tickets
+- From M3-T9 (review; triaged at acceptance 2026-10-07): **Expiry wording (small, Sonnet):** `expiryUrgencyText` maps `days <= 1` to "use today", so a date one day out also reads "use today", which D-030 reserves for today; tomorrow should read "tomorrow" (S4) and "expires tomorrow" (S5), proposed copy. Same ticket: a doc comment on `expiryUrgencyText` pointing callers to `expiryDisplayText` so no screen skips the "may be expired" rule. **Accepted:** a best-by earlier today still reads "use today" (day granularity).
 - From M2-T7 (review; triaged at acceptance 2026-10-06): **Validation (small, Opus review, create path):** refuse lone surrogates (`\p{Cs}` or non-well-formed strings) on every create text field (`displayName`, `productRef`, `lotLabel`); node-pg stores them as U+FFFD, so an identical retry answers `IDEMPOTENCY_KEY_CONFLICT`. **Rule:** any ticket that edits a lot label compares a creation-time snapshot on replay (data-model §4). **Accepted:** an untrimmed label over 256 characters gets the generic schema 400.
 - From BUG-005 (triaged at acceptance 2026-10-03): **Process:** prune agent worktrees after every acceptance (CONTRIBUTING.md); the architect's verification commands must never descend into `.claude/` (an earlier form deleted `dist/` inside running agents' worktrees). **Tooling:** consider watchman on the development machine if the crawl stays slow.
 - From M2-T6 (worker and review; triaged at acceptance 2026-10-02): **Deploy order:** the detail read and the create-replay query read `inventory_item_moves`, so this build runs only against a database with migrations 0010 and 0011 (the practice database: `pnpm --filter api db:migrate` after pulling). **Remove-member ticket:** `moved_by` references the membership, like the shopping and confirmation tables; decide there. **Client errors:** `SAME_LOCATION` shows the generic fallback today; a stale screen could re-read the detail instead (joins the typed-client-error entry). **Device pass:** S4's regroup after a move on the phone. **History clocks (review N1, N2):** the merge compares the ledger's API-host `recorded_at` with the move's database `clock_timestamp()`, so within host clock skew a correction and a move can list in the wrong order, and ties among moves break on a random id; one follow-up: record the ledger position on the move row under the item lock (`after_sequence`) and merge by it. **S4:** there is no Other tab, so an item moved to Other shows only under All's Other group (pre-existing). **Layout:** S4 needs a focus refetch if the root layout ever becomes a stacking navigator.

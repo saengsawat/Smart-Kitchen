@@ -588,3 +588,21 @@ ARCHITECTURE.md: the top status line (three ADRs are DECIDED), §2 shape (Expo a
 - **File scope:** `packages/contracts/src/inventory.ts` (+ test), `apps/api/src/db/inventory/create-service.ts` and its tests, `apps/api/src/http/**` only if the route validates the body shape, `apps/mobile/src/scan/quantity.ts` (+ test), `apps/mobile/app/add/scan.tsx`, `apps/mobile/src/scan/scan-screen.test.ts`, `apps/mobile/src/api/client.ts` (+ test), `docs/handoff/M2-T7.worker.md`.
 - **Out of scope:** the locale decimal separator, the S5 "9.25 of 12" header, the range check (separate follow-ups); showing the label on S5.
 - **DoD:** rule 26; the worker report proposes the data-model.md line for the new provenance source (rule 30).
+
+#### M3-T9 — A passed best-by reads "expired" (D-030), S4 and S5
+- **Implementation model:** Sonnet. Display-only change in one pure helper and two screens; no data change.
+- **Review model:** Sonnet. Not on the rule-23 list; the reviewer checks the provenance honesty of the strings.
+- **Decision basis:** D-030 (Andy, PO, 2026-10-07); copy-deck §4 (tiers) and the S5 "Expired" line; P-rules (an estimate never reads as certain).
+- **Objective:** a date that is today keeps "use today"; a date in the past reads "expired" when the date is a Known Fact, and "may be expired" when it is Estimated, AI-interpreted or has no provenance. Proposed strings (architect; added to the copy deck at acceptance):
+  - S4 row, after the quantity: "expired" or "may be expired" (today: "use today", unchanged).
+  - S5 lot caption: "{label} · expired" or "{label} · may be expired" (today: "{label} · expires today", unchanged).
+  - Accessibility labels carry the same words.
+- **Logic:** `daysUntil` gives 0 for a date later today and a negative number for a past date; "past" means `days < 0`. The freshness ring for a past date stays "now" (rose). S4 reads `item.provenance.earliestExpiresAt?.tier`, S5 reads `lot.expiresAtProvenance?.tier`; only `KNOWN_FACT` reads "expired".
+- **Context:** `apps/mobile/src/inventory/expiry.ts` and `expiry.test.ts`, `apps/mobile/app/inventory.tsx` (row around `expiryUrgencyText`), `apps/mobile/app/inventory/[itemId].tsx` (the Lots block, around `expiryUrgencyText`), `packages/contracts/src/inventory.ts` (provenance fields, read only), copy-deck S5.
+- **Dependencies:** none. Runs alongside M2-T8, which also edits `[itemId].tsx`; touch only the Lots block there.
+- **Invariants:** no data change; no other screen's wording changes; the helper stays pure (time passed in).
+- **Acceptance criteria:** the strings above render for today, past Known Fact, past Estimated, past AI and past with null provenance on S4 and S5; future dates unchanged.
+- **Tests required:** helper unit tests for each case including the day boundary; S4 and S5 component tests for "expired" and "may be expired".
+- **File scope:** `apps/mobile/src/inventory/expiry.ts`, `expiry.test.ts`, `apps/mobile/app/inventory.tsx`, `apps/mobile/app/inventory/[itemId].tsx` (Lots block only), the S4 and S5 component tests under `apps/mobile/src/inventory/`, `docs/handoff/M3-T9.worker.md`.
+- **Out of scope:** expiry estimation (M8); a separate "expired" section or sort order; notifications.
+- **DoD:** rule 26; copy-deck S5 "Expired" line replaced with the strings at acceptance.

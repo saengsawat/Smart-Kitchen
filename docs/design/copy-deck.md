@@ -256,7 +256,7 @@ Per P8 (every screen designs its non-happy states first). Format: headline, one 
 - **Correction at baseline:** no error copy; "Save correction" is disabled while the draft equals the current amount. The §8 `ZERO_DELTA` string is shown only if the write itself is refused.
 - **Write failed:** the §8 generic fallback, "Something went wrong saving that. Try again, and tell us if it keeps happening."
 - **Removal at zero balance:** the removal chips are disabled; no copy.
-- **Expired (past best-by):** D-030 (PO, 2026-10-07): a past date reads "expired", not "use today"; "use today" is only for today. Exact strings, including the Estimated-date case, land with the ticket.
+- **Expired (past best-by), M3-T9 (2026-10-07, D-030):** a date that is today reads "use today" on S4 and "{label} · expires today" on S5. A past date reads "expired" on S4 and "{label} · expired" on S5 only when the date is a Known Fact; an Estimated, AI-interpreted or unprovenanced past date reads "may be expired" and "{label} · may be expired", so an estimate never reads as certain. Accessibility labels carry the same words. The freshness ring for a past date stays rose.
 - **Removal rows:** action label ("Discarded", "Consumed", "Expired", "Donated") with a caption `reason: {reason}` in lower case, prototype wording. Ledger rows for a cooked meal read "Cooked in {recipe}" (§5 vocabulary; the prototype's "Used in" loses under §5).
 - **History order:** the S5 history list is newest first; the "Why {qty}?" narrative is chronological. Two widgets, each single-ordered (ruling at M3-T3 acceptance).
 - **Not built yet:** the S4 search icon is hidden until M4 (P10); the tray's Edit opens the item.
