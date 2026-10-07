@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useRouter } from "expo-router";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { apiClient } from "../api/client";
 import { colors, fontFamily, minTouchTarget, spacing, typeScale } from "../design/tokens";
 import { CENTER_ACTION, TAB_ORDER } from "../navigation/tabs";
@@ -28,6 +29,9 @@ const HOME_TAB = TAB_ORDER.find((t) => t.key === "home");
  */
 export function HomeScreen(): React.JSX.Element {
   const router = useRouter();
+  // BUG-007: the header clears the status bar / camera cutout. The fixed
+  // spacing.xl it used before was shorter than many Android status bars.
+  const insets = useSafeAreaInsets();
   const [inventoryEmpty, setInventoryEmpty] = useState<boolean | null>(null);
 
   useEffect(() => {
@@ -58,7 +62,7 @@ export function HomeScreen(): React.JSX.Element {
   // gap, not a missing requirement (the tap itself, this ticket's actual
   // ask, works identically either way).
   const header = (
-    <View style={styles.header}>
+    <View style={[styles.header, { paddingTop: insets.top + spacing.md }]}>
       <Pressable
         accessibilityRole="button"
         accessibilityLabel="Account"
@@ -111,7 +115,6 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "flex-end",
     paddingHorizontal: spacing.lg,
-    paddingTop: spacing.xl,
   },
   accountButton: {
     width: minTouchTarget,
