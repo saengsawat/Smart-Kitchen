@@ -15,10 +15,16 @@ minimumReleaseAgeExclude:
 # brace-expansion DoS advisories GHSA-6j4f-fj2g-mc7p and GHSA-qhr7-859c-m2p7
 # (2026-09-30), reached only through minimatch under eslint-plugin-import-x and
 # Expo config/CLI tooling. Remove once the parents pull the patched majors.
+# shell-quote GHSA-pqg4-j6r4-53mv (critical, fixed 1.11.0) and source-map-js
+# GHSA-68fv-2mgg-jv7q (high, fixed 1.2.2) (2026-10-07): transitive only, through
+# react-devtools-core (react-native) and postcss (vite, Expo Metro config). Same
+# major, bounded to the patched line. Remove once the parents pull patched ranges.
 overrides:
   "brace-expansion@<2": "^1.1.20"
   "brace-expansion@>=2 <3": "^2.1.6"
   "brace-expansion@>=4 <5.0.11": "^5.0.11"
+  "shell-quote@<1.11.0": "^1.11.0"
+  "source-map-js@<1.2.2": "^1.2.2"
 
 # Audit exceptions (recorded in CONTRIBUTING.md "Dependency audit"). Each entry
 # names the advisory, why it does not reach shipped code, and when to remove it.
