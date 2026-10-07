@@ -28,7 +28,7 @@ These encode the product's non-negotiables; each becomes a permanent test with t
 | INV-LEDGER-3 | Replaying any write with the same idempotency key is a no-op (retried inventory command ⇒ no duplicate consumption) |
 | INV-LEDGER-4 | No committed inventory state is ever negative, at lot or item level; an overshooting decrease is recorded at full magnitude and compensated in the same operation by a system-authored, caller-unforgeable flagged adjustment carrying the exact residual *(wording settled in M1-T1)* |
 | INV-TENANT-1 | Household A can never read/write household B data — exhaustive authz matrix over every endpoint + (if RLS adopted) DB-level test with app-role credentials |
-| INV-SHOP-1 | `needed_qty == max(0, required − usable_on_hand)` for all unit-compatible cases; incompatible units force explicit resolution, never silent guesses |
+| INV-SHOP-1 | `needed_qty == max(0, required − usable_on_hand)` for all unit-compatible cases; incompatible units force explicit resolution, never silent guesses. On the wire (BUG-006, 2026-10-07): a shopping row's `buyMicros` is this gap against the live snapshot until the row's PURCHASE lands; once `added_transaction_id` is set it is that PURCHASE's `qty_delta_micros`, read from the ledger and never recomputed, and an undo on S5 does not change it. The row's status still follows the live gap (an open row whose gap is 0 reads `skipped`). |
 | INV-RCPT-1 | Processing the same receipt twice (same content hash) adds inventory at most once |
 | INV-MEAL-1 | Retrying a meal log produces exactly one set of decrements |
 | INV-NUTR-1 | Nutrition totals are exact arithmetic over stored source values; no path lets generated text supply numbers |

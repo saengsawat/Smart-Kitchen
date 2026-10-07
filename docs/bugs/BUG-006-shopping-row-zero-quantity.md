@@ -1,7 +1,7 @@
 # BUG-006: A checked shopping row shows "0 lb"
 
 **Reported:** 2026-10-06 by Andy (PO), phone screenshot of S11 (Shopping), Android, Expo Go.
-**Status:** OPEN. Cause found 2026-10-07; fix ticket below, dispatched.
+**Status:** FIXED 2026-10-07 (`c047edf`, review PASS, Opus, architect code pass clean). A row whose PURCHASE has landed now shows the bought amount, read from the ledger. Handoff: `docs/handoff/BUG-006.{worker,review}.md`. Two shopping-row display questions for the PO are in BACKLOG.md follow-ups.
 
 ## What Andy saw
 
