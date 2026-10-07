@@ -47,7 +47,11 @@ import type {
 } from "@smart-kitchen/contracts";
 import { apiClient, FIXTURE_JOIN_CODE } from "../api/client";
 import { ProductLookupRefusedError } from "./product-lookup-errors";
-import { GENERIC_LEDGER_ERROR_MESSAGE, GENERIC_READ_ERROR_MESSAGE } from "../inventory/errors";
+import {
+  GENERIC_LEDGER_ERROR_MESSAGE,
+  GENERIC_READ_ERROR_MESSAGE,
+  LedgerRefusedError,
+} from "../inventory/errors";
 
 let pushed: unknown[] = [];
 let replaced: unknown[] = [];
@@ -1370,6 +1374,79 @@ describe("S8 · editable package size (M3-T7 b)", () => {
         (result.getByText(SIZE_HINT).props as { accessibilityLiveRegion?: string })
           .accessibilityLiveRegion,
       ).toBe("polite");
+    });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// M2-T8 (D-029): a typed size in a count unit ("ct", recorded as "each") is a
+// whole number. Mass and volume keep decimals (the "g" cases above).
+// ---------------------------------------------------------------------------
+
+const WHOLE_HINT = "Use a whole number, like 2.";
+
+describe("S8 · count-unit package size takes whole numbers (M2-T8, D-029)", () => {
+  it("a typed fraction shows the whole-number hint, keeps the editor open and disables Add", async () => {
+    await withLookup(yogurtProduct("ct"), async () => {
+      const result = await renderScreen();
+      await lookUp(result, "096619555505");
+      const announce = vi.spyOn(AccessibilityInfo, "announceForAccessibility");
+      fireEvent.press(result.getByLabelText(/^Edit package size/));
+      fireEvent.changeText(result.getByLabelText("Package size"), "2.5");
+      expect(result.getByText(WHOLE_HINT)).toBeTruthy();
+      expect(result.queryByText(SIZE_HINT)).toBeNull();
+      expect(announce).toHaveBeenCalledWith(WHOLE_HINT);
+      const add = result.getByLabelText("Add 1 to Fridge");
+      expect(
+        (add.props as { accessibilityState?: { disabled?: boolean } }).accessibilityState?.disabled,
+      ).toBe(true);
+      fireEvent(result.getByLabelText("Package size"), "blur");
+      expect(result.getByLabelText("Package size")).toBeTruthy(); // still editing
+      const spy = vi.spyOn(apiClient, "createItem");
+      fireEvent.press(add);
+      await flushPending();
+      expect(spy).not.toHaveBeenCalled();
+    });
+  });
+
+  it("unusable text in a count unit keeps the general hint", async () => {
+    await withLookup(yogurtProduct("ct"), async () => {
+      const result = await renderScreen();
+      await lookUp(result, "096619555505");
+      fireEvent.press(result.getByLabelText(/^Edit package size/));
+      fireEvent.changeText(result.getByLabelText("Package size"), "abc");
+      expect(result.getByText(SIZE_HINT)).toBeTruthy();
+      expect(result.queryByText(WHOLE_HINT)).toBeNull();
+    });
+  });
+
+  it("a whole typed size clears the hint and Add creates whole each x count", async () => {
+    await withLookup(yogurtProduct("ct"), async () => {
+      const result = await renderScreen();
+      await lookUp(result, "096619555505");
+      fireEvent.press(result.getByLabelText(/^Edit package size/));
+      fireEvent.changeText(result.getByLabelText("Package size"), "6.5");
+      fireEvent.changeText(result.getByLabelText("Package size"), "6");
+      expect(result.queryByText(WHOLE_HINT)).toBeNull();
+      fireEvent.press(result.getByLabelText("Increase quantity"));
+      const calls = spyCreate();
+      fireEvent.press(result.getByLabelText("Add 2 to Fridge"));
+      await flushPending();
+      expect(calls[0]?.unit).toBe("each");
+      expect(calls[0]?.amount).toBe("12");
+    });
+  });
+
+  it("the server's COUNT_NOT_WHOLE refusal renders its own sentence, never the server's", async () => {
+    await withLookup(yogurtProduct("ct"), async () => {
+      const result = await renderScreen();
+      await lookUp(result, "096619555505");
+      vi.spyOn(apiClient, "createItem").mockRejectedValue(
+        new LedgerRefusedError("COUNT_NOT_WHOLE"),
+      );
+      fireEvent.press(result.getByLabelText("Add 1 to Fridge"));
+      await flushPending();
+      expect(result.getByText("Use a whole number for this item.")).toBeTruthy();
     });
   });
 });

@@ -79,6 +79,20 @@ export const API_ERROR_CODES = [
    * same 200.
    */
   "SAME_LOCATION",
+  /**
+   * 400 from a write that would put a fraction into a count unit (M2-T8,
+   * D-029): any unit the registry files under COUNT (count, each, ct, unit,
+   * piece and their spellings). Refused on create (`amount`), on an
+   * `ADJUSTMENT` whose `targetAmount` is a fraction or whose `deltaAmount`
+   * would leave a fractional balance, and on a removal whose `amount` is
+   * neither the item's full current balance nor a whole amount that leaves a
+   * whole balance (so from 12.5, removing 1 or 13 is refused and removing
+   * 12.5, or omitting `amount`, is not). Nothing is recorded. Not a `LedgerErrorCode`: the ledger itself holds any exact
+   * decimal, and fractional history already written stays readable. Undo is
+   * never refused for this reason, and a retry of an already accepted write
+   * (same key, same body) still answers its 200.
+   */
+  "COUNT_NOT_WHOLE",
 ] as const;
 
 export type ApiErrorCode = (typeof API_ERROR_CODES)[number];

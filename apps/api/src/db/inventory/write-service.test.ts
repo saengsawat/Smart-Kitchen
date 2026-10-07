@@ -22,9 +22,14 @@ import {
   type InventoryItem,
   type LotInput,
 } from "@smart-kitchen/domain";
+import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 import {
+  assertWholeCount,
+  CountNotWholeError,
   increaseLot,
+  isCountUnit,
+  isWholeMicros,
   planWrite,
   LedgerWriteRejectedError,
   type InventoryWriteCommand,
@@ -39,11 +44,12 @@ const AT = "2026-09-22T12:00:00.000Z";
 function itemWith(
   lots: readonly LotInput[],
   stock: Readonly<Record<string, number>> = {},
+  unit = "lb",
 ): InventoryItem {
   const created = createInventoryItem({
     itemId: ITEM,
     householdId: HOUSEHOLD,
-    unit: "lb",
+    unit,
     lots,
   });
   if (!created.ok) throw new Error(`fixture item was refused: ${created.error.message}`);
@@ -55,7 +61,7 @@ function itemWith(
       lotId,
       type: "PURCHASE",
       qtyDelta: amount,
-      unit: "lb",
+      unit,
       actor: { kind: "user", userId: USER },
       occurredAt: AT,
       recordedAt: AT,
@@ -290,3 +296,210 @@ describe("planWrite output", () => {
     });
   });
 });
+
+/**
+ * D-029 (M2-T8): count units take whole numbers on every new write. The
+ * end-to-end answer (400 `COUNT_NOT_WHOLE`) is proved over HTTP in
+ * `http/inventory-writes.db.test.ts`; here every branch of the rule is hit
+ * through the pure planner, against items whose balance is built by the
+ * domain's own ledger (so a fractional balance is real history, the way an
+ * item written before D-029 holds it).
+ */
+describe("D-029 whole-count helpers", () => {
+  it.each([
+    "count",
+    "counts",
+    "ct",
+    "each",
+    "ea",
+    "unit",
+    "units",
+    "pc",
+    "pcs",
+    "piece",
+    "pieces",
+    "EACH",
+    " Count ",
+  ])("treats %j as a count unit", (unit) => {
+    expect(isCountUnit(unit)).toBe(true);
+  });
+
+  it.each(["lb", "oz", "g", "kg", "ml", "l", "cup", "tsp", "tbsp", "bottle", "", "dozen"])(
+    "does not treat %j as a count unit (mass, volume, or not in the registry)",
+    (unit) => {
+      expect(isCountUnit(unit)).toBe(false);
+    },
+  );
+
+  it.each([
+    [0n, true],
+    [1_000_000n, true],
+    [12_000_000n, true],
+    [-3_000_000n, true],
+    [12_500_000n, false],
+    [1n, false],
+    [999_999n, false],
+    [-500_000n, false],
+  ])("isWholeMicros(%s) is %s", (micros, whole) => {
+    expect(isWholeMicros(micros)).toBe(whole);
+  });
+
+  it("assertWholeCount refuses a fraction only in a count unit", () => {
+    expect(() => assertWholeCount("each", 2_500_000n, "amount")).toThrow(CountNotWholeError);
+    expect(() => assertWholeCount("each", 2_000_000n, "amount")).not.toThrow();
+    expect(() => assertWholeCount("lb", 2_500_000n, "amount")).not.toThrow();
+  });
+});
+
+describe("planWrite: count units take whole numbers (D-029)", () => {
+  /** A count item holding exactly `balance` (12.5 is history written before D-029). */
+  const countItem = (balance: number, unit = "count"): InventoryItem =>
+    itemWith([{ lotId: "lot-a" }], balance === 0 ? {} : { "lot-a": balance }, unit);
+
+  /** The field a `CountNotWholeError` named, a ledger code, or "planned". */
+  function countVerdict(
+    item: InventoryItem,
+    overrides: Partial<InventoryWriteCommand>,
+    options?: { readonly wholeCountRule: boolean },
+  ): string {
+    try {
+      planWrite(item, command(overrides), options);
+    } catch (error) {
+      if (error instanceof CountNotWholeError) return `refused:${error.field}`;
+      if (error instanceof LedgerWriteRejectedError) return `ledger:${error.ledgerError.code}`;
+      throw error;
+    }
+    return "planned";
+  }
+
+  describe("rule 2, ADJUSTMENT", () => {
+    it.each([
+      ["a fractional target", 8, { targetAmount: "8.5" }, "refused:targetAmount"],
+      ["a fractional target from 12.5", 12.5, { targetAmount: "12.25" }, "refused:targetAmount"],
+      ["a whole target", 8, { targetAmount: "9" }, "planned"],
+      ["a whole target with zero decimals", 8, { targetAmount: "9.000000" }, "planned"],
+      ["a whole target down from 12.5", 12.5, { targetAmount: "12" }, "planned"],
+      ["a whole target up from 12.5", 12.5, { targetAmount: "13" }, "planned"],
+      ["a target of zero from 12.5", 12.5, { targetAmount: "0" }, "planned"],
+      ["a whole delta from a whole balance", 8, { deltaAmount: "-2" }, "planned"],
+      ["a fractional delta from a whole balance", 8, { deltaAmount: "0.5" }, "refused:deltaAmount"],
+      ["a delta of -0.5 from 12.5 (lands on 12)", 12.5, { deltaAmount: "-0.5" }, "planned"],
+      ["a delta of 0.5 from 12.5 (lands on 13)", 12.5, { deltaAmount: "0.5" }, "planned"],
+      [
+        "a delta of -1 from 12.5 (lands on 11.5)",
+        12.5,
+        { deltaAmount: "-1" },
+        "refused:deltaAmount",
+      ],
+    ])("%s", (_case, balance, overrides, verdict) => {
+      expect(countVerdict(countItem(balance), overrides)).toBe(verdict);
+    });
+
+    it("keeps the existing refusals ahead of the count rule", () => {
+      expect(countVerdict(countItem(8), { targetAmount: "-0.5" })).toBe(
+        "ledger:QUANTITY_OUT_OF_RANGE",
+      );
+      expect(countVerdict(countItem(12.5), { deltaAmount: "0" })).toBe("ledger:ZERO_DELTA");
+      expect(countVerdict(countItem(8), { targetAmount: "1.2345678" })).toBe(
+        "ledger:PRECISION_EXCEEDED",
+      );
+    });
+
+    it("applies to every alias of the count unit", () => {
+      for (const unit of ["each", "ct", "ea", "pcs", "Piece"]) {
+        expect(countVerdict(countItem(8, unit), { targetAmount: "8.5" })).toBe(
+          "refused:targetAmount",
+        );
+      }
+    });
+  });
+
+  describe("rule 3, removals", () => {
+    it.each(["CONSUME", "DISCARD", "EXPIRE", "DONATE"] as const)(
+      "%s: whole from whole is fine, a fraction is refused, the full fractional balance is fine",
+      (type) => {
+        expect(countVerdict(countItem(8), { type, amount: "3" })).toBe("planned");
+        expect(countVerdict(countItem(8), { type, amount: "0.5" })).toBe("refused:amount");
+        expect(countVerdict(countItem(12.5), { type, amount: "1" })).toBe("refused:amount");
+        expect(countVerdict(countItem(12.5), { type, amount: "1.5" })).toBe("refused:amount");
+        expect(countVerdict(countItem(12.5), { type, amount: "12.5" })).toBe("planned");
+        expect(countVerdict(countItem(12.5), { type, amount: "12.500000" })).toBe("planned");
+        expect(countVerdict(countItem(12.5), { type })).toBe("planned");
+      },
+    );
+
+    it("an overshooting whole removal from a whole balance is still planned (the ledger clamps it, as for any unit)", () => {
+      expect(countVerdict(countItem(2), { type: "CONSUME", amount: "5" })).toBe("planned");
+    });
+
+    it("an overshooting removal from a fractional balance is refused (remove all instead)", () => {
+      expect(countVerdict(countItem(12.5), { type: "CONSUME", amount: "13" })).toBe(
+        "refused:amount",
+      );
+    });
+  });
+
+  it("mass and volume keep decimals", () => {
+    const lb = itemWith([{ lotId: "lot-a" }], { "lot-a": 8 }, "lb");
+    expect(countVerdict(lb, { targetAmount: "8.25" })).toBe("planned");
+    expect(countVerdict(lb, { deltaAmount: "-0.5" })).toBe("planned");
+    expect(countVerdict(lb, { type: "CONSUME", amount: "0.25" })).toBe("planned");
+    const cup = itemWith([{ lotId: "lot-a" }], { "lot-a": 3 }, "cup");
+    expect(countVerdict(cup, { targetAmount: "2.5" })).toBe("planned");
+    expect(countVerdict(cup, { type: "DISCARD", amount: "0.5" })).toBe("planned");
+  });
+
+  it("is off for a replay, so the ledger alone decides duplicate or conflict", () => {
+    expect(countVerdict(countItem(8), { targetAmount: "8.5" }, { wholeCountRule: false })).toBe(
+      "planned",
+    );
+  });
+
+  it("property: no write that states and lands on whole numbers is refused for being fractional", () => {
+    fc.assert(
+      fc.property(
+        fc.integer({ min: 0, max: 100_000 }),
+        fc.integer({ min: 0, max: 100_000 }),
+        fc.integer({ min: -100_000, max: 100_000 }),
+        fc.integer({ min: 1, max: 100_000 }),
+        fc.constantFrom("count", "each", "ct", "piece"),
+        (balance, target, delta, amount, unit) => {
+          const item = countItem(balance, unit);
+          const writes: Partial<InventoryWriteCommand>[] = [
+            { targetAmount: String(target) },
+            { deltaAmount: String(delta) },
+            { type: "CONSUME", amount: String(amount) },
+            { type: "DISCARD" },
+          ];
+          for (const overrides of writes) {
+            expect(countVerdict(item, overrides)).not.toMatch(/^refused:/);
+          }
+        },
+      ),
+    );
+  });
+
+  it("property: from any balance, a whole target and a full removal are never refused for it", () => {
+    fc.assert(
+      fc.property(
+        fc.integer({ min: 1, max: 100_000_000 }),
+        fc.integer({ min: 0, max: 100_000 }),
+        (balanceMicros, target) => {
+          const item = countItem(balanceMicros / 1_000_000, "each");
+          expect(countVerdict(item, { targetAmount: String(target) })).not.toMatch(/^refused:/);
+          expect(countVerdict(item, { type: "EXPIRE" })).not.toMatch(/^refused:/);
+          expect(
+            countVerdict(item, { type: "EXPIRE", amount: microsText(item.currentQty.micros) }),
+          ).not.toMatch(/^refused:/);
+        },
+      ),
+    );
+  });
+});
+
+/** Exact decimal text of positive micros, for building a request from a stored balance. */
+function microsText(micros: bigint): string {
+  const whole = micros / 1_000_000n;
+  const fraction = (micros % 1_000_000n).toString().padStart(6, "0");
+  return `${whole.toString()}.${fraction}`;
+}

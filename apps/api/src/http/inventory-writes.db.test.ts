@@ -24,11 +24,15 @@
 import { randomUUID } from "node:crypto";
 import {
   CORRELATION_ID_HEADER,
+  INVENTORY_ITEMS_PATH,
   inventoryItemPath,
   inventoryItemTransactionsPath,
   inventoryTransactionUndoPath,
   type ApiErrorBodyDto,
+  type CreateItemRequestDto,
   type InventoryItemDetailDto,
+  type InventoryItemsResponseDto,
+  type InventoryItemSummaryDto,
   type InventoryWriteRequestDto,
   type InventoryWriteResponseDto,
 } from "@smart-kitchen/contracts";
@@ -36,6 +40,7 @@ import type { FastifyInstance } from "fastify";
 import type { PoolClient } from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { buildApp } from "../app.js";
+import { appendTransactionToDb, insertInventoryItem } from "../db/inventory/repository.js";
 import { withHouseholdTransaction } from "../db/session.js";
 import {
   APP_ROLE,
@@ -962,6 +967,355 @@ describe.skipIf(!dbTestsEnabled)(SUITE, () => {
 
       expect(answer.statusCode).toBe(200);
       expect(answer.body.transactions[0]?.deltaMicros).toBe("-1000000");
+    });
+  });
+
+  /**
+   * M2-T8 (D-029): count units take whole numbers on every new write, over
+   * HTTP. Each test works on its own count item. A fractional balance is
+   * written straight through the repository, the way history written before
+   * D-029 holds it, because no endpoint can write one any more.
+   */
+  describe("count units take whole numbers (M2-T8, D-029)", () => {
+    function deanUserId(): string {
+      const dean = fixture.sessions.find((session) => session.token === DEAN);
+      if (dean === undefined) throw new Error("fixture map lost a session");
+      return dean.userId;
+    }
+
+    /** Appends one row as the app role, bypassing the HTTP rules (history before D-029). */
+    async function appendDirect(
+      itemId: string,
+      lotId: string,
+      overrides: {
+        readonly type: "PURCHASE" | "ADJUSTMENT";
+        readonly qtyDelta: number;
+        readonly idempotencyKey: string;
+        readonly occurredAt?: string;
+      },
+    ): Promise<void> {
+      await withHouseholdTransaction(
+        db.pool,
+        chenHousehold,
+        async (client) => {
+          const outcome = await appendTransactionToDb(client, chenHousehold, itemId, {
+            lotId,
+            type: overrides.type,
+            qtyDelta: overrides.qtyDelta,
+            unit: "each",
+            actor: { kind: "user", userId: deanUserId() },
+            occurredAt: overrides.occurredAt ?? "2026-09-01T12:00:00.000Z",
+            recordedAt: overrides.occurredAt ?? "2026-09-01T12:00:00.000Z",
+            provenance: { tier: "KNOWN_FACT", source: "manual-entry" },
+            idempotencyKey: overrides.idempotencyKey,
+          });
+          if (!outcome.ok || outcome.value.status !== "appended") {
+            throw new Error("fixture row was refused");
+          }
+        },
+        { assumeRole: APP_ROLE },
+      );
+    }
+
+    /** A fresh count item ("each") holding `qtyDelta`, written as pre-D-029 history. */
+    async function countItem(qtyDelta: number): Promise<{ itemId: string; lotId: string }> {
+      const seeded = await seedItem(db.pool, chenHousehold, "each");
+      await appendDirect(seeded.itemId, seeded.lotId, {
+        type: "PURCHASE",
+        qtyDelta,
+        idempotencyKey: `seed-${randomUUID()}`,
+      });
+      return { itemId: seeded.itemId, lotId: seeded.lotId };
+    }
+
+    async function expectCountRefusal(
+      itemId: string,
+      body: Partial<InventoryWriteRequestDto>,
+    ): Promise<void> {
+      const before = await rowCount(itemId);
+      const micros = await storedMicros(itemId);
+      const answer = await write(itemId, { idempotencyKey: key(), occurredAt: NOW, ...body });
+      expect(answer.statusCode).toBe(400);
+      expect(answer.error?.code).toBe("COUNT_NOT_WHOLE");
+      expect(answer.error?.ledgerCode).toBeUndefined();
+      expect(answer.error?.message).toBe("Use a whole number for this item.");
+      expect(await rowCount(itemId)).toBe(before);
+      expect(await storedMicros(itemId)).toBe(micros);
+    }
+
+    async function expectAccepted(
+      itemId: string,
+      body: Partial<InventoryWriteRequestDto>,
+      micros: string,
+    ): Promise<void> {
+      const answer = await write(itemId, { idempotencyKey: key(), occurredAt: NOW, ...body });
+      expect(answer.statusCode).toBe(200);
+      expect(answer.body.item.summary.quantity.micros).toBe(micros);
+    }
+
+    it("reads existing fractional history unchanged (rule 6)", async () => {
+      const { itemId } = await countItem(12.5);
+      const read = await detail(itemId);
+      expect(read.statusCode).toBe(200);
+      expect(read.body.summary.quantity).toEqual({
+        unit: "each",
+        micros: "12500000",
+        amount: "12.500000",
+      });
+      const list = await app.inject({
+        method: "GET",
+        url: INVENTORY_ITEMS_PATH,
+        headers: { authorization: `Bearer ${DEAN}` },
+      });
+      expect(list.statusCode).toBe(200);
+      const listed = list
+        .json<InventoryItemsResponseDto>()
+        .items.find((item) => item.itemId === itemId);
+      expect(listed?.quantity.micros).toBe("12500000");
+    });
+
+    it("rule 2: refuses a fractional targetAmount, and accepts a whole one from a fractional balance", async () => {
+      const { itemId } = await countItem(12.5);
+      await expectCountRefusal(itemId, { type: "ADJUSTMENT", targetAmount: "12.25" });
+      await expectAccepted(itemId, { type: "ADJUSTMENT", targetAmount: "12" }, "12000000");
+      await expectCountRefusal(itemId, { type: "ADJUSTMENT", targetAmount: "8.5" });
+      await expectAccepted(itemId, { type: "ADJUSTMENT", targetAmount: "13" }, "13000000");
+    });
+
+    it("rule 2: a deltaAmount is judged by where it lands", async () => {
+      const { itemId } = await countItem(12.5);
+      await expectCountRefusal(itemId, { type: "ADJUSTMENT", deltaAmount: "-1" });
+      await expectAccepted(itemId, { type: "ADJUSTMENT", deltaAmount: "-0.5" }, "12000000");
+      await expectCountRefusal(itemId, { type: "ADJUSTMENT", deltaAmount: "0.5" });
+      await expectAccepted(itemId, { type: "ADJUSTMENT", deltaAmount: "3" }, "15000000");
+    });
+
+    it.each(["CONSUME", "DISCARD", "EXPIRE", "DONATE"] as const)(
+      "rule 3, %s: a fraction is refused, a whole amount from a whole balance is fine",
+      async (type) => {
+        const { itemId } = await countItem(8);
+        await expectCountRefusal(itemId, { type, amount: "0.5" });
+        await expectAccepted(itemId, { type, amount: "3" }, "5000000");
+      },
+    );
+
+    it.each(["CONSUME", "DISCARD", "EXPIRE", "DONATE"] as const)(
+      "rule 3, %s: from 12.5, removing 1 is refused and removing exactly 12.5 clears it",
+      async (type) => {
+        const { itemId } = await countItem(12.5);
+        await expectCountRefusal(itemId, { type, amount: "1" });
+        await expectCountRefusal(itemId, { type, amount: "1.5" });
+        await expectAccepted(itemId, { type, amount: "12.5" }, "0");
+      },
+    );
+
+    it("rule 3: a removal with no amount clears a fractional balance", async () => {
+      const { itemId } = await countItem(2.5);
+      await expectAccepted(itemId, { type: "DISCARD" }, "0");
+    });
+
+    it("rule 4: undo is always allowed, even when it restores a fraction", async () => {
+      const { itemId } = await countItem(12.5);
+      const removed = await write(itemId, {
+        idempotencyKey: key(),
+        type: "CONSUME",
+        occurredAt: NOW,
+      });
+      expect(removed.statusCode).toBe(200);
+      expect(removed.body.item.summary.quantity.micros).toBe("0");
+      const transactionId = removed.body.transactions[0]?.transactionId ?? "";
+
+      const undone = await undo(itemId, transactionId, { idempotencyKey: key(), occurredAt: NOW });
+      expect(undone.statusCode).toBe(200);
+      expect(undone.body.item.summary.quantity.micros).toBe("12500000");
+    });
+
+    it("mass units keep decimals (chicken-style lb item)", async () => {
+      const seeded = await seedItem(db.pool, chenHousehold, "lb");
+      const answer = await write(seeded.itemId, {
+        idempotencyKey: key(),
+        type: "ADJUSTMENT",
+        targetAmount: "1.25",
+        occurredAt: NOW,
+      });
+      expect(answer.statusCode).toBe(200);
+      const removed = await write(seeded.itemId, {
+        idempotencyKey: key(),
+        type: "CONSUME",
+        amount: "0.5",
+        occurredAt: NOW,
+      });
+      expect(removed.statusCode).toBe(200);
+      expect(removed.body.item.summary.quantity.micros).toBe("750000");
+    });
+
+    it("a retry of a fractional write accepted before D-029 still replays 200 and appends nothing", async () => {
+      const { itemId, lotId } = await countItem(8);
+      const clientKey = key();
+      // Exactly the row the API would have written for this request before
+      // D-029: the planner's key, the open lot, the user, manual entry.
+      await appendDirect(itemId, lotId, {
+        type: "ADJUSTMENT",
+        qtyDelta: 0.5,
+        idempotencyKey: `${clientKey}/lot/0`,
+        occurredAt: NOW,
+      });
+      const before = await rowCount(itemId);
+
+      const replay = await write(itemId, {
+        idempotencyKey: clientKey,
+        type: "ADJUSTMENT",
+        deltaAmount: "0.5",
+        occurredAt: NOW,
+      });
+      expect(replay.statusCode).toBe(200);
+      expect(replay.body.replayed).toBe(true);
+      expect(await rowCount(itemId)).toBe(before);
+      expect(await storedMicros(itemId)).toBe("8500000");
+
+      // The same key with a different fraction is still the ledger's 409.
+      const changed = await write(itemId, {
+        idempotencyKey: clientKey,
+        type: "ADJUSTMENT",
+        deltaAmount: "0.25",
+        occurredAt: NOW,
+      });
+      expect(changed.statusCode).toBe(409);
+    });
+
+    it("a retry of a whole write accepted under D-029 replays 200", async () => {
+      const { itemId } = await countItem(8);
+      const body = {
+        idempotencyKey: key(),
+        type: "ADJUSTMENT" as const,
+        targetAmount: "6",
+        occurredAt: NOW,
+      };
+      expect((await write(itemId, body)).statusCode).toBe(200);
+      const again = await write(itemId, body);
+      expect(again.statusCode).toBe(200);
+      expect(again.body.replayed).toBe(true);
+    });
+
+    describe("rule 1, POST /v1/inventory/items", () => {
+      function createBody(overrides: Partial<CreateItemRequestDto>): CreateItemRequestDto {
+        return {
+          idempotencyKey: key(),
+          source: "MANUAL",
+          displayName: "Lemons",
+          storageLocation: "FRIDGE",
+          unit: "each",
+          amount: "3",
+          quantityProvenance: {
+            tier: "KNOWN_FACT",
+            source: "typed",
+            confidence: null,
+            recordedAt: null,
+          },
+          ...overrides,
+        };
+      }
+
+      async function create(
+        body: CreateItemRequestDto,
+      ): Promise<{ statusCode: number; body: InventoryItemSummaryDto & ApiErrorBodyDto }> {
+        const response = await app.inject({
+          method: "POST",
+          url: INVENTORY_ITEMS_PATH,
+          headers: { authorization: `Bearer ${DEAN}`, "content-type": "application/json" },
+          payload: body,
+        });
+        return { statusCode: response.statusCode, body: response.json() };
+      }
+
+      async function itemsNamed(name: string): Promise<number> {
+        const rows = await db.pool.query<{ count: string }>(
+          `SELECT count(*)::text AS count FROM inventory_items WHERE display_name = $1`,
+          [name],
+        );
+        return Number(rows.rows[0]?.count ?? "0");
+      }
+
+      it("refuses a fractional amount in a count unit and creates nothing", async () => {
+        const answer = await create(createBody({ displayName: "Half lemon", amount: "2.5" }));
+        expect(answer.statusCode).toBe(400);
+        expect(answer.body.error.code).toBe("COUNT_NOT_WHOLE");
+        expect(answer.body.error.ledgerCode).toBeUndefined();
+        expect(await itemsNamed("Half lemon")).toBe(0);
+      });
+
+      it("refuses it on a scanned create too", async () => {
+        const answer = await create(
+          createBody({
+            displayName: "Scanned rolls",
+            source: "BARCODE",
+            productRef: "rolls-001",
+            amount: "6.5",
+          }),
+        );
+        expect(answer.statusCode).toBe(400);
+        expect(answer.body.error.code).toBe("COUNT_NOT_WHOLE");
+        expect(await itemsNamed("Scanned rolls")).toBe(0);
+      });
+
+      it("accepts a whole amount in a count unit, and a decimal in a mass unit", async () => {
+        const whole = await create(createBody({ displayName: "Whole lemons", amount: "3.000" }));
+        expect(whole.statusCode).toBe(201);
+        expect(whole.body.quantity.micros).toBe("3000000");
+        const mass = await create(
+          createBody({ displayName: "Loose flour", unit: "g", amount: "250.5" }),
+        );
+        expect(mass.statusCode).toBe(201);
+        expect(mass.body.quantity.micros).toBe("250500000");
+      });
+
+      it("a retry of a fractional create accepted before D-029 still replays 200", async () => {
+        const clientKey = key();
+        const itemId = randomUUID();
+        const lotId = randomUUID();
+        const at = "2026-09-01T12:00:00.000Z";
+        await withHouseholdTransaction(
+          db.pool,
+          chenHousehold,
+          async (client) => {
+            const created = await insertInventoryItem(
+              client,
+              {
+                itemId,
+                householdId: chenHousehold,
+                unit: "each",
+                storageLocation: "FRIDGE",
+                lots: [{ lotId, acquiredAt: at }],
+              },
+              "Old half lemon",
+            );
+            if (!created.ok) throw new Error("fixture item was refused");
+            const appended = await appendTransactionToDb(client, chenHousehold, itemId, {
+              lotId,
+              type: "INITIAL_STOCK",
+              qtyDelta: 2.5,
+              unit: "each",
+              actor: { kind: "user", userId: deanUserId() },
+              occurredAt: at,
+              recordedAt: at,
+              provenance: { tier: "KNOWN_FACT", source: "manual-entry" },
+              idempotencyKey: `${clientKey}/lot/0`,
+            });
+            if (!appended.ok || appended.value.status !== "appended") {
+              throw new Error("fixture row was refused");
+            }
+          },
+          { assumeRole: APP_ROLE },
+        );
+
+        const replay = await create(
+          createBody({ idempotencyKey: clientKey, displayName: "Old half lemon", amount: "2.5" }),
+        );
+        expect(replay.statusCode).toBe(200);
+        expect(replay.body.itemId).toBe(itemId);
+        expect(replay.body.quantity.micros).toBe("2500000");
+        expect(await rowCount(itemId)).toBe(1);
+      });
     });
   });
 

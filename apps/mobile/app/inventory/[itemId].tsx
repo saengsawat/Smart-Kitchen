@@ -36,12 +36,16 @@ import {
 import { useReducedMotion, pressScaleStyle } from "../../src/inventory/motion";
 import { chipAccessibilityLabel, ROW_CHIP_TEXT } from "../../src/inventory/provenance";
 import {
+  classifyTypedAmount,
+  COUNT_NOT_WHOLE_HINT,
+  COUNT_NOT_WHOLE_MESSAGE,
   formatQuantityDisplay,
   formatSignedAmount,
-  MAX_TYPED_QUANTITY_MICROS,
+  isCountNotWholeRefusal,
+  isCountUnit,
   microsToTypedText,
   parseMicros,
-  parseTypedAmount,
+  stepAmountMicros,
   trimAmountText,
 } from "../../src/inventory/quantity";
 import {
@@ -54,10 +58,21 @@ import { buildWhyLine, clampSentence, formatRowTimestamp } from "../../src/inven
 import { useToast } from "../../src/inventory/Toast";
 import { LOCATION_LABELS, needsConfirmation } from "../../src/inventory/list-view";
 
-const STEP_MICROS = 250_000n; // 0.25 unit, matching prototype v4's stepItemQty(±0.25)
-
 /** M3-T7: shown under the amount field while its text is not a usable amount (proposed for copy-deck §7 S5). */
 const AMOUNT_HINT = "Enter a number, like 2 or 0.5.";
+
+/** What is wrong with the amount field's text, if anything (M3-T7, M2-T8). */
+type DraftProblem = null | "unusable" | "fraction";
+
+/** The hint for a problem: a count unit's fraction gets its own (D-029). */
+function hintFor(problem: Exclude<DraftProblem, null>): string {
+  return problem === "fraction" ? COUNT_NOT_WHOLE_HINT : AMOUNT_HINT;
+}
+
+/** A write error's sentence: §8 by code, with `COUNT_NOT_WHOLE` (M2-T8) mapped here. */
+function writeErrorMessage(error: unknown): string {
+  return isCountNotWholeRefusal(error) ? COUNT_NOT_WHOLE_MESSAGE : messageForLedgerError(error);
+}
 
 /**
  * S5 · item detail / ledger history (M3-T3), prototype v4 `#scr-item`.
@@ -79,9 +94,12 @@ export default function ItemDetailScreen(): React.JSX.Element {
   // M3-T7: what the amount field shows. `draftMicros` is the last usable
   // amount; `draftText` may be mid-edit or unparsable, in which case Save is
   // off and the hint shows. Always set together with `draftMicros` except on
-  // an unparsable keystroke.
+  // an unparsable keystroke. M2-T8: a fraction typed for a count unit sets
+  // `draftMicros` to that fraction (so the stepper steps from it to the next
+  // whole number) but is a problem, so Save stays off.
   const [draftText, setDraftText] = useState("");
-  const [draftInvalid, setDraftInvalid] = useState(false);
+  const [draftProblem, setDraftProblem] = useState<DraftProblem>(null);
+  const draftInvalid = draftProblem !== null;
   const [pendingReason, setPendingReason] = useState<RemovalAction | null>(null);
   const [correctionError, setCorrectionError] = useState<string | null>(null);
   const [removalError, setRemovalError] = useState<string | null>(null);
@@ -94,7 +112,7 @@ export default function ItemDetailScreen(): React.JSX.Element {
   const resetDraft = useCallback((micros: bigint): void => {
     setDraftMicros(micros);
     setDraftText(microsToTypedText(micros));
-    setDraftInvalid(false);
+    setDraftProblem(null);
   }, []);
 
   const load = useCallback((): (() => void) => {
@@ -129,31 +147,32 @@ export default function ItemDetailScreen(): React.JSX.Element {
     }
   }
 
-  function stepDraft(deltaMicros: bigint): void {
-    if (draftMicros === null) {
+  function stepDraft(direction: 1 | -1): void {
+    if (draftMicros === null || !detail) {
       return;
     }
     // Steps from the typed value; from the last usable amount when the field
-    // holds unparsable text (the step then replaces that text).
-    const stepped = draftMicros + deltaMicros;
-    const next =
-      stepped < 0n ? 0n : stepped > MAX_TYPED_QUANTITY_MICROS ? MAX_TYPED_QUANTITY_MICROS : stepped;
-    resetDraft(next);
+    // holds unparsable text (the step then replaces that text). A count unit
+    // steps by 1, and from a fraction to the next whole number (D-029).
+    resetDraft(stepAmountMicros(draftMicros, direction, detail.summary.quantity.unit));
   }
 
   function handleAmountTyped(text: string): void {
     setDraftText(text);
-    const parsed = parseTypedAmount(text);
-    if (parsed === null) {
-      if (!draftInvalid) {
-        // Live regions are Android-only; this reaches iOS and Android alike.
-        AccessibilityInfo.announceForAccessibility(AMOUNT_HINT);
-      }
-      setDraftInvalid(true);
+    const typed = classifyTypedAmount(text, detail?.summary.quantity.unit ?? "");
+    if (typed.kind === "valid") {
+      setDraftProblem(null);
+      setDraftMicros(typed.micros);
       return;
     }
-    setDraftInvalid(false);
-    setDraftMicros(parsed);
+    if (typed.kind === "fraction") {
+      setDraftMicros(typed.micros);
+    }
+    if (draftProblem !== typed.kind) {
+      // Live regions are Android-only; this reaches iOS and Android alike.
+      AccessibilityInfo.announceForAccessibility(hintFor(typed.kind));
+    }
+    setDraftProblem(typed.kind);
   }
 
   async function handleUndo(transactionId: string): Promise<void> {
@@ -181,7 +200,7 @@ export default function ItemDetailScreen(): React.JSX.Element {
     try {
       result = await apiClient.correctQuantity(itemId, draftMicros.toString());
     } catch (error) {
-      const message = messageForLedgerError(error);
+      const message = writeErrorMessage(error);
       setCorrectionError(message);
       AccessibilityInfo.announceForAccessibility(message);
       return;
@@ -207,7 +226,7 @@ export default function ItemDetailScreen(): React.JSX.Element {
     try {
       result = await apiClient.removeQuantity(itemId, pendingReason, subReason);
     } catch (error) {
-      const message = messageForLedgerError(error);
+      const message = writeErrorMessage(error);
       setRemovalError(message);
       AccessibilityInfo.announceForAccessibility(message);
       return;
@@ -297,6 +316,8 @@ export default function ItemDetailScreen(): React.JSX.Element {
   const tier = summary.provenance.quantity?.tier ?? null;
   const qtyDisplay = formatQuantityDisplay(summary.quantity, summary.lots, tier);
   const canSave = !draftInvalid && draftMicros !== parseMicros(summary.quantity.micros);
+  // M2-T8 (D-029): a count unit steps by 1 and takes whole numbers only.
+  const stepLabel = isCountUnit(summary.quantity.unit) ? "1" : "0.25";
   // Review F7: nothing to remove at a zero balance; disable the reason
   // chips rather than let a tap reach a rejected removeQuantity call.
   const isZeroBalance = parseMicros(summary.quantity.micros) <= 0n;
@@ -358,15 +379,15 @@ export default function ItemDetailScreen(): React.JSX.Element {
           <View style={styles.stepperRow}>
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel="Decrease quantity by 0.25"
-              onPress={() => stepDraft(-STEP_MICROS)}
+              accessibilityLabel={`Decrease quantity by ${stepLabel}`}
+              onPress={() => stepDraft(-1)}
               style={({ pressed }) => [styles.stepButton, pressScaleStyle(pressed, reducedMotion)]}
             >
               <Text style={styles.stepButtonText}>{"−"}</Text>
             </Pressable>
             <TextInput
               accessibilityLabel="Quantity amount"
-              accessibilityHint={draftInvalid ? AMOUNT_HINT : undefined}
+              accessibilityHint={draftProblem !== null ? hintFor(draftProblem) : undefined}
               keyboardType="decimal-pad"
               inputMode="decimal"
               selectTextOnFocus
@@ -377,16 +398,16 @@ export default function ItemDetailScreen(): React.JSX.Element {
             <Text style={styles.stepUnit}>{summary.quantity.unit}</Text>
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel="Increase quantity by 0.25"
-              onPress={() => stepDraft(STEP_MICROS)}
+              accessibilityLabel={`Increase quantity by ${stepLabel}`}
+              onPress={() => stepDraft(1)}
               style={({ pressed }) => [styles.stepButton, pressScaleStyle(pressed, reducedMotion)]}
             >
               <Text style={styles.stepButtonText}>+</Text>
             </Pressable>
           </View>
-          {draftInvalid ? (
+          {draftProblem !== null ? (
             <Text style={styles.amountHint} accessibilityLiveRegion="polite">
-              {AMOUNT_HINT}
+              {hintFor(draftProblem)}
             </Text>
           ) : null}
           <Pressable

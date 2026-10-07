@@ -30,9 +30,12 @@ import { LOCATION_LABELS } from "../../src/inventory/list-view";
 import { useReducedMotion } from "../../src/inventory/motion";
 import { chipAccessibilityLabel, ROW_CHIP_TEXT } from "../../src/inventory/provenance";
 import {
+  classifyTypedAmount,
+  COUNT_NOT_WHOLE_HINT,
+  COUNT_NOT_WHOLE_MESSAGE,
+  isCountNotWholeRefusal,
   microsToAmountText,
   microsToTypedText,
-  parseTypedAmount,
   trimAmountText,
 } from "../../src/inventory/quantity";
 import { useToast } from "../../src/inventory/Toast";
@@ -93,15 +96,37 @@ const USER_ENTRY_SOURCE = "user-entry";
 type TypedSize =
   | { readonly kind: "none" }
   | { readonly kind: "valid"; readonly micros: bigint }
-  | { readonly kind: "invalid" };
+  /** `fraction`: a usable number, but a fraction in a count unit (D-029, M2-T8). */
+  | { readonly kind: "invalid"; readonly reason: "unusable" | "fraction" };
 
-/** What the typed package-size text means (`null`: never touched; "": cleared): nothing typed (the record's own size stands), a usable size, or unusable text. A size of zero is not usable. */
-function resolveTypedSize(text: string | null): TypedSize {
+/**
+ * What the typed package-size text means for a record in `unit` (`null`:
+ * never touched; "": cleared): nothing typed (the record's own size stands),
+ * a usable size, or unusable text. A size of zero is not usable. M2-T8: a
+ * fraction in a count unit is not usable either, and says so with its own
+ * hint (D-029).
+ */
+function resolveTypedSize(text: string | null, unit: string): TypedSize {
   if (text === null || text.trim() === "") {
     return { kind: "none" };
   }
-  const micros = parseTypedAmount(text);
-  return micros === null || micros === 0n ? { kind: "invalid" } : { kind: "valid", micros };
+  const typed = classifyTypedAmount(text, unit);
+  if (typed.kind === "fraction") {
+    return { kind: "invalid", reason: "fraction" };
+  }
+  return typed.kind === "unusable" || typed.micros === 0n
+    ? { kind: "invalid", reason: "unusable" }
+    : { kind: "valid", micros: typed.micros };
+}
+
+/** The unit a typed package size is recorded in: the record's, as the create request spells it. */
+function sizeUnitOf(product: ScannedProductDto): string {
+  return product.packageSize ? normalizePackageUnit(product.packageSize.value.unit) : "";
+}
+
+/** The hint under an unusable size field. */
+function sizeHintFor(size: TypedSize): string {
+  return size.kind === "invalid" && size.reason === "fraction" ? COUNT_NOT_WHOLE_HINT : SIZE_HINT;
 }
 
 function isProvenanceTier(value: string): value is ProvenanceTierDto {
@@ -206,12 +231,17 @@ export default function ScanScreen(): React.JSX.Element {
   }
 
   function updateTypedSize(text: string | null): void {
+    const unit = phase.kind === "confirm" ? sizeUnitOf(phase.product) : "";
+    const next = resolveTypedSize(text, unit);
+    const previous = resolveTypedSize(typedSize, unit);
+    // Announced once as the field turns unusable, and again only if the hint
+    // itself changes (unusable text to a count-unit fraction, or back).
     if (
-      resolveTypedSize(text).kind === "invalid" &&
-      resolveTypedSize(typedSize).kind !== "invalid"
+      next.kind === "invalid" &&
+      (previous.kind !== "invalid" || sizeHintFor(next) !== sizeHintFor(previous))
     ) {
       // Live regions are Android-only; this reaches iOS and Android alike.
-      AccessibilityInfo.announceForAccessibility(SIZE_HINT);
+      AccessibilityInfo.announceForAccessibility(sizeHintFor(next));
     }
     setTypedSize(text);
     forgetHeldKey();
@@ -362,7 +392,7 @@ export default function ScanScreen(): React.JSX.Element {
     if (addInFlight.current) {
       return;
     }
-    const size = resolveTypedSize(typedSize);
+    const size = resolveTypedSize(typedSize, sizeUnitOf(product));
     if (size.kind === "invalid") {
       return;
     }
@@ -444,7 +474,10 @@ export default function ScanScreen(): React.JSX.Element {
     } catch (error) {
       // The key stays held (not cleared): a retap with the same, unchanged
       // inputs must replay under the same key, never mint a new one.
-      setAddError(messageForLedgerError(error));
+      // M2-T8: the server's COUNT_NOT_WHOLE gets its own §8 sentence.
+      setAddError(
+        isCountNotWholeRefusal(error) ? COUNT_NOT_WHOLE_MESSAGE : messageForLedgerError(error),
+      );
     } finally {
       addInFlight.current = false;
       setAdding(false);
@@ -725,7 +758,7 @@ function ConfirmSheet({
   // still in flight or has failed outright. M3-T4e Objective (f): also
   // disabled while a Save is already in flight (the held-key/single-flight
   // guard's visible half; `handleAdd`'s ref is the synchronous half).
-  const size = resolveTypedSize(typedSize);
+  const size = resolveTypedSize(typedSize, sizeUnitOf(product));
   const sizeInvalid = size.kind === "invalid";
   const canAdd = householdLoaded && !householdError && !adding && !sizeInvalid;
   const [editingSize, setEditingSize] = useState(false);
@@ -797,7 +830,7 @@ function ConfirmSheet({
         ) : null}
         {sizeInvalid ? (
           <Text style={styles.sizeHint} accessibilityLiveRegion="polite">
-            {SIZE_HINT}
+            {sizeHintFor(size)}
           </Text>
         ) : null}
 

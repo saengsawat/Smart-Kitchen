@@ -184,3 +184,107 @@ export function parseTypedAmount(text: string): bigint | null {
 export function microsToTypedText(micros: bigint): string {
   return trimAmountText(microsToAmountText(micros));
 }
+
+/**
+ * Every spelling the domain unit registry files under COUNT
+ * (`packages/domain/src/units/registry.ts`, `COUNT_UNITS[0].aliases`),
+ * restated because `apps/mobile` never imports the domain package (M3-T1
+ * invariant) and pinned by this module's tests. The server applies the same
+ * rule from the registry itself and refuses on its own (D-029: the screen is
+ * never the only guard), so a drift here can only make the screen looser than
+ * the server, never let a fraction through.
+ */
+export const COUNT_UNIT_ALIASES: readonly string[] = Object.freeze([
+  "count",
+  "counts",
+  "ct",
+  "each",
+  "ea",
+  "unit",
+  "units",
+  "pc",
+  "pcs",
+  "piece",
+  "pieces",
+]);
+
+/** True when `unit` is a count unit (D-029, M2-T8): case-insensitive, surrounding spaces ignored. */
+export function isCountUnit(unit: string): boolean {
+  return COUNT_UNIT_ALIASES.includes(unit.trim().toLowerCase());
+}
+
+/** True when exact micros are a whole number of units. `bigint` only. */
+export function isWholeMicros(micros: bigint): boolean {
+  return micros % MICROS_PER_UNIT === 0n;
+}
+
+/** M2-T8: shown under an amount field holding a fraction in a count unit (proposed for copy-deck S5/S8). */
+export const COUNT_NOT_WHOLE_HINT = "Use a whole number, like 2.";
+
+/** M2-T8: the §8 sentence for a server `COUNT_NOT_WHOLE` refusal (proposed for copy-deck §8). */
+export const COUNT_NOT_WHOLE_MESSAGE = "Use a whole number for this item.";
+
+/** What typed amount text means for an item in `unit`. */
+export type TypedAmount =
+  | { readonly kind: "valid"; readonly micros: bigint }
+  /** A usable number, but a fraction in a count unit: shown with {@link COUNT_NOT_WHOLE_HINT}, never saved. */
+  | { readonly kind: "fraction"; readonly micros: bigint }
+  /** Not a usable amount at all ({@link parseTypedAmount} returned `null`). */
+  | { readonly kind: "unusable" };
+
+/** Classifies typed text for `unit` (D-029): mass and volume keep decimals, count takes whole numbers. */
+export function classifyTypedAmount(text: string, unit: string): TypedAmount {
+  const micros = parseTypedAmount(text);
+  if (micros === null) {
+    return { kind: "unusable" };
+  }
+  if (isCountUnit(unit) && !isWholeMicros(micros)) {
+    return { kind: "fraction", micros };
+  }
+  return { kind: "valid", micros };
+}
+
+/** Prototype v4's `stepItemQty(±0.25)` step, for mass and volume units. */
+export const DECIMAL_STEP_MICROS = 250_000n;
+
+/** The step a stepper shows and uses for `unit`: 1 for a count unit, 0.25 otherwise. */
+export function stepSizeMicros(unit: string): bigint {
+  return isCountUnit(unit) ? MICROS_PER_UNIT : DECIMAL_STEP_MICROS;
+}
+
+/**
+ * One stepper press from `micros` in `direction` (D-029). A count unit steps
+ * by 1, and from a fraction to the next whole number that way (12.5 down to
+ * 12, up to 13); every other unit steps by 0.25 as before. Clamped to
+ * [0, {@link MAX_TYPED_QUANTITY_MICROS}]. `bigint` only.
+ */
+export function stepAmountMicros(micros: bigint, direction: 1 | -1, unit: string): bigint {
+  let next: bigint;
+  if (isCountUnit(unit)) {
+    const remainder = micros % MICROS_PER_UNIT;
+    if (remainder === 0n) {
+      next = micros + BigInt(direction) * MICROS_PER_UNIT;
+    } else if (direction === -1) {
+      next = micros - remainder;
+    } else {
+      next = micros - remainder + MICROS_PER_UNIT;
+    }
+  } else {
+    next = micros + BigInt(direction) * DECIMAL_STEP_MICROS;
+  }
+  return next < 0n ? 0n : next > MAX_TYPED_QUANTITY_MICROS ? MAX_TYPED_QUANTITY_MICROS : next;
+}
+
+/**
+ * True when a thrown write error is the server's `COUNT_NOT_WHOLE` refusal
+ * (a `LedgerRefusedError` carrying that code). Matched by name and code
+ * rather than `instanceof` so this module does not import `errors.ts`
+ * (which imports `ledger.ts`, which imports this module).
+ */
+export function isCountNotWholeRefusal(error: unknown): boolean {
+  return (
+    error instanceof Error &&
+    error.name === "LedgerRefusedError" &&
+    (error as { readonly code?: unknown }).code === "COUNT_NOT_WHOLE"
+  );
+}

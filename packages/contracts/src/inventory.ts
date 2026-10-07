@@ -293,6 +293,13 @@ export type InventoryWriteTypeDto = (typeof INVENTORY_WRITE_TYPES_DTO)[number];
  *   positive magnitude, or omitted to mean the whole on-hand quantity. The
  *   sign is implied by the type and must not be sent; a removal is always
  *   stock leaving.
+ *
+ * Count units take whole numbers (M2-T8, D-029). For an item whose unit is a
+ * COUNT unit, a fractional `targetAmount` and a `deltaAmount` that would leave
+ * a fractional balance are refused with 400 `COUNT_NOT_WHOLE`, and a removal's
+ * `amount` must be the full current balance or a whole amount that leaves a
+ * whole balance. So a balance of 12.5 can be corrected to 12 or 13, or removed
+ * in full, but removing 1 or 13 from it is refused.
  */
 export interface InventoryWriteRequestDto {
   /**
@@ -512,7 +519,10 @@ export interface CreateItemRequestDto {
   readonly displayName: string;
   readonly storageLocation: StorageLocationDto;
   readonly unit: string;
-  /** Initial on-hand amount, exact decimal text in {@link unit}. */
+  /**
+   * Initial on-hand amount, exact decimal text in {@link unit}. A whole number
+   * when {@link unit} is a count unit, else 400 `COUNT_NOT_WHOLE` (M2-T8, D-029).
+   */
   readonly amount: string;
   /** Provenance of the initial quantity fact (tier/source/observedAt). */
   readonly quantityProvenance: FieldProvenanceDto;

@@ -64,6 +64,8 @@ import {
   ledgerError,
   microsToAmount,
   planLotConsumption,
+  unitKind,
+  MICROS_PER_UNIT,
   rehydrateInventoryItem,
   PLAN_KEY_INFIX,
   RESERVED_KEY_SEPARATOR,
@@ -177,6 +179,46 @@ export class UndoNotPossibleError extends Error {
     super("the stock this transaction added has already been used, so it cannot be undone");
     this.name = "UndoNotPossibleError";
   }
+}
+
+/**
+ * A count unit was handed a fraction (M2-T8, D-029).
+ *
+ * Not a `LedgerError`: the ledger holds any exact decimal, and history already
+ * written with a fraction stays valid and readable. This is the API's own
+ * rule about what a person may *newly* state about a countable thing, which is
+ * why its code (`COUNT_NOT_WHOLE`) lives in `ApiErrorCode`. `field` names the
+ * request field that carried the fraction, for the log line only.
+ */
+export class CountNotWholeError extends Error {
+  readonly field: string;
+
+  constructor(field: string) {
+    super(`a count unit takes whole numbers only (${field})`);
+    this.name = "CountNotWholeError";
+    this.field = field;
+  }
+}
+
+/**
+ * True when `unit` is one the domain registry files under COUNT (count, each,
+ * ct, unit, piece and their spellings, case-insensitive). An unregistered
+ * unit is not a count unit: the whole-number rule applies only to units the
+ * registry can name, never to a guess about what a stored string means.
+ */
+export function isCountUnit(unit: string): boolean {
+  const kind = unitKind(unit);
+  return kind.ok && kind.value === "COUNT";
+}
+
+/** True when exact micros are a whole number of units. Integer arithmetic only. */
+export function isWholeMicros(micros: bigint): boolean {
+  return micros % MICROS_PER_UNIT === 0n;
+}
+
+/** Refuses a fraction in a count unit; a no-op for every other unit. */
+export function assertWholeCount(unit: string, micros: bigint, field: string): void {
+  if (isCountUnit(unit) && !isWholeMicros(micros)) throw new CountNotWholeError(field);
 }
 
 /**
@@ -340,6 +382,21 @@ function acquiredMillis(lot: InventoryLot): number | undefined {
   return Number.isNaN(millis) ? undefined : millis;
 }
 
+/**
+ * How {@link planWrite} plans.
+ *
+ * `wholeCountRule` (M2-T8, D-029) is on for every first attempt and off for a
+ * replay. A replay is a request whose rows are already recorded under its key;
+ * the ledger then compares the replanned rows with the stored ones and answers
+ * `duplicate` (200) or `IDEMPOTENCY_KEY_CONFLICT` (409), so no new row can
+ * land either way. Judging it again would turn the retry of a write accepted
+ * before D-029 (a fraction a client queued offline) into a 400, which is the
+ * one thing an idempotent retry must never do.
+ */
+export interface PlanOptions {
+  readonly wholeCountRule: boolean;
+}
+
 export interface PlannedWrite {
   readonly inputs: readonly TransactionInput[];
   /** A lot to open before the rows are appended, when the item has none. */
@@ -355,7 +412,12 @@ export interface PlannedWrite {
  * in-memory item rather than to reach each one through a database round trip.
  * Nothing outside this module and that suite calls it.
  */
-export function planWrite(item: InventoryItem, command: InventoryWriteCommand): PlannedWrite {
+export function planWrite(
+  item: InventoryItem,
+  command: InventoryWriteCommand,
+  options: PlanOptions = { wholeCountRule: true },
+): PlannedWrite {
+  const wholeCount = options.wholeCountRule && isCountUnit(item.unit);
   const base: RowBase = {
     type: command.type,
     unit: item.unit,
@@ -384,10 +446,16 @@ export function planWrite(item: InventoryItem, command: InventoryWriteCommand): 
       );
     }
     const micros = hasTarget
-      ? targetDelta(item, command.targetAmount ?? "")
+      ? targetDelta(item, command.targetAmount ?? "", wholeCount)
       : parseOrReject(command.deltaAmount ?? "", "deltaAmount");
     if (micros === 0n) {
       reject("ZERO_DELTA", "a transaction must change the quantity", "targetAmount");
+    }
+    // D-029 rule 2: a signed delta is judged by where it lands. A fractional
+    // delta that lands on a whole number (12.5 by -0.5 to 12) is the way back
+    // from a fractional balance, so it is allowed.
+    if (wholeCount && !hasTarget && !isWholeMicros(item.currentQty.micros + micros)) {
+      throw new CountNotWholeError("deltaAmount");
     }
     if (micros > 0n) return planIncrease(item, base, micros);
     return planDecrease(item, base, -micros);
@@ -418,6 +486,19 @@ export function planWrite(item: InventoryItem, command: InventoryWriteCommand): 
       "amount",
     );
   }
+  // D-029 rule 3: a removal is exactly the whole balance, or a whole amount
+  // that leaves a whole balance. So a fractional balance (12.5) can always be
+  // cleared in one step, but removing 1 from it is refused, because it would
+  // leave 11.5: the member corrects to a whole number first. On a whole
+  // balance this is simply "the amount is whole".
+  const balance = item.currentQty.micros;
+  if (
+    wholeCount &&
+    magnitude !== balance &&
+    !(isWholeMicros(magnitude) && isWholeMicros(balance - magnitude))
+  ) {
+    throw new CountNotWholeError("amount");
+  }
   return planDecrease(item, base, magnitude);
 }
 
@@ -437,7 +518,7 @@ export function planWrite(item: InventoryItem, command: InventoryWriteCommand): 
  * a sign mistake on a delta: it names a quantity outside the range a quantity
  * can take. `deltaAmount` stays signed, which is the whole reason it exists.
  */
-function targetDelta(item: InventoryItem, targetAmount: string): bigint {
+function targetDelta(item: InventoryItem, targetAmount: string, wholeCount: boolean): bigint {
   const target = parseOrReject(targetAmount, "targetAmount");
   if (target < 0n) {
     reject(
@@ -446,6 +527,8 @@ function targetDelta(item: InventoryItem, targetAmount: string): bigint {
       "targetAmount",
     );
   }
+  // D-029 rule 2: the target is what the item holds afterwards, so it is whole.
+  if (wholeCount && !isWholeMicros(target)) throw new CountNotWholeError("targetAmount");
   return target - item.currentQty.micros;
 }
 
@@ -641,7 +724,8 @@ export async function applyInventoryWrite(
   const first = existing[0];
   const planningState = first === undefined ? item : stateBefore(item, first.sequence);
 
-  const planned = planWrite(planningState, command);
+  // D-029: the whole-count rule judges new statements only (see PlanOptions).
+  const planned = planWrite(planningState, command, { wholeCountRule: first === undefined });
   if (planned.newLot !== undefined) {
     await insertInventoryLot(client, householdId, itemId, {
       lotId: planned.newLot.lotId,

@@ -85,3 +85,22 @@ export function undoNotPossibleResponse(correlationId: string): ApiErrorBodyDto 
     },
   };
 }
+
+/**
+ * 400 for a fraction in a count unit (M2-T8, D-029).
+ *
+ * A **400**, like a ledger refusal: the request states something the product
+ * does not accept, and nothing was written. It carries no `ledgerCode`
+ * because the ledger would have taken the row (it holds any exact decimal);
+ * the rule is the API's. The client keys copy-deck §8's sentence off the code
+ * and never renders this one.
+ */
+export function countNotWholeResponse(correlationId: string): ApiErrorBodyDto {
+  return {
+    error: {
+      code: "COUNT_NOT_WHOLE",
+      message: "Use a whole number for this item.",
+      correlationId,
+    },
+  };
+}

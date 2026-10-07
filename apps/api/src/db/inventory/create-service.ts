@@ -59,6 +59,7 @@ import { canonicalizeInstant } from "./mapping.js";
 import { decimalTextToMicros } from "./quantity-text.js";
 import { appendTransactionToDb, insertInventoryItem } from "./repository.js";
 import {
+  assertWholeCount,
   InventoryItemNotVisibleError,
   LedgerIntegrityError,
   LedgerWriteRejectedError,
@@ -438,6 +439,12 @@ export async function createInventoryItemWithStock(
     }
     return { summary: await summaryOf(client, householdId, stored.item_id), replayed: true };
   }
+
+  // D-029 rule 1 (M2-T8): a count unit starts on a whole number. Judged here,
+  // after the replay lookup, so the retry of a create accepted before D-029
+  // still answers its 200 (a replay appends nothing, so it cannot add a
+  // fraction); every new create is judged.
+  assertWholeCount(planned.unit, planned.micros, "amount");
 
   const created = await insertInventoryItem(
     client,

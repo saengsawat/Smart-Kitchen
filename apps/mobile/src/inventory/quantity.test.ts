@@ -1,6 +1,15 @@
 import { describe, expect, it } from "vitest";
 import type { InventoryLotDto, QuantityDto } from "@smart-kitchen/contracts";
 import {
+  classifyTypedAmount,
+  COUNT_NOT_WHOLE_HINT,
+  COUNT_NOT_WHOLE_MESSAGE,
+  COUNT_UNIT_ALIASES,
+  isCountNotWholeRefusal,
+  isCountUnit,
+  isWholeMicros,
+  stepAmountMicros,
+  stepSizeMicros,
   formatQuantityDisplay,
   formatSignedAmount,
   MAX_TYPED_QUANTITY_MICROS,
@@ -264,5 +273,100 @@ describe("parseTypedAmount (M3-T7)", () => {
     for (const micros of [0n, 1n, 999_999n, 1_000_000n, 1_000_001n, 123_456_789_012n]) {
       expect(parseTypedAmount(microsToTypedText(micros))).toBe(micros);
     }
+  });
+});
+
+describe("count units take whole numbers (M2-T8, D-029)", () => {
+  it("restates exactly the domain registry's COUNT aliases", () => {
+    // packages/domain/src/units/registry.ts COUNT_UNITS[0].aliases, in order.
+    expect(COUNT_UNIT_ALIASES).toEqual([
+      "count",
+      "counts",
+      "ct",
+      "each",
+      "ea",
+      "unit",
+      "units",
+      "pc",
+      "pcs",
+      "piece",
+      "pieces",
+    ]);
+  });
+
+  it.each([...COUNT_UNIT_ALIASES, "EACH", " Count ", "Pieces"])("%j is a count unit", (unit) => {
+    expect(isCountUnit(unit)).toBe(true);
+  });
+
+  it.each(["lb", "oz", "g", "kg", "ml", "l", "cup", "tsp", "tbsp", "bottle", "", "dozen"])(
+    "%j is not a count unit",
+    (unit) => {
+      expect(isCountUnit(unit)).toBe(false);
+    },
+  );
+
+  it("isWholeMicros is exact", () => {
+    expect(isWholeMicros(0n)).toBe(true);
+    expect(isWholeMicros(12_000_000n)).toBe(true);
+    expect(isWholeMicros(12_500_000n)).toBe(false);
+    expect(isWholeMicros(1n)).toBe(false);
+    expect(isWholeMicros(999_999n)).toBe(false);
+  });
+
+  it.each([
+    ["2", "each", { kind: "valid", micros: 2_000_000n }],
+    ["2.000000", "each", { kind: "valid", micros: 2_000_000n }],
+    ["2.", "each", { kind: "valid", micros: 2_000_000n }],
+    ["2.5", "each", { kind: "fraction", micros: 2_500_000n }],
+    [".5", "count", { kind: "fraction", micros: 500_000n }],
+    ["0.000001", "ct", { kind: "fraction", micros: 1n }],
+    ["abc", "each", { kind: "unusable" }],
+    ["", "each", { kind: "unusable" }],
+    ["2.5", "lb", { kind: "valid", micros: 2_500_000n }],
+    ["0.25", "cup", { kind: "valid", micros: 250_000n }],
+    ["abc", "lb", { kind: "unusable" }],
+  ])("classifyTypedAmount(%j, %j)", (text, unit, expected) => {
+    expect(classifyTypedAmount(text, unit)).toEqual(expected);
+  });
+
+  it("steps by 1 for a count unit and 0.25 otherwise", () => {
+    expect(stepSizeMicros("each")).toBe(MICROS_PER_UNIT);
+    expect(stepSizeMicros("lb")).toBe(250_000n);
+  });
+
+  it.each([
+    [8_000_000n, 1, 9_000_000n],
+    [8_000_000n, -1, 7_000_000n],
+    [12_500_000n, -1, 12_000_000n],
+    [12_500_000n, 1, 13_000_000n],
+    [1n, 1, 1_000_000n],
+    [999_999n, -1, 0n],
+    [0n, -1, 0n],
+    [MAX_TYPED_QUANTITY_MICROS, 1, MAX_TYPED_QUANTITY_MICROS],
+  ] as const)("count: step from %s by %s is %s", (from, direction, to) => {
+    expect(stepAmountMicros(from, direction, "count")).toBe(to);
+  });
+
+  it("mass and volume step by 0.25 from wherever they are, as before", () => {
+    expect(stepAmountMicros(12_500_000n, 1, "lb")).toBe(12_750_000n);
+    expect(stepAmountMicros(12_100_000n, -1, "cup")).toBe(11_850_000n);
+    expect(stepAmountMicros(100_000n, -1, "g")).toBe(0n);
+  });
+
+  it("recognises only the COUNT_NOT_WHOLE refusal", () => {
+    const refusal = Object.assign(new Error("ledger refused: COUNT_NOT_WHOLE"), {
+      name: "LedgerRefusedError",
+      code: "COUNT_NOT_WHOLE",
+    });
+    const other = Object.assign(new Error("x"), { name: "LedgerRefusedError", code: "ZERO_DELTA" });
+    expect(isCountNotWholeRefusal(refusal)).toBe(true);
+    expect(isCountNotWholeRefusal(other)).toBe(false);
+    expect(isCountNotWholeRefusal(new Error("COUNT_NOT_WHOLE"))).toBe(false);
+    expect(isCountNotWholeRefusal("COUNT_NOT_WHOLE")).toBe(false);
+  });
+
+  it("carries the proposed strings verbatim", () => {
+    expect(COUNT_NOT_WHOLE_HINT).toBe("Use a whole number, like 2.");
+    expect(COUNT_NOT_WHOLE_MESSAGE).toBe("Use a whole number for this item.");
   });
 });

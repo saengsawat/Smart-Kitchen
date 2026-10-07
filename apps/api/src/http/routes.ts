@@ -48,6 +48,7 @@ import { readInventorySnapshot } from "../db/inventory/snapshot.js";
 import {
   applyInventoryWrite,
   undoInventoryTransaction,
+  CountNotWholeError,
   InventoryItemNotVisibleError,
   LedgerWriteRejectedError,
   UndoNotPossibleError,
@@ -60,6 +61,7 @@ import { registerHouseholdRoutes, type HouseholdRouteDeps } from "./household-ro
 import { registerProductRoutes, type ProductRouteDeps } from "./product-routes.js";
 import { registerShoppingRoutes } from "./shopping-routes.js";
 import {
+  countNotWholeResponse,
   ledgerErrorResponse,
   notVisibleResponse,
   undoNotPossibleResponse,
@@ -210,6 +212,15 @@ async function answerFailure(
       "inventory.undo.not-possible",
     );
     await reply.code(409).send(undoNotPossibleResponse(request.id));
+    return undefined;
+  }
+  if (error instanceof CountNotWholeError) {
+    // D-029 (M2-T8). The field name, never a quantity.
+    request.log.info(
+      { routePath: request.routeOptions.url ?? "(no route)", field: error.field },
+      "inventory.write.count-not-whole",
+    );
+    await reply.code(400).send(countNotWholeResponse(request.id));
     return undefined;
   }
   if (error instanceof LedgerWriteRejectedError) {
