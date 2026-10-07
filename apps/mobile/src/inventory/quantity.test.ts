@@ -3,9 +3,7 @@ import type { InventoryLotDto, QuantityDto } from "@smart-kitchen/contracts";
 import {
   classifyTypedAmount,
   COUNT_NOT_WHOLE_HINT,
-  COUNT_NOT_WHOLE_MESSAGE,
   COUNT_UNIT_ALIASES,
-  isCountNotWholeRefusal,
   isCountUnit,
   isWholeMicros,
   stepAmountMicros,
@@ -353,20 +351,7 @@ describe("count units take whole numbers (M2-T8, D-029)", () => {
     expect(stepAmountMicros(100_000n, -1, "g")).toBe(0n);
   });
 
-  it("recognises only the COUNT_NOT_WHOLE refusal", () => {
-    const refusal = Object.assign(new Error("ledger refused: COUNT_NOT_WHOLE"), {
-      name: "LedgerRefusedError",
-      code: "COUNT_NOT_WHOLE",
-    });
-    const other = Object.assign(new Error("x"), { name: "LedgerRefusedError", code: "ZERO_DELTA" });
-    expect(isCountNotWholeRefusal(refusal)).toBe(true);
-    expect(isCountNotWholeRefusal(other)).toBe(false);
-    expect(isCountNotWholeRefusal(new Error("COUNT_NOT_WHOLE"))).toBe(false);
-    expect(isCountNotWholeRefusal("COUNT_NOT_WHOLE")).toBe(false);
-  });
-
   it("carries the proposed strings verbatim", () => {
     expect(COUNT_NOT_WHOLE_HINT).toBe("Use a whole number, like 2.");
-    expect(COUNT_NOT_WHOLE_MESSAGE).toBe("Use a whole number for this item.");
   });
 });

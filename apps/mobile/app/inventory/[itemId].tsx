@@ -38,10 +38,8 @@ import { chipAccessibilityLabel, ROW_CHIP_TEXT } from "../../src/inventory/prove
 import {
   classifyTypedAmount,
   COUNT_NOT_WHOLE_HINT,
-  COUNT_NOT_WHOLE_MESSAGE,
   formatQuantityDisplay,
   formatSignedAmount,
-  isCountNotWholeRefusal,
   isCountUnit,
   microsToTypedText,
   parseMicros,
@@ -67,11 +65,6 @@ type DraftProblem = null | "unusable" | "fraction";
 /** The hint for a problem: a count unit's fraction gets its own (D-029). */
 function hintFor(problem: Exclude<DraftProblem, null>): string {
   return problem === "fraction" ? COUNT_NOT_WHOLE_HINT : AMOUNT_HINT;
-}
-
-/** A write error's sentence: §8 by code, with `COUNT_NOT_WHOLE` (M2-T8) mapped here. */
-function writeErrorMessage(error: unknown): string {
-  return isCountNotWholeRefusal(error) ? COUNT_NOT_WHOLE_MESSAGE : messageForLedgerError(error);
 }
 
 /**
@@ -200,7 +193,7 @@ export default function ItemDetailScreen(): React.JSX.Element {
     try {
       result = await apiClient.correctQuantity(itemId, draftMicros.toString());
     } catch (error) {
-      const message = writeErrorMessage(error);
+      const message = messageForLedgerError(error);
       setCorrectionError(message);
       AccessibilityInfo.announceForAccessibility(message);
       return;
@@ -226,7 +219,7 @@ export default function ItemDetailScreen(): React.JSX.Element {
     try {
       result = await apiClient.removeQuantity(itemId, pendingReason, subReason);
     } catch (error) {
-      const message = writeErrorMessage(error);
+      const message = messageForLedgerError(error);
       setRemovalError(message);
       AccessibilityInfo.announceForAccessibility(message);
       return;

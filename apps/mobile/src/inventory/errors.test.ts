@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { LEDGER_ERROR_CODES_DTO } from "@smart-kitchen/contracts";
 import {
+  ApiError,
+  COUNT_NOT_WHOLE_MESSAGE,
   GENERIC_LEDGER_ERROR_MESSAGE,
   LedgerRefusedError,
   ledgerErrorMessage,
@@ -100,5 +102,55 @@ describe("ledgerErrorMessage (BACKLOG.md M3-T4a: every LEDGER_ERROR_CODES_DTO pl
   it("the domain message is never shown: only the fixed sentence, regardless of any Error.message text", () => {
     const error = new LedgerRefusedError("QUANTITY_OUT_OF_RANGE");
     expect(messageForLedgerError(error)).not.toContain(error.message);
+  });
+});
+
+describe("ApiError (M3-T12)", () => {
+  it("carries the typed code and the HTTP status; LedgerRefusedError is an ApiError", () => {
+    const error = new LedgerRefusedError("COUNT_NOT_WHOLE", 400);
+    expect(error).toBeInstanceOf(ApiError);
+    expect(error).toBeInstanceOf(LedgerRefusedError);
+    expect(error.code).toBe("COUNT_NOT_WHOLE");
+    expect(error.status).toBe(400);
+    expect(new ApiError("NOT_FOUND").status).toBeUndefined();
+  });
+
+  it("a wire code the contracts do not list becomes INTERNAL and renders the generic fallback", () => {
+    const error = new ApiError("SOME_FUTURE_CODE", 500);
+    expect(error.code).toBe("INTERNAL");
+    expect(messageForLedgerError(error)).toBe(GENERIC_LEDGER_ERROR_MESSAGE);
+  });
+
+  // Copy-deck.md §8, verbatim, one row per code: nothing renders a different sentence.
+  it.each([
+    ["ZERO_DELTA", "Enter an amount to record a change."],
+    ["COUNT_NOT_WHOLE", "Use a whole number for this item."],
+    ["QUANTITY_OUT_OF_RANGE", "That amount looks too large. Double check it."],
+    ["PRECISION_EXCEEDED", "Enter the amount with fewer decimal places."],
+    ["INVALID_TIMESTAMP", "That date doesn't look right. Check it and try again."],
+    ["TIMESTAMP_ORDER", "That date is in the future. Enter when it actually happened."],
+    ["UNKNOWN_LOT", "This batch isn't available anymore. Refresh and try again."],
+    [
+      "IDEMPOTENCY_KEY_CONFLICT",
+      "That request was already used for a different change, so it was not applied again.",
+    ],
+    ["UNDO_NOT_POSSIBLE", "That change can't be undone. The stock it added has already been used."],
+    ["NOT_FOUND", "Not found."],
+    ["MIXED_UNITS", GENERIC_LEDGER_ERROR_MESSAGE],
+    ["SAME_LOCATION", GENERIC_LEDGER_ERROR_MESSAGE],
+    ["INTERNAL", GENERIC_LEDGER_ERROR_MESSAGE],
+  ])("%s renders its sentence through messageForLedgerError", (code, sentence) => {
+    expect(messageForLedgerError(new ApiError(code, 400))).toBe(sentence);
+    expect(messageForLedgerError(new LedgerRefusedError(code, 400))).toBe(sentence);
+  });
+
+  it("WRONG_SIGN keeps its action placeholder default", () => {
+    expect(messageForLedgerError(new ApiError("WRONG_SIGN", 400))).toBe(
+      "That doesn't match what you're doing. Check the amount and try again.",
+    );
+  });
+
+  it("COUNT_NOT_WHOLE_MESSAGE is the §8 sentence", () => {
+    expect(COUNT_NOT_WHOLE_MESSAGE).toBe("Use a whole number for this item.");
   });
 });

@@ -14,7 +14,12 @@
  * fallback — the domain's own `message` is never shown.
  */
 
-import type { LedgerErrorCodeDto } from "@smart-kitchen/contracts";
+import {
+  API_ERROR_CODES,
+  LEDGER_ERROR_CODES_DTO,
+  type ApiErrorCode,
+  type LedgerErrorCodeDto,
+} from "@smart-kitchen/contracts";
 import { ZeroDeltaError } from "./ledger";
 
 /** copy-deck.md §8, `ZERO_DELTA` row, verbatim. */
@@ -33,6 +38,12 @@ export const GENERIC_LEDGER_ERROR_MESSAGE =
  */
 export const GENERIC_READ_ERROR_MESSAGE =
   "Something went wrong loading that. Try again, and tell us if it keeps happening.";
+
+/**
+ * copy-deck.md §8, `COUNT_NOT_WHOLE` row (M2-T8, D-029): a count unit (each,
+ * can, pack) takes whole numbers only. The server's own refusal renders this.
+ */
+export const COUNT_NOT_WHOLE_MESSAGE = "Use a whole number for this item.";
 
 /**
  * The three API-level codes copy-deck.md §8's "API-level refusals"
@@ -74,9 +85,11 @@ export function ledgerErrorMessage(
   code: string | null | undefined,
   options?: { readonly action?: string },
 ): string {
-  switch (code as KnownLedgerOrApiCode | undefined) {
+  switch (code as KnownLedgerOrApiCode | ApiClientErrorCode | undefined) {
     case "ZERO_DELTA":
       return ZERO_DELTA_MESSAGE;
+    case "COUNT_NOT_WHOLE":
+      return COUNT_NOT_WHOLE_MESSAGE;
     case "WRONG_SIGN":
       return `That doesn't match ${options?.action ?? "what you're doing"}. Check the amount and try again.`;
     case "QUANTITY_OUT_OF_RANGE":
@@ -101,26 +114,64 @@ export function ledgerErrorMessage(
 }
 
 /**
- * Thrown by `HttpApiClient` (src/api/client.ts) for a write/undo/detail
- * request the server answered with a non-2xx `ApiErrorBodyDto`. Carries only
- * the wire code (`ledgerCode` when the body has one, else the top-level
- * `code`) — never the domain's own `message` (copy-deck.md §8's rule; see
- * this module's doc comment).
+ * Codes only the client produces (M3-T12): never on the wire. Nothing throws
+ * them yet; they are reserved so a screen's `switch` over `ApiClientErrorCode`
+ * stays exhaustive when a transport failure becomes an `ApiError`.
  */
-export class LedgerRefusedError extends Error {
-  readonly code: string;
+export const CLIENT_ONLY_ERROR_CODES = ["NETWORK", "UNEXPECTED_RESPONSE"] as const;
 
-  constructor(code: string) {
-    super(`ledger refused: ${code}`);
+/** Every code an {@link ApiError} can carry: the contracts' codes plus the client-only ones. */
+export type ApiClientErrorCode =
+  ApiErrorCode | LedgerErrorCodeDto | (typeof CLIENT_ONLY_ERROR_CODES)[number];
+
+const KNOWN_CODES: ReadonlySet<string> = new Set<string>([
+  ...API_ERROR_CODES,
+  ...LEDGER_ERROR_CODES_DTO,
+  ...CLIENT_ONLY_ERROR_CODES,
+]);
+
+/** A wire code the contracts do not list (a newer server, a proxy page) is `INTERNAL`: it renders the generic fallback either way. */
+function toApiClientErrorCode(code: string): ApiClientErrorCode {
+  return KNOWN_CODES.has(code) ? (code as ApiClientErrorCode) : "INTERNAL";
+}
+
+/**
+ * The one typed error `HttpApiClient` throws for a non-2xx answer (M3-T12).
+ * Carries only the wire code (`ledgerCode` when the body has one, else the
+ * top-level `code`) and the HTTP status when there was a response; never the
+ * domain's own `message` (copy-deck.md §8's rule; see this module's doc
+ * comment). Screens render it through {@link messageForLedgerError}.
+ */
+export class ApiError extends Error {
+  readonly code: ApiClientErrorCode;
+  /** The HTTP status, absent for an error raised without a response (the fixture client). */
+  readonly status: number | undefined;
+
+  constructor(code: string, status?: number) {
+    super(`api error: ${code}`);
+    this.name = "ApiError";
+    this.code = toApiClientErrorCode(code);
+    this.status = status;
+  }
+}
+
+/**
+ * A coded write/undo/detail refusal. Kept as a subclass of {@link ApiError}
+ * (the smaller diff: every `instanceof LedgerRefusedError` site keeps working)
+ * so `instanceof ApiError` catches it too.
+ */
+export class LedgerRefusedError extends ApiError {
+  constructor(code: string, status?: number) {
+    super(code, status);
     this.name = "LedgerRefusedError";
-    this.code = code;
+    this.message = `ledger refused: ${code}`;
   }
 }
 
 /**
  * Picks the user-facing sentence for a rejected write (review F3, extended
  * M3-T4a): a `ZeroDeltaError` (the fixture's own zero-delta rejection) and a
- * `LedgerRefusedError` (the real endpoint's coded refusal) each get their
+ * `ApiError` (the real endpoint's coded refusal) each get their
  * copy-deck.md §8 sentence via {@link ledgerErrorMessage}; every other
  * rejection (an unknown item, a network hiccup, anything else) gets the
  * generic fallback, never a raw `Error.message`.
@@ -129,7 +180,7 @@ export function messageForLedgerError(error: unknown): string {
   if (error instanceof ZeroDeltaError) {
     return ledgerErrorMessage("ZERO_DELTA");
   }
-  if (error instanceof LedgerRefusedError) {
+  if (error instanceof ApiError) {
     return ledgerErrorMessage(error.code);
   }
   return GENERIC_LEDGER_ERROR_MESSAGE;

@@ -209,9 +209,6 @@ export function isWholeMicros(micros: bigint): boolean {
 /** M2-T8: shown under an amount field holding a fraction in a count unit (proposed for copy-deck S5/S8). */
 export const COUNT_NOT_WHOLE_HINT = "Use a whole number, like 2.";
 
-/** M2-T8: the §8 sentence for a server `COUNT_NOT_WHOLE` refusal (proposed for copy-deck §8). */
-export const COUNT_NOT_WHOLE_MESSAGE = "Use a whole number for this item.";
-
 /** What typed amount text means for an item in `unit`. */
 export type TypedAmount =
   | { readonly kind: "valid"; readonly micros: bigint }
@@ -261,18 +258,4 @@ export function stepAmountMicros(micros: bigint, direction: 1 | -1, unit: string
     next = micros + BigInt(direction) * DECIMAL_STEP_MICROS;
   }
   return next < 0n ? 0n : next > MAX_TYPED_QUANTITY_MICROS ? MAX_TYPED_QUANTITY_MICROS : next;
-}
-
-/**
- * True when a thrown write error is the server's `COUNT_NOT_WHOLE` refusal
- * (a `LedgerRefusedError` carrying that code). Matched by name and code
- * rather than `instanceof` so this module does not import `errors.ts`
- * (which imports `ledger.ts`, which imports this module).
- */
-export function isCountNotWholeRefusal(error: unknown): boolean {
-  return (
-    error instanceof Error &&
-    error.name === "LedgerRefusedError" &&
-    (error as { readonly code?: unknown }).code === "COUNT_NOT_WHOLE"
-  );
 }

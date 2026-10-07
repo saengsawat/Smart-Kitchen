@@ -902,6 +902,7 @@ describe("HttpApiClient writes/undo (M3-T4a: real POST endpoints, mocked fetch)"
       const client = new HttpApiClient("http://localhost:4000");
       await expect(client.correctQuantity("item-1", "1500000")).rejects.toMatchObject({
         code: "ZERO_DELTA",
+        status: 400,
       });
     });
 

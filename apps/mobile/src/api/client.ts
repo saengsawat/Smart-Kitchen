@@ -126,6 +126,8 @@ import {
   type MutableItemFixture,
 } from "../inventory/ledger";
 import { GENERIC_LEDGER_ERROR_MESSAGE, LedgerRefusedError } from "../inventory/errors";
+
+export { ApiError } from "../inventory/errors";
 import { microsToAmountText, parseMicros } from "../inventory/quantity";
 import { fixtureLookupProduct } from "../scan/fixture-products";
 import { ProductLookupRefusedError } from "../scan/product-lookup-errors";
@@ -1304,7 +1306,7 @@ export class HttpApiClient implements ApiClient {
       }
       if (!response.ok) {
         const errorBody: unknown = await response.json().catch(() => null);
-        throw new LedgerRefusedError(extractErrorCode(errorBody) ?? "INTERNAL");
+        throw new LedgerRefusedError(extractErrorCode(errorBody) ?? "INTERNAL", response.status);
       }
       const parsedBody: unknown = await response.json();
       if (!isInventoryWriteResponse(parsedBody)) {
@@ -1461,7 +1463,7 @@ export class HttpApiClient implements ApiClient {
     });
     if (!response.ok) {
       const errorBody: unknown = await response.json().catch(() => null);
-      throw new LedgerRefusedError(extractErrorCode(errorBody) ?? "INTERNAL");
+      throw new LedgerRefusedError(extractErrorCode(errorBody) ?? "INTERNAL", response.status);
     }
     const parsedBody: unknown = await response.json();
     if (!isCreateHouseholdResponse(parsedBody)) {
@@ -1682,7 +1684,7 @@ export class HttpApiClient implements ApiClient {
       }
       if (!response.ok) {
         const errorBody: unknown = await response.json().catch(() => null);
-        throw new LedgerRefusedError(extractErrorCode(errorBody) ?? "INTERNAL");
+        throw new LedgerRefusedError(extractErrorCode(errorBody) ?? "INTERNAL", response.status);
       }
       const parsedBody: unknown = await response.json();
       if (!isConfirmAiProposalResponse(parsedBody)) {
@@ -1732,7 +1734,7 @@ export class HttpApiClient implements ApiClient {
       }
       if (!response.ok) {
         const errorBody: unknown = await response.json().catch(() => null);
-        throw new LedgerRefusedError(extractErrorCode(errorBody) ?? "INTERNAL");
+        throw new LedgerRefusedError(extractErrorCode(errorBody) ?? "INTERNAL", response.status);
       }
       const parsedBody: unknown = await response.json();
       if (!isMoveItemResponse(parsedBody)) {
@@ -1812,7 +1814,7 @@ export class HttpApiClient implements ApiClient {
       }
       if (!response.ok) {
         const errorBody: unknown = await response.json().catch(() => null);
-        throw new LedgerRefusedError(extractErrorCode(errorBody) ?? "INTERNAL");
+        throw new LedgerRefusedError(extractErrorCode(errorBody) ?? "INTERNAL", response.status);
       }
       const parsedBody: unknown = await response.json();
       if (!isInventoryItemSummary(parsedBody)) {
@@ -1869,6 +1871,7 @@ export class HttpApiClient implements ApiClient {
     const code = extractErrorCode(errorBody);
     return new LedgerRefusedError(
       code === "IDEMPOTENCY_KEY_CONFLICT" ? "IDEMPOTENCY_KEY_CONFLICT" : "INTERNAL",
+      response.status,
     );
   }
 

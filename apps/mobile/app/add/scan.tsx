@@ -32,8 +32,6 @@ import { chipAccessibilityLabel, ROW_CHIP_TEXT } from "../../src/inventory/prove
 import {
   classifyTypedAmount,
   COUNT_NOT_WHOLE_HINT,
-  COUNT_NOT_WHOLE_MESSAGE,
-  isCountNotWholeRefusal,
   microsToAmountText,
   microsToTypedText,
   trimAmountText,
@@ -474,10 +472,7 @@ export default function ScanScreen(): React.JSX.Element {
     } catch (error) {
       // The key stays held (not cleared): a retap with the same, unchanged
       // inputs must replay under the same key, never mint a new one.
-      // M2-T8: the server's COUNT_NOT_WHOLE gets its own §8 sentence.
-      setAddError(
-        isCountNotWholeRefusal(error) ? COUNT_NOT_WHOLE_MESSAGE : messageForLedgerError(error),
-      );
+      setAddError(messageForLedgerError(error));
     } finally {
       addInFlight.current = false;
       setAdding(false);
