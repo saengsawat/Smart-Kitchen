@@ -29,8 +29,20 @@ afterEach(() => {
 
 const DAY = 24 * 60 * 60 * 1000;
 
-function detail(daysFromNow: number, tier: ProvenanceTierDto | null): InventoryItemDetailDto {
-  const expiresAt = new Date(Date.now() + daysFromNow * DAY).toISOString();
+/** A local-time instant: dayOffset calendar days from today at hh:mm local. */
+function localAt(dayOffset: number, hh: number, mm: number): string {
+  const n = new Date();
+  return new Date(n.getFullYear(), n.getMonth(), n.getDate() + dayOffset, hh, mm).toISOString();
+}
+
+function detail(
+  daysFromNow: number | string,
+  tier: ProvenanceTierDto | null,
+): InventoryItemDetailDto {
+  const expiresAt =
+    typeof daysFromNow === "string"
+      ? daysFromNow
+      : new Date(Date.now() + daysFromNow * DAY).toISOString();
   const expiresAtProvenance = tier
     ? { tier, source: "label", confidence: null, recordedAt: "2026-09-01T12:00:00.000Z" }
     : null;
@@ -96,8 +108,25 @@ describe("S5 · lot expiry wording (M3-T9, D-030)", () => {
     },
   );
 
-  it("a lot expiring later today still reads 'expires today'", async () => {
-    const result = await renderWith(detail(0.5, "ESTIMATED"));
+  it.each([
+    ["earlier today", localAt(0, 0, 1)],
+    ["later today", localAt(0, 18, 0)],
+    ["23:59 today", localAt(0, 23, 59)],
+  ])("a lot expiring %s reads 'expires today'", async (_n, at) => {
+    const result = await renderWith(detail(at, "ESTIMATED"));
     expect(result.getByText("Bought Sep 1 · expires today")).toBeTruthy();
+  });
+
+  it.each([
+    ["00:01 tomorrow", localAt(1, 0, 1)],
+    ["23:59 tomorrow", localAt(1, 23, 59)],
+  ])("a lot expiring %s reads 'expires tomorrow'", async (_n, at) => {
+    const result = await renderWith(detail(at, "ESTIMATED"));
+    expect(result.getByText("Bought Sep 1 · expires tomorrow")).toBeTruthy();
+  });
+
+  it("a lot that expired yesterday is past", async () => {
+    const result = await renderWith(detail(localAt(-1, 23, 59), "KNOWN_FACT"));
+    expect(result.getByText("Bought Sep 1 · expired")).toBeTruthy();
   });
 });

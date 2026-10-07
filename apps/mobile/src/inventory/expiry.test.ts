@@ -7,13 +7,43 @@ import {
   lotCaptionExpiry,
 } from "./expiry";
 
-describe("daysUntil", () => {
-  it("rounds a same-day expiry up to 0 (not negative)", () => {
-    expect(daysUntil("2026-09-22T08:00:00.000Z", "2026-09-22T20:00:00.000Z")).toBe(1);
+/** A local-time instant: dayOffset days from 7 Oct 2026, at hh:mm local. */
+function local(dayOffset: number, hh: number, mm: number): string {
+  return new Date(2026, 9, 7 + dayOffset, hh, mm).toISOString();
+}
+
+describe("daysUntil (local calendar days, not a rolling 24h)", () => {
+  const NOW = local(0, 12, 0);
+
+  it.each([
+    ["later today", local(0, 18, 0), 0],
+    ["23:59 today", local(0, 23, 59), 0],
+    ["earlier today", local(0, 0, 5), 0],
+    ["00:01 tomorrow", local(1, 0, 1), 1],
+    ["23:59 tomorrow", local(1, 23, 59), 1],
+    ["two days out", local(2, 9, 0), 2],
+    ["yesterday", local(-1, 23, 59), -1],
+  ] as const)("%s is day %i", (_name, expiresAt, expected) => {
+    expect(daysUntil(NOW, expiresAt)).toBe(expected);
   });
 
-  it("counts whole days ahead", () => {
-    expect(daysUntil("2026-09-22T12:00:00.000Z", "2026-09-24T12:00:00.000Z")).toBe(2);
+  it("a date-only string is that local calendar date, not UTC midnight", () => {
+    expect(daysUntil(NOW, "2026-10-07")).toBe(0);
+    expect(daysUntil(NOW, "2026-10-08")).toBe(1);
+    expect(daysUntil(NOW, "2026-10-06")).toBe(-1);
+    expect(daysUntil("2026-10-07", "2026-10-09")).toBe(2);
+  });
+
+  it("earlier today is day 0 (use today), not expired", () => {
+    const days = daysUntil(NOW, local(0, 0, 5));
+    expect(expiryDisplayText(days, "KNOWN_FACT")).toBe("use today");
+    expect(expiryDisplayText(days, "ESTIMATED")).toBe("use today");
+  });
+
+  it("yesterday is past: expired for Known Fact, may be expired otherwise", () => {
+    const days = daysUntil(NOW, local(-1, 23, 59));
+    expect(expiryDisplayText(days, "KNOWN_FACT")).toBe("expired");
+    expect(expiryDisplayText(days, "ESTIMATED")).toBe("may be expired");
   });
 });
 
@@ -36,8 +66,9 @@ describe("freshnessRing (tokens.md §4.6 ramp, green/amber/rose, never danger)",
 });
 
 describe("expiryUrgencyText (prototype v4 exact wording)", () => {
-  it("1 day is 'use today'", () => {
-    expect(expiryUrgencyText(1)).toBe("use today");
+  it("0 days is 'use today' and 1 day is 'tomorrow'", () => {
+    expect(expiryUrgencyText(0)).toBe("use today");
+    expect(expiryUrgencyText(1)).toBe("tomorrow");
   });
 
   it("2 and 3 days render as plain day counts", () => {
@@ -63,23 +94,23 @@ describe("expiryUrgencyText (prototype v4 exact wording)", () => {
 });
 
 describe("D-030 expired wording", () => {
-  const NOW = "2026-10-07T12:00:00.000Z";
-
-  it("day boundary: later today is not past, a day behind is -1", () => {
-    expect(daysUntil(NOW, "2026-10-08T00:00:00.000Z")).toBe(1);
-    expect(daysUntil(NOW, "2026-10-07T00:00:00.000Z") < 0).toBe(false);
-    expect(daysUntil(NOW, "2026-10-06T12:00:00.000Z")).toBe(-1);
-  });
-
   it("freshness ring for a past date stays 'now'", () => {
     expect(freshnessRing(-3)).toBe("now");
   });
 
   it.each(["KNOWN_FACT", "ESTIMATED", "AI_INTERPRETATION", null, undefined] as const)(
-    "a date that is today reads 'use today' for tier %s",
+    "days 0, 1, 2 read 'use today', 'tomorrow', '2 days' for tier %s",
     (tier) => {
       expect(expiryDisplayText(0, tier)).toBe("use today");
-      expect(expiryDisplayText(1, tier)).toBe("use today");
+      expect(expiryDisplayText(1, tier)).toBe("tomorrow");
+      expect(expiryDisplayText(2, tier)).toBe("2 days");
+    },
+  );
+
+  it.each(["ESTIMATED", "AI_INTERPRETATION", null, undefined] as const)(
+    "day -1 reads 'may be expired' for tier %s",
+    (tier) => {
+      expect(expiryDisplayText(-1, tier)).toBe("may be expired");
     },
   );
 
@@ -105,6 +136,8 @@ describe("D-030 expired wording", () => {
     expect(lotCaptionExpiry("expired")).toBe("expired");
     expect(lotCaptionExpiry("may be expired")).toBe("may be expired");
     expect(lotCaptionExpiry("use today")).toBe("expires today");
+    expect(lotCaptionExpiry("tomorrow")).toBe("expires tomorrow");
+    expect(lotCaptionExpiry("2 days")).toBe("expires in 2 days");
     expect(lotCaptionExpiry("3 days")).toBe("expires in 3 days");
   });
 });

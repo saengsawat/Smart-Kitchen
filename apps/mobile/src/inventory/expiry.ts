@@ -13,10 +13,30 @@ import type { ProvenanceTierDto } from "@smart-kitchen/contracts";
 
 export type FreshnessRing = "now" | "soon" | "fresh" | "none";
 
-/** Whole days from `takenAt` to `expiresAt`, rounded up (a same-day expiry is day 0, "use today"). */
+const DAY_MS = 24 * 60 * 60 * 1000;
+const DATE_ONLY = /^(\d{4})-(\d{2})-(\d{2})$/;
+
+/**
+ * Day number of a local calendar date. A date-only string ("2026-10-08") is
+ * that local date as written (never parsed as UTC midnight, which would shift
+ * a day west of UTC); a full instant is read in the device's local zone.
+ */
+function localDayNumber(value: string): number {
+  const dateOnly = DATE_ONLY.exec(value);
+  if (dateOnly) {
+    return Date.UTC(Number(dateOnly[1]), Number(dateOnly[2]) - 1, Number(dateOnly[3])) / DAY_MS;
+  }
+  const d = new Date(value);
+  return Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) / DAY_MS;
+}
+
+/**
+ * Local calendar days from `takenAt` to `expiresAt`: later today (even 23:59)
+ * and earlier today are 0 ("use today"), the next calendar day is 1
+ * ("tomorrow"), any earlier calendar day is negative. Not a rolling 24h count.
+ */
 export function daysUntil(takenAt: string, expiresAt: string): number {
-  const ms = new Date(expiresAt).getTime() - new Date(takenAt).getTime();
-  return Math.ceil(ms / (24 * 60 * 60 * 1000));
+  return localDayNumber(expiresAt) - localDayNumber(takenAt);
 }
 
 /**
@@ -41,10 +61,12 @@ export function freshnessRing(days: number | null): FreshnessRing {
 }
 
 /**
- * Expiry urgency text, prototype v4 exact wording ("use today", "2 days",
- * "2 weeks", "2 months"). `null` (no known expiry) renders no text; the
- * caller (S4 row) shows the qty-derivation note instead, as the prototype's
- * pantry rows do.
+ * Raw urgency wording ("use today", "tomorrow", "2 days", "2 weeks",
+ * "2 months"). It knows nothing about provenance, so a past date always reads
+ * "expired" here. Screens must call `expiryDisplayText` instead, which applies
+ * the D-030 "may be expired" rule for non-Known-Fact tiers. `null` (no known
+ * expiry) renders no text; the caller (S4 row) shows the qty-derivation note
+ * instead, as the prototype's pantry rows do.
  */
 export function expiryUrgencyText(days: number | null): string | null {
   if (days === null) {
@@ -53,8 +75,11 @@ export function expiryUrgencyText(days: number | null): string | null {
   if (days < 0) {
     return "expired";
   }
-  if (days <= 1) {
+  if (days === 0) {
     return "use today";
+  }
+  if (days === 1) {
+    return "tomorrow";
   }
   if (days < 14) {
     return `${days} days`;
@@ -66,8 +91,8 @@ export function expiryUrgencyText(days: number | null): string | null {
 }
 
 /**
- * D-030 display text for an expiry. A date later today (days 0 or 1) keeps
- * "use today"; a past date (`days < 0`) reads "expired" only when the date is a
+ * D-030 display text for an expiry. A date that is today (day 0) reads
+ * "use today", one day out reads "tomorrow"; a past date (`days < 0`) reads "expired" only when the date is a
  * Known Fact, and "may be expired" for Estimated, AI-interpreted or missing
  * provenance, so an estimate never reads as certain. Future dates are
  * unchanged. `null` days means no known expiry and renders no text.
@@ -82,10 +107,16 @@ export function expiryDisplayText(
   return expiryUrgencyText(days);
 }
 
-/** S5 lot caption wording: "expires today" / "expires in 3 days" / "expired" / "may be expired". */
+/** S5 lot caption wording: "expires today" / "expires tomorrow" / "expires in 3 days" / "expired" / "may be expired". */
 export function lotCaptionExpiry(urgency: string): string {
   if (urgency === "expired" || urgency === "may be expired") {
     return urgency;
   }
-  return `expires ${urgency === "use today" ? "today" : `in ${urgency}`}`;
+  if (urgency === "use today") {
+    return "expires today";
+  }
+  if (urgency === "tomorrow") {
+    return "expires tomorrow";
+  }
+  return `expires in ${urgency}`;
 }

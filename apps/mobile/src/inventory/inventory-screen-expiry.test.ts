@@ -27,7 +27,16 @@ afterEach(() => {
 
 const DAY = 24 * 60 * 60 * 1000;
 
-function milk(daysFromNow: number, tier: ProvenanceTierDto | null): InventoryItemSummaryDto {
+/** A local-time instant: dayOffset calendar days from today at hh:mm local. */
+function localAt(dayOffset: number, hh: number, mm: number): string {
+  const n = new Date();
+  return new Date(n.getFullYear(), n.getMonth(), n.getDate() + dayOffset, hh, mm).toISOString();
+}
+
+function milk(
+  daysFromNow: number | string,
+  tier: ProvenanceTierDto | null,
+): InventoryItemSummaryDto {
   return {
     itemId: "0190f0a0-0000-7000-8000-0000000000b1",
     displayName: "Milk",
@@ -35,7 +44,10 @@ function milk(daysFromNow: number, tier: ProvenanceTierDto | null): InventoryIte
     ingredientRef: null,
     storageLocation: "FRIDGE",
     quantity: { unit: "l", micros: "1000000", amount: "1" },
-    earliestExpiresAt: new Date(Date.now() + daysFromNow * DAY).toISOString(),
+    earliestExpiresAt:
+      typeof daysFromNow === "string"
+        ? daysFromNow
+        : new Date(Date.now() + daysFromNow * DAY).toISOString(),
     provenance: {
       quantity: {
         tier: "KNOWN_FACT",
@@ -84,8 +96,29 @@ describe("S4 · expiry wording (M3-T9, D-030)", () => {
     },
   );
 
-  it("a date later today still reads 'use today'", async () => {
-    const result = await renderWith(milk(0.5, "ESTIMATED"));
+  it.each([
+    ["earlier today", localAt(0, 0, 1)],
+    ["later today", localAt(0, 18, 0)],
+    ["23:59 today", localAt(0, 23, 59)],
+  ])("a best-by %s reads 'use today' (text and accessibility label)", async (_n, at) => {
+    const result = await renderWith(milk(at, "ESTIMATED"));
     expect(result.getByText(/ · use today$/)).toBeTruthy();
+    expect(result.getByLabelText(/^Milk, .*, use today,/)).toBeTruthy();
+    expect(result.queryByText(/expired/)).toBeNull();
+  });
+
+  it.each([
+    ["00:01 tomorrow", localAt(1, 0, 1)],
+    ["23:59 tomorrow", localAt(1, 23, 59)],
+  ])("a best-by %s reads 'tomorrow' (text and accessibility label)", async (_n, at) => {
+    const result = await renderWith(milk(at, "ESTIMATED"));
+    expect(result.getByText(/ · tomorrow$/)).toBeTruthy();
+    expect(result.getByLabelText(/^Milk, .*, tomorrow,/)).toBeTruthy();
+    expect(result.queryByText(/use today/)).toBeNull();
+  });
+
+  it("a best-by yesterday is past", async () => {
+    const result = await renderWith(milk(localAt(-1, 23, 59), "KNOWN_FACT"));
+    expect(result.getByText(/ · expired$/)).toBeTruthy();
   });
 });
