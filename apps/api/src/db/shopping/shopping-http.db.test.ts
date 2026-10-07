@@ -17,6 +17,7 @@
 import {
   SHOPPING_PATH,
   inventoryItemPath,
+  inventoryTransactionUndoPath,
   shoppingRowAddToInventoryPath,
   shoppingRowCheckPath,
   shoppingRowRemovePath,
@@ -650,20 +651,46 @@ describe.skipIf(!dbTestsEnabled)(SUITE, () => {
       expect(crossKind.statusCode).toBe(409);
     });
 
+    it("after the add, the list shows the bought amount (0.75 lb), never the 0 the live gap now gives (BUG-006)", async () => {
+      const chicken = rowOf((await list(DEAN)).body, CHICKEN_ROW);
+      // 2 lb held against a 2 lb need: the live gap is 0, the PURCHASE was 0.75 lb.
+      expect(chicken).toMatchObject({
+        haveMicros: "2000000",
+        buyMicros: "750000",
+        status: "done",
+      });
+      // The amount is the ledger row's own delta, not a recomputation.
+      const ledger = await db.pool.query<{ qty: string }>(
+        "SELECT qty_delta_micros::text AS qty FROM inventory_transactions WHERE id = $1",
+        [purchaseId],
+      );
+      expect(chicken.buyMicros).toBe(ledger.rows[0]?.qty);
+      // Maya sees the same row.
+      expect(rowOf((await list(MAYA)).body, CHICKEN_ROW)).toEqual(chicken);
+    });
+
     it("unchecking after the add does not reverse the PURCHASE, and a re-add is still the same one", async () => {
       const before = await ledgerRows(CHICKEN_ITEM);
       const unchecked = await check(DEAN, CHICKEN_ROW, false, key());
       expect(unchecked.statusCode).toBe(200);
-      // 2 lb now held against a 2 lb need: the domain says nothing to buy.
+      // 2 lb now held against a 2 lb need: the live gap says nothing to buy, so
+      // the status reads skipped as before, but the row keeps the amount that
+      // was bought (BUG-006), never 0.
       expect(unchecked.body).toMatchObject({
-        buyMicros: "0",
+        buyMicros: "750000",
         checkedOffBy: null,
+        status: "skipped",
+      });
+      expect(rowOf((await list(DEAN)).body, CHICKEN_ROW)).toMatchObject({
+        buyMicros: "750000",
         status: "skipped",
       });
       expect(await ledgerRows(CHICKEN_ITEM)).toBe(before);
       expect((await storedRow(CHICKEN_ROW))?.["added_transaction_id"]).toBe(purchaseId);
 
-      expect((await check(DEAN, CHICKEN_ROW, true, key())).statusCode).toBe(200);
+      const rechecked = await check(DEAN, CHICKEN_ROW, true, key());
+      expect(rechecked.statusCode).toBe(200);
+      expect(rechecked.body).toMatchObject({ buyMicros: "750000", status: "done" });
       const again = await add(DEAN, CHICKEN_ROW, key());
       expect(again.statusCode).toBe(200);
       expect(again.body.transactions[0]?.transactionId).toBe(purchaseId);
@@ -891,6 +918,219 @@ describe.skipIf(!dbTestsEnabled)(SUITE, () => {
       expect(await ledgerRows(itemId)).toBe(before);
       expect((await storedRow(rowId))?.["added_transaction_id"]).toBeNull();
       expect(await writesFor(rowId)).toBe(0);
+    });
+  });
+
+  describe("a row's buyMicros once its PURCHASE has landed (BUG-006)", () => {
+    // Placed after the add tests, so the extra stock below moves no amount
+    // an earlier test asserts.
+
+    it("keeps the bought amount through check, uncheck, a replayed add and an unrelated stock increase", async () => {
+      // Strawberries: no later test reads their stock. Need 4 lb over what is held.
+      const itemId = seedItemId("strawberries");
+      const probeId = await insertRow({
+        name: "Strawberries, probe",
+        needMicros: 1_000_000n,
+        unit: "lb",
+        itemId,
+      });
+      const held = BigInt(rowOf((await list(DEAN)).body, probeId).haveMicros);
+      const rowId = await insertRow({
+        name: "Strawberries for jam",
+        needMicros: held + 4_000_000n,
+        unit: "lb",
+        itemId,
+      });
+      expect(rowOf((await list(DEAN)).body, rowId)).toMatchObject({
+        buyMicros: "4000000",
+        status: "open",
+      });
+      const checked = await check(DEAN, rowId, true, key());
+      expect(checked.body).toMatchObject({ buyMicros: "4000000", status: "done" });
+
+      const addKey = key();
+      const added = await add(DEAN, rowId, addKey);
+      expect(added.statusCode).toBe(201);
+      expect(added.body.transactions[0]?.deltaMicros).toBe("4000000");
+      const transactionId = added.body.transactions[0]?.transactionId;
+      const afterAdd = await ledgerRows(itemId);
+
+      expect(rowOf((await list(DEAN)).body, rowId)).toMatchObject({
+        haveMicros: (held + 4_000_000n).toString(),
+        buyMicros: "4000000",
+        status: "done",
+      });
+      const unchecked = await check(DEAN, rowId, false, key());
+      expect(unchecked.body).toMatchObject({ buyMicros: "4000000", status: "skipped" });
+      const rechecked = await check(DEAN, rowId, true, key());
+      expect(rechecked.body).toMatchObject({ buyMicros: "4000000", status: "done" });
+
+      // Replaying the add (same key, and a new key) returns the same PURCHASE and appends nothing.
+      const replay = await add(DEAN, rowId, addKey);
+      expect(replay.statusCode).toBe(200);
+      expect(replay.body.transactions[0]?.transactionId).toBe(transactionId);
+      const again = await add(MAYA, rowId, key());
+      expect(again.statusCode).toBe(200);
+      expect(again.body.transactions[0]?.transactionId).toBe(transactionId);
+      expect(await ledgerRows(itemId)).toBe(afterAdd);
+
+      // Six more pounds from somewhere else: the live gap stays 0, the row still says 4.
+      await withHouseholdTransaction(
+        db.pool,
+        chenId,
+        async (client) => {
+          const outcome = await appendTransactionToDb(client, chenId, itemId, {
+            lotId: seedLotId("strawberries", "lot-1"),
+            type: "PURCHASE",
+            qtyDelta: 6,
+            unit: "lb",
+            actor: { kind: "user", userId: deanUserId },
+            occurredAt: "2026-10-07T10:00:00.000Z",
+            recordedAt: "2026-10-07T10:00:00.000Z",
+            provenance: { tier: "KNOWN_FACT", source: "bug-006-test" },
+            idempotencyKey: key(),
+          });
+          expect(outcome.ok && outcome.value.status).toBe("appended");
+        },
+        { assumeRole: APP_ROLE },
+      );
+      expect(rowOf((await list(DEAN)).body, rowId)).toMatchObject({
+        haveMicros: (held + 10_000_000n).toString(),
+        buyMicros: "4000000",
+        status: "done",
+      });
+    });
+
+    it("a done row with no landed PURCHASE still shows the live gap; item-less rows are unchanged", async () => {
+      const itemId = seedItemId("rice");
+      const probeId = await insertRow({
+        name: "Rice, probe",
+        needMicros: 1_000_000n,
+        unit: "cup",
+        itemId,
+      });
+      const held = BigInt(rowOf((await list(DEAN)).body, probeId).haveMicros);
+      const rowId = await insertRow({
+        name: "Rice, checked not added",
+        needMicros: held + 3_000_000n,
+        unit: "cup",
+        itemId,
+        done: true,
+      });
+      const row = rowOf((await list(DEAN)).body, rowId);
+      expect(row).toMatchObject({ buyMicros: "3000000", status: "done" });
+      expect((await storedRow(rowId))?.["added_transaction_id"]).toBeNull();
+      const recomputed = neededQuantity(
+        BigInt(row.needMicros),
+        "cup",
+        BigInt(row.haveMicros),
+        "cup",
+      );
+      expect(recomputed.ok && recomputed.value.micros).toBe(3_000_000n);
+
+      // Item-less rows: towels still need 1, olive oil is done with nothing on hand.
+      const body = (await list(DEAN)).body;
+      expect(rowOf(body, TOWELS_ROW)).toMatchObject({ haveMicros: "0", buyMicros: "1000000" });
+      const olive = rowOf(body, OLIVE_ROW);
+      expect(olive).toMatchObject({ haveMicros: "0", status: "done" });
+      expect(olive.buyMicros).toBe(olive.needMicros);
+    });
+
+    it("a row whose PURCHASE was undone on S5 keeps the bought amount; the undo is its own ledger fact", async () => {
+      const itemId = seedItemId("salmon");
+      const probeId = await insertRow({
+        name: "Salmon, probe",
+        needMicros: 1_000_000n,
+        unit: "oz",
+        itemId,
+      });
+      const held = BigInt(rowOf((await list(DEAN)).body, probeId).haveMicros);
+      const rowId = await insertRow({
+        name: "Salmon, undone",
+        needMicros: held + 10_000_000n,
+        unit: "oz",
+        itemId,
+        done: true,
+      });
+      const added = await add(DEAN, rowId, key());
+      expect(added.statusCode).toBe(201);
+      const transactionId = added.body.transactions[0]?.transactionId ?? "";
+      expect(added.body.transactions[0]?.deltaMicros).toBe("10000000");
+
+      const undoKey = key();
+      usedKeys.push(undoKey);
+      const undone = await call<InventoryWriteResponseDto>(
+        "POST",
+        inventoryTransactionUndoPath(itemId, transactionId),
+        DEAN,
+        { idempotencyKey: undoKey, occurredAt: new Date().toISOString() },
+      );
+      expect(undone.statusCode).toBe(200);
+
+      const row = rowOf((await list(DEAN)).body, rowId);
+      // Stock is back where it was, so the live gap is 10 oz again either way;
+      // the row shows the 10 oz that PURCHASE appended, read from its ledger row.
+      expect(row).toMatchObject({
+        haveMicros: held.toString(),
+        buyMicros: "10000000",
+        status: "done",
+      });
+      expect((await storedRow(rowId))?.["added_transaction_id"]).toBe(transactionId);
+    });
+
+    it("an undo that leaves the live gap different from the purchase still shows the purchase", async () => {
+      // Need 5 over the held stock; buy 5; undo; then another 3 arrive: the
+      // live gap would be 2, the row still says 5.
+      const itemId = seedItemId("salmon");
+      const probeId = await insertRow({
+        name: "Salmon, probe 2",
+        needMicros: 1_000_000n,
+        unit: "oz",
+        itemId,
+      });
+      const held = BigInt(rowOf((await list(DEAN)).body, probeId).haveMicros);
+      const rowId = await insertRow({
+        name: "Salmon, undone then topped up",
+        needMicros: held + 5_000_000n,
+        unit: "oz",
+        itemId,
+        done: true,
+      });
+      const added = await add(DEAN, rowId, key());
+      const transactionId = added.body.transactions[0]?.transactionId ?? "";
+      const undoKey = key();
+      usedKeys.push(undoKey);
+      const undone = await call<InventoryWriteResponseDto>(
+        "POST",
+        inventoryTransactionUndoPath(itemId, transactionId),
+        DEAN,
+        { idempotencyKey: undoKey, occurredAt: new Date().toISOString() },
+      );
+      expect(undone.statusCode).toBe(200);
+      await withHouseholdTransaction(
+        db.pool,
+        chenId,
+        async (client) => {
+          const outcome = await appendTransactionToDb(client, chenId, itemId, {
+            lotId: seedLotId("salmon", "lot-1"),
+            type: "PURCHASE",
+            qtyDelta: 3,
+            unit: "oz",
+            actor: { kind: "user", userId: deanUserId },
+            occurredAt: "2026-10-07T11:00:00.000Z",
+            recordedAt: "2026-10-07T11:00:00.000Z",
+            provenance: { tier: "KNOWN_FACT", source: "bug-006-test" },
+            idempotencyKey: key(),
+          });
+          expect(outcome.ok && outcome.value.status).toBe("appended");
+        },
+        { assumeRole: APP_ROLE },
+      );
+      expect(rowOf((await list(DEAN)).body, rowId)).toMatchObject({
+        haveMicros: (held + 3_000_000n).toString(),
+        buyMicros: "5000000",
+        status: "done",
+      });
     });
   });
 

@@ -67,7 +67,12 @@ export interface ShoppingRowDto {
    * form stays reserved for rows whose source does not license a number.
    */
   readonly haveTier: ProvenanceTierDto | null;
-  /** Exact decimal-text micros to buy: `max(needMicros - haveMicros, 0)` in {@link unit}, the domain's `neededQuantity`. Never recomputed client-side. */
+  /**
+   * Exact decimal-text micros in {@link unit}. Until the row's PURCHASE lands it is the amount to buy:
+   * `max(needMicros - haveMicros, 0)`, the domain's `neededQuantity`. Once Add has landed a PURCHASE it is
+   * the amount that PURCHASE appended, read from the ledger (BUG-006), and stays so after an undo on S5.
+   * Never recomputed client-side.
+   */
   readonly buyMicros: string;
   /** A symbol `UNITS_BY_KIND_DTO` (units.ts) also lists. */
   readonly unit: string;

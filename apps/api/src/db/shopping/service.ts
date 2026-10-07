@@ -167,6 +167,10 @@ interface StoredRow {
   readonly added_transaction_id: string | null;
   readonly generation: number;
   readonly removed_at: Date | null;
+  /** The landed PURCHASE's own ledger row, joined on; all null until one lands. */
+  readonly purchase_micros: string | null;
+  readonly purchase_unit: string | null;
+  readonly purchase_type: string | null;
 }
 
 const ROW_COLUMNS = `
@@ -174,7 +178,9 @@ const ROW_COLUMNS = `
   ou.display_name AS origin_display_name,
   r.need_micros::text AS need_micros, r.unit, r.item_id, r.default_location, r.status,
   r.checked_off_by, cu.display_name AS checked_display_name,
-  r.added_transaction_id, r.generation, r.removed_at`;
+  r.added_transaction_id, r.generation, r.removed_at,
+  pt.qty_delta_micros::text AS purchase_micros, pt.unit AS purchase_unit,
+  pt.type AS purchase_type`;
 
 const ROW_JOINS = `
   LEFT JOIN household_memberships AS om
@@ -182,7 +188,10 @@ const ROW_JOINS = `
   LEFT JOIN users AS ou ON ou.id = om.user_id
   LEFT JOIN household_memberships AS cm
     ON cm.household_id = r.household_id AND cm.id = r.checked_off_by
-  LEFT JOIN users AS cu ON cu.id = cm.user_id`;
+  LEFT JOIN users AS cu ON cu.id = cm.user_id
+  LEFT JOIN inventory_transactions AS pt
+    ON pt.household_id = r.household_id AND pt.item_id = r.item_id
+   AND pt.id = r.added_transaction_id`;
 
 /** The list, in insertion order. Removed rows are not on it. */
 const LIST_SQL = `
@@ -254,13 +263,54 @@ async function snapshotItem(
   return item === undefined ? new Map() : new Map([[itemId, gapItemOf(item)]]);
 }
 
+/** What a row's landed PURCHASE says, as `rowBuyMicros` reads it. */
+export interface LandedPurchase {
+  readonly addedTransactionId: string | null;
+  /** `inventory_transactions.qty_delta_micros` of that row, as text; null when the join found nothing. */
+  readonly purchaseMicros: string | null;
+  readonly purchaseUnit: string | null;
+  readonly purchaseType: string | null;
+}
+
+/**
+ * The `buyMicros` a row answers with (BUG-006).
+ *
+ * Before a PURCHASE lands it is the live gap, the domain's `neededQuantity`
+ * of need against the current snapshot (INV-SHOP-1). Once one has landed
+ * (`added_transaction_id` set) it is the amount that PURCHASE appended, read
+ * from its ledger row and never recomputed: the live gap is computed against
+ * stock that already includes the purchase, so it would read 0 for exactly
+ * the amount that was bought. An undo on S5 is its own ledger fact and leaves
+ * the PURCHASE row, so the bought amount stays.
+ *
+ * A row that names a PURCHASE the join could not find, or one that is not a
+ * positive PURCHASE in the row's unit, is a broken ledger, not a gap: it
+ * fails loudly rather than falling back to the live gap.
+ */
+export function rowBuyMicros(unit: string, landed: LandedPurchase, liveBuyMicros: bigint): bigint {
+  if (landed.addedTransactionId === null) return liveBuyMicros;
+  const corrupt = (message: string): never => {
+    throw new LedgerIntegrityError(ledgerError("CORRUPT_LEDGER", message));
+  };
+  if (landed.purchaseMicros === null) {
+    return corrupt("a shopping row names a PURCHASE its item does not hold");
+  }
+  if (landed.purchaseType !== "PURCHASE" || landed.purchaseUnit !== unit) {
+    return corrupt("a shopping row's PURCHASE is not a PURCHASE in the row's unit");
+  }
+  const micros = BigInt(landed.purchaseMicros);
+  if (micros <= 0n) return corrupt("a shopping row's PURCHASE did not add stock");
+  return micros;
+}
+
 /**
  * Row to DTO, gap included.
  *
  * The status on the wire is the stored one, except that an open row the
  * domain says needs nothing (`buy = 0`) answers as `skipped`: "already have
  * enough" is a fact about the item's current snapshot, so it is computed on
- * every read and never stored.
+ * every read and never stored. That status always follows the live gap;
+ * `buyMicros` follows it only until the row's PURCHASE lands (`rowBuyMicros`).
  */
 function toRowDto(row: StoredRow, items: ItemsById): ShoppingRowDto {
   const item = row.item_id === null ? undefined : items.get(row.item_id);
@@ -281,7 +331,16 @@ function toRowDto(row: StoredRow, items: ItemsById): ShoppingRowDto {
     needMicros: row.need_micros,
     haveMicros: gap.haveMicros.toString(),
     haveTier: gap.haveTier satisfies ProvenanceTierDto | null,
-    buyMicros: gap.buyMicros.toString(),
+    buyMicros: rowBuyMicros(
+      row.unit,
+      {
+        addedTransactionId: row.added_transaction_id,
+        purchaseMicros: row.purchase_micros,
+        purchaseUnit: row.purchase_unit,
+        purchaseType: row.purchase_type,
+      },
+      gap.buyMicros,
+    ).toString(),
     unit: row.unit,
     itemId: row.item_id,
     status,
