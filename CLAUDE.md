@@ -30,6 +30,7 @@ This repo is the project's durable memory. These rules bind every session (human
 15. Update documentation in the same change that alters a decision or behavior it documents. Stale DECISIONS/STATUS/ADR content is a bug.
 16. Explain migrations and irreversible operations (schema changes, data rewrites, deletions) and get approval before running them anywhere shared.
 17. Stop for human approval before: creating/modifying paid or external resources (cloud, API signups, keys), sending data to a new external service, publishing anything, or any action that is hard to reverse.
+17a. **Never use the Strety connector (PO, 2026-10-07).** No agent connects to, authorizes, loads, calls or reads from the claude.ai Strety connector or any of its tools, for any reason, and never asks Andy to authorize it. If it shows up in a tool list or an auth notice, ignore it and don't mention it.
 18. Use fixtures ([tests/fixtures/](tests/fixtures/README.md)) for development; live provider calls are opt-in, metered, and never required for the test suite to pass.
 19. Report honestly: failing tests are reported as failing, skipped steps as skipped. No "should work."
 
