@@ -45,3 +45,25 @@ export const UNITS_BY_KIND_DTO: Readonly<Record<UnitKindDto, readonly string[]>>
   VOLUME: ["ml", "l", "tsp", "tbsp", "cup"],
   COUNT: ["each"],
 });
+
+/**
+ * Every spelling the domain unit registry files under COUNT
+ * (`packages/domain/src/units/registry.ts`, `COUNT_UNITS[0].aliases`, which
+ * includes the canonical `"count"`). Published here so `apps/mobile`, which
+ * never imports the domain package, shares one list instead of restating it.
+ * `packages/adapters/src/contracts-consistency/count-aliases-consistency.test.ts`
+ * fails if this list and the registry differ in either direction.
+ */
+export const COUNT_UNIT_ALIASES_DTO: readonly string[] = Object.freeze([
+  "count",
+  "counts",
+  "ct",
+  "each",
+  "ea",
+  "unit",
+  "units",
+  "pc",
+  "pcs",
+  "piece",
+  "pieces",
+]);

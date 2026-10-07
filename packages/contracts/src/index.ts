@@ -92,7 +92,12 @@ export {
   type ScannableBarcodeTypeDto,
   type ScannedProductDto,
 } from "./products.js";
-export { UNIT_KINDS_DTO, UNITS_BY_KIND_DTO, type UnitKindDto } from "./units.js";
+export {
+  COUNT_UNIT_ALIASES_DTO,
+  UNIT_KINDS_DTO,
+  UNITS_BY_KIND_DTO,
+  type UnitKindDto,
+} from "./units.js";
 export {
   HOUSEHOLD_JOIN_CODE_PATH,
   HOUSEHOLD_JOIN_PATH,

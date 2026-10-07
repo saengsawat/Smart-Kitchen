@@ -14,6 +14,7 @@
  * `number` quantity.
  */
 
+import { COUNT_UNIT_ALIASES_DTO } from "@smart-kitchen/contracts";
 import type { InventoryLotDto, ProvenanceTierDto, QuantityDto } from "@smart-kitchen/contracts";
 
 /** Micro-units per whole unit (ADR-008, domain-model.md §2). */
@@ -186,27 +187,14 @@ export function microsToTypedText(micros: bigint): string {
 }
 
 /**
- * Every spelling the domain unit registry files under COUNT
- * (`packages/domain/src/units/registry.ts`, `COUNT_UNITS[0].aliases`),
- * restated because `apps/mobile` never imports the domain package (M3-T1
- * invariant) and pinned by this module's tests. The server applies the same
- * rule from the registry itself and refuses on its own (D-029: the screen is
- * never the only guard), so a drift here can only make the screen looser than
- * the server, never let a fraction through.
+ * Every spelling the domain unit registry files under COUNT, published by
+ * `@smart-kitchen/contracts` (`COUNT_UNIT_ALIASES_DTO`) because `apps/mobile`
+ * never imports the domain package (M3-T1 invariant). A consistency test in
+ * `packages/adapters` proves the list equals the registry's. The server
+ * applies the same rule from the registry itself and refuses on its own
+ * (D-029: the screen is never the only guard).
  */
-export const COUNT_UNIT_ALIASES: readonly string[] = Object.freeze([
-  "count",
-  "counts",
-  "ct",
-  "each",
-  "ea",
-  "unit",
-  "units",
-  "pc",
-  "pcs",
-  "piece",
-  "pieces",
-]);
+export const COUNT_UNIT_ALIASES: readonly string[] = COUNT_UNIT_ALIASES_DTO;
 
 /** True when `unit` is a count unit (D-029, M2-T8): case-insensitive, surrounding spaces ignored. */
 export function isCountUnit(unit: string): boolean {

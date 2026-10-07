@@ -277,8 +277,8 @@ describe("parseTypedAmount (M3-T7)", () => {
 });
 
 describe("count units take whole numbers (M2-T8, D-029)", () => {
-  it("restates exactly the domain registry's COUNT aliases", () => {
-    // packages/domain/src/units/registry.ts COUNT_UNITS[0].aliases, in order.
+  it("uses the contracts' published COUNT aliases (spelling set pinned here)", () => {
+    // Equality with the domain registry is proved in packages/adapters (count-aliases-consistency.test.ts).
     expect(COUNT_UNIT_ALIASES).toEqual([
       "count",
       "counts",
