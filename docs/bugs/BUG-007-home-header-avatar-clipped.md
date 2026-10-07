@@ -1,7 +1,7 @@
 # BUG-007: Home's header avatar is clipped at the top of the screen
 
 **Reported:** 2026-10-06 by Andy (PO), phone screenshot of the Home tab, Android, Expo Go.
-**Status:** OPEN. Cause not yet investigated.
+**Status:** FIXED 2026-10-07 (`82a03a0`, review PASS, Sonnet). Cause: the Home header used a fixed 24 px top padding and ignored the top safe-area inset, so the account circle sat under tall Android status bars. The header now pads by `insets.top + spacing.md`; a component test asserts it. Other screens still use a fixed `spacing.xl` top padding (follow-up in BACKLOG.md). Handoff: `docs/handoff/BUG-007.{worker,review}.md`. Not yet checked on a device.
 
 ## What Andy saw
 
