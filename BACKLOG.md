@@ -86,6 +86,47 @@ _Finished tickets moved to [BACKLOG_ARCHIVE.md](BACKLOG_ARCHIVE.md): M3-T4a, M3-
 - **Out of scope:** any app or API code (M8-T1 follows this research); any second data source; product-level shelf lives from OFF.
 - **DoD:** rule 26; the worker report lists the retrieval details, what was matched by hand versus by the script, and the proposed M8-T1 ticket outline.
 
+#### M2-T8 — Count units take whole numbers only (D-029), client and server
+- **Implementation model:** Opus. Rule 23: inventory arithmetic and write validation on every ledger write path, plus how a fractional balance already in history is handled.
+- **Review model:** Opus. Same rule-23 surface; the architect does a detailed code pass at acceptance.
+- **Decision basis:** D-029 (Andy, PO, 2026-10-07); ADR-008 (append-only ledger); rule 6 (the screen is never the only guard); rule 7 (deterministic, tested quantity math).
+- **Objective:** an amount in a COUNT-kind unit (today the registry's `count` entry and every alias: count, ct, each, ea, unit, pc, piece and plurals) is a whole number on every new write. The server refuses a fractional count; S5 and S8 step counts by 1 and refuse a typed fraction with a hint. Mass and volume keep decimals.
+- **Rules (architect ruling for D-029's open point):**
+  1. Create (`POST /v1/inventory/items`): the amount must be whole for a count unit.
+  2. `ADJUSTMENT` with `targetAmount`: the target must be whole. With a signed `amount`: the resulting balance must be whole. So an item already holding 12.5 can be corrected to 12 or 13 (a fractional delta is fine when it lands on a whole number).
+  3. Removals (`CONSUME`, `DISCARD`, `EXPIRE`, `DONATE`): the amount must be whole, or exactly equal to the item's current balance (so a fractional balance can always be cleared to zero in one step). Removing 1 from 12.5 is refused; the member corrects first.
+  4. Undo is always allowed (it reverses a row already recorded).
+  5. Any other server path that appends a count-unit row from a request amount (check the shopping check-off PURCHASE, M7-T1) follows rule 1; if that path never takes a client amount, say so in the report.
+  6. Reads, replay, snapshot and reconciliation never refuse or rewrite existing fractional history.
+- **Refusal on the wire:** 400 with a new code `COUNT_NOT_WHOLE` added to `API_ERROR_CODES` in contracts (documented like its neighbours). The client maps it to the §8 string "Use a whole number for this item." and never renders the server's sentence.
+- **Client (S5 item detail, S8 typed size on the scan sheet):** for a count unit the stepper steps by 1; from a fractional value it steps to the next whole number in that direction (12.5 down to 12, up to 13); a typed fraction shows "Use a whole number, like 2." under the field and Save or Add stays disabled. The existing "Enter a number, like 2 or 0.5." hint stays for mass and volume units and for unusable text. Removal controls on a fractional balance must not send a fractional removal other than the full balance; if the screen has no "remove all" path, propose one in the report rather than building it.
+- **Context:** `packages/domain/src/units/registry.ts` (unit kinds, aliases), `packages/contracts/src/inventory.ts` (write and create DTOs), `packages/contracts/src/errors.ts`, `apps/api/src/db/inventory/write-service.ts`, `create-service.ts`, `apps/api/src/http/routes.ts`, `apps/api/src/http/ledger-errors.ts`, `apps/api/src/http/shopping-routes.ts` (read only unless rule 5 applies), `apps/mobile/src/inventory/quantity.ts`, `apps/mobile/app/inventory/[itemId].tsx`, `apps/mobile/app/add/scan.tsx`, copy-deck §8 and the S5 "Amount field (M3-T7)" line.
+- **Dependencies:** none. Runs alongside M3-T9 (which also edits `[itemId].tsx`, the Lots block only); keep edits in that file to the amount field, stepper and removal controls.
+- **Invariants:** INV-LEDGER-* untouched; no migration; no UPDATE or DELETE on ledger rows; the whole-number check is exact (micros or the rational type, never floating point); idempotent retries of an already-accepted write still replay 200.
+- **Acceptance criteria:** each rule above holds over HTTP and has a test; S5 and S8 behave as described; mass and volume behaviour unchanged; existing fractional seed or fixture data still reads and renders.
+- **Tests required:** a pure helper test (count-unit detection by alias, whole check on decimal text); API write and create tests per rule (DB tests where the existing write tests are DB tests); client tests for the stepper from a fractional value, the typed-fraction hint and the server refusal mapping; a property test that no whole-count write is refused for that reason.
+- **File scope:** `packages/domain/src/units/**` (a helper and its tests only, if the worker puts the kind check there), `packages/contracts/src/errors.ts`, `packages/contracts/src/inventory.ts` (doc comments only unless a field is needed), their tests, `apps/api/src/db/inventory/{write-service,create-service}.ts` and their tests, `apps/api/src/http/{routes,ledger-errors,shopping-routes}.ts` and the inventory write DB tests, `apps/mobile/src/inventory/quantity.ts`, `apps/mobile/src/api/client.ts` (error mapping only), `apps/mobile/app/inventory/[itemId].tsx`, `apps/mobile/app/add/scan.tsx`, their tests, `docs/handoff/M2-T8.worker.md`.
+- **Out of scope:** a per-product "sold by the half" unit; converting count to mass; rewriting existing fractional rows; the `ApiError` client type (separate follow-up).
+- **DoD:** rule 26; the report proposes the copy-deck lines (S5 amount field, §8 `COUNT_NOT_WHOLE`) for the architect to apply.
+
+#### M3-T9 — A passed best-by reads "expired" (D-030), S4 and S5
+- **Implementation model:** Sonnet. Display-only change in one pure helper and two screens; no data change.
+- **Review model:** Sonnet. Not on the rule-23 list; the reviewer checks the provenance honesty of the strings.
+- **Decision basis:** D-030 (Andy, PO, 2026-10-07); copy-deck §4 (tiers) and the S5 "Expired" line; P-rules (an estimate never reads as certain).
+- **Objective:** a date that is today keeps "use today"; a date in the past reads "expired" when the date is a Known Fact, and "may be expired" when it is Estimated, AI-interpreted or has no provenance. Proposed strings (architect; added to the copy deck at acceptance):
+  - S4 row, after the quantity: "expired" or "may be expired" (today: "use today", unchanged).
+  - S5 lot caption: "{label} · expired" or "{label} · may be expired" (today: "{label} · expires today", unchanged).
+  - Accessibility labels carry the same words.
+- **Logic:** `daysUntil` gives 0 for a date later today and a negative number for a past date; "past" means `days < 0`. The freshness ring for a past date stays "now" (rose). S4 reads `item.provenance.earliestExpiresAt?.tier`, S5 reads `lot.expiresAtProvenance?.tier`; only `KNOWN_FACT` reads "expired".
+- **Context:** `apps/mobile/src/inventory/expiry.ts` and `expiry.test.ts`, `apps/mobile/app/inventory.tsx` (row around `expiryUrgencyText`), `apps/mobile/app/inventory/[itemId].tsx` (the Lots block, around `expiryUrgencyText`), `packages/contracts/src/inventory.ts` (provenance fields, read only), copy-deck S5.
+- **Dependencies:** none. Runs alongside M2-T8, which also edits `[itemId].tsx`; touch only the Lots block there.
+- **Invariants:** no data change; no other screen's wording changes; the helper stays pure (time passed in).
+- **Acceptance criteria:** the strings above render for today, past Known Fact, past Estimated, past AI and past with null provenance on S4 and S5; future dates unchanged.
+- **Tests required:** helper unit tests for each case including the day boundary; S4 and S5 component tests for "expired" and "may be expired".
+- **File scope:** `apps/mobile/src/inventory/expiry.ts`, `expiry.test.ts`, `apps/mobile/app/inventory.tsx`, `apps/mobile/app/inventory/[itemId].tsx` (Lots block only), the S4 and S5 component tests under `apps/mobile/src/inventory/`, `docs/handoff/M3-T9.worker.md`.
+- **Out of scope:** expiry estimation (M8); a separate "expired" section or sort order; notifications.
+- **DoD:** rule 26; copy-deck S5 "Expired" line replaced with the strings at acceptance.
+
 _Finished tickets moved to [BACKLOG_ARCHIVE.md](BACKLOG_ARCHIVE.md): M2-T4b, M2-T5, M2-T6, M9-T0, M9-D1._
 
 ### M4 — Barcode/product enrichment
