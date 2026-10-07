@@ -629,3 +629,55 @@ ARCHITECTURE.md: the top status line (three ADRs are DECIDED), §2 shape (Expo a
 - **File scope:** `packages/domain/src/units/**` (a helper and its tests only, if the worker puts the kind check there), `packages/contracts/src/errors.ts`, `packages/contracts/src/inventory.ts` (doc comments only unless a field is needed), their tests, `apps/api/src/db/inventory/{write-service,create-service}.ts` and their tests, `apps/api/src/http/{routes,ledger-errors,shopping-routes}.ts` and the inventory write DB tests, `apps/mobile/src/inventory/quantity.ts`, `apps/mobile/src/api/client.ts` (error mapping only), `apps/mobile/app/inventory/[itemId].tsx`, `apps/mobile/app/add/scan.tsx`, their tests, `docs/handoff/M2-T8.worker.md`.
 - **Out of scope:** a per-product "sold by the half" unit; converting count to mass; rewriting existing fractional rows; the `ApiError` client type (separate follow-up).
 - **DoD:** rule 26; the report proposes the copy-deck lines (S5 amount field, §8 `COUNT_NOT_WHOLE`) for the architect to apply.
+
+#### M3-T11: "tomorrow" for a best-by one day out (M3-T9 follow-up) ✅ DONE 2026-10-07 (84af14b, review PASS WITH FIXES (format) then PASS, Sonnet; sent back once before review because a rolling 24h count made a best-by later today read tomorrow)
+- **Implementation model:** Sonnet. A wording fix with tests.
+- **Review model:** Sonnet. Display copy only; the expired rule (D-030) stays as built.
+- **Objective:** a best-by one day out reads "tomorrow" on S4 and "{label} · expires tomorrow" on S5 instead of "use today", which D-030 reserves for today.
+- **Context:** `apps/mobile/src/inventory/expiry.ts`: `expiryUrgencyText` maps `days <= 1` to "use today" (about lines 49 to 60) and `expiryDisplayText` builds the S5 string from it. Tests in `expiry.test.ts`. The copy-deck S5 expiry line (docs/design/copy-deck.md about line 259) is updated by the architect at acceptance.
+- **Dependencies:** none.
+- **Invariants:** D-030: a past date reads "expired" only for a Known Fact, otherwise "may be expired"; a date that is today reads "use today" and "expires today"; day granularity (a best-by earlier today is still today); accessibility labels carry the same words as the visible text; no em dashes.
+- **Acceptance criteria:** days = 1 gives "tomorrow" (S4) and "expires tomorrow" (S5) with matching accessibility text; days 0 and >= 2 unchanged; the freshness ring colours unchanged; a doc comment on `expiryUrgencyText` points callers to `expiryDisplayText` so no screen skips the "may be expired" rule.
+- **Tests required:** unit tests for days -1, 0, 1, 2 across tiers; any screen test asserting "use today" for a one-day item updated.
+- **File scope:** `apps/mobile/src/inventory/expiry.ts`, `apps/mobile/src/inventory/expiry.test.ts`, screen tests under `apps/mobile/**` that assert the changed string, `docs/handoff/M3-T11.worker.md`.
+- **Out of scope:** screen layout; copy-deck edits (proposed in the report).
+- **DoD:** rule 26; the report proposes the copy-deck line.
+
+#### M3-T12: One typed client error (`ApiError`); COUNT_NOT_WHOLE through `ledgerErrorMessage` (BUG-004 and M2-T8 follow-ups) ✅ DONE 2026-10-07 (d23a3c6, review PASS WITH FIXES (format) then PASS, Sonnet)
+- **Implementation model:** Sonnet. Client refactor with clear edges, no domain arithmetic.
+- **Review model:** Sonnet. Not on the rule-23 list; the reviewer checks no refusal now renders a different sentence than before.
+- **Objective:** the HTTP client throws one typed error carrying the contracts' `API_ERROR_CODES` plus client-only codes, and every ledger refusal, `COUNT_NOT_WHOLE` included, gets its sentence from `ledgerErrorMessage`, so screens stop special-casing codes.
+- **Context:** `apps/mobile/src/api/client.ts` (no `ApiError` class; `extractErrorCode` about line 428; coded refusals ride on `LedgerRefusedError` from `apps/mobile/src/inventory/errors.ts`, which also holds `ledgerErrorMessage` and `messageForLedgerError`); `apps/mobile/src/inventory/quantity.ts` `isCountNotWholeRefusal` (about line 284) and `COUNT_NOT_WHOLE_MESSAGE`; `app/add/scan.tsx` (about line 477) and `app/inventory/[itemId].tsx` wrap the refusal themselves; `app/onboarding/account.tsx` and `src/scan/product-lookup-errors.ts` also consume client errors. `packages/contracts/src/errors.ts` holds the code list. Copy-deck §8 (about line 334) is binding for every refusal sentence.
+- **Dependencies:** none.
+- **Invariants:** every refusal renders exactly the copy-deck §8 sentence it renders today (the client never shows the server's sentence); `ProductLookupRefusedError` behaviour on S7 unchanged; fixture client behaviour unchanged; no new dependency; no em dashes.
+- **Acceptance criteria:** an `ApiError` with `code`, HTTP `status` and a typed code union (contracts codes plus client-only codes); `LedgerRefusedError` becomes it or extends it, whichever keeps the diff smaller, with callers' `instanceof` checks still correct; `ledgerErrorMessage` maps `COUNT_NOT_WHOLE` to "Use a whole number for this item."; `isCountNotWholeRefusal` and the screen-level wrappers in `scan.tsx` and `[itemId].tsx` removed; a test proves each §8 code still maps to its sentence.
+- **Tests required:** `errors.test.ts`, `client.test.ts`, `client-move.test.ts`, `quantity.test.ts`, `item-detail-typed-quantity.test.ts`, `scan-screen.test.ts` updated as needed; full mobile test, typecheck, lint.
+- **File scope:** `apps/mobile/src/api/client.ts`, `apps/mobile/src/inventory/errors.ts`, `apps/mobile/src/inventory/quantity.ts` (the refusal helper and message constant only), `apps/mobile/src/scan/product-lookup-errors.ts` and `apps/mobile/app/onboarding/account.tsx` (only if the type change forces it), `apps/mobile/app/add/scan.tsx`, `apps/mobile/app/inventory/[itemId].tsx`, the tests named above, `docs/handoff/M3-T12.worker.md`.
+- **Out of scope:** the unhandled-rejection test helper and the S5 confirm re-read (other BUG-004 follow-ups); contracts changes; COUNT aliases (M9-T2).
+- **DoD:** rule 26.
+
+#### M9-T1: CI red, pnpm audit fails on shell-quote (critical) and source-map-js (high) ✅ DONE 2026-10-07 (376f62b, review PASS, Sonnet)
+- **Implementation model:** Sonnet. Dependency pins in the brace-expansion pattern already in `pnpm-workspace.yaml`.
+- **Review model:** Sonnet. Tooling; the reviewer re-runs the audit and the mobile export.
+- **Objective:** `main` goes green again: the `quality` job's `pnpm audit --audit-level=high` passes.
+- **Context:** CI failed on b138704 on two advisories published after the last green run, both transitive through Expo tooling: shell-quote (critical, fixed in 1.11.0, about 100 paths) and source-map-js (high, fixed in 1.2.2, about 44 paths). Lint, typecheck and format pass. `pnpm-workspace.yaml` carries `overrides` (brace-expansion) and `auditConfig.ignoreGhsas` (node-forge, braces) with reasons; CONTRIBUTING.md "Dependency audit" records each exception. CI step "Dependency audit (high+ severity)" in `.github/workflows/`.
+- **Dependencies:** none. First in the batch.
+- **Invariants:** rule 11 (transitive pins only, no new direct package; say why in the report); no `ignoreGhsas` entry unless an override breaks Expo, and then with a reason in the same comment style plus a CONTRIBUTING.md line; audit level not lowered; no secrets.
+- **Acceptance criteria:** overrides pin shell-quote and source-map-js to the patched versions, bounded like the brace-expansion entries so no future major is forced; the lockfile regenerates; `pnpm audit --audit-level=high` exits 0; the report says whether either package reaches the API's production dependencies (`pnpm why` summarised); typecheck, lint, format check, the full test suite (no DB) and the mobile web export as CI runs it all pass; the report names any Expo package pinning an incompatible major.
+- **Tests required:** none new; the gates above.
+- **File scope:** `pnpm-workspace.yaml`, `pnpm-lock.yaml`, root `package.json` (only if overrides must live there), `CONTRIBUTING.md` ("Dependency audit" section only), `docs/handoff/M9-T1.worker.md`.
+- **Out of scope:** Expo upgrades; any other advisory unless it also fails the high gate (then report it, and fix it the same way if it is the same shape).
+- **DoD:** rule 26; after merge the architect pushes and checks the CI run is green.
+
+#### M9-T2: COUNT unit aliases published from contracts with a consistency test (M2-T8 follow-up) ✅ DONE 2026-10-07 (8948abb, review PASS WITH FIXES (format) then PASS, Sonnet)
+- **Implementation model:** Sonnet. Moving a list to its owning package plus a test.
+- **Review model:** Sonnet. Display and validation input only; D-029 enforcement stays server-side.
+- **Objective:** one published list of COUNT unit spellings in `packages/contracts/src/units.ts`, proven equal to the domain registry, imported by mobile instead of restated.
+- **Context:** `apps/mobile/src/inventory/quantity.ts` (about lines 189 to 213) restates `COUNT_UNIT_ALIASES` from `packages/domain/src/units/registry.ts` (`COUNT_UNITS[0].aliases` plus the canonical `count`); `packages/contracts/src/units.ts` has `UNIT_KINDS_DTO` and a COUNT entry (`["each"]`). Check how contracts and domain relate before choosing where the consistency test lives (a test in a package that imports both cleanly is fine).
+- **Dependencies:** none. Touches a different part of `quantity.ts` than M3-T12.
+- **Invariants:** the set of spellings does not change; `isCountUnit` behaviour (case-insensitive, trimmed) unchanged; no new dependency; no em dashes.
+- **Acceptance criteria:** contracts exports a frozen alias list; mobile imports it and its local copy is gone; a test fails if the contracts list and the domain registry's COUNT spellings differ in either direction; existing quantity tests pass.
+- **Tests required:** the consistency test; typecheck, lint and tests for contracts, domain and mobile.
+- **File scope:** `packages/contracts/src/units.ts`, `packages/contracts/src/index.ts` (if exports are listed there), one new consistency test file, `apps/mobile/src/inventory/quantity.ts` (the alias block and `isCountUnit` only), `apps/mobile/src/inventory/quantity.test.ts`, `docs/handoff/M9-T2.worker.md`.
+- **Out of scope:** the server's D-029 check; the S8 package-size fraction case; other unit kinds.
+- **DoD:** rule 26.
