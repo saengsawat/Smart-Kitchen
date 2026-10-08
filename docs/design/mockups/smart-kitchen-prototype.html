@@ -1,9 +1,35 @@
 <!doctype html>
+<!--
+  PROTOTYPE v5 CONSISTENCY TABLE (M3-E0-T4). One fixture household. Precedence when screens disagree: a screen already built in M3
+  (S4 inventory, S5 item detail, S8 scan, S11 shopping, S12 profile) wins; narrative copy (Why this, assistant, Home cards, recipe detail) follows it.
+  Check any copy edit against this table before saving.
+
+  Household: Chen. 2 members (S12): Dean Chen (owner, no known allergies), Maya Chen (peanut, sesame, severe). So every verdict says "2 members".
+
+  item            on hand                    needed per recipe / list                          gap
+  Chicken breast  1.25 lb (Fact, bought Sat) stir-fry 2 lb (Shopping: need 2 lb, Tonight)     0.75 lb short, ON the shopping list (Home, Menu, detail, cook sheet, assistant all say so)
+  Spinach         5 oz (Fact)                stir-fry 5 oz                                     none
+  Mushrooms       8 oz (AI, needs confirm)   stir-fry 8 oz                                     none
+  Rice (basmati)  ~4 cups (Est.)             stir-fry ~2 cups + salmon ~1 cup = Shopping 3 cups this week   none ("already have")
+  Salmon fillets  12 oz (2 x 6 oz, Fact)     salmon 12 oz                                      none
+  Soy sauce       24 tbsp (no tier)          salmon 2 tbsp (Shopping: need 8 tbsp this week)   none, "sufficient" everywhere (not short)
+  Miso paste      none                       salmon 2 tbsp                                     missing, NOT yet on the list (detail has "+ list")
+  Broccoli        none                       salmon 2 lb (Weekend menu)                        2 lb, ON the shopping list
+  Granola         none                       parfait 1 (Weekend menu)                          1, ON the shopping list
+  Strawberries    1 lb (AI, needs confirm)   parfait                                           none
+  Greek yogurt    3 x 16 oz (Fact)           parfait                                           none
+  Eggs            8 of 12 (Fact)             -                                                 -
+  Olive oil       1 bottle (Fact)            -                                                 checked off by Dean on the list
+
+  Counts: Inventory 9 items, 67% verified (6 of 9 Known Fact). Fridge 6, Freezer 1, Pantry 2. Use it soon 4 (strawberries 1d, chicken 2d, spinach 3d, mushrooms 3d).
+  Needs your confirmation: 2 (Strawberries, Mushrooms), on Home and in the Inventory tray alike. Shopping: 5 to buy (chicken, broccoli, garlic, granola, paper towels).
+  Home "sparse" is a dev state of the same kitchen with fewer items on hand; the quantities it shows still match the rows above.
+-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>KitchenSmart · Prototype v4</title>
+<title>KitchenSmart · Prototype v5</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&display=swap">
@@ -34,9 +60,14 @@
     --danger-bg:#f9d9d9;
     --ai:       #7b4cb5;   /* AI Interpretation · purple appears nowhere else */
     --ai-bg:    #eadff7;
-    --r-sm: 12px; --r-md: 18px; --r-lg: 24px;
+    --info:     #3898ec;   /* sentiment.info, focus rings only (design-direction.md token table). Not in the v4 :root; added for the T4 focus ring, no other use. */
+  --r-sm: 12px; --r-md: 18px; --r-lg: 24px;
   }
   * { box-sizing: border-box; }
+  /* T4 (c): visible focus ring in the info blue token for every keyboard-focusable element */
+  :focus-visible { outline: 3px solid var(--info); outline-offset: 2px; box-shadow: 0 0 0 2px var(--ink); }
+  .nav .fab:focus-visible { box-shadow: 0 0 0 2px var(--ink), 0 10px 24px -8px rgba(30,24,19,.6); }
+  .seg button.on:focus-visible { box-shadow: 0 0 0 2px var(--ink); }
   html, body { margin: 0; }
   body {
     padding: 28px 0 48px; background: #cdbfa8;
@@ -67,20 +98,20 @@
   .hero h1 em { font-style: italic; color: #f4b48f; font-weight: 500; }
   .hbtn { width: 40px; height: 40px; border-radius: 50%; background: rgba(247,239,226,.12); border: 1px solid rgba(247,239,226,.18); display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--cream); font-family: inherit; font-size: 13px; font-weight: 700; }
   .pills { display: flex; gap: 8px; margin-top: 18px; position: relative; }
-  .pill { flex: 1; background: rgba(247,239,226,.09); border: 1px solid rgba(247,239,226,.14); border-radius: 16px; padding: 10px 10px 9px; cursor: pointer; display: flex; flex-direction: column; gap: 2px; }
+  .pill { flex: 1; font-family: inherit; color: inherit; text-align: left; align-items: flex-start; background: rgba(247,239,226,.09); border: 1px solid rgba(247,239,226,.14); border-radius: 16px; padding: 10px 10px 9px; cursor: pointer; display: flex; flex-direction: column; gap: 2px; }
   .pill:active { background: rgba(247,239,226,.16); }
   .pill .v { font-size: 22px; font-weight: 700; letter-spacing: -.5px; display: flex; align-items: center; gap: 6px; }
   .pill .l { font-size: 11px; color: #c9b9a4; font-weight: 500; }
   .pill .dot { width: 8px; height: 8px; border-radius: 50%; }
-  .ask { margin-top: 12px; height: 48px; border-radius: 999px; background: rgba(247,239,226,.10); border: 1px solid rgba(247,239,226,.22); display: flex; align-items: center; gap: 10px; padding: 0 6px 0 16px; cursor: pointer; color: #d8c9b3; font-size: 14px; }
+  .ask { margin-top: 12px; width: 100%; font-family: inherit; text-align: left; height: 48px; border-radius: 999px; background: rgba(247,239,226,.10); border: 1px solid rgba(247,239,226,.22); display: flex; align-items: center; gap: 10px; padding: 0 6px 0 16px; cursor: pointer; color: #d8c9b3; font-size: 14px; }
   .ask:active { background: rgba(247,239,226,.18); }
   .ask span { flex: 1; }
-  .ask .go { width: 36px; height: 36px; border-radius: 50%; background: rgba(247,239,226,.12); border: 1px solid rgba(247,239,226,.18); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .ask .go { flex: 0 0 36px; width: 36px; height: 36px; border-radius: 50%; background: rgba(247,239,226,.12); border: 1px solid rgba(247,239,226,.18); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
 
   /* ============ SECTION HEADERS ============ */
   .sec { display: flex; align-items: baseline; justify-content: space-between; padding: 22px 18px 10px; }
   .sec h2 { margin: 0; font-size: 21px; }
-  .sec a { font-size: 13px; font-weight: 600; color: var(--ink-2); cursor: pointer; }
+  .sec .lnk { font-family: inherit; font-size: 13px; font-weight: 600; color: var(--ink-2); cursor: pointer; background: none; border: 0; padding: 0; }
 
   /* ============ CARDS ============ */
   .card { background: var(--paper); border-radius: var(--r-md); border: 1px solid var(--line); overflow: hidden; }
@@ -98,9 +129,9 @@
   /* big recipe hero */
   .rhero { position: relative; height: 230px; }
   .rhero .over { position: absolute; left: 16px; right: 16px; bottom: 14px; color: var(--cream); }
-  .rhero .over h3 { margin: 6px 0 4px; font-size: 26px; line-height: 1.05; color: #fff; }
+  .rhero .over h3, .rhero .over h2 { margin: 6px 0 4px; font-size: 26px; line-height: 1.05; color: #fff; }
   .rhero .over .meta { font-size: 12.5px; color: #e9dcc9; display: flex; gap: 8px; align-items: center; }
-  .tag { display: inline-flex; align-items: center; gap: 5px; padding: 5px 10px; border-radius: 999px; font-size: 11.5px; font-weight: 700; letter-spacing: .1px; }
+  .tag { display: inline-flex; align-items: center; gap: 5px; padding: 5px 10px; border-radius: 999px; font-size:12px; font-weight: 700; letter-spacing: .1px; }
   .tag.glass { background: rgba(30,24,19,.55); color: #fff; backdrop-filter: blur(4px); border: 1px solid rgba(255,255,255,.18); }
   .rbody { padding: 14px 16px 16px; display: flex; flex-direction: column; gap: 10px; }
   .have { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -112,7 +143,7 @@
   .verdict { display: flex; flex-direction: column; gap: 3px; }
   .verdict .line { display: flex; align-items: center; gap: 7px; font-size: 12.5px; font-weight: 600; color: var(--ink-2); }
   .verdict.unk .line { color: var(--amber); }
-  .verdict .caveat { font-size: 11px; color: var(--ink-3); padding-left: 22px; }
+  .verdict .caveat { font-size: 12px; color: var(--ink-3); padding-left: 22px; }
   .why { display: none; padding: 11px 13px; border-radius: 12px; background: var(--sand); font-size: 12.5px; line-height: 1.5; color: var(--ink-2); }
   .why.open { display: block; }
   .btns { display: flex; gap: 10px; }
@@ -138,7 +169,7 @@
   .ringbadge circle { fill: none; stroke-width: 3; stroke-linecap: round; }
   .ringbadge .t { stroke: var(--line); }
   .ringbadge .f { stroke-dasharray: 88; }
-  .ringbadge .d { font-size: 10px; font-weight: 800; position: relative; }
+  .ringbadge .d { font-size:11px; font-weight: 800; position: relative; }
   .fr-now .f { stroke: var(--rose); } .fr-now .d { color: var(--rose); }
   .fr-soon .f { stroke: var(--amber); } .fr-soon .d { color: var(--amber); }
   .fr-fresh .f { stroke: var(--green); } .fr-fresh .d { color: var(--green); }
@@ -160,7 +191,7 @@
   .titem .ph .mono { font-size: 18px; }
   .titem .m { flex: 1; min-width: 0; }
   .titem .m b { font-size: 13.5px; display: block; }
-  .titem .m i { font-style: normal; font-size: 11.5px; color: var(--ink-3); }
+  .titem .m i { font-style: normal; font-size:12px; color: var(--ink-3); }
   .okbtn { height: 32px; padding: 0 12px; border-radius: 9px; border: none; background: var(--ai); color: #fff; font-family: inherit; font-size: 12.5px; font-weight: 700; cursor: pointer; }
   .okbtn.ghost { background: transparent; color: var(--ink-2); }
 
@@ -200,7 +231,7 @@
   .mode.rec { background: var(--espresso); color: var(--cream); } .mode.rec .ic { background: rgba(247,239,226,.14); }
   .mode.cam { background: var(--ai-bg); color: #3f2661; } .mode.cam .ic { background: #fff; color: var(--ai); }
   .mode.man { background: var(--paper); color: var(--ink); border: 1px solid var(--line); } .mode.man .ic { background: var(--sand); }
-  .phase { position: absolute; top: 12px; right: 12px; font-size: 10px; font-weight: 800; letter-spacing: .6px; text-transform: uppercase; padding: 3px 7px; border-radius: 6px; background: rgba(255,255,255,.22); }
+  .phase { position: absolute; top: 12px; right: 12px; font-size:11px; font-weight: 800; letter-spacing: .6px; text-transform: uppercase; padding: 3px 7px; border-radius: 6px; background: rgba(255,255,255,.22); }
   .mode.man .phase { background: var(--sand); color: var(--ink-3); }
 
   /* scanner */
@@ -222,7 +253,7 @@
   .macros { display: flex; border-top: 1px solid var(--line); margin-top: 12px; padding-top: 12px; }
   .macros div { flex: 1; text-align: center; }
   .macros b { font-size: 17px; display: block; }
-  .macros i { font-style: normal; font-size: 10px; font-weight: 700; letter-spacing: .7px; text-transform: uppercase; color: var(--ink-3); }
+  .macros i { font-style: normal; font-size:11px; font-weight: 700; letter-spacing: .7px; text-transform: uppercase; color: var(--ink-3); }
   .kv { display: flex; align-items: center; justify-content: space-between; padding: 12px 0; border-top: 1px solid var(--line); }
   .kv .k { font-size: 11px; font-weight: 700; letter-spacing: .7px; text-transform: uppercase; color: var(--ink-3); }
   .kv .v { font-size: 14px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
@@ -247,7 +278,7 @@
   .rrow { margin: 0 18px 10px; background: var(--paper); border: 1px solid var(--line); border-radius: 18px; overflow: hidden; display: flex; cursor: pointer; }
   .rrow .ph { width: 110px; flex-shrink: 0; } .rrow .ph .mono { font-size: 36px; }
   .rrow .b { padding: 12px 14px; flex: 1; display: flex; flex-direction: column; gap: 6px; }
-  .rrow h4 { margin: 0; font-size: 17px; line-height: 1.1; }
+  .rrow h2 { margin: 0; font-size: 17px; line-height: 1.1; }
   .rrow .meta { font-size: 12px; color: var(--ink-3); display: flex; gap: 6px; align-items: center; }
   .match { font-size: 12px; font-weight: 800; color: var(--green); }
 
@@ -269,7 +300,7 @@
   .bub { max-width: 86%; padding: 12px 14px; border-radius: 18px; font-size: 14px; line-height: 1.5; }
   .bub.me { align-self: flex-end; background: var(--espresso); color: var(--cream); border-bottom-right-radius: 6px; }
   .bub.ai { align-self: flex-start; background: var(--paper); border: 1px solid var(--line); border-bottom-left-radius: 6px; display: flex; flex-direction: column; gap: 9px; }
-  .evid { display: flex; align-items: center; gap: 8px; font-size: 11.5px; color: var(--ink-3); padding-top: 8px; border-top: 1px solid var(--line); flex-wrap: wrap; }
+  .evid { display: flex; align-items: center; gap: 8px; font-size:12px; color: var(--ink-3); padding-top: 8px; border-top: 1px solid var(--line); flex-wrap: wrap; }
   .qchips { display: flex; gap: 8px; padding: 6px 18px 10px; overflow-x: auto; }
   .qchips::-webkit-scrollbar { display: none; }
   .inbar { display: flex; gap: 8px; padding: 10px 18px 24px; }
@@ -278,12 +309,12 @@
 
   /* ============ NAV · floating pill + espresso FAB ============ */
   .nav { position: absolute; left: 16px; right: 16px; bottom: 18px; height: 66px; background: var(--paper); border: 1px solid var(--line); border-radius: 999px; display: flex; align-items: center; box-shadow: 0 12px 30px -12px rgba(30,24,19,.45); z-index: 10; }
-  .nav button { flex: 1; height: 100%; background: none; border: none; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; color: var(--ink-3); font-family: inherit; font-size: 10.5px; font-weight: 600; }
+  .nav button { flex: 1; height: 100%; background: none; border: none; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; color: var(--ink-3); font-family: inherit; font-size:11px; font-weight: 600; }
   .nav button.on { color: var(--brand-deep); }
   .nav button.on svg { stroke: var(--brand); }
   .nav .gap { flex: 0 0 72px; }
-  .fab { position: absolute; left: 50%; top: -22px; transform: translateX(-50%); width: 62px; height: 62px; border-radius: 50%; background: var(--espresso); border: 4px solid var(--sand); display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 10px 24px -8px rgba(30,24,19,.6); transition: transform .12s; }
-  .fab:active { transform: translateX(-50%) scale(.93); }
+  .nav .fab { position: absolute; left: 50%; top: -22px; transform: translateX(-50%); flex: none; width: 62px; height: 62px; padding: 0; border-radius: 50%; background: var(--espresso); border: 4px solid var(--sand); display: flex; flex-direction: row; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 10px 24px -8px rgba(30,24,19,.6); transition: transform .12s; }
+  .nav .fab:active { transform: translateX(-50%) scale(.93); }
   .back { display: flex; align-items: center; gap: 12px; padding: 22px 18px 12px; }
   .back h1 { margin: 0; font-size: 24px; }
 
@@ -309,7 +340,7 @@
   /* first-run / empty states */
   .empty { margin: 18px; padding: 28px 20px; border-radius: var(--r-lg); background: var(--paper); border: 1px dashed var(--line); text-align: center; display: flex; flex-direction: column; align-items: center; gap: 10px; }
   .empty .ic { width: 56px; height: 56px; border-radius: 50%; background: var(--sand); display: flex; align-items: center; justify-content: center; color: var(--ink-2); }
-  .empty h3 { margin: 0; font-size: 18px; }
+  .empty h3, .empty h2 { margin: 0; font-size: 18px; }
   .empty p { margin: 0; font-size: 13px; color: var(--ink-2); line-height: 1.5; max-width: 260px; }
   #scr-home:not(.firstrun) .firstrun-only,
   #scr-inventory:not(.firstrun) .firstrun-only { display: none; }
@@ -318,7 +349,7 @@
   /* OQ-D9 · Home adapts to kitchen state: firstrun (empty) · sparse (few items, no honest recommendation yet) · ready (dashboard) */
   #scr-home .sparse-only { display: none; }
   #scr-home.sparse .sparse-only { display: block; }
-  #scr-home.sparse .pill.sparse-only { display: block; }
+  #scr-home.sparse .pill.sparse-only { display: flex; }
   #scr-home.sparse .steady-only, #scr-home.sparse .ready-only { display: none; }
   #scr-home.firstrun .ready-only { display: none; }
   #scr-home:not(.firstrun) .hero .firstrun-only { display: none; }
@@ -333,20 +364,20 @@
   .menucard { margin: 0 18px 12px; background: var(--paper); border: 1px solid var(--line); border-radius: var(--r-md); overflow: hidden; }
   .menucard .mh { display: flex; align-items: center; justify-content: space-between; padding: 14px 14px 8px; }
   .menucard .mh b { font-size: 18px; display: block; } .menucard .mh i { font-style: normal; font-size: 12px; color: var(--ink-3); }
-  .mtag { font-size: 10.5px; font-weight: 800; letter-spacing: .5px; text-transform: uppercase; padding: 4px 8px; border-radius: 999px; background: var(--sand); color: var(--ink-3); }
+  .mtag { font-size:11px; font-weight: 800; letter-spacing: .5px; text-transform: uppercase; padding: 4px 8px; border-radius: 999px; background: var(--sand); color: var(--ink-3); }
   .slot { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-top: 1px solid var(--line); cursor: pointer; }
-  .slot .d { width: 40px; flex-shrink: 0; } .slot .d b { font-size: 13px; display: block; } .slot .d i { font-style: normal; font-size: 10.5px; color: var(--ink-3); }
+  .slot .d { width: 40px; flex-shrink: 0; } .slot .d b { font-size: 13px; display: block; } .slot .d i { font-style: normal; font-size:11px; color: var(--ink-3); }
   .slot .ph { width: 48px; height: 48px; border-radius: 12px; flex-shrink: 0; } .slot .ph .mono { font-size: 20px; }
-  .slot .m { flex: 1; min-width: 0; } .slot .m b { font-size: 14px; display: block; } .slot .m i { font-style: normal; font-size: 11.5px; color: var(--ink-3); }
+  .slot .m { flex: 1; min-width: 0; } .slot .m b { font-size: 14px; display: block; } .slot .m i { font-style: normal; font-size:12px; color: var(--ink-3); }
   .slot.empty-slot { border-style: dashed; background: var(--sand); }
   .mfoot { display: flex; align-items: center; gap: 10px; padding: 12px 14px 8px; border-top: 1px solid var(--line); background: var(--amber-bg); }
   .mfoot .gap { flex: 1; min-width: 0; } .mfoot .gap b { font-size: 13px; color: var(--amber); display: block; } .mfoot .gap i { font-style: normal; font-size: 11px; color: var(--ink-2); }
   .okbtn.addm { margin-top: 8px; height: 30px; font-size: 12px; background: var(--espresso); }
   .btns.three .btn { font-size: 13px; padding: 0 6px; white-space: nowrap; }
   .btns.three .btn.pri { flex: 1.15; }
-  .addlist { height: 28px; padding: 0 7px; border-radius: 8px; border: 1px solid var(--line); background: var(--paper); color: var(--ink); font-family: inherit; font-size: 11.5px; font-weight: 700; cursor: pointer; flex-shrink: 0; }
+  .addlist { height: 28px; padding: 0 7px; border-radius: 8px; border: 1px solid var(--line); background: var(--paper); color: var(--ink); font-family: inherit; font-size:12px; font-weight: 700; cursor: pointer; flex-shrink: 0; }
   .srow.ai-sugg { border-color: #d9c6ee; background: #f7f2fc; }
-  .msrc { font-size: 10.5px; font-weight: 800; letter-spacing: .3px; text-transform: uppercase; color: var(--brand-on-tint); background: var(--brand-tint); padding: 2px 6px; border-radius: 6px; margin-right: 4px; }
+  .msrc { font-size:11px; font-weight: 800; letter-spacing: .3px; text-transform: uppercase; color: var(--brand-on-tint); background: var(--brand-tint); padding: 2px 6px; border-radius: 6px; margin-right: 4px; }
 
   /* offline banner + queued state */
   .banner { margin: 0 18px 10px; padding: 10px 14px; border-radius: 12px; background: var(--sand-2); border: 1px solid var(--line); display: flex; align-items: center; gap: 9px; font-size: 12.5px; color: var(--ink-2); }
@@ -384,23 +415,23 @@
   .ledgerrow .ic { width: 30px; height: 30px; border-radius: 9px; background: var(--sand); display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: var(--ink-2); }
   .ledgerrow .m { flex: 1; min-width: 0; }
   .ledgerrow .m b { font-size: 13.5px; display: block; }
-  .ledgerrow .m i { font-style: normal; font-size: 11.5px; color: var(--ink-3); display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+  .ledgerrow .m i { font-style: normal; font-size:12px; color: var(--ink-3); display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
   .ledgerrow .amt { font-size: 15px; font-weight: 800; }
   .ledgerrow .amt.neg { color: var(--ink-2); }
   .ledgerrow .amt.pos { color: var(--green); }
   .ledgerrow.sys { background: var(--sand); border-style: dashed; }
   .ledgerrow.sys .m i { color: var(--ink-3); font-style: italic; }
-  .mchip { width: 22px; height: 22px; border-radius: 50%; background: var(--sand-2); color: var(--ink-2); font-size: 10px; font-weight: 800; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .mchip { width: 22px; height: 22px; border-radius: 50%; background: var(--sand-2); color: var(--ink-2); font-size:11px; font-weight: 800; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
   .reasonrow { display: flex; gap: 8px; padding: 0 18px 12px; overflow-x: auto; }
   .lotrow { margin: 0 18px 8px; display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 12px; background: var(--paper); border: 1px solid var(--line); }
   .lotrow .m { flex: 1; }
   .lotrow .m b { font-size: 13.5px; display: block; }
-  .lotrow .m i { font-style: normal; font-size: 11.5px; color: var(--ink-3); }
+  .lotrow .m i { font-style: normal; font-size:12px; color: var(--ink-3); }
 
   /* legend */
   .legrow { margin: 0 18px 10px; padding: 12px 14px; border-radius: 12px; background: var(--paper); border: 1px solid var(--line); display: flex; gap: 12px; align-items: flex-start; }
   .legrow p { margin: 4px 0 0; font-size: 12.5px; color: var(--ink-2); line-height: 1.5; }
-  .leglink { font-size: 12px; font-weight: 600; color: var(--ink); text-decoration: underline; cursor: pointer; }
+  .leglink { font-family: inherit; font-size: 12px; font-weight: 600; color: var(--ink); text-decoration: underline; cursor: pointer; background: none; border: 0; padding: 0; }
 
   /* allergy setup (S2) */
   .allergychip { padding: 9px 14px; border-radius: 999px; border: 1.5px solid var(--line); background: var(--paper); font-family: inherit; font-size: 13px; font-weight: 600; color: var(--ink-2); cursor: pointer; }
@@ -409,14 +440,14 @@
   .allergychip.on + .sevrow { display: flex; }
   .sevbtn { flex: 1; height: 34px; border-radius: 9px; border: 1px solid var(--line); background: var(--paper); font-family: inherit; font-size: 12.5px; font-weight: 700; color: var(--ink-2); cursor: pointer; }
   .sevbtn.on { background: var(--danger); border-color: var(--danger); color: #fff; }
-  .noneopt { margin: 4px 18px 0; padding: 12px 14px; border-radius: 12px; border: 1.5px solid var(--line); background: var(--paper); display: flex; align-items: center; gap: 10px; cursor: pointer; font-size: 13.5px; font-weight: 600; }
+  .noneopt { margin: 4px 18px 0; padding: 12px 14px; min-height: 44px; border-radius: 12px; border: 1.5px solid var(--line); background: var(--paper); display: flex; align-items: center; gap: 10px; cursor: pointer; font-size: 13.5px; font-weight: 600; }
   .noneopt.on { border-color: var(--green); background: var(--green-bg); color: var(--green); }
 
   /* recipe detail verdict variants + cook confirm sheet */
   .ingredrow { margin: 0 18px 8px; display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 12px; background: var(--paper); border: 1px solid var(--line); }
   .ingredrow .m { flex: 1; }
   .ingredrow .m b { font-size: 14px; display: block; }
-  .ingredrow .stat { font-size: 11.5px; font-weight: 700; padding: 3px 9px; border-radius: 999px; }
+  .ingredrow .stat { font-size:12px; font-weight: 700; padding: 3px 9px; border-radius: 999px; }
   .ingredrow .stat.have { background: var(--green-bg); color: var(--green); }
   .ingredrow .stat.short { background: var(--amber-bg); color: var(--amber); }
   .ingredrow .stat.miss { background: var(--rose-bg); color: var(--rose); }
@@ -440,10 +471,60 @@
   #scr-recipe-detail.v-ok .v-ok-only { display: block; }
   #scr-recipe-detail.v-unk .v-unk-only { display: block; }
   #scr-recipe-detail.v-blocked .v-blocked-only { display: block; }
+
+  /* ============ M3-E0-T4 additions below ============ */
+
+  /* (a) modal sheets */
+  .modal { position: absolute; inset: 0; z-index: 30; display: none; flex-direction: column; justify-content: flex-end; }
+  .modal.open { display: flex; }
+  .modal-scrim { position: absolute; inset: 0; background: rgba(30,24,19,.55); }
+  .modal-sheet { position: relative; max-height: 88%; overflow-y: auto; background: var(--paper); border-radius: var(--r-lg) var(--r-lg) 0 0; padding: 18px 18px calc(22px + env(safe-area-inset-bottom)); display: flex; flex-direction: column; gap: 10px; box-shadow: 0 -12px 40px rgba(30,24,19,.35); }
+  .modal-sheet:focus { outline: none; }
+  .mtitle { margin: 0; font-size: 15px; font-weight: 700; }
+  .allocrow.pick { width: 100%; min-height: 44px; background: none; border: 0; border-top: 1px solid var(--line); font-family: inherit; color: inherit; text-align: left; cursor: pointer; }
+  .allocrow.pick:first-of-type { border-top: none; }
+  .verdict .uline { font-size: 13px; color: var(--ink); padding-left: 22px; line-height: 1.4; }
+
+  /* (c) hit areas: grow the box where the neighbours allow it, invisible hit-slop elsewhere (tokens.md 5) */
+  .hbtn { width: 44px; height: 44px; }
+  .iconb { width: 44px; height: 44px; padding: 0; font-family: inherit; }
+  .step button { width: 44px; height: 44px; }
+  .seg button { height: 44px; }
+  .sevbtn { height: 44px; }
+  .chip, .loc, .allergychip { min-height: 44px; }
+  .dsw { min-height: 44px; }
+  .okbtn, .toastUndo, .addlist, .loop button, .leglink, .sec .lnk, .chk { position: relative; }
+  .okbtn::before, .toastUndo::before, .addlist::before, .loop button::before, .leglink::before, .sec .lnk::before, .chk::before { content: ""; position: absolute; }
+  .okbtn::before { inset: -6px 0; }
+  .okbtn.addm::before { inset: -7px 0; }
+  .toastUndo::before { inset: -10px -4px; }
+  .addlist::before { inset: -8px -4px; }
+  .loop button::before { inset: -5px 0; }
+  .leglink::before { inset: -15px -4px; }
+  .sec .lnk::before { inset: -14px -6px; }
+  .chk::before { inset: -9px; }
+  /* the whole shopping row toggles its check: the check's hit area is the row itself */
+  .srow { position: relative; }
+  .srow .chk { position: static; }
+  .srow .chk::before { inset: 0; }
+  .srow .okbtn { z-index: 2; }
+  .srow .okbtn::before { inset: -10px -4px; }
+  /* real buttons that replaced divs */
+  .cardlink { position: absolute; inset: 0; z-index: 2; width: 100%; background: none; border: 0; padding: 0; cursor: pointer; }
+  .srow .amt { white-space: nowrap; }
+
+  /* (c) reduced motion (tokens.md 6) */
+  @media (prefers-reduced-motion: reduce) {
+    .screen.active { animation: none; }
+    .laser { animation: none; top: 74px; }
+    .card.tap, .btn, .item, .mode, .nav .fab { transition: none; }
+    .chk svg { transform: none; }
+    .toast, .toast.show { transform: translateX(-50%); }
+  }
 </style>
 </head>
 <body>
-<div class="hint">KitchenSmart prototype v4 (2026-09-21: Menu tab replaces Recipes per D-020, Home adapts to kitchen state per OQ-D9, A12 contrast darkenings applied as PROPOSED) · bottom pill nav navigates, the dark button opens Add, hero stats jump to screens, rails scroll sideways, "Why this?" expands, shopping items check off. Sample data for the Chen household; photos are swappable placeholders. The dev switches below simulate non-happy states for review · they are not part of the product UI.</div>
+<div class="hint">KitchenSmart prototype v5 (M3-E0-T4: one consistent Chen household, unknown-allergen commit moment, accessibility remedies; built on v4 with Menu per D-020, Home states per OQ-D9, A12 contrast darkenings as PROPOSED) · bottom pill nav navigates, the dark button opens Add, hero stats jump to screens, rails scroll sideways, "Why this?" expands, shopping items check off. Sample data for the Chen household (2 members); photos are swappable placeholders. The dev switches below simulate non-happy states for review · they are not part of the product UI.</div>
 
 <div class="devbar">
   <button class="dsw" id="dswNew" onclick="toggleDev('newUser')">New user</button>
@@ -469,24 +550,24 @@
       </div>
       <h1 class="serif"><span class="ready-only">What's cooking<br><em>tonight?</em></span><span class="sparse-only">Getting to know<br><em>your kitchen</em></span><span class="firstrun-only">Let's stock<br><em>your kitchen</em></span></h1>
       <div class="pills">
-        <div class="pill ready-only" onclick="go('scr-inventory')"><div class="v num">94%</div><div class="l">inventory accuracy</div></div>
-        <div class="pill ready-only" onclick="go('scr-inventory')"><div class="v num"><span class="dot" style="background:var(--amber)"></span>4</div><div class="l">use this week</div></div>
-        <div class="pill ready-only" onclick="go('scr-shopping')"><div class="v num"><span class="dot" style="background:var(--ink-3)"></span>3</div><div class="l">shopping gaps</div></div>
-        <div class="pill sparse-only" onclick="go('scr-inventory')"><div class="v num">6</div><div class="l">items on hand</div></div>
-        <div class="pill sparse-only" onclick="go('scr-menu')"><div class="v num">0</div><div class="l">menus yet</div></div>
-        <div class="pill sparse-only" onclick="go('scr-add')"><div class="v num">+2</div><div class="l">to unlock ideas</div></div>
+        <button class="pill ready-only" onclick="go('scr-inventory')"><span class="v num">67%</span><span class="l">verified</span></button>
+        <button class="pill ready-only" onclick="go('scr-inventory')"><span class="v num"><span class="dot" style="background:var(--amber)"></span>4</span><span class="l">use this week</span></button>
+        <button class="pill ready-only" onclick="go('scr-shopping')"><span class="v num"><span class="dot" style="background:var(--ink-3)"></span>5</span><span class="l">to buy</span></button>
+        <button class="pill sparse-only" onclick="go('scr-inventory')"><span class="v num">6</span><span class="l">items on hand</span></button>
+        <button class="pill sparse-only" onclick="go('scr-menu')"><span class="v num">0</span><span class="l">menus yet</span></button>
+        <button class="pill sparse-only" onclick="go('scr-add')"><span class="v num">+2</span><span class="l">to unlock ideas</span></button>
       </div>
-      <div class="ask" onclick="go('scr-assistant')">
+      <button class="ask" onclick="go('scr-assistant')">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#f4b48f" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4l1.6 4.2L17 9.8l-4.4 1.6L11 16l-1.6-4.6L5 9.8l4.4-1.6z"/><path d="M18 14l.8 2.1 2.1.8-2.1.8-.8 2.1-.8-2.1-2.1-.8 2.1-.8z"/></svg>
-        <span>Ask your kitchen… what can I make tonight? <i style="font-style:normal;font-size:10.5px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:#c9b9a4;margin-left:4px">post-MVP preview</i></span>
-        <div class="go"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg></div>
-      </div>
+        <span>Ask your kitchen… what can I make tonight? <i style="font-style:normal;font-size:11px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:#c9b9a4;margin-left:4px">post-MVP preview</i></span>
+        <span class="go"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg></span>
+      </button>
     </div>
 
     <div class="firstrun-only">
       <div class="empty">
         <div class="ic"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 8V6a2 2 0 0 1 2-2h2"/><path d="M16 4h2a2 2 0 0 1 2 2v2"/><path d="M20 16v2a2 2 0 0 1-2 2h-2"/><path d="M8 20H6a2 2 0 0 1-2-2v-2"/><path d="M4 12h16"/></svg></div>
-        <h3 class="serif">Your kitchen is empty</h3>
+        <h2 class="serif">Your kitchen is empty</h2>
         <p>Scan a barcode and we will fill in the facts. No typing, and nothing becomes a Known Fact until you confirm it.</p>
         <button class="btn pri" onclick="go('scr-add')">Scan your first item</button>
       </div>
@@ -494,28 +575,29 @@
 
     <div class="sparse-only">
       <div class="empty" style="border-style:solid;text-align:left;align-items:stretch">
-        <h3 class="serif">Almost there</h3>
+        <h2 class="serif">Almost there</h2>
         <p style="max-width:none">You have <b class="num">6</b> items. Add a protein or a vegetable and we can start suggesting what to cook. Recommendations only appear when they can be honest about what you have.</p>
         <div class="btns"><button class="btn sec" onclick="go('scr-inventory')">See my 6 items</button><button class="btn pri" onclick="go('scr-add')">Add food</button></div>
       </div>
-      <div class="sec" style="padding-top:8px"><h2 class="serif">On hand</h2><a onclick="go('scr-inventory')">Inventory</a></div>
+      <div class="sec" style="padding-top:8px"><h2 class="serif">On hand</h2><button class="lnk" onclick="go('scr-inventory')">Inventory</button></div>
       <div class="rail">
-        <div class="rcard" onclick="go('scr-inventory')"><div class="ph dairy"><span class="mono">Y</span></div><div class="b"><div class="n">Greek yogurt</div><div class="q num">2 × 16 oz · Fridge</div></div></div>
-        <div class="rcard" onclick="go('scr-inventory')"><div class="ph grain"><span class="mono">R</span></div><div class="b"><div class="n">Rice</div><div class="q num">~4 cups · Pantry</div></div></div>
-        <div class="rcard" onclick="go('scr-inventory')"><div class="ph dairy"><span class="mono">E</span></div><div class="b"><div class="n">Eggs</div><div class="q num">10 · Fridge</div></div></div>
+        <div role="button" tabindex="0" class="rcard" onclick="go('scr-inventory')"><div class="ph dairy"><span class="mono">Y</span></div><div class="b"><div class="n">Greek yogurt</div><div class="q num">3 × 16 oz · Fridge</div></div></div>
+        <div role="button" tabindex="0" class="rcard" onclick="go('scr-inventory')"><div class="ph grain"><span class="mono">R</span></div><div class="b"><div class="n">Rice</div><div class="q num">~4 cups · Pantry</div></div></div>
+        <div role="button" tabindex="0" class="rcard" onclick="go('scr-inventory')"><div class="ph dairy"><span class="mono">E</span></div><div class="b"><div class="n">Eggs</div><div class="q num">8 of 12 · Fridge</div></div></div>
       </div>
       <div class="sec"><h2 class="serif">Safety is set</h2></div>
-      <div class="pad" style="font-size:12.5px;color:var(--ink-2);line-height:1.5;padding-bottom:12px">Allergies are recorded for all 4 members, so every future suggestion is screened. Tastes and cuisines can wait until there is something to recommend.</div>
+      <div class="pad" style="font-size:12.5px;color:var(--ink-2);line-height:1.5;padding-bottom:12px">Allergies are recorded for both members, so every future suggestion is screened. Tastes and cuisines can wait until there is something to recommend.</div>
     </div>
 
     <div class="steady-only">
-    <div class="sec"><h2 class="serif">Cook tonight</h2><a onclick="go('scr-menu')">All matches</a></div>
+    <div class="sec"><h2 class="serif">Cook tonight</h2><button class="lnk" onclick="go('scr-menu')">All matches</button></div>
     <div class="pad">
       <div class="card tap" onclick="openRecipe('ok')">
         <div class="ph protein rhero">
           <span class="mono" style="font-size:64px">S</span>
           <img src="https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=800&q=75" alt="" onerror="this.remove()">
           <div class="scrim"></div>
+          <button class="cardlink" aria-label="Open Chicken &amp; spinach stir-fry recipe"></button>
           <div style="position:absolute;top:12px;left:12px;display:flex;gap:6px;">
             <span class="tag glass num">92% match</span>
             <span class="tag glass"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l2.5 2.5"/></svg>uses 3 expiring</span>
@@ -526,134 +608,135 @@
           </div>
         </div>
         <div class="rbody">
-          <div class="have"><span>✓ chicken</span><span>✓ spinach</span><span>✓ mushrooms</span><span>✓ rice</span></div>
-          <div class="verdict"><div class="line"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v5c0 4.6-3 7.8-7 9-4-1.2-7-4.4-7-9V6z"/></svg>No known allergen match · 4 members · label data</div><div class="caveat">Known matches only · not a guarantee this food is safe.</div></div>
-          <div class="why" id="whyHome"><b style="color:var(--ink)">Why this?</b> Ranked <span class="num">92%</span> (a coverage score: <span class="num">4/4</span> ingredients on hand, weighted by expiry · not a confidence): uses <b>3 expiring items</b> (chicken · 2d, spinach + mushrooms · 3d), needs <b>0 purchases</b>, fits a <span class="num">25 min</span> window, matches the high-protein preference. Score is computed from inventory · not generated text.</div>
-          <div class="btns"><button class="btn sec" onclick="event.stopPropagation();toggleWhy('whyHome')">Why this?</button><button class="btn pri" onclick="event.stopPropagation();openRecipe('ok')">Cook this</button></div>
+          <div class="have"><span class="miss">+ 0.75 lb chicken</span><span>✓ spinach</span><span>✓ mushrooms</span><span>✓ rice</span></div>
+          <div class="verdict"><div class="line"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v5c0 4.6-3 7.8-7 9-4-1.2-7-4.4-7-9V6z"/></svg>No known allergen match · 2 members</div><div class="caveat">Known matches only · not a guarantee this food is safe.</div></div>
+          <div class="why" id="whyHome"><b style="color:var(--ink)">Why this?</b> Ranked <span class="num">92%</span> (a coverage score: <span class="num">3/4</span> ingredients fully on hand, weighted by expiry · not a confidence): uses <b>3 expiring items</b> (chicken · 2d, spinach + mushrooms · 3d), needs <b>1 purchase</b> (0.75 lb of chicken, already on your shopping list), fits a <span class="num">25 min</span> window, matches the high-protein preference. Score is computed from inventory · not generated text.</div>
+          <div class="btns"><button class="btn sec" aria-controls="whyHome" aria-expanded="false" onclick="event.stopPropagation();toggleWhy('whyHome')">Why this?</button><button class="btn pri" onclick="event.stopPropagation();openRecipe('ok')">Cook this</button></div>
         </div>
       </div>
     </div>
     <div class="pad" id="tastesCard" style="margin-top:12px">
       <div class="tastes">
         <div class="m"><b>Tell us your tastes</b><i>Cuisines you like, how you eat, how much time you have. About a minute, and it only sharpens ranking. Allergies are already handled.</i></div>
-        <div class="btns" style="flex:0 0 auto;flex-direction:column;gap:6px"><button class="okbtn" style="background:var(--espresso)" onclick="toast('Preferences · 4 quick questions · not wired in this mockup')">Start</button><button class="okbtn ghost" onclick="document.getElementById('tastesCard').style.display='none';toast('Skipped · ask again from Profile')">Skip</button></div>
+        <div class="btns" style="flex:0 0 auto;flex-direction:column;gap:12px"><button class="okbtn" style="background:var(--espresso)" onclick="toast('Preferences · 4 quick questions · not wired in this mockup')">Start</button><button class="okbtn ghost" onclick="document.getElementById('tastesCard').style.display='none';toast('Skipped · ask again from Profile')">Skip</button></div>
       </div>
     </div>
 
-    <div class="sec"><h2 class="serif">Use it soon</h2><a onclick="go('scr-inventory')">4 items</a></div>
+    <div class="sec"><h2 class="serif">Use it soon</h2><button class="lnk" onclick="go('scr-inventory')">4 items</button></div>
     <div class="rail">
-      <div class="rcard" onclick="go('scr-inventory')">
+      <div role="button" tabindex="0" class="rcard" onclick="go('scr-inventory')">
         <div class="ph fruit fr-now"><span class="mono">S</span><img src="https://images.unsplash.com/photo-1464965911861-746a04b4bca6?auto=format&fit=crop&w=400&q=70" alt="" onerror="this.remove()">
           <div class="ringbadge fr-now"><svg viewBox="0 0 34 34"><circle class="t" cx="17" cy="17" r="14"/><circle class="f" cx="17" cy="17" r="14" stroke-dashoffset="74"/></svg><span class="d">1d</span></div></div>
         <div class="b"><div class="n">Strawberries</div><div class="q num">1 lb · Fridge</div></div>
       </div>
-      <div class="rcard" onclick="go('scr-inventory')">
+      <div role="button" tabindex="0" class="rcard" onclick="go('scr-inventory')">
         <div class="ph protein fr-soon"><span class="mono">C</span><img src="https://images.unsplash.com/photo-1604503468506-a8da13d82791?auto=format&fit=crop&w=400&q=70" alt="" onerror="this.remove()">
           <div class="ringbadge fr-soon"><svg viewBox="0 0 34 34"><circle class="t" cx="17" cy="17" r="14"/><circle class="f" cx="17" cy="17" r="14" stroke-dashoffset="58"/></svg><span class="d">2d</span></div></div>
         <div class="b"><div class="n">Chicken breast</div><div class="q num">1.25 lb · Fridge</div></div>
       </div>
-      <div class="rcard" onclick="go('scr-inventory')">
+      <div role="button" tabindex="0" class="rcard" onclick="go('scr-inventory')">
         <div class="ph produce fr-soon"><span class="mono">S</span><img src="https://images.unsplash.com/photo-1576045057995-568f588f82fb?auto=format&fit=crop&w=400&q=70" alt="" onerror="this.remove()">
           <div class="ringbadge fr-soon"><svg viewBox="0 0 34 34"><circle class="t" cx="17" cy="17" r="14"/><circle class="f" cx="17" cy="17" r="14" stroke-dashoffset="50"/></svg><span class="d">3d</span></div></div>
         <div class="b"><div class="n">Spinach</div><div class="q num">5 oz · Fridge</div></div>
       </div>
-      <div class="rcard" onclick="go('scr-inventory')">
+      <div role="button" tabindex="0" class="rcard" onclick="go('scr-inventory')">
         <div class="ph produce fr-soon"><span class="mono">M</span><img src="https://images.unsplash.com/photo-1504545102780-26774c1bb073?auto=format&fit=crop&w=400&q=70" alt="" onerror="this.remove()">
           <div class="ringbadge fr-soon"><svg viewBox="0 0 34 34"><circle class="t" cx="17" cy="17" r="14"/><circle class="f" cx="17" cy="17" r="14" stroke-dashoffset="50"/></svg><span class="d">3d</span></div></div>
         <div class="b"><div class="n">Mushrooms</div><div class="q num">8 oz · Fridge</div></div>
       </div>
     </div>
 
-    <div class="sec"><h2 class="serif">Needs your confirmation</h2><span style="font-size:12px;color:var(--ai);font-weight:700">2 items · <span style="font-size:10.5px;letter-spacing:.4px;text-transform:uppercase">fast-follow</span></span></div>
+    <div class="sec"><h2 class="serif">Needs your confirmation</h2><span style="font-size:12px;color:var(--ai);font-weight:700">2 items · <span style="font-size:11px;letter-spacing:.4px;text-transform:uppercase">fast-follow</span></span></div>
     <div class="tray">
-      <div class="titem"><div class="ph fruit"><span class="mono">B</span></div><div class="m"><b>"ORG BNNA 3LB" → Bananas?</b><i>from Costco receipt · low confidence</i></div><button class="okbtn" onclick="toast('Bananas confirmed → Known Fact')">Confirm</button></div>
-      <div class="titem"><div class="ph produce"><span class="mono">M</span></div><div class="m"><b>Mushrooms · 8 oz</b><i>from shelf photo · qty is a guess</i></div><button class="okbtn" onclick="toast('Mushrooms confirmed → Known Fact')">Confirm</button></div>
-      <div style="font-size:11.5px;color:#6a4f8f;line-height:1.4">Nothing enters your inventory as fact until you say so.</div>
+      <div class="titem"><div class="ph fruit"><span class="mono">S</span></div><div class="m"><b>"ORG STRWB 1LB" → Strawberries?</b><i>from receipt · low confidence</i></div><button class="okbtn" aria-label="Confirm Strawberries" onclick="toast('Strawberries confirmed → Known Fact')">Confirm</button></div>
+      <div class="titem"><div class="ph produce"><span class="mono">M</span></div><div class="m"><b>Mushrooms · 8 oz</b><i>from receipt · qty is a guess</i></div><button class="okbtn" aria-label="Confirm Mushrooms" onclick="toast('Mushrooms confirmed → Known Fact')">Confirm</button></div>
+      <div style="font-size:12px;color:#6a4f8f;line-height:1.4">Nothing enters your inventory as fact until you say so.</div>
     </div>
     </div>
   </div>
-  <div class="nav">
-    <button class="on" onclick="go('scr-home')"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11l8-7 8 7"/><path d="M6 9.5V20h12V9.5"/></svg>Home</button>
+  <nav class="nav" aria-label="Main">
+    <button class="on" aria-current="page" onclick="go('scr-home')"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11l8-7 8 7"/><path d="M6 9.5V20h12V9.5"/></svg>Home</button>
     <button onclick="go('scr-inventory')"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9h16l-1.5 10a2 2 0 0 1-2 1.7h-9a2 2 0 0 1-2-1.7z"/><path d="M8 9l2.5-5"/><path d="M16 9l-2.5-5"/></svg>Inventory</button>
-    <span class="gap"></span>
+    <span class="gap" aria-hidden="true"></span>
     <button onclick="go('scr-menu')"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2.5"/><path d="M3 10h18"/><path d="M8 3v4"/><path d="M16 3v4"/><path d="M8 15h3"/></svg>Menu</button>
     <button onclick="go('scr-shopping')"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h2l2.6 12.4a1 1 0 0 0 1 .6h8.7a1 1 0 0 0 1-.8L20 8H6"/><circle cx="9.5" cy="20" r="1"/><circle cx="17" cy="20" r="1"/></svg>Shopping</button>
-    <div class="fab" onclick="go('scr-add')"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#f7efe2" stroke-width="2" stroke-linecap="round"><path d="M4 8V6a2 2 0 0 1 2-2h2"/><path d="M16 4h2a2 2 0 0 1 2 2v2"/><path d="M20 16v2a2 2 0 0 1-2 2h-2"/><path d="M8 20H6a2 2 0 0 1-2-2v-2"/><path d="M4 12h16"/></svg></div>
-  </div>
+    <button class="fab" aria-label="Add food" onclick="go('scr-add')"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#f7efe2" stroke-width="2" stroke-linecap="round"><path d="M4 8V6a2 2 0 0 1 2-2h2"/><path d="M16 4h2a2 2 0 0 1 2 2v2"/><path d="M20 16v2a2 2 0 0 1-2 2h-2"/><path d="M8 20H6a2 2 0 0 1-2-2v-2"/><path d="M4 12h16"/></svg></button>
+  </nav>
 </section>
 
 <!-- ================= INVENTORY ================= -->
 <section class="screen" id="scr-inventory">
   <div class="scroll">
     <div class="lhead">
-      <div><h1 class="serif">Inventory</h1><div class="sub steady-only"><b class="num" style="color:var(--ink)">42</b> items · <span class="num">94%</span> verified · <span class="leglink" onclick="go('scr-legend')">what do these mean?</span></div><div class="sub firstrun-only">no items yet · <span class="leglink" onclick="go('scr-legend')">what do these mean?</span></div></div>
-      <div class="iconb" onclick="toast('Search · not in this mockup')"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M16.5 16.5L21 21"/></svg></div>
+      <div><h1 class="serif">Inventory</h1><div class="sub steady-only"><b class="num" style="color:var(--ink)">9</b> items · <span class="num">67%</span> verified · <button class="leglink" onclick="go('scr-legend')">what do these mean?</button></div><div class="sub firstrun-only">no items yet · <button class="leglink" onclick="go('scr-legend')">what do these mean?</button></div></div>
+      <button class="iconb" aria-label="Search" onclick="toast('Search · not in this mockup')"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M16.5 16.5L21 21"/></svg></button>
     </div>
     <div class="steady-only">
     <div class="seg" id="seg">
-      <button class="on" data-loc="all" onclick="filterLoc(this)">All</button>
-      <button data-loc="fridge" onclick="filterLoc(this)">Fridge</button>
-      <button data-loc="freezer" onclick="filterLoc(this)">Freezer</button>
-      <button data-loc="pantry" onclick="filterLoc(this)">Pantry</button>
+      <button aria-pressed="true" class="on" data-loc="all" onclick="filterLoc(this)">All</button>
+      <button aria-pressed="false" data-loc="fridge" onclick="filterLoc(this)">Fridge</button>
+      <button aria-pressed="false" data-loc="freezer" onclick="filterLoc(this)">Freezer</button>
+      <button aria-pressed="false" data-loc="pantry" onclick="filterLoc(this)">Pantry</button>
     </div>
     <div class="chips">
-      <button class="chip" id="sortExp" onclick="sortByExpiry(this)">Sort · expiry</button>
-      <button class="chip needsconf" id="filtConf" onclick="filterNeedsConfirm(this)">Needs confirmation</button>
+      <button aria-pressed="false" class="chip" id="sortExp" onclick="sortByExpiry(this)">Sort · expiry</button>
+      <button aria-pressed="false" class="chip needsconf" id="filtConf" onclick="filterNeedsConfirm(this)">Needs confirmation</button>
     </div>
 
     <div style="height:10px"></div>
     <div class="tray" style="margin-bottom:4px">
       <div class="h"><b><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4l1.6 4.2L17 9.8l-4.4 1.6L11 16l-1.6-4.6L5 9.8l4.4-1.6z"/></svg>Needs your confirmation</b><span>2</span></div>
-      <div class="titem"><div class="ph fruit"><span class="mono">B</span></div><div class="m"><b>Bananas · 3 lb?</b><i>receipt read "ORG BNNA 3LB"</i></div><button class="okbtn" onclick="toast('Confirmed')">Confirm</button><button class="okbtn ghost" onclick="toast('Edit · not in mockup')">Edit</button></div>
+      <div class="titem"><div class="ph fruit"><span class="mono">S</span></div><div class="m"><b>Strawberries · 1 lb?</b><i>receipt read "ORG STRWB 1LB"</i></div><button class="okbtn" aria-label="Confirm Strawberries" onclick="toast('Strawberries confirmed')">Confirm</button><button class="okbtn ghost" aria-label="Edit Strawberries" onclick="toast('Edit · not in mockup')">Edit</button></div>
+      <div class="titem"><div class="ph produce"><span class="mono">M</span></div><div class="m"><b>Mushrooms · 8 oz?</b><i>receipt read "CREMINI MUSHRM 8OZ"</i></div><button class="okbtn" aria-label="Confirm Mushrooms" onclick="toast('Mushrooms confirmed')">Confirm</button><button class="okbtn ghost" aria-label="Edit Mushrooms" onclick="toast('Edit · not in mockup')">Edit</button></div>
     </div>
 
     <div class="grp" id="invList-start"><b>Fridge</b><span class="num">6 items</span></div>
     <div id="invList">
-      <div class="item" data-loc="fridge" data-days="1" data-needsconfirm="1" onclick="go('scr-item')">
+      <div role="button" tabindex="0" class="item" data-loc="fridge" data-days="1" data-needsconfirm="1" onclick="go('scr-item')">
         <div class="thumb"><svg class="ring fr-now" viewBox="0 0 56 56"><circle class="t" cx="28" cy="28" r="24"/><circle class="f" cx="28" cy="28" r="24" stroke-dashoffset="128" style="stroke:var(--rose)"/></svg><div class="ph fruit"><span class="mono">S</span><img src="https://images.unsplash.com/photo-1464965911861-746a04b4bca6?auto=format&fit=crop&w=160&q=70" alt="" onerror="this.remove()"></div></div>
         <div class="m"><div class="n">Strawberries</div><div class="q"><b class="num">1 lb</b>·<span class="exp now">use today</span></div></div>
         <span class="prov ai">AI · confirm</span>
       </div>
-      <div class="item" data-loc="fridge" data-days="2" data-needsconfirm="0" onclick="go('scr-item')">
+      <div role="button" tabindex="0" class="item" data-loc="fridge" data-days="2" data-needsconfirm="0" onclick="go('scr-item')">
         <div class="thumb"><svg class="ring" viewBox="0 0 56 56"><circle class="t" cx="28" cy="28" r="24"/><circle class="f" cx="28" cy="28" r="24" stroke-dashoffset="100" style="stroke:var(--amber)"/></svg><div class="ph protein"><span class="mono">C</span><img src="https://images.unsplash.com/photo-1604503468506-a8da13d82791?auto=format&fit=crop&w=160&q=70" alt="" onerror="this.remove()"></div></div>
         <div class="m"><div class="n">Chicken breast</div><div class="q"><b class="num">1.25 lb</b>·<span class="exp soon">2 days</span></div></div>
         <span class="prov fact">✓ Fact</span>
       </div>
-      <div class="item" data-loc="fridge" data-days="3" data-needsconfirm="0" onclick="go('scr-item')">
+      <div role="button" tabindex="0" class="item" data-loc="fridge" data-days="3" data-needsconfirm="0" onclick="go('scr-item')">
         <div class="thumb"><svg class="ring" viewBox="0 0 56 56"><circle class="t" cx="28" cy="28" r="24"/><circle class="f" cx="28" cy="28" r="24" stroke-dashoffset="92" style="stroke:var(--amber)"/></svg><div class="ph produce"><span class="mono">S</span><img src="https://images.unsplash.com/photo-1576045057995-568f588f82fb?auto=format&fit=crop&w=160&q=70" alt="" onerror="this.remove()"></div></div>
         <div class="m"><div class="n">Spinach</div><div class="q"><b class="num">5 oz</b>·<span class="exp soon">3 days</span></div></div>
         <span class="prov fact">✓ Fact</span>
       </div>
-      <div class="item" data-loc="fridge" data-days="3" data-needsconfirm="1" onclick="go('scr-item')">
+      <div role="button" tabindex="0" class="item" data-loc="fridge" data-days="3" data-needsconfirm="1" onclick="go('scr-item')">
         <div class="thumb"><svg class="ring" viewBox="0 0 56 56"><circle class="t" cx="28" cy="28" r="24"/><circle class="f" cx="28" cy="28" r="24" stroke-dashoffset="92" style="stroke:var(--amber)"/></svg><div class="ph produce"><span class="mono">M</span><img src="https://images.unsplash.com/photo-1504545102780-26774c1bb073?auto=format&fit=crop&w=160&q=70" alt="" onerror="this.remove()"></div></div>
         <div class="m"><div class="n">Mushrooms</div><div class="q"><b class="num">8 oz</b>·<span class="exp soon">3 days</span></div></div>
         <span class="prov ai">AI · confirm</span>
       </div>
-      <div class="item" data-loc="fridge" data-days="10" data-needsconfirm="0" onclick="go('scr-item')">
+      <div role="button" tabindex="0" class="item" data-loc="fridge" data-days="10" data-needsconfirm="0" onclick="go('scr-item')">
         <div class="thumb"><svg class="ring" viewBox="0 0 56 56"><circle class="t" cx="28" cy="28" r="24"/><circle class="f" cx="28" cy="28" r="24" stroke-dashoffset="40" style="stroke:var(--green)"/></svg><div class="ph dairy"><span class="mono">Y</span><img src="https://images.unsplash.com/photo-1488477181946-6428a0291777?auto=format&fit=crop&w=160&q=70" alt="" onerror="this.remove()"></div></div>
         <div class="m"><div class="n">Greek yogurt</div><div class="q"><b class="num">3 × 16 oz</b>·<span class="exp ok">10 days</span></div></div>
         <span class="prov fact">✓ Fact</span>
       </div>
-      <div class="item" data-loc="fridge" data-days="14" data-needsconfirm="0" onclick="go('scr-item')">
+      <div role="button" tabindex="0" class="item" data-loc="fridge" data-days="14" data-needsconfirm="0" onclick="go('scr-item')">
         <div class="thumb"><svg class="ring" viewBox="0 0 56 56"><circle class="t" cx="28" cy="28" r="24"/><circle class="f" cx="28" cy="28" r="24" stroke-dashoffset="30" style="stroke:var(--green)"/></svg><div class="ph dairy"><span class="mono">E</span><img src="https://images.unsplash.com/photo-1582722872445-44dc5f7e3c8f?auto=format&fit=crop&w=160&q=70" alt="" onerror="this.remove()"></div></div>
         <div class="m"><div class="n">Eggs</div><div class="q"><b class="num">8 of 12</b>·<span class="exp ok">2 weeks</span></div></div>
         <span class="prov fact">✓ Fact</span>
       </div>
 
       <div class="grp" data-loc="freezer"><b>Freezer</b><span class="num">1 item</span></div>
-      <div class="item" data-loc="freezer" data-days="60" data-needsconfirm="0" onclick="go('scr-item')">
+      <div role="button" tabindex="0" class="item" data-loc="freezer" data-days="60" data-needsconfirm="0" onclick="go('scr-item')">
         <div class="thumb"><svg class="ring" viewBox="0 0 56 56"><circle class="t" cx="28" cy="28" r="24"/><circle class="f" cx="28" cy="28" r="24" stroke-dashoffset="18" style="stroke:var(--green)"/></svg><div class="ph frozen"><span class="mono">S</span><img src="https://images.unsplash.com/photo-1467003909585-2f8a72700288?auto=format&fit=crop&w=160&q=70" alt="" onerror="this.remove()"></div></div>
         <div class="m"><div class="n">Salmon fillets</div><div class="q"><b class="num">2 × 6 oz</b>·<span class="exp ok">2 months</span></div></div>
         <span class="prov fact">✓ Fact</span>
       </div>
 
       <div class="grp" data-loc="pantry"><b>Pantry</b><span class="num">2 items</span></div>
-      <div class="item" data-loc="pantry" data-days="999" data-needsconfirm="0" onclick="go('scr-item')">
+      <div role="button" tabindex="0" class="item" data-loc="pantry" data-days="999" data-needsconfirm="0" onclick="go('scr-item')">
         <div class="thumb"><div class="ph grain"><span class="mono">R</span><img src="https://images.unsplash.com/photo-1536304993881-ff6e9eefa2a6?auto=format&fit=crop&w=160&q=70" alt="" onerror="this.remove()"></div></div>
         <div class="m"><div class="n">Basmati rice</div><div class="q"><b class="num">~4 cups</b>·<span>qty derived from 2 meals</span></div></div>
         <span class="prov est">≈ Est.</span>
       </div>
-      <div class="item" data-loc="pantry" data-days="999" data-needsconfirm="0" onclick="go('scr-item')">
+      <div role="button" tabindex="0" class="item" data-loc="pantry" data-days="999" data-needsconfirm="0" onclick="go('scr-item')">
         <div class="thumb"><div class="ph grain"><span class="mono">O</span></div></div>
         <div class="m"><div class="n">Olive oil</div><div class="q"><b class="num">1 bottle</b>·<span>opened Aug 30</span></div></div>
         <span class="prov fact">✓ Fact</span>
@@ -663,26 +746,26 @@
     <div class="firstrun-only">
       <div class="empty">
         <div class="ic"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 8V6a2 2 0 0 1 2-2h2"/><path d="M16 4h2a2 2 0 0 1 2 2v2"/><path d="M20 16v2a2 2 0 0 1-2 2h-2"/><path d="M8 20H6a2 2 0 0 1-2-2v-2"/><path d="M4 12h16"/></svg></div>
-        <h3 class="serif">Nothing here yet</h3>
+        <h2 class="serif">Nothing here yet</h2>
         <p>Every item you add shows its provenance, so you always know what is a verified fact and what is a guess.</p>
         <button class="btn pri" onclick="go('scr-add')">Scan a barcode</button>
       </div>
     </div>
   </div>
-  <div class="nav">
+  <nav class="nav" aria-label="Main">
     <button onclick="go('scr-home')"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11l8-7 8 7"/><path d="M6 9.5V20h12V9.5"/></svg>Home</button>
-    <button class="on" onclick="go('scr-inventory')"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9h16l-1.5 10a2 2 0 0 1-2 1.7h-9a2 2 0 0 1-2-1.7z"/><path d="M8 9l2.5-5"/><path d="M16 9l-2.5-5"/></svg>Inventory</button>
-    <span class="gap"></span>
+    <button class="on" aria-current="page" onclick="go('scr-inventory')"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9h16l-1.5 10a2 2 0 0 1-2 1.7h-9a2 2 0 0 1-2-1.7z"/><path d="M8 9l2.5-5"/><path d="M16 9l-2.5-5"/></svg>Inventory</button>
+    <span class="gap" aria-hidden="true"></span>
     <button onclick="go('scr-menu')"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2.5"/><path d="M3 10h18"/><path d="M8 3v4"/><path d="M16 3v4"/><path d="M8 15h3"/></svg>Menu</button>
     <button onclick="go('scr-shopping')"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h2l2.6 12.4a1 1 0 0 0 1 .6h8.7a1 1 0 0 0 1-.8L20 8H6"/><circle cx="9.5" cy="20" r="1"/><circle cx="17" cy="20" r="1"/></svg>Shopping</button>
-    <div class="fab" onclick="go('scr-add')"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#f7efe2" stroke-width="2" stroke-linecap="round"><path d="M4 8V6a2 2 0 0 1 2-2h2"/><path d="M16 4h2a2 2 0 0 1 2 2v2"/><path d="M20 16v2a2 2 0 0 1-2 2h-2"/><path d="M8 20H6a2 2 0 0 1-2-2v-2"/><path d="M4 12h16"/></svg></div>
-  </div>
+    <button class="fab" aria-label="Add food" onclick="go('scr-add')"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#f7efe2" stroke-width="2" stroke-linecap="round"><path d="M4 8V6a2 2 0 0 1 2-2h2"/><path d="M16 4h2a2 2 0 0 1 2 2v2"/><path d="M20 16v2a2 2 0 0 1-2 2h-2"/><path d="M8 20H6a2 2 0 0 1-2-2v-2"/><path d="M4 12h16"/></svg></button>
+  </nav>
 </section>
 
 <!-- ================= ADD FOOD ================= -->
 <section class="screen" id="scr-add">
   <div class="scroll">
-    <div class="back"><div class="iconb" onclick="goBack()"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></div><h1 class="serif">Add food</h1></div>
+    <div class="back"><button class="iconb" aria-label="Back" onclick="goBack()"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></button><h1 class="serif">Add food</h1></div>
     <div class="pad" style="padding-bottom:12px;color:var(--ink-2);font-size:14px;line-height:1.45">Every path except manual is a proposal · nothing becomes a Known Fact until you confirm it.</div>
     <div class="grid2">
       <button class="mode bar" onclick="go('scr-scan')">
@@ -714,13 +797,13 @@
 <section class="screen" id="scr-scan">
   <div class="cam cam-live">
     <img src="https://images.unsplash.com/photo-1584473457406-6240486418e9?auto=format&fit=crop&w=800&q=60" alt="" onerror="this.remove()">
-    <div class="camtop"><div class="hbtn" onclick="goBack()"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M15 5l-7 7 7 7"/></svg></div><span style="font-weight:700;font-size:15px">Scan barcode</span><span style="width:40px"></span></div>
+    <div class="camtop"><button class="hbtn" aria-label="Back" onclick="goBack()"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M15 5l-7 7 7 7"/></svg></button><h1 style="margin:0;font-weight:700;font-size:15px">Scan barcode</h1><span style="width:40px"></span></div>
     <div class="frame"><i></i><i></i><i></i><i></i><div class="laser"></div></div>
     <div class="camhint" id="camHint">Matched · Open Food Facts · GTIN 0689544081128</div>
   </div>
   <div class="permdenied">
     <div class="ic"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#f7efe2" stroke-width="1.8" stroke-linecap="round"><path d="M3 3l18 18"/><path d="M4 8V6a2 2 0 0 1 2-2h2"/><path d="M16 4h2a2 2 0 0 1 2 2v2"/><path d="M20 16v2a2 2 0 0 1-2 2h-2"/><path d="M8 20H6a2 2 0 0 1-2-2v-2"/></svg></div>
-    <h3 class="serif" style="margin:0;color:var(--cream)">Camera access is off</h3>
+    <h2 class="serif" style="margin:0;color:var(--cream)">Camera access is off</h2>
     <p>KitchenSmart needs the camera to scan barcodes. Turn it on in your device Settings, or add this item by hand.</p>
     <div style="display:flex;gap:10px;width:100%">
       <button class="btn sec" style="flex:1" onclick="toast('Opens device Settings · not in this mockup')">Open Settings</button>
@@ -734,11 +817,11 @@
       <div><div class="serif" style="font-size:19px;line-height:1.15">Fage Total 2% Greek Yogurt</div><div style="font-size:13px;color:var(--ink-2);margin-top:3px">Fage · <span class="num">16 oz</span> cup</div></div>
     </div>
     <div class="macros"><div><b class="num">140</b><i>cal</i></div><div><b class="num">20 g</b><i>protein</i></div><div><b class="num">5 g</b><i>carbs</i></div><div><b class="num">4 g</b><i>fat</i></div></div>
-    <div style="font-size:11px;color:var(--ink-3);margin-top:-6px">Nutrition &amp; allergens: label data via Open Food Facts · tier shown per field</div>
-    <div class="kv"><span class="k">Allergens</span><span class="v" style="flex-direction:column;align-items:flex-end;gap:2px"><span><span style="padding:3px 10px;border-radius:999px;background:var(--sand);font-size:12px">Milk</span> <span style="font-size:12px;color:var(--ink-2);font-weight:600">no known household match</span></span><span style="font-size:10.5px;color:var(--ink-3)">label declaration · not a safety guarantee</span></span></div>
+    <div style="font-size:12px;color:var(--ink-3);margin-top:-6px">Nutrition &amp; allergens: label data via Open Food Facts · tier shown per field</div>
+    <div class="kv"><span class="k">Allergens</span><span class="v" style="flex-direction:column;align-items:flex-end;gap:2px"><span><span style="padding:3px 10px;border-radius:999px;background:var(--sand);font-size:12px">Milk</span> <span style="font-size:12px;color:var(--ink-2);font-weight:600">no known household match</span></span><span style="font-size:12px;color:var(--ink-3)">label declaration · not a safety guarantee</span></span></div>
     <div class="kv"><span class="k">Best by</span><span class="v"><span class="num">Sep 28</span><span class="prov est">≈ Est.</span></span></div>
-    <div class="kv" style="border-bottom:1px solid var(--line)"><span class="k">Quantity</span><div class="step"><button onclick="stepQty(-1)">−</button><b class="num" id="qtyVal">2</b><button onclick="stepQty(1)">+</button></div></div>
-    <div class="locs" id="locChips"><button class="loc on" onclick="pickLoc(this)">Fridge</button><button class="loc" onclick="pickLoc(this)">Freezer</button><button class="loc" onclick="pickLoc(this)">Pantry</button></div>
+    <div class="kv" style="border-bottom:1px solid var(--line)"><span class="k">Quantity</span><div class="step"><button aria-label="Decrease quantity" onclick="stepQty(-1)">−</button><b class="num" id="qtyVal">2</b><button aria-label="Increase quantity" onclick="stepQty(1)">+</button></div></div>
+    <div class="locs" id="locChips"><button aria-pressed="true" class="loc on" onclick="pickLoc(this)">Fridge</button><button aria-pressed="false" class="loc" onclick="pickLoc(this)">Freezer</button><button aria-pressed="false" class="loc" onclick="pickLoc(this)">Pantry</button></div>
     <button class="btn pri full" id="addCta" onclick="confirmAdd()">Add 2 to Fridge</button>
   </div>
   <div class="sheet miss-panel">
@@ -752,12 +835,12 @@
 <!-- ================= RECIPES ================= -->
 <section class="screen" id="scr-menu">
   <div class="scroll">
-    <div class="lhead"><div><h1 class="serif">Menu</h1><div class="sub">Chen household · <b class="num" style="color:var(--ink)">4</b> eating · recipes and plans live here</div></div></div>
-    <div class="seg" id="menuSeg"><button class="on" data-view="tonight" onclick="showMenuView('tonight')">Tonight</button><button data-view="plan" onclick="showMenuView('plan')">Plan ahead</button></div>
+    <div class="lhead"><div><h1 class="serif">Menu</h1><div class="sub">Chen household · <b class="num" style="color:var(--ink)">2</b> eating · recipes and plans live here</div></div></div>
+    <div class="seg" id="menuSeg"><button aria-pressed="true" class="on" data-view="tonight" onclick="showMenuView('tonight')">Tonight</button><button aria-pressed="false" data-view="plan" onclick="showMenuView('plan')">Plan ahead</button></div>
 
     <div class="mv-tonight">
-    <div class="sub" style="padding:6px 18px 4px;font-size:13px;color:var(--ink-3)">What can I make from <b class="num" style="color:var(--ink)">42</b> items?</div>
-    <div class="chips"><button class="chip">≤ 30 min</button><button class="chip">High protein</button><button class="chip">Uses expiring</button><button class="chip">Kid-friendly</button></div>
+    <div class="sub" style="padding:6px 18px 4px;font-size:13px;color:var(--ink-3)">What can I make from <b class="num" style="color:var(--ink)">9</b> items?</div>
+    <div class="chips"><button aria-pressed="false" class="chip">≤ 30 min</button><button aria-pressed="false" class="chip">High protein</button><button aria-pressed="false" class="chip">Uses expiring</button><button aria-pressed="false" class="chip">Kid-friendly</button></div>
     <div class="rec-normal">
     <div class="pad" style="margin-bottom:12px">
       <div class="card tap" onclick="openRecipe('ok')">
@@ -765,37 +848,38 @@
           <span class="mono" style="font-size:64px">S</span>
           <img src="https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=800&q=75" alt="" onerror="this.remove()">
           <div class="scrim"></div>
+          <button class="cardlink" aria-label="Open Chicken &amp; spinach stir-fry recipe"></button>
           <div style="position:absolute;top:12px;left:12px;display:flex;gap:6px;"><span class="tag glass num">92% match</span><span class="tag glass">uses 3 expiring</span></div>
-          <div class="over"><h3 class="serif">Chicken &amp; spinach stir-fry</h3><div class="meta"><span class="num">25 min</span>·<span class="num">540 cal</span>·<span>serves 4</span></div></div>
+          <div class="over"><h2 class="serif">Chicken &amp; spinach stir-fry</h2><div class="meta"><span class="num">25 min</span>·<span class="num">540 cal</span>·<span>serves 4</span></div></div>
         </div>
         <div class="rbody">
-          <div class="have"><span>✓ chicken</span><span>✓ spinach</span><span>✓ mushrooms</span><span>✓ rice</span></div>
-          <div class="verdict"><div class="line"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v5c0 4.6-3 7.8-7 9-4-1.2-7-4.4-7-9V6z"/></svg>No known allergen match · 4 members · label data</div><div class="caveat">Known matches only · not a guarantee this food is safe.</div></div>
-          <div class="btns"><button class="btn sec" onclick="event.stopPropagation();toggleWhy('whyR')">Why this?</button><button class="btn pri" onclick="event.stopPropagation();openRecipe('ok')">Cook this</button></div>
-          <div class="why" id="whyR">Ranked <span class="num">92%</span>: 3 expiring items, 0 purchases, ≤ 30 min, high-protein. Computed from inventory · not generated text.</div>
+          <div class="have"><span class="miss">+ 0.75 lb chicken</span><span>✓ spinach</span><span>✓ mushrooms</span><span>✓ rice</span></div>
+          <div class="verdict"><div class="line"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v5c0 4.6-3 7.8-7 9-4-1.2-7-4.4-7-9V6z"/></svg>No known allergen match · 2 members</div><div class="caveat">Known matches only · not a guarantee this food is safe.</div></div>
+          <div class="btns"><button class="btn sec" aria-controls="whyR" aria-expanded="false" onclick="event.stopPropagation();toggleWhy('whyR')">Why this?</button><button class="btn pri" onclick="event.stopPropagation();openRecipe('ok')">Cook this</button></div>
+          <div class="why" id="whyR">Ranked <span class="num">92%</span>: 3 expiring items, 1 purchase (0.75 lb chicken, already on your list), ≤ 30 min, high-protein. Computed from inventory · not generated text.</div>
         </div>
       </div>
     </div>
 
-    <div class="rrow" onclick="toast('Recipe detail reuses the chicken stir-fry example in this prototype · Miso salmon and Thai noodles below show the other two verdict states')">
+    <div role="button" tabindex="0" class="rrow" onclick="toast('Recipe detail reuses the chicken stir-fry example in this prototype · Miso salmon and Thai noodles below show the other two verdict states')">
       <div class="ph fruit"><span class="mono">P</span><img src="https://images.unsplash.com/photo-1490645935967-10de6ba17061?auto=format&fit=crop&w=300&q=70" alt="" onerror="this.remove()"></div>
-      <div class="b"><div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px"><h4 class="serif">Yogurt berry parfait</h4><span class="match num">84%</span></div><div class="meta"><span class="num">10 min</span>·<span class="num">320 cal</span>·breakfast</div><div class="have"><span>✓ yogurt</span><span>✓ strawberries</span><span class="miss">+ granola</span></div><div class="verdict"><div class="line"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v5c0 4.6-3 7.8-7 9-4-1.2-7-4.4-7-9V6z"/></svg>No known allergen match · 4 members · label data</div><div class="caveat">Known matches only · not a guarantee this food is safe.</div></div></div>
+      <div class="b"><div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px"><h2 class="serif">Yogurt berry parfait</h2><span class="match num">84%</span></div><div class="meta"><span class="num">10 min</span>·<span class="num">320 cal</span>·breakfast</div><div class="have"><span>✓ yogurt</span><span>✓ strawberries</span><span class="miss">+ granola</span></div><div class="verdict"><div class="line"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v5c0 4.6-3 7.8-7 9-4-1.2-7-4.4-7-9V6z"/></svg>No known allergen match · 2 members</div><div class="caveat">Known matches only · not a guarantee this food is safe.</div></div></div>
     </div>
-    <div class="rrow" onclick="openRecipe('unk')">
+    <div role="button" tabindex="0" class="rrow" onclick="openRecipe('unk')">
       <div class="ph frozen"><span class="mono">S</span><img src="https://images.unsplash.com/photo-1467003909585-2f8a72700288?auto=format&fit=crop&w=300&q=70" alt="" onerror="this.remove()"></div>
-      <div class="b"><div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px"><h4 class="serif">Miso-glazed salmon</h4><span class="match num">78%</span></div><div class="meta"><span class="num">30 min</span>·<span class="num">610 cal</span>·thaw first</div><div class="have"><span>✓ salmon</span><span>✓ rice</span><span class="miss">+ miso</span><span class="miss">+ broccoli</span></div>
-        <div class="verdict unk"><div class="line"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 3.5L21.5 20h-19z"/><path d="M12 10v4.5"/><circle cx="12" cy="17.4" r=".6" fill="currentColor"/></svg>Allergen data unknown for Maya (severe: sesame) · miso has no ingredient statement on file</div><div class="caveat">Not blocked, not cleared. Check the package before cooking.</div></div></div>
+      <div class="b"><div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px"><h2 class="serif">Miso-glazed salmon</h2><span class="match num">78%</span></div><div class="meta"><span class="num">30 min</span>·<span class="num">610 cal</span>·thaw first</div><div class="have"><span>✓ salmon</span><span>✓ rice</span><span class="miss">+ miso</span><span class="miss">+ broccoli</span></div>
+        <div class="verdict unk"><div class="line"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 3.5L21.5 20h-19z"/><path d="M12 10v4.5"/><circle cx="12" cy="17.4" r=".6" fill="currentColor"/></svg>Allergen data incomplete for Maya, severe sesame allergy</div><div class="caveat">Known matches only · not a guarantee this food is safe.</div></div></div>
     </div>
-    <div class="rrow" style="opacity:.92" onclick="openRecipe('blocked')">
+    <div role="button" tabindex="0" class="rrow" style="opacity:.92" onclick="openRecipe('blocked')">
       <div class="ph grain" style="filter:grayscale(.6)"><span class="mono">T</span><img src="https://images.unsplash.com/photo-1555949258-eb67b1ef0ceb?auto=format&fit=crop&w=300&q=70" alt="" onerror="this.remove()"></div>
-      <div class="b"><h4 class="serif" style="color:var(--ink-2)">Thai peanut noodles</h4><div class="allergen" style="padding:8px 10px;font-size:12px"><span class="sh" style="width:24px;height:24px"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round"><path d="M12 3.5L21.5 20h-19z"/><path d="M12 10v4.5"/><circle cx="12" cy="17.4" r=".6" fill="#fff"/></svg></span>Contains peanuts · blocked for Maya</div><div style="font-size:11.5px;color:var(--ink-3);line-height:1.4">Matched "peanuts" in the ingredient statement (label data). Blocked recipes are shown for transparency, and cannot be cooked or planned.</div><div style="font-size:11px;color:var(--ink-3);line-height:1.4">Known matches only · not a guarantee this food is safe.</div></div>
+      <div class="b"><h2 class="serif" style="color:var(--ink-2)">Thai peanut noodles</h2><div class="allergen" style="padding:8px 10px;font-size:12px"><span class="sh" style="width:24px;height:24px"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round"><path d="M12 3.5L21.5 20h-19z"/><path d="M12 10v4.5"/><circle cx="12" cy="17.4" r=".6" fill="#fff"/></svg></span>Contains peanut · matched 'peanuts' in the ingredient statement · blocked for Maya</div><div style="font-size:12px;color:var(--ink-3);line-height:1.4">Blocked recipes are shown for transparency, and cannot be cooked or planned.</div><div style="font-size:12px;color:var(--ink-3);line-height:1.4">Known matches only · not a guarantee this food is safe.</div></div>
     </div>
     </div>
 
     <div class="rec-empty" style="flex-direction:column">
       <div class="empty" style="margin:24px 18px">
         <div class="ic"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M16.5 16.5L21 21"/></svg></div>
-        <h3 class="serif">No recipes match yet</h3>
+        <h2 class="serif">No recipes match yet</h2>
         <p>Add a few more staples and we can suggest what to cook tonight. Try adding a protein or a vegetable.</p>
         <button class="btn pri" onclick="go('scr-add')">Add an item</button>
       </div>
@@ -807,52 +891,52 @@
           <span class="sh"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round"><path d="M12 3.5L21.5 20h-19z"/><path d="M12 10v4.5"/><circle cx="12" cy="17.4" r=".6" fill="#fff"/></svg></span>
           Every candidate tonight is blocked for at least one member
         </div>
-        <div style="font-size:11px;color:var(--ink-3);padding:6px 2px 8px;line-height:1.4">Known matches only · not a guarantee this food is safe.</div>
+        <div style="font-size:12px;color:var(--ink-3);padding:6px 2px 8px;line-height:1.4">Known matches only · not a guarantee this food is safe.</div>
       </div>
-      <div class="rrow" style="opacity:.92" onclick="openRecipe('blocked')">
+      <div role="button" tabindex="0" class="rrow" style="opacity:.92" onclick="openRecipe('blocked')">
         <div class="ph grain" style="filter:grayscale(.6)"><span class="mono">T</span></div>
-        <div class="b"><h4 class="serif" style="color:var(--ink-2)">Thai peanut noodles</h4><div class="allergen" style="padding:8px 10px;font-size:12px"><span class="sh" style="width:24px;height:24px"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round"><path d="M12 3.5L21.5 20h-19z"/><path d="M12 10v4.5"/><circle cx="12" cy="17.4" r=".6" fill="#fff"/></svg></span>Contains peanuts · blocked for Maya</div><div style="font-size:11px;color:var(--ink-3);line-height:1.4;margin-top:6px">Matched "peanuts" in the ingredient statement (label data).</div></div>
+        <div class="b"><h2 class="serif" style="color:var(--ink-2)">Thai peanut noodles</h2><div class="allergen" style="padding:8px 10px;font-size:12px"><span class="sh" style="width:24px;height:24px"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round"><path d="M12 3.5L21.5 20h-19z"/><path d="M12 10v4.5"/><circle cx="12" cy="17.4" r=".6" fill="#fff"/></svg></span>Contains peanut · matched 'peanuts' in the ingredient statement · blocked for Maya</div></div>
       </div>
-      <div class="rrow" style="opacity:.92" onclick="toast('Recipe detail reuses the Thai peanut noodles example in this prototype for the BLOCKED state')">
+      <div role="button" tabindex="0" class="rrow" style="opacity:.92" onclick="toast('Recipe detail reuses the Thai peanut noodles example in this prototype for the BLOCKED state')">
         <div class="ph dairy" style="filter:grayscale(.6)"><span class="mono">C</span></div>
-        <div class="b"><h4 class="serif" style="color:var(--ink-2)">Creamy cashew curry</h4><div class="allergen" style="padding:8px 10px;font-size:12px"><span class="sh" style="width:24px;height:24px"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round"><path d="M12 3.5L21.5 20h-19z"/><path d="M12 10v4.5"/><circle cx="12" cy="17.4" r=".6" fill="#fff"/></svg></span>Contains cashews · blocked for Maya</div><div style="font-size:11px;color:var(--ink-3);line-height:1.4;margin-top:6px">Matched "cashews" in the ingredient statement (label data).</div></div>
+        <div class="b"><h2 class="serif" style="color:var(--ink-2)">Sesame noodle bowl</h2><div class="allergen" style="padding:8px 10px;font-size:12px"><span class="sh" style="width:24px;height:24px"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round"><path d="M12 3.5L21.5 20h-19z"/><path d="M12 10v4.5"/><circle cx="12" cy="17.4" r=".6" fill="#fff"/></svg></span>Contains sesame · matched 'tahini' in the ingredient statement · blocked for Maya</div></div>
       </div>
       <div class="pad" style="padding-top:4px;font-size:12px;color:var(--ink-3);line-height:1.5">Blocked recipes are shown for transparency only. Add more inventory or adjust who is eating to see other matches.</div>
     </div>
     </div><!-- /mv-tonight -->
 
     <div class="mv-plan">
-      <div class="sec" style="padding-top:10px"><h2 class="serif" style="font-size:19px">Your menus</h2><a onclick="toast('New menu · pick a name and days · not wired in this mockup')">+ New menu</a></div>
-      <div class="chips" style="padding-top:0"><button class="chip" onclick="toast('Monday menu created · empty')">Monday</button><button class="chip on">Weekend</button><button class="chip" onclick="toast('Next 3 days menu created · 3 empty dinner slots')">Next 3 days</button><button class="chip" onclick="toast('Custom menu · name it and pick days')">Custom…</button></div>
+      <div class="sec" style="padding-top:10px"><h2 class="serif" style="font-size:19px">Your menus</h2><button class="lnk" onclick="toast('New menu · pick a name and days · not wired in this mockup')">+ New menu</button></div>
+      <div class="chips" style="padding-top:0"><button aria-pressed="false" class="chip" onclick="toast('Monday menu created · empty')">Monday</button><button aria-pressed="true" class="chip on">Weekend</button><button aria-pressed="false" class="chip" onclick="toast('Next 3 days menu created · 3 empty dinner slots')">Next 3 days</button><button aria-pressed="false" class="chip" onclick="toast('Custom menu · name it and pick days')">Custom…</button></div>
 
       <div class="menucard">
         <div class="mh"><div><b class="serif">Weekend menu</b><i>Sat 27 · Sun 28 · 2 of 3 slots filled</i></div><span class="mtag">shared</span></div>
-        <div class="slot" onclick="openRecipe('unk')">
+        <div role="button" tabindex="0" class="slot" onclick="openRecipe('unk')">
           <div class="d"><b>Sat</b><i>dinner</i></div>
           <div class="ph frozen"><span class="mono">S</span><img src="https://images.unsplash.com/photo-1467003909585-2f8a72700288?auto=format&fit=crop&w=200&q=70" alt="" onerror="this.remove()"></div>
-          <div class="m"><b>Miso-glazed salmon</b><i class="num">30 min · missing 2 · short 1</i>
-            <div class="verdict unk" style="margin-top:4px"><div class="line" style="font-size:11.5px"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 3.5L21.5 20h-19z"/><path d="M12 10v4.5"/><circle cx="12" cy="17.4" r=".6" fill="currentColor"/></svg>Allergen data unknown for Maya · check the package</div></div></div>
+          <div class="m"><b>Miso-glazed salmon</b><i class="num">30 min · missing 2</i>
+            <div class="verdict unk" style="margin-top:4px"><div class="line" style="font-size:12px"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 3.5L21.5 20h-19z"/><path d="M12 10v4.5"/><circle cx="12" cy="17.4" r=".6" fill="currentColor"/></svg>Allergen data incomplete for Maya, severe sesame allergy</div></div></div>
         </div>
-        <div class="slot" onclick="toast('Recipe detail reuses the three verdict examples in this prototype')">
+        <div role="button" tabindex="0" class="slot" onclick="toast('Recipe detail reuses the three verdict examples in this prototype')">
           <div class="d"><b>Sun</b><i>brunch</i></div>
           <div class="ph fruit"><span class="mono">P</span><img src="https://images.unsplash.com/photo-1490645935967-10de6ba17061?auto=format&fit=crop&w=200&q=70" alt="" onerror="this.remove()"></div>
           <div class="m"><b>Yogurt berry parfait</b><i class="num">10 min · missing 1</i>
-            <div class="verdict" style="margin-top:4px"><div class="line" style="font-size:11.5px"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v5c0 4.6-3 7.8-7 9-4-1.2-7-4.4-7-9V6z"/></svg>No known allergen match · 4 members</div></div></div>
+            <div class="verdict" style="margin-top:4px"><div class="line" style="font-size:12px"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v5c0 4.6-3 7.8-7 9-4-1.2-7-4.4-7-9V6z"/></svg>No known allergen match · 2 members</div></div></div>
         </div>
-        <div class="slot empty-slot" onclick="openPicker()">
+        <div role="button" tabindex="0" class="slot empty-slot" onclick="openPicker()">
           <div class="d"><b>Sun</b><i>dinner</i></div>
           <div class="m" style="color:var(--ink-3);font-weight:600">+ Add a recipe to this slot</div>
         </div>
         <div class="mfoot">
-          <div class="gap"><b>3 items missing</b><i>miso paste · broccoli · granola · gap math from inventory</i></div>
-          <button class="btn pri" style="height:40px;font-size:13px;flex:0 0 auto;padding:0 12px;white-space:nowrap" onclick="toast('3 items added to Shopping · tagged Weekend menu', true)">Add to Shopping</button>
+          <div class="gap"><b>3 items missing</b><i>miso paste · broccoli · granola · broccoli and granola are already on your list</i></div>
+          <button class="btn pri" style="height:44px;font-size:13px;flex:0 0 auto;padding:0 12px;white-space:nowrap" onclick="toast('Miso paste added to Shopping · tagged Weekend menu', true)">Add miso paste</button>
         </div>
-        <div class="caveat" style="padding:0 14px 12px;font-size:11px;color:var(--ink-3)">Known matches only · not a guarantee this food is safe.</div>
+        <div class="caveat" style="padding:0 14px 12px;font-size:12px;color:var(--ink-3)">Known matches only · not a guarantee this food is safe.</div>
       </div>
 
       <div class="menucard" style="opacity:.95">
         <div class="mh"><div><b class="serif">Tonight</b><i>Mon 22 · from the Tonight view</i></div><span class="mtag">auto</span></div>
-        <div class="slot" onclick="openRecipe('ok')">
+        <div role="button" tabindex="0" class="slot" onclick="openRecipe('ok')">
           <div class="d"><b>Mon</b><i>dinner</i></div>
           <div class="ph protein"><span class="mono">S</span><img src="https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=200&q=70" alt="" onerror="this.remove()"></div>
           <div class="m"><b>Chicken &amp; spinach stir-fry</b><i class="num">25 min · short 0.75 lb chicken</i></div>
@@ -862,89 +946,82 @@
       <div class="sec"><h2 class="serif" style="font-size:19px">Suggested for your menus</h2><span style="font-size:12px;color:var(--ink-3);font-weight:600">ranked from inventory</span></div>
       <div class="rail" style="padding-bottom:14px">
         <div class="rcard" onclick="openRecipe('ok')">
-          <div class="ph protein"><span class="mono">S</span><img src="https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=400&q=70" alt="" onerror="this.remove()"><span class="tag glass num" style="position:absolute;top:8px;left:8px">92%</span></div>
-          <div class="b"><div class="n">Chicken stir-fry</div><div class="q">uses 3 expiring</div><button class="okbtn addm" onclick="event.stopPropagation();toast('Added to Weekend menu · Sun dinner', true)">Add to Weekend</button></div>
+          <div class="ph protein"><span class="mono">S</span><img src="https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=400&q=70" alt="" onerror="this.remove()"><span class="tag glass num" style="position:absolute;top:8px;left:8px">92%</span><button class="cardlink" aria-label="Open Chicken stir-fry recipe"></button></div>
+          <div class="b"><div class="n">Chicken stir-fry</div><div class="q">uses 3 expiring</div><button class="okbtn addm" aria-label="Add Chicken stir-fry to Weekend menu" onclick="event.stopPropagation();toast('Added to Weekend menu · Sun dinner', true)">Add to Weekend</button></div>
         </div>
         <div class="rcard" onclick="toast('Recipe detail reuses the three verdict examples in this prototype')">
-          <div class="ph produce"><span class="mono">V</span><img src="https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=400&q=70" alt="" onerror="this.remove()"><span class="tag glass num" style="position:absolute;top:8px;left:8px">81%</span></div>
-          <div class="b"><div class="n">Veggie fried rice</div><div class="q">uses rice, mushrooms</div><button class="okbtn addm" onclick="event.stopPropagation();toast('Added to Weekend menu · Sun dinner', true)">Add to Weekend</button></div>
+          <div class="ph produce"><span class="mono">V</span><img src="https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=400&q=70" alt="" onerror="this.remove()"><span class="tag glass num" style="position:absolute;top:8px;left:8px">81%</span><button class="cardlink" aria-label="Open Veggie fried rice recipe"></button></div>
+          <div class="b"><div class="n">Veggie fried rice</div><div class="q">uses rice, mushrooms</div><button class="okbtn addm" aria-label="Add Veggie fried rice to Weekend menu" onclick="event.stopPropagation();toast('Added to Weekend menu · Sun dinner', true)">Add to Weekend</button></div>
         </div>
-        <div class="rcard" style="opacity:.85" onclick="openRecipe('blocked')">
+        <div role="button" tabindex="0" class="rcard" style="opacity:.85" onclick="openRecipe('blocked')">
           <div class="ph grain" style="filter:grayscale(.6)"><span class="mono">T</span></div>
           <div class="b"><div class="n" style="color:var(--ink-2)">Thai peanut noodles</div><div class="q" style="color:var(--danger);font-weight:700">Blocked for Maya · cannot be planned</div></div>
         </div>
       </div>
       <div class="pad" style="font-size:12px;color:var(--ink-3);line-height:1.5;padding-bottom:10px">Suggestions are ranked by what you have and what is expiring. Adding to a menu never changes inventory; cooking does.</div>
 
-      <div class="cooksheet" id="pickerSheet">
-        <b style="font-size:14px">Add to Sun dinner</b>
-        <div class="allocrow" style="cursor:pointer" onclick="pickForSlot('Chicken &amp; spinach stir-fry')"><span>Chicken &amp; spinach stir-fry</span><span class="match num">92%</span></div>
-        <div class="allocrow" style="cursor:pointer" onclick="pickForSlot('Veggie fried rice')"><span>Veggie fried rice</span><span class="match num">81%</span></div>
-        <div class="allocrow" style="opacity:.7"><span style="color:var(--ink-2)">Thai peanut noodles</span><span style="font-size:11.5px;font-weight:700;color:var(--danger)">Blocked for Maya · not selectable</span></div>
-        <div class="btns"><button class="btn sec" onclick="document.getElementById('pickerSheet').classList.remove('open')">Cancel</button></div>
-      </div>
     </div><!-- /mv-plan -->
   </div>
-  <div class="nav">
+  <nav class="nav" aria-label="Main">
     <button onclick="go('scr-home')"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11l8-7 8 7"/><path d="M6 9.5V20h12V9.5"/></svg>Home</button>
     <button onclick="go('scr-inventory')"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9h16l-1.5 10a2 2 0 0 1-2 1.7h-9a2 2 0 0 1-2-1.7z"/><path d="M8 9l2.5-5"/><path d="M16 9l-2.5-5"/></svg>Inventory</button>
-    <span class="gap"></span>
-    <button class="on" onclick="go('scr-menu')"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2.5"/><path d="M3 10h18"/><path d="M8 3v4"/><path d="M16 3v4"/><path d="M8 15h3"/></svg>Menu</button>
+    <span class="gap" aria-hidden="true"></span>
+    <button class="on" aria-current="page" onclick="go('scr-menu')"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2.5"/><path d="M3 10h18"/><path d="M8 3v4"/><path d="M16 3v4"/><path d="M8 15h3"/></svg>Menu</button>
     <button onclick="go('scr-shopping')"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h2l2.6 12.4a1 1 0 0 0 1 .6h8.7a1 1 0 0 0 1-.8L20 8H6"/><circle cx="9.5" cy="20" r="1"/><circle cx="17" cy="20" r="1"/></svg>Shopping</button>
-    <div class="fab" onclick="go('scr-add')"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#f7efe2" stroke-width="2" stroke-linecap="round"><path d="M4 8V6a2 2 0 0 1 2-2h2"/><path d="M16 4h2a2 2 0 0 1 2 2v2"/><path d="M20 16v2a2 2 0 0 1-2 2h-2"/><path d="M8 20H6a2 2 0 0 1-2-2v-2"/><path d="M4 12h16"/></svg></div>
-  </div>
+    <button class="fab" aria-label="Add food" onclick="go('scr-add')"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#f7efe2" stroke-width="2" stroke-linecap="round"><path d="M4 8V6a2 2 0 0 1 2-2h2"/><path d="M16 4h2a2 2 0 0 1 2 2v2"/><path d="M20 16v2a2 2 0 0 1-2 2h-2"/><path d="M8 20H6a2 2 0 0 1-2-2v-2"/><path d="M4 12h16"/></svg></button>
+  </nav>
 </section>
 
 <!-- ================= SHOPPING ================= -->
 <section class="screen" id="scr-shopping">
   <div class="scroll">
     <div class="lhead"><div><h1 class="serif">Shopping</h1><div class="sub">shared · <b class="num" id="buyCount" style="color:var(--ink)">5</b> to buy · each item shows where it came from: a menu gap, an AI suggestion, or the member who added it</div></div>
-      <div style="display:flex"><div class="iconb" style="width:32px;height:32px;font-size:11px;font-weight:700">DC</div><div class="iconb" style="width:32px;height:32px;font-size:11px;font-weight:700;margin-left:-8px">MC</div></div></div>
+      <div style="display:flex"><div class="iconb" role="img" aria-label="Dean Chen" style="width:32px;height:32px;font-size:11px;font-weight:700">DC</div><div class="iconb" role="img" aria-label="Maya Chen" style="width:32px;height:32px;font-size:11px;font-weight:700;margin-left:-8px">MC</div></div></div>
     <div class="banner offline-only"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 3l18 18"/><path d="M8.5 16.5a7 7 0 0 1 7-1.7"/><path d="M5 12.5a11 11 0 0 1 3-2"/><path d="M19 12.5a11 11 0 0 0-2.6-1.9"/><path d="M12 20h.01"/></svg><span><b>Offline.</b> Showing your last synced list from 12 min ago. Check-offs are queued and will sync automatically.</span></div>
     <div class="loop"><b>Olive oil checked off · add it to the pantry?</b><button onclick="toast('Olive oil added to Pantry · inventory updated', true)">Add</button></div>
     <div class="grp"><b>Meat &amp; seafood</b></div>
-    <div class="srow"><button class="chk" onclick="toggleCheck(this,'Chicken breast')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l4.5 4.5L19 7"/></svg></button><div style="flex:1"><div class="n">Chicken breast</div><div class="s num"><span class="msrc">Tonight</span> need 2 lb · have 1.25 lb</div></div><div class="amt num">0.75 lb</div></div>
+    <div class="srow"><button aria-pressed="false" class="chk" aria-label="Check off Chicken breast" onclick="toggleCheck(this,'Chicken breast')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l4.5 4.5L19 7"/></svg></button><div style="flex:1"><div class="n">Chicken breast</div><div class="s num"><span class="msrc">Tonight</span> need 2 lb · have 1.25 lb</div></div><div class="amt num">0.75 lb</div></div>
     <div class="grp"><b>Produce</b></div>
-    <div class="srow"><button class="chk" onclick="toggleCheck(this,'Broccoli')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l4.5 4.5L19 7"/></svg></button><div style="flex:1"><div class="n">Broccoli</div><div class="s"><span class="msrc">Weekend menu</span> miso salmon · none on hand</div></div><div class="amt num">2 lb</div></div>
-    <div class="srow ai-sugg"><button class="chk" onclick="toggleCheck(this,'Garlic')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l4.5 4.5L19 7"/></svg></button><div style="flex:1"><div class="n">Garlic</div><div class="s"><span class="prov ai soft" style="font-size:10px;padding:2px 6px">AI</span> suggested to go with the stir-fry · a proposal until you keep it</div></div><div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px"><div class="amt num">1 head</div><button class="okbtn ghost" style="height:24px;padding:0 8px;font-size:11px" onclick="event.stopPropagation();this.closest('.srow').remove();toast('Garlic removed · AI suggestion declined')">Remove</button></div></div>
+    <div class="srow"><button aria-pressed="false" class="chk" aria-label="Check off Broccoli" onclick="toggleCheck(this,'Broccoli')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l4.5 4.5L19 7"/></svg></button><div style="flex:1"><div class="n">Broccoli</div><div class="s"><span class="msrc">Weekend menu</span> miso salmon · none on hand</div></div><div class="amt num">2 lb</div></div>
+    <div class="srow ai-sugg"><button aria-pressed="false" class="chk" aria-label="Check off Garlic" onclick="toggleCheck(this,'Garlic')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l4.5 4.5L19 7"/></svg></button><div style="flex:1"><div class="n">Garlic</div><div class="s"><span class="prov ai soft" style="font-size:11px;padding:2px 6px">AI</span> suggested to go with the stir-fry · a proposal until you keep it</div></div><div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px"><div class="amt num">1</div><button class="okbtn ghost" aria-label="Remove Garlic" style="height:24px;padding:0 8px;font-size:11px" onclick="event.stopPropagation();this.closest('.srow').remove();toast('Garlic removed · AI suggestion declined')">Remove</button></div></div>
     <div class="grp"><b>Pantry</b></div>
-    <div class="srow"><button class="chk" onclick="toggleCheck(this,'Granola')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l4.5 4.5L19 7"/></svg></button><div style="flex:1"><div class="n">Granola</div><div class="s"><span class="msrc">Weekend menu</span> yogurt parfait</div></div><div class="amt num">1</div></div>
-    <div class="srow"><button class="chk" onclick="toggleCheck(this,'Paper towels')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l4.5 4.5L19 7"/></svg></button><div style="flex:1"><div class="n">Paper towels</div><div class="s" style="display:flex;align-items:center;gap:6px"><span class="mchip">MC</span> added by Maya · not tied to a menu</div></div><div class="amt num">1</div></div>
-    <div class="srow done"><button class="chk done" onclick="toggleCheck(this,'Olive oil')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l4.5 4.5L19 7"/></svg></button><div style="flex:1"><div class="n">Olive oil</div><div class="s" style="color:var(--ink-3);display:flex;align-items:center;gap:6px"><span class="mchip">DC</span> added and checked off by Dean <span class="queued offline-only-inline">queued · will sync</span></div></div><div class="amt num" style="color:var(--ink-3)">1</div></div>
+    <div class="srow"><button aria-pressed="false" class="chk" aria-label="Check off Granola" onclick="toggleCheck(this,'Granola')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l4.5 4.5L19 7"/></svg></button><div style="flex:1"><div class="n">Granola</div><div class="s"><span class="msrc">Weekend menu</span> yogurt parfait</div></div><div class="amt num">1</div></div>
+    <div class="srow"><button aria-pressed="false" class="chk" aria-label="Check off Paper towels" onclick="toggleCheck(this,'Paper towels')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l4.5 4.5L19 7"/></svg></button><div style="flex:1"><div class="n">Paper towels</div><div class="s" style="display:flex;align-items:center;gap:6px"><span class="mchip">MC</span> added by Maya · not tied to a menu</div></div><div class="amt num">1</div></div>
+    <div class="srow done"><button aria-pressed="true" class="chk done" aria-label="Check off Olive oil" onclick="toggleCheck(this,'Olive oil')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l4.5 4.5L19 7"/></svg></button><div style="flex:1"><div class="n">Olive oil</div><div class="s" style="color:var(--ink-3);display:flex;align-items:center;gap:6px"><span class="mchip">DC</span> added and checked off by Dean <span class="queued offline-only-inline">queued · will sync</span></div></div><div class="amt num" style="color:var(--ink-3)">1</div></div>
     <div class="grp"><b>Already have · skipped</b></div>
     <div class="srow" style="background:transparent;border-style:dashed"><span style="color:var(--green)">✓</span><div style="flex:1;color:var(--ink-2)">Rice</div><div class="s num">~4 cups <span class="prov est">≈ Est.</span></div></div>
     <div class="srow" style="background:transparent;border-style:dashed"><span style="color:var(--green)">✓</span><div style="flex:1;color:var(--ink-2)">Soy sauce</div><div class="s">sufficient</div></div>
   </div>
-  <div class="nav">
+  <nav class="nav" aria-label="Main">
     <button onclick="go('scr-home')"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11l8-7 8 7"/><path d="M6 9.5V20h12V9.5"/></svg>Home</button>
     <button onclick="go('scr-inventory')"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9h16l-1.5 10a2 2 0 0 1-2 1.7h-9a2 2 0 0 1-2-1.7z"/><path d="M8 9l2.5-5"/><path d="M16 9l-2.5-5"/></svg>Inventory</button>
-    <span class="gap"></span>
+    <span class="gap" aria-hidden="true"></span>
     <button onclick="go('scr-menu')"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2.5"/><path d="M3 10h18"/><path d="M8 3v4"/><path d="M16 3v4"/><path d="M8 15h3"/></svg>Menu</button>
-    <button class="on" onclick="go('scr-shopping')"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h2l2.6 12.4a1 1 0 0 0 1 .6h8.7a1 1 0 0 0 1-.8L20 8H6"/><circle cx="9.5" cy="20" r="1"/><circle cx="17" cy="20" r="1"/></svg>Shopping</button>
-    <div class="fab" onclick="go('scr-add')"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#f7efe2" stroke-width="2" stroke-linecap="round"><path d="M4 8V6a2 2 0 0 1 2-2h2"/><path d="M16 4h2a2 2 0 0 1 2 2v2"/><path d="M20 16v2a2 2 0 0 1-2 2h-2"/><path d="M8 20H6a2 2 0 0 1-2-2v-2"/><path d="M4 12h16"/></svg></div>
-  </div>
+    <button class="on" aria-current="page" onclick="go('scr-shopping')"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h2l2.6 12.4a1 1 0 0 0 1 .6h8.7a1 1 0 0 0 1-.8L20 8H6"/><circle cx="9.5" cy="20" r="1"/><circle cx="17" cy="20" r="1"/></svg>Shopping</button>
+    <button class="fab" aria-label="Add food" onclick="go('scr-add')"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#f7efe2" stroke-width="2" stroke-linecap="round"><path d="M4 8V6a2 2 0 0 1 2-2h2"/><path d="M16 4h2a2 2 0 0 1 2 2v2"/><path d="M20 16v2a2 2 0 0 1-2 2h-2"/><path d="M8 20H6a2 2 0 0 1-2-2v-2"/><path d="M4 12h16"/></svg></button>
+  </nav>
 </section>
 
 <!-- ================= ASSISTANT (post-MVP preview) ================= -->
 <section class="screen" id="scr-assistant">
-  <div class="back"><div class="iconb" onclick="goBack()"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></div><h1 class="serif" style="flex:1">Kitchen assistant</h1><span class="prov ai soft">post-MVP</span></div>
+  <div class="back"><button class="iconb" aria-label="Back" onclick="goBack()"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></button><h1 class="serif" style="flex:1">Kitchen assistant</h1><span class="prov ai soft">post-MVP</span></div>
   <div class="qchips"><button class="chip">What can I make tonight?</button><button class="chip">What's expiring?</button><button class="chip">Plan this week</button></div>
   <div class="scroll" style="padding:6px 18px 20px;display:flex;flex-direction:column;gap:12px">
     <div class="bub me">What can I make for dinner in under 30 minutes?</div>
-    <div class="bub ai"><div>Best match is <b>chicken &amp; spinach stir-fry</b> · <span class="num">25 min</span>, uses the chicken, spinach and mushrooms expiring in the next 2–3 days. You have everything.</div>
-      <button class="btn sec" style="height:38px;font-size:13px;align-self:flex-start;padding:0 14px;flex:0" onclick="go('scr-menu')">See recipe</button>
+    <div class="bub ai"><div>Best match is <b>chicken &amp; spinach stir-fry</b> · <span class="num">25 min</span>, uses the chicken, spinach and mushrooms expiring in the next 2–3 days. You are 0.75 lb of chicken short, and it is already on your shopping list.</div>
+      <button class="btn sec" style="height:44px;font-size:13px;align-self:flex-start;padding:0 14px;flex:none" onclick="go('scr-menu')">See recipe</button>
       <div class="evid"><span class="prov fact">✓ Fact</span>inventory · <span class="prov est">≈ Est.</span>expiry dates</div></div>
     <div class="bub me">Can Maya have the granola bars I bought today?</div>
-    <div class="bub ai"><div class="allergen"><span class="sh"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round"><path d="M12 3.5L21.5 20h-19z"/><path d="M12 10v4.5"/><circle cx="12" cy="17.4" r=".6" fill="#fff"/></svg></span>Label lists tree nuts (almonds) · blocked by Maya's profile</div>
-      <div>I can't mark any food as safe. Please check the package yourself for serious allergies.</div>
+    <div class="bub ai"><div class="allergen"><span class="sh"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round"><path d="M12 3.5L21.5 20h-19z"/><path d="M12 10v4.5"/><circle cx="12" cy="17.4" r=".6" fill="#fff"/></svg></span>Blocked for Maya</div>
+      <div>This one is blocked for Maya's peanut allergy, so I won't suggest it. I still can't mark any food as safe.</div>
       <div class="evid"><span class="prov fact">✓ Fact</span>verified label data + household rules · never generated text</div></div>
   </div>
-  <div class="inbar"><input placeholder="Ask about meals, food, or shopping…"><button class="send" onclick="toast('Assistant is a post-MVP preview')"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l14-7-4 7 4 7z"/></svg></button></div>
+  <div class="inbar"><input aria-label="Ask about meals, food, or shopping" placeholder="Ask about meals, food, or shopping…"><button class="send" aria-label="Send" onclick="toast('Assistant is a post-MVP preview')"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l14-7-4 7 4 7z"/></svg></button></div>
 </section>
 
 <!-- ================= SHARED · PROVENANCE LEGEND (one-time) ================= -->
 <section class="screen" id="scr-legend">
-  <div class="back"><div class="iconb" onclick="goBack()"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></div><h1 class="serif">What do these mean?</h1></div>
+  <div class="back"><button class="iconb" aria-label="Back" onclick="goBack()"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></button><h1 class="serif">What do these mean?</h1></div>
   <div class="scroll pad" style="padding-top:4px">
     <p style="font-size:13px;color:var(--ink-2);line-height:1.55">Every value in KitchenSmart wears a tag showing how sure we are. A tag is our confidence in a fact. It is never a safety check by itself.</p>
     <div class="legrow"><span class="prov fact">✓ Fact</span><p><b style="color:var(--ink)">Known Fact.</b> Verified against a source we trust, such as a barcode match or something you typed yourself.</p></div>
@@ -956,7 +1033,7 @@
 
 <!-- ================= S1 · ACCOUNT + HOUSEHOLD ================= -->
 <section class="screen" id="scr-account">
-  <div class="back"><div class="iconb" onclick="goBack()"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></div><h1 class="serif">Welcome</h1></div>
+  <div class="back"><button class="iconb" aria-label="Back" onclick="goBack()"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></button><h1 class="serif">Welcome</h1></div>
   <div class="scroll pad" style="padding-top:2px;display:flex;flex-direction:column;gap:14px">
     <p style="font-size:13px;color:var(--ink-2);line-height:1.5">Sign in to start your kitchen. This mockup skips real authentication.</p>
     <button class="btn dark full" onclick="toast('Signed in as dean@example.com')">Continue with email</button>
@@ -965,12 +1042,12 @@
     <div class="sec" style="padding:14px 0 4px"><h2 class="serif" style="font-size:18px">Your household</h2></div>
     <div class="card" style="padding:16px;display:flex;flex-direction:column;gap:10px">
       <div style="font-size:13px;font-weight:700">Create a new household</div>
-      <input id="hhName" placeholder="Household name, for example The Chens" style="height:44px;border-radius:10px;border:1px solid var(--line);padding:0 12px;font-family:inherit;font-size:14px;background:var(--paper);color:var(--ink)">
+      <input id="hhName" aria-label="Household name" placeholder="Household name, for example The Chens" style="height:44px;border-radius:10px;border:1px solid var(--line);padding:0 12px;font-family:inherit;font-size:14px;background:var(--paper);color:var(--ink)">
       <button class="btn pri full" onclick="startHousehold('create')">Create household</button>
     </div>
     <div class="card" style="padding:16px;display:flex;flex-direction:column;gap:10px">
       <div style="font-size:13px;font-weight:700">Join with a code</div>
-      <input id="hhCode" placeholder="Join code, for example CHEN-482" style="height:44px;border-radius:10px;border:1px solid var(--line);padding:0 12px;font-family:inherit;font-size:14px;background:var(--paper);color:var(--ink)">
+      <input id="hhCode" aria-label="Join code" placeholder="Join code, for example CHEN-482" style="height:44px;border-radius:10px;border:1px solid var(--line);padding:0 12px;font-family:inherit;font-size:14px;background:var(--paper);color:var(--ink)">
       <button class="btn sec full" onclick="startHousehold('join')">Join household</button>
     </div>
   </div>
@@ -978,36 +1055,36 @@
 
 <!-- ================= S2 · ALLERGIES & PREFERENCES ================= -->
 <section class="screen" id="scr-allergies">
-  <div class="back"><div class="iconb" onclick="goBack()"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></div><h1 class="serif">Allergies</h1></div>
+  <div class="back"><button class="iconb" aria-label="Back" onclick="goBack()"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></button><h1 class="serif">Allergies</h1></div>
   <div class="scroll pad" style="padding-top:2px;display:flex;flex-direction:column;gap:12px">
     <p style="font-size:13px;color:var(--ink-2);line-height:1.5">Required for every member before recipes can be screened. We can only warn about what you tell us, so an honest "none" is as useful as a real allergy. Preferences below are optional.</p>
     <div style="font-size:12px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--ink-3)">Maya Chen</div>
     <div class="chips" style="padding:0;flex-wrap:wrap;overflow:visible" id="allergenChips">
-      <button class="allergychip" data-term="milk" onclick="toggleAllergen(this)">Milk</button>
-      <button class="allergychip" data-term="egg" onclick="toggleAllergen(this)">Egg</button>
-      <button class="allergychip" data-term="fish" onclick="toggleAllergen(this)">Fish</button>
-      <button class="allergychip" data-term="shellfish" onclick="toggleAllergen(this)">Shellfish</button>
-      <button class="allergychip" data-term="tree_nut" onclick="toggleAllergen(this)">Tree nut</button>
-      <button class="allergychip on" data-term="peanut" onclick="toggleAllergen(this)">Peanut</button>
-      <button class="allergychip on" data-term="sesame" onclick="toggleAllergen(this)">Sesame</button>
-      <button class="allergychip" data-term="wheat" onclick="toggleAllergen(this)">Wheat</button>
-      <button class="allergychip" data-term="soy" onclick="toggleAllergen(this)">Soy</button>
+      <button aria-pressed="false" class="allergychip" data-term="milk" onclick="toggleAllergen(this)">Milk</button>
+      <button aria-pressed="false" class="allergychip" data-term="egg" onclick="toggleAllergen(this)">Egg</button>
+      <button aria-pressed="false" class="allergychip" data-term="fish" onclick="toggleAllergen(this)">Fish</button>
+      <button aria-pressed="false" class="allergychip" data-term="shellfish" onclick="toggleAllergen(this)">Shellfish</button>
+      <button aria-pressed="false" class="allergychip" data-term="tree_nut" onclick="toggleAllergen(this)">Tree nut</button>
+      <button aria-pressed="true" class="allergychip on" data-term="peanut" onclick="toggleAllergen(this)">Peanut</button>
+      <button aria-pressed="true" class="allergychip on" data-term="sesame" onclick="toggleAllergen(this)">Sesame</button>
+      <button aria-pressed="false" class="allergychip" data-term="wheat" onclick="toggleAllergen(this)">Wheat</button>
+      <button aria-pressed="false" class="allergychip" data-term="soy" onclick="toggleAllergen(this)">Soy</button>
     </div>
     <div id="severityList" style="display:flex;flex-direction:column;gap:2px"></div>
     <div style="display:flex;gap:8px">
-      <input id="customAllergen" placeholder="Add another allergen or ingredient" style="flex:1;height:42px;border-radius:10px;border:1px solid var(--line);padding:0 12px;font-family:inherit;font-size:13.5px;background:var(--paper);color:var(--ink)">
+      <input id="customAllergen" aria-label="Add another allergen or ingredient" placeholder="Add another allergen or ingredient" style="flex:1;height:44px;border-radius:10px;border:1px solid var(--line);padding:0 12px;font-family:inherit;font-size:13.5px;background:var(--paper);color:var(--ink)">
       <button class="btn sec" style="flex:0 0 auto;padding:0 16px" onclick="addCustomAllergen()">Add</button>
     </div>
-    <button class="noneopt" id="noneBtn" onclick="toggleNone(this)">
+    <button aria-pressed="false" class="noneopt" id="noneBtn" onclick="toggleNone(this)">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l4.5 4.5L19 7"/></svg>
       No known allergies for Maya
     </button>
 
-    <div class="sec" style="padding:10px 0 0"><h2 class="serif" style="font-size:18px">Preferences</h2><a onclick="skipPreferences()">Skip preferences</a></div>
+    <div class="sec" style="padding:10px 0 0"><h2 class="serif" style="font-size:18px">Preferences</h2><button class="lnk" onclick="skipPreferences()">Skip preferences</button></div>
     <div class="chips" style="padding:0;flex-wrap:wrap;overflow:visible" id="prefChips">
-      <button class="chip" onclick="this.classList.toggle('on')">Vegetarian</button>
-      <button class="chip on" onclick="this.classList.toggle('on')">High protein</button>
-      <button class="chip" onclick="this.classList.toggle('on')">Kid-friendly</button>
+      <button aria-pressed="false" class="chip" onclick="this.classList.toggle('on')">Vegetarian</button>
+      <button aria-pressed="true" class="chip on" onclick="this.classList.toggle('on')">High protein</button>
+      <button aria-pressed="false" class="chip" onclick="this.classList.toggle('on')">Kid-friendly</button>
     </div>
     <button class="btn pri full" onclick="continueAllergies()">Continue</button>
   </div>
@@ -1015,19 +1092,19 @@
 
 <!-- ================= S12 · PROFILE & HOUSEHOLD ================= -->
 <section class="screen" id="scr-profile">
-  <div class="back"><div class="iconb" onclick="goBack()"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></div><h1 class="serif" style="flex:1">Profile &amp; household</h1></div>
+  <div class="back"><button class="iconb" aria-label="Back" onclick="goBack()"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></button><h1 class="serif" style="flex:1">Profile &amp; household</h1></div>
   <div class="scroll pad" style="padding-top:2px;display:flex;flex-direction:column;gap:10px">
     <div class="card" style="padding:14px 16px;display:flex;align-items:center;gap:12px">
-      <div class="iconb" style="width:44px;height:44px;font-weight:700">DC</div>
+      <div class="iconb" role="img" aria-label="Dean Chen" style="width:44px;height:44px;font-weight:700">DC</div>
       <div><div style="font-weight:700;font-size:15px">Dean Chen</div><div style="font-size:12.5px;color:var(--ink-3)">dean@example.com · owner · Chen household</div></div>
     </div>
-    <div class="sec" style="padding:10px 0 2px"><h2 class="serif" style="font-size:18px">Household members</h2><a onclick="toast('Join code CHEN-482 ready to share')">Invite</a></div>
-    <div class="ledgerrow" onclick="go('scr-allergies')" style="cursor:pointer">
+    <div class="sec" style="padding:10px 0 2px"><h2 class="serif" style="font-size:18px">Household members</h2><button class="lnk" onclick="toast('Join code CHEN-482 ready to share')">Invite</button></div>
+    <div role="button" tabindex="0" class="ledgerrow" onclick="go('scr-allergies')" style="cursor:pointer">
       <div class="mchip" style="width:34px;height:34px;font-size:12px">DC</div>
       <div class="m"><b>Dean Chen</b><i>No known allergies · edit</i></div>
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 5l7 7-7 7"/></svg>
     </div>
-    <div class="ledgerrow" onclick="go('scr-allergies')" style="cursor:pointer">
+    <div role="button" tabindex="0" class="ledgerrow" onclick="go('scr-allergies')" style="cursor:pointer">
       <div class="mchip" style="width:34px;height:34px;font-size:12px">MC</div>
       <div class="m"><b>Maya Chen</b><i>Peanut, sesame · severe · edit</i></div>
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 5l7 7-7 7"/></svg>
@@ -1043,28 +1120,28 @@
 
 <!-- ================= S9 · MANUAL ADD / COMPLETION ================= -->
 <section class="screen" id="scr-manual">
-  <div class="back"><div class="iconb" onclick="goBack()"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></div><h1 class="serif">Add manually</h1></div>
+  <div class="back"><button class="iconb" aria-label="Back" onclick="goBack()"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></button><h1 class="serif">Add manually</h1></div>
   <div class="scroll pad" style="padding-top:2px;display:flex;flex-direction:column;gap:14px">
     <div id="manualCodeNote" style="display:none;font-size:12px;color:var(--ink-2);background:var(--sand);padding:10px 12px;border-radius:10px;line-height:1.5">Barcode <span class="num" id="manualCodeVal"></span> kept on file. If it is added to a data source later, we will offer to fill in these facts automatically.</div>
     <div>
       <div class="kv" style="border-top:none"><span class="k">Name</span><span class="prov fact">✓ Fact</span></div>
-      <input id="manName" placeholder="e.g. Trader Joe's frozen dumplings" style="width:100%;height:44px;border-radius:10px;border:1px solid var(--line);padding:0 12px;font-family:inherit;font-size:14px;background:var(--paper);color:var(--ink)">
+      <input id="manName" aria-label="Item name" placeholder="e.g. Trader Joe's frozen dumplings" style="width:100%;height:44px;border-radius:10px;border:1px solid var(--line);padding:0 12px;font-family:inherit;font-size:14px;background:var(--paper);color:var(--ink)">
     </div>
     <div>
       <div class="kv" style="border-top:none"><span class="k">Amount</span><span class="prov fact">✓ Fact</span></div>
       <div class="chips" style="padding:0" id="unitKindChips">
-        <button class="chip on" data-kind="mass" onclick="pickUnitKind(this)">Mass</button>
-        <button class="chip" data-kind="volume" onclick="pickUnitKind(this)">Volume</button>
-        <button class="chip" data-kind="count" onclick="pickUnitKind(this)">Count</button>
+        <button aria-pressed="true" class="chip on" data-kind="mass" onclick="pickUnitKind(this)">Mass</button>
+        <button aria-pressed="false" class="chip" data-kind="volume" onclick="pickUnitKind(this)">Volume</button>
+        <button aria-pressed="false" class="chip" data-kind="count" onclick="pickUnitKind(this)">Count</button>
       </div>
       <div style="display:flex;align-items:center;gap:12px;margin-top:10px">
-        <div class="step"><button onclick="stepManualQty(-1)">−</button><b class="num" id="manQtyVal">1</b><button onclick="stepManualQty(1)">+</button></div>
+        <div class="step"><button aria-label="Decrease quantity" onclick="stepManualQty(-1)">−</button><b class="num" id="manQtyVal">1</b><button aria-label="Increase quantity" onclick="stepManualQty(1)">+</button></div>
         <div class="chips" style="padding:0" id="unitChips"></div>
       </div>
     </div>
     <div>
       <div class="kv" style="border-top:none"><span class="k">Location</span><span class="prov fact">✓ Fact</span></div>
-      <div class="locs"><button class="loc on" onclick="pickLoc2(this)">Fridge</button><button class="loc" onclick="pickLoc2(this)">Freezer</button><button class="loc" onclick="pickLoc2(this)">Pantry</button></div>
+      <div class="locs"><button aria-pressed="true" class="loc on" onclick="pickLoc2(this)">Fridge</button><button aria-pressed="false" class="loc" onclick="pickLoc2(this)">Freezer</button><button aria-pressed="false" class="loc" onclick="pickLoc2(this)">Pantry</button></div>
     </div>
     <button class="btn pri full" onclick="saveManual()">Add to inventory</button>
   </div>
@@ -1072,26 +1149,26 @@
 
 <!-- ================= S5 · ITEM DETAIL / HISTORY ================= -->
 <section class="screen" id="scr-item">
-  <div class="back"><div class="iconb" onclick="goBack()"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></div><h1 class="serif" style="flex:1">Chicken breast</h1><span class="prov fact">✓ Fact</span></div>
+  <div class="back"><button class="iconb" aria-label="Back" onclick="goBack()"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></button><h1 class="serif" style="flex:1">Chicken breast</h1><span class="prov fact">✓ Fact</span></div>
   <div class="scroll">
     <div class="qtybig"><b class="num serif" id="itemQtyDisplay">1.25 lb</b><span style="font-size:13px;color:var(--ink-3)">on hand · Fridge</span></div>
-    <div class="whyplain" id="whyPlainText"><b style="color:var(--ink)">Why 1.25 lb?</b> Bought <span class="num">2.0 lb</span> Wednesday. On Thursday, <span class="num">2.25 lb</span> was recorded used for Chicken &amp; spinach stir-fry, more than was on hand, so <span class="num">0.25 lb</span> was added back to correct the count. Bought another <span class="num">1.25 lb</span> Saturday. 2.0 − 2.25 + 0.25 + 1.25 = 1.25 lb. <span class="leglink" onclick="go('scr-legend')">What do these badges mean?</span></div>
+    <div class="whyplain" id="whyPlainText"><b style="color:var(--ink)">Why 1.25 lb?</b> Bought <span class="num">2.0 lb</span> Wednesday. On Thursday, <span class="num">2.25 lb</span> was recorded used for Chicken &amp; spinach stir-fry, more than was on hand, so <span class="num">0.25 lb</span> was added back to correct the count. Bought another <span class="num">1.25 lb</span> Saturday. 2.0 − 2.25 + 0.25 + 1.25 = 1.25 lb. <button class="leglink" onclick="go('scr-legend')">What do these badges mean?</button></div>
 
     <div class="sec" style="padding-top:2px"><h2 class="serif" style="font-size:17px">Correct this</h2></div>
     <div class="pad" style="padding-bottom:6px">
       <div class="card" style="padding:14px 16px;display:flex;flex-direction:column;gap:10px">
         <div style="font-size:12.5px;color:var(--ink-2)">One tap if this number is wrong. A correction teaches the system. It is never an apology.</div>
-        <div class="step"><button onclick="stepItemQty(-0.25)">−</button><b class="num" id="itemQtyVal">1.25</b><span style="font-size:13px;color:var(--ink-3)">lb</span><button onclick="stepItemQty(0.25)">+</button></div>
+        <div class="step"><button aria-label="Decrease quantity" onclick="stepItemQty(-0.25)">−</button><b class="num" id="itemQtyVal">1.25</b><span style="font-size:13px;color:var(--ink-3)">lb</span><button aria-label="Increase quantity" onclick="stepItemQty(0.25)">+</button></div>
         <button class="btn pri full" onclick="correctQty()">Save correction</button>
       </div>
     </div>
 
     <div class="sec"><h2 class="serif" style="font-size:17px">Use or remove</h2></div>
     <div class="chips" id="reasonTop">
-      <button class="chip" onclick="pickReason(this,'Consumed')">Consume</button>
-      <button class="chip" onclick="pickReason(this,'Discarded')">Discard</button>
-      <button class="chip" onclick="pickReason(this,'Marked expired')">Mark expired</button>
-      <button class="chip" onclick="pickReason(this,'Donated')">Donate</button>
+      <button aria-pressed="false" class="chip" onclick="pickReason(this,'Consumed')">Consume</button>
+      <button aria-pressed="false" class="chip" onclick="pickReason(this,'Discarded')">Discard</button>
+      <button aria-pressed="false" class="chip" onclick="pickReason(this,'Marked expired')">Mark expired</button>
+      <button aria-pressed="false" class="chip" onclick="pickReason(this,'Donated')">Donate</button>
     </div>
     <div id="reasonChips" class="reasonrow" style="display:none">
       <button class="chip" onclick="applyReason(this)">Spoiled</button>
@@ -1137,67 +1214,94 @@
 <!-- ================= RECIPE DETAIL ================= -->
 <section class="screen" id="scr-recipe-detail">
   <div class="scroll">
-    <div class="back"><div class="iconb" onclick="goBack()"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></div><h1 class="serif" id="recipeTitle" style="flex:1;font-size:22px">Recipe</h1></div>
+    <div class="back"><button class="iconb" aria-label="Back" onclick="goBack()"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></button><h1 class="serif" id="recipeTitle" style="flex:1;font-size:22px">Recipe</h1></div>
 
     <div class="v-ok-only">
       <div class="pad"><div class="ph protein rhero" style="border-radius:var(--r-md)"><span class="mono" style="font-size:64px">S</span><img src="https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=800&q=75" alt="" onerror="this.remove()"><div class="scrim"></div><div class="over"><div class="meta"><span class="num">25 min</span>·<span class="num">540 cal</span>·<span>serves 4</span></div></div></div></div>
       <div class="sec"><h2 class="serif" style="font-size:17px">Ingredients</h2></div>
-      <div class="ingredrow"><div class="m"><b>Chicken breast</b><span style="font-size:11.5px;color:var(--ink-3)">need 2 lb · have <span class="num">1.25 lb</span></span></div><span class="prov fact">✓ Fact</span><span class="stat short">short by 0.75 lb</span><button class="addlist" onclick="event.stopPropagation();toast('Chicken breast 0.75 lb added to Shopping · from Tonight', true)">+ list</button></div>
-      <div class="ingredrow"><div class="m"><b>Spinach</b><span style="font-size:11.5px;color:var(--ink-3)">need 5 oz · have <span class="num">5 oz</span></span></div><span class="prov fact">✓ Fact</span><span class="stat have">have</span></div>
-      <div class="ingredrow"><div class="m"><b>Mushrooms</b><span style="font-size:11.5px;color:var(--ink-3)">need 8 oz · have <span class="num">8 oz</span></span></div><span class="prov ai soft">AI</span><span class="stat have">have</span></div>
-      <div class="ingredrow"><div class="m"><b>Rice</b><span style="font-size:11.5px;color:var(--ink-3)">need ~2 cups · have <span class="num">~4 cups</span></span></div><span class="prov est">≈ Est.</span><span class="stat have">have</span></div>
-      <div class="verdictblock ok"><div class="verdict"><div class="line"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v5c0 4.6-3 7.8-7 9-4-1.2-7-4.4-7-9V6z"/></svg>No known allergen match · 4 members · label data</div><div class="caveat">Known matches only · not a guarantee this food is safe.</div></div></div>
-      <div class="btns pad three"><button class="btn sec" onclick="toggleWhy('whyDetailOk')">Why this?</button><button class="btn sec" onclick="addToMenu('Chicken &amp; spinach stir-fry')">Add to menu</button><button class="btn pri" onclick="openCook('ok')">Cook this</button></div>
-      <div class="why" id="whyDetailOk" style="margin:10px 18px">Ranked <span class="num">92%</span>: a coverage score, not a confidence. Uses 3 items expiring within 3 days, fits a 25 minute window, matches the high-protein preference.</div>
+      <div class="ingredrow"><div class="m"><b>Chicken breast</b><span style="font-size:12px;color:var(--ink-3)">need 2 lb · have <span class="num">1.25 lb</span></span></div><span class="prov fact">✓ Fact</span><span class="stat short">short by 0.75 lb</span><span class="queued">On list</span></div>
+      <div class="ingredrow"><div class="m"><b>Spinach</b><span style="font-size:12px;color:var(--ink-3)">need 5 oz · have <span class="num">5 oz</span></span></div><span class="prov fact">✓ Fact</span><span class="stat have">have</span></div>
+      <div class="ingredrow"><div class="m"><b>Mushrooms</b><span style="font-size:12px;color:var(--ink-3)">need 8 oz · have <span class="num">8 oz</span></span></div><span class="prov ai soft">AI</span><span class="stat have">have</span></div>
+      <div class="ingredrow"><div class="m"><b>Rice</b><span style="font-size:12px;color:var(--ink-3)">need ~2 cups · have <span class="num">~4 cups</span></span></div><span class="prov est">≈ Est.</span><span class="stat have">have</span></div>
+      <div class="verdictblock ok"><div class="verdict"><div class="line"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v5c0 4.6-3 7.8-7 9-4-1.2-7-4.4-7-9V6z"/></svg>No known allergen match · 2 members</div><div class="caveat">Known matches only · not a guarantee this food is safe.</div></div></div>
+      <div class="btns pad three"><button class="btn sec" aria-controls="whyDetailOk" aria-expanded="false" onclick="toggleWhy('whyDetailOk')">Why this?</button><button class="btn sec" onclick="addToMenu('Chicken &amp; spinach stir-fry')">Add to menu</button><button class="btn pri" onclick="openCook('ok')">Cook this</button></div>
+      <div class="why" id="whyDetailOk" style="margin:10px 18px">Ranked <span class="num">92%</span>: a coverage score, not a confidence. Uses 3 items expiring within 3 days, needs 1 purchase (0.75 lb of chicken, already on your shopping list), fits a 25 minute window, matches the high-protein preference.</div>
 
-      <div class="cooksheet" id="cookSheetOk">
-        <b style="font-size:14px">Cook this · confirm deductions</b>
-        <div class="shortnote">This recipe needs 2 lb of chicken breast. Only 1.25 lb is on hand. Record what we have and flag the shortfall, or cancel and shop first.</div>
-        <div class="allocrow"><span>Chicken breast, all of lot bought Sat, expires 2d</span><span class="prov fact">✓ Fact</span><span class="amt num">1.25 lb</span></div>
-        <div class="allocrow"><span>Spinach, lot bought Fri, expires 3d</span><span class="prov fact">✓ Fact</span><span class="amt num">5 oz</span></div>
-        <div class="allocrow"><span>Mushrooms, lot bought Fri, expires 3d</span><span class="prov ai soft">AI</span><span class="amt num">8 oz</span></div>
-        <div class="allocrow"><span>Rice, pantry lot</span><span class="prov est">≈ Est.</span><span class="amt num">~2 cups</span></div>
-        <div class="btns"><button class="btn sec" onclick="document.getElementById('cookSheetOk').classList.remove('open')">Cancel</button><button class="btn pri" onclick="confirmCook('ok')">Record &amp; flag, log meal</button></div>
-      </div>
     </div>
 
     <div class="v-unk-only">
       <div class="pad"><div class="ph frozen rhero" style="border-radius:var(--r-md)"><span class="mono" style="font-size:64px">S</span><img src="https://images.unsplash.com/photo-1467003909585-2f8a72700288?auto=format&fit=crop&w=800&q=75" alt="" onerror="this.remove()"><div class="scrim"></div><div class="over"><div class="meta"><span class="num">30 min</span>·<span class="num">610 cal</span>·thaw first</div></div></div></div>
       <div class="sec"><h2 class="serif" style="font-size:17px">Ingredients</h2></div>
-      <div class="ingredrow"><div class="m"><b>Salmon fillets</b><span style="font-size:11.5px;color:var(--ink-3)">need 12 oz · have <span class="num">12 oz</span></span></div><span class="prov fact">✓ Fact</span><span class="stat have">have</span></div>
-      <div class="ingredrow"><div class="m"><b>Rice</b><span style="font-size:11.5px;color:var(--ink-3)">need ~2 cups · have <span class="num">~4 cups</span></span></div><span class="prov est">≈ Est.</span><span class="stat have">have</span></div>
-      <div class="ingredrow"><div class="m"><b>Miso paste</b><span style="font-size:11.5px;color:var(--ink-3)">need 2 tbsp · have none on hand</span></div><span class="prov fact">✓ Fact</span><span class="stat miss">missing</span><button class="addlist" onclick="event.stopPropagation();toast('Miso paste 2 tbsp added to Shopping · from Weekend menu', true)">+ list</button></div>
-      <div class="ingredrow"><div class="m"><b>Broccoli</b><span style="font-size:11.5px;color:var(--ink-3)">need 2 lb · have none on hand</span></div><span class="prov fact">✓ Fact</span><span class="stat miss">missing</span><button class="addlist" onclick="event.stopPropagation();toast('Broccoli 2 lb added to Shopping · from Weekend menu', true)">+ list</button></div>
-      <div class="ingredrow"><div class="m"><b>Soy sauce</b><span style="font-size:11.5px;color:var(--ink-3)">need 2 tbsp · have <span class="num">~1 tbsp</span></span></div><span class="prov est">≈ Est.</span><span class="stat short">short by 1 tbsp</span><button class="addlist" onclick="event.stopPropagation();toast('Soy sauce added to Shopping · from Weekend menu', true)">+ list</button></div>
-      <div class="verdictblock unk"><div class="verdict unk"><div class="line"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 3.5L21.5 20h-19z"/><path d="M12 10v4.5"/><circle cx="12" cy="17.4" r=".6" fill="currentColor"/></svg>Allergen data unknown for Maya (severe: sesame) · miso has no ingredient statement on file</div><div class="caveat">Not blocked, not cleared. Check the package before cooking.</div></div></div>
-      <div class="btns pad three"><button class="btn sec" onclick="toggleWhy('whyDetailUnk')">Why this?</button><button class="btn sec" onclick="addToMenu('Miso-glazed salmon')">Add to menu</button><button class="btn pri" onclick="openCook('unk')">Cook this</button></div>
-      <div class="why" id="whyDetailUnk" style="margin:10px 18px">Ranked <span class="num">78%</span>: a coverage score, not a confidence. Missing miso and broccoli, so 2 purchases needed. Fits a 30 minute window once thawed.</div>
+      <div class="ingredrow"><div class="m"><b>Salmon fillets</b><span style="font-size:12px;color:var(--ink-3)">need 12 oz · have <span class="num">12 oz</span></span></div><span class="prov fact">✓ Fact</span><span class="stat have">have</span></div>
+      <div class="ingredrow"><div class="m"><b>Rice</b><span style="font-size:12px;color:var(--ink-3)">need ~1 cup · have <span class="num">~4 cups</span></span></div><span class="prov est">≈ Est.</span><span class="stat have">have</span></div>
+      <div class="ingredrow"><div class="m"><b>Miso paste</b><span style="font-size:12px;color:var(--ink-3)">need 2 tbsp · have none on hand</span></div><span class="prov fact">✓ Fact</span><span class="stat miss">missing</span><button class="addlist" aria-label="Add miso paste to Shopping" onclick="event.stopPropagation();toast('Miso paste 2 tbsp added to Shopping · from Weekend menu', true)">+ list</button></div>
+      <div class="ingredrow"><div class="m"><b>Broccoli</b><span style="font-size:12px;color:var(--ink-3)">need 2 lb · have none on hand</span></div><span class="prov fact">✓ Fact</span><span class="stat miss">missing</span><span class="queued">On list</span></div>
+      <div class="ingredrow"><div class="m"><b>Soy sauce</b><span style="font-size:12px;color:var(--ink-3)">need 2 tbsp · have <span class="num">24 tbsp</span></span></div><span class="stat have">have</span></div>
+      <div class="verdictblock unk"><div class="verdict unk"><div class="line"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 3.5L21.5 20h-19z"/><path d="M12 10v4.5"/><circle cx="12" cy="17.4" r=".6" fill="currentColor"/></svg>Allergen data incomplete for Maya</div><div class="uline">There's no ingredient list on file to check for Maya's severe sesame allergy.</div><div class="caveat">Known matches only · not a guarantee this food is safe.</div></div></div>
+      <div class="btns pad three"><button class="btn sec" aria-controls="whyDetailUnk" aria-expanded="false" onclick="toggleWhy('whyDetailUnk')">Why this?</button><button class="btn sec" onclick="addToMenu('Miso-glazed salmon')">Add to menu</button><button class="btn pri" onclick="openCook('unk')">Cook this</button></div>
+      <div class="why" id="whyDetailUnk" style="margin:10px 18px">Ranked <span class="num">78%</span>: a coverage score, not a confidence. Missing miso and broccoli, so 2 purchases needed (broccoli is already on your shopping list). Fits a 30 minute window once thawed.</div>
 
-      <div class="cooksheet" id="cookSheetUnk">
-        <b style="font-size:14px">Cook this · confirm deductions</b>
-        <div class="allocrow"><span>Salmon, lot bought Jul, expires 2 months</span><span class="prov fact">✓ Fact</span><span class="amt num">12 oz</span></div>
-        <div class="allocrow"><span>Rice, pantry lot</span><span class="prov est">≈ Est.</span><span class="amt num">~2 cups</span></div>
-        <div class="shortnote">Soy sauce: only ~1 tbsp of the 2 tbsp needed. Record what we have and flag the shortfall?</div>
-        <div class="btns"><button class="btn sec" onclick="document.getElementById('cookSheetUnk').classList.remove('open')">Cancel</button><button class="btn pri" onclick="confirmCook('unk')">Record &amp; flag, log meal</button></div>
-      </div>
     </div>
 
     <div class="v-blocked-only">
       <div class="pad"><div class="ph grain rhero" style="border-radius:var(--r-md);filter:grayscale(.5)"><span class="mono" style="font-size:64px">T</span><img src="https://images.unsplash.com/photo-1555949258-eb67b1ef0ceb?auto=format&fit=crop&w=800&q=75" alt="" onerror="this.remove()"><div class="scrim"></div><div class="over"><div class="meta"><span class="num">20 min</span>·<span class="num">480 cal</span>·serves 4</div></div></div></div>
       <div class="sec"><h2 class="serif" style="font-size:17px">Ingredients</h2></div>
-      <div class="ingredrow"><div class="m"><b>Peanut sauce</b><span style="font-size:11.5px;color:var(--ink-3)">need 4 tbsp · have <span class="num">4 tbsp</span></span></div><span class="prov fact">✓ Fact</span><span class="stat have">have</span></div>
-      <div class="ingredrow"><div class="m"><b>Rice noodles</b><span style="font-size:11.5px;color:var(--ink-3)">need 8 oz · have <span class="num">8 oz</span></span></div><span class="prov fact">✓ Fact</span><span class="stat have">have</span></div>
+      <div class="ingredrow"><div class="m"><b>Peanut sauce</b><span style="font-size:12px;color:var(--ink-3)">need 4 tbsp · have <span class="num">4 tbsp</span></span></div><span class="prov fact">✓ Fact</span><span class="stat have">have</span></div>
+      <div class="ingredrow"><div class="m"><b>Rice noodles</b><span style="font-size:12px;color:var(--ink-3)">need 8 oz · have <span class="num">8 oz</span></span></div><span class="prov fact">✓ Fact</span><span class="stat have">have</span></div>
       <div class="verdictblock blocked">
-        <div class="allergen"><span class="sh"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round"><path d="M12 3.5L21.5 20h-19z"/><path d="M12 10v4.5"/><circle cx="12" cy="17.4" r=".6" fill="#fff"/></svg></span>Contains peanuts · blocked for Maya</div>
-        <div style="font-size:11.5px;color:var(--ink-3);line-height:1.5;margin-top:8px">Matched "peanuts" in the ingredient statement (label data). Blocked recipes are shown for transparency only.</div>
-        <div style="font-size:11px;color:var(--ink-3);line-height:1.5;margin-top:6px">Known matches only · not a guarantee this food is safe.</div>
+        <div class="allergen"><span class="sh"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round"><path d="M12 3.5L21.5 20h-19z"/><path d="M12 10v4.5"/><circle cx="12" cy="17.4" r=".6" fill="#fff"/></svg></span>Contains peanut · matched 'peanuts' in the ingredient statement · blocked for Maya</div>
+        <div style="font-size:12px;color:var(--ink-3);line-height:1.5;margin-top:8px">Blocked recipes are shown for transparency only.</div>
+        <div style="font-size:12px;color:var(--ink-3);line-height:1.5;margin-top:6px">Known matches only · not a guarantee this food is safe.</div>
       </div>
       <div class="pad" style="font-size:12.5px;color:var(--ink-2);line-height:1.5">This recipe cannot be cooked or planned while it is blocked for a household member. There is no cook action and no add-to-menu action for a blocked recipe.</div>
     </div>
   </div>
 </section>
 
-<div class="toast" id="toastEl"></div>
+
+<!-- ================= MODAL SHEETS (T4 a): scrim, focus moved in and held, Esc / scrim / Cancel close ================= -->
+<!-- PROPOSED strings (no copy-deck source yet, architect to decide): the sheet title "Cook this · confirm deductions" is carried over from v4;
+     the primary CTA "Log meal, record deductions" replaces v4's "Record & flag, log meal" (says what it does, no ampersand, deck voice);
+     the shortfall line "Miso paste and broccoli are not on hand. Record what we have and flag the shortfall, or cancel and shop first." reuses the
+     v4 chicken sentence pattern. The allergen lines in #cookSheetUnk are copy-deck 3.1 verbatim (headline, NO_INGREDIENT_TEXT severe line, standing caveat). -->
+<div class="modal" id="cookSheetOk" role="dialog" aria-modal="true" aria-labelledby="cookTitleOk">
+  <div class="modal-scrim" onclick="closeModal()"></div>
+  <div class="modal-sheet" tabindex="-1">
+    <h2 class="mtitle" id="cookTitleOk">Cook this · confirm deductions</h2>
+    <div class="shortnote">This recipe needs 2 lb of chicken breast. Only 1.25 lb is on hand. Record what we have and flag the shortfall, or cancel and shop first.</div>
+    <div class="allocrow"><span>Chicken breast, all of lot bought Sat, expires 2d</span><span class="prov fact">✓ Fact</span><span class="amt num">1.25 lb</span></div>
+    <div class="allocrow"><span>Spinach, lot bought Fri, expires 3d</span><span class="prov fact">✓ Fact</span><span class="amt num">5 oz</span></div>
+    <div class="allocrow"><span>Mushrooms, lot bought Fri, expires 3d</span><span class="prov ai soft">AI</span><span class="amt num">8 oz</span></div>
+    <div class="allocrow"><span>Rice, pantry lot</span><span class="prov est">≈ Est.</span><span class="amt num">~2 cups</span></div>
+    <div class="btns"><button class="btn sec" onclick="closeModal()">Cancel</button><button class="btn pri" onclick="confirmCook('ok')">Log meal, record deductions</button></div>
+  </div>
+</div>
+
+<div class="modal" id="cookSheetUnk" role="dialog" aria-modal="true" aria-labelledby="cookTitleUnk">
+  <div class="modal-scrim" onclick="closeModal()"></div>
+  <div class="modal-sheet" tabindex="-1">
+    <h2 class="mtitle" id="cookTitleUnk">Cook this · confirm deductions</h2>
+    <div class="verdictblock unk" style="margin:0"><div class="verdict unk"><div class="line"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 3.5L21.5 20h-19z"/><path d="M12 10v4.5"/><circle cx="12" cy="17.4" r=".6" fill="currentColor"/></svg>Allergen data incomplete for Maya</div><div class="uline">There's no ingredient list on file to check for Maya's severe sesame allergy.</div><div class="caveat">Known matches only · not a guarantee this food is safe.</div></div></div>
+    <div class="allocrow"><span>Salmon fillets, both 6 oz lots, expire in 2 months</span><span class="prov fact">✓ Fact</span><span class="amt num">12 oz</span></div>
+    <div class="allocrow"><span>Rice, pantry lot</span><span class="prov est">≈ Est.</span><span class="amt num">~1 cup</span></div>
+    <div class="allocrow"><span>Soy sauce, pantry</span><span class="amt num">2 tbsp</span></div>
+    <div class="shortnote">Miso paste and broccoli are not on hand. Record what we have and flag the shortfall, or cancel and shop first.</div>
+    <div class="btns"><button class="btn sec" onclick="closeModal()">Cancel</button><button class="btn pri" onclick="confirmCook('unk')">Log meal, record deductions</button></div>
+  </div>
+</div>
+
+<div class="modal" id="pickerSheet" role="dialog" aria-modal="true" aria-labelledby="pickerTitle">
+  <div class="modal-scrim" onclick="closeModal()"></div>
+  <div class="modal-sheet" tabindex="-1">
+    <h2 class="mtitle" id="pickerTitle">Add to Sun dinner</h2>
+    <button class="allocrow pick" onclick="pickForSlot('Chicken &amp; spinach stir-fry')"><span>Chicken &amp; spinach stir-fry</span><span class="match num">92%</span></button>
+    <button class="allocrow pick" onclick="pickForSlot('Veggie fried rice')"><span>Veggie fried rice</span><span class="match num">81%</span></button>
+    <div class="allocrow" style="opacity:.7"><span style="color:var(--ink-2)">Thai peanut noodles</span><span style="font-size:12px;font-weight:700;color:var(--danger)">Blocked for Maya · not selectable</span></div>
+    <div class="btns"><button class="btn sec" onclick="closeModal()">Cancel</button></div>
+  </div>
+</div>
+
+<div class="toast" id="toastEl" role="status" aria-live="polite"></div>
 </div>
 
 <script>
@@ -1213,7 +1317,7 @@
       r.style.display = (loc==='all' || rl===loc) ? '' : 'none';
     });
   }
-  function toggleWhy(id){ document.getElementById(id).classList.toggle('open'); }
+  function toggleWhy(id){ var open = document.getElementById(id).classList.toggle('open'); document.querySelectorAll('[aria-controls="'+id+'"]').forEach(function(b){ b.setAttribute('aria-expanded', open ? 'true' : 'false'); }); }
   var qty = 2, pickedLoc = 'Fridge';
   function stepQty(d){ qty = Math.max(1, qty+d); document.getElementById('qtyVal').textContent = qty; updateCta(); }
   function pickLoc(btn){ document.querySelectorAll('#locChips .loc').forEach(function(c){ c.classList.toggle('on', c===btn); }); pickedLoc = btn.textContent.trim(); updateCta(); }
@@ -1243,8 +1347,8 @@
   var dev = { newUser:false, camDenied:false, offline:false, recipeMode:'normal', scanMatch:true, homeState:'ready', menuView:'tonight' };
   function cycleHomeState(){ dev.homeState = dev.homeState==='ready' ? 'sparse' : (dev.homeState==='sparse' ? 'empty' : 'ready'); applyDev(); }
   function showMenuView(v){ dev.menuView = v; applyDev(); }
-  function openPicker(){ document.getElementById('pickerSheet').classList.add('open'); }
-  function pickForSlot(name){ document.getElementById('pickerSheet').classList.remove('open'); toast(name+' added to Weekend menu · Sun dinner', true); }
+  function openPicker(){ openModal('pickerSheet'); }
+  function pickForSlot(name){ closeModal(); toast(name+' added to Weekend menu · Sun dinner', true); }
   function addToMenu(name){ toast(name+' added to Weekend menu · Sun dinner · Undo', true); }
   function toggleDev(k){
     dev[k] = !dev[k];
@@ -1411,7 +1515,7 @@
   function updateWhyPlain(){
     document.getElementById('whyPlainText').innerHTML =
       '<b style="color:var(--ink)">Why '+itemQty.toFixed(2)+' lb?</b> Includes a one-tap correction made just now. '+
-      'See History below for the full ledger. <span class="leglink" onclick="go(\'scr-legend\')">What do these badges mean?</span>';
+      'See History below for the full ledger. <button class="leglink" onclick="go(\'scr-legend\')">What do these badges mean?</button>';
   }
   function correctQty(){
     var delta = +(itemQty - itemBaseline).toFixed(2);
@@ -1447,17 +1551,14 @@
     var el = document.getElementById('scr-recipe-detail');
     el.className = 'screen v-' + kind;
     document.getElementById('recipeTitle').textContent = RECIPE_TITLES[kind];
-    document.getElementById('cookSheetOk').classList.remove('open');
-    document.getElementById('cookSheetUnk').classList.remove('open');
+    closeModal(true);
     go('scr-recipe-detail');
   }
   function openCook(kind){
-    var id = kind==='ok' ? 'cookSheetOk' : 'cookSheetUnk';
-    document.getElementById(id).classList.add('open');
+    openModal(kind==='ok' ? 'cookSheetOk' : 'cookSheetUnk');
   }
   function confirmCook(kind){
-    var id = kind==='ok' ? 'cookSheetOk' : 'cookSheetUnk';
-    document.getElementById(id).classList.remove('open');
+    closeModal(true);
     toast('Meal logged · deductions recorded, shortfall flagged · Undo', true);
     go('scr-inventory');
   }
@@ -1483,6 +1584,47 @@
     });
     toast(on ? 'Showing items needing confirmation' : 'Showing all items');
   }
+  /* ============ T4 (a)/(c): modal sheets, keyboard activation, pressed state ============ */
+  var openModalId = null, modalOpener = null;
+  function setScreensInert(on){ document.querySelectorAll('.screen').forEach(function(sc){ sc.inert = on; }); }
+  function openModal(id){
+    var m = document.getElementById(id); if(!m) return;
+    if(openModalId) closeModal(true);
+    modalOpener = document.activeElement; openModalId = id;
+    setScreensInert(true);
+    m.classList.add('open');
+    m.querySelector('.modal-sheet').focus();
+  }
+  function closeModal(skipFocus){
+    if(!openModalId) return;
+    document.getElementById(openModalId).classList.remove('open');
+    openModalId = null; setScreensInert(false);
+    if(skipFocus !== true && modalOpener && document.contains(modalOpener) && modalOpener.focus) modalOpener.focus();
+    modalOpener = null;
+  }
+  document.addEventListener('keydown', function(e){
+    if(openModalId){
+      if(e.key === 'Escape'){ e.preventDefault(); closeModal(); return; }
+      if(e.key === 'Tab'){
+        var m = document.getElementById(openModalId);
+        var f = Array.prototype.slice.call(m.querySelectorAll('button, input, [href], [tabindex]:not([tabindex="-1"])'));
+        if(!f.length) return;
+        var first = f[0], last = f[f.length-1], a = document.activeElement;
+        if(e.shiftKey && (a === first || a === m.querySelector('.modal-sheet'))){ e.preventDefault(); last.focus(); }
+        else if(!e.shiftKey && a === last){ e.preventDefault(); first.focus(); }
+        return;
+      }
+    }
+    if((e.key === 'Enter' || e.key === ' ') && e.target.matches && e.target.matches('[role="button"]:not(button)')){ e.preventDefault(); e.target.click(); }
+  });
+  function syncPressed(){
+    document.querySelectorAll('.chip, .loc, .allergychip, .sevbtn, .seg button, .noneopt, .chk').forEach(function(b){
+      if(b.closest('.qchips') || b.closest('#reasonChips')) return;
+      b.setAttribute('aria-pressed', (b.classList.contains('on') || b.classList.contains('done')) ? 'true' : 'false');
+    });
+  }
+  document.addEventListener('click', function(){ setTimeout(syncPressed, 0); });
+  syncPressed();
 </script>
 </body>
 </html>
