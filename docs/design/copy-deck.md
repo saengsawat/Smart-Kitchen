@@ -90,6 +90,8 @@ One line per affected `(member, restriction)`. `severity` comes from the restric
 | `UNRECOGNIZED_ASSERTION_KIND` | "This item's allergen data uses a claim type we don't recognize, so {allergen} stays unresolved for {member}." | "This item's allergen data uses a claim type we don't recognize. {member}'s severe {allergen} allergy stays unresolved." | Covers any non-`CONTAINS`/`MAY_CONTAIN` claim, including an invented "free from" style claim (D-017: never clears). |
 | `MALFORMED_ALLERGEN_DATA` | "This item's allergen data is in a format we can't read, so {allergen} stays unresolved for {member}." | "This item's allergen data is in a format we can't read. {member}'s severe {allergen} allergy stays unresolved." | Distinct from `NO_ALLERGEN_DATA`: data is present but unreadable, not absent. An unknown line never co-occurs with a household `ALLOWED` verdict: any unknown makes that member, and therefore the household, `ALLOWED_WITH_UNKNOWNS`. What co-occurs with `ALLOWED` is the `UNRECOGNIZED_ALLERGEN_DATA` warning, when the unreadable data touches no member's restriction (M1-T6 F7). |
 
+**Recipe-surface variant of `NO_INGREDIENT_TEXT` (PO, 2026-10-08):** where the verdict covers a recipe (recipe detail, the cook sheet, recipe cards), the line names the ingredient that lacks data, per nine-rule 3 (show the locus): "{item} has no ingredient list on file to check for {member}'s {allergen} allergy." / severe: "{item} has no ingredient list on file to check for {member}'s severe {allergen} allergy." Example: "Miso paste has no ingredient list on file to check for Maya's severe sesame allergy." The scan sheet (S8, built in `apps/mobile/src/scan/allergen-copy.ts`) keeps the item-less string above, since there the product is the item. Prototype v5 still shows the item-less string on its recipe surfaces; it adopts this variant at its next edit.
+
 **Evidence lines (`BLOCKED` × `EvidenceKind`)**
 
 | `EvidenceKind` | String | Tone note |
@@ -214,6 +216,19 @@ Per the decision brief's proposed policy for OQ-1/A9 (record the full statement,
 > Primary (proposed): "We only had {allocatedQty} {unit} of {item}, {shortfallQty} {unit} short of what the recipe used. Fix your inventory?", with actions **Update quantity** / **Not now**.
 >
 > Alternative wording noted for the PO's consideration, not adopted: a softer framing that leads with the recipe outcome ("Your {item} ran out partway through this recipe.") before the fix prompt. Flagged here rather than chosen, per rule 3/4 (never resolve an open product question by assumption).
+
+### Cook sheet and recipe-detail strings (prototype v5, PO-approved 2026-10-08)
+
+Added at M3-E0-T4 acceptance. The cook sheet is a modal; when the recipe's verdict is `ALLOWED_WITH_UNKNOWNS` it shows the §3.1 headline for the affected member, the §3.1 unknown line and `NO_SAFETY_GUARANTEE` at the top, before the deductions. `BLOCKED` recipes have no cook action (rule 6).
+
+| Where | String | Note |
+|---|---|---|
+| Cook sheet title | "Cook this · confirm deductions" | Carried over from v4. |
+| Cook sheet primary action | "Log meal, record deductions" | Replaces v4 "Record & flag, log meal". A normal primary even under `ALLOWED_WITH_UNKNOWNS`. |
+| Cook sheet, ingredients not on hand (before cooking) | "{items} are not on hand. Record what we have and flag the shortfall, or cancel and shop first." (one item: "{item} is not on hand. ...") | Example: "Miso paste and broccoli are not on hand. ..." Distinct from the after-the-fact shortfall prompt below, which stays PROPOSED pending A9. |
+| Recipe detail ingredient row, item already on the shopping list | Tag "On list" (in place of the "+ list" action) | |
+| Menu card footer, one missing item not yet on the list | Button "Add {item}" | Example: "Add miso paste". |
+| Home hero stat pills | "{n}% verified", "{n} use this week", "{n} to buy" | "verified" is the share of inventory items whose quantity is a Known Fact; "to buy" counts open shopping rows. Replaces v4's "inventory accuracy". |
 
 ### "Why does the app think this?" template
 

@@ -35,6 +35,7 @@ Every custom property in `:root` (lines 12-37 of the prototype), matched against
 | `--danger-bg` | `#f9d9d9` | `sentiment.danger` bg | Allergen tint surface | Backing for the above | Same |
 | `--ai` | `#7b4cb5` | `ai` | AI Interpretation tier, exclusive hue | `.prov.ai`, confirmation tray, `.okbtn`, `.mode.cam`, `.chip.needsconf.on`, "future"/AI-adjacent phase labels | Anywhere else ("purple appears nowhere else", verified in §4: confirmed) |
 | `--ai-bg` | `#eadff7` | `ai` bg | AI tint surface | Backing for the above | Same |
+| `--info` | `#3898ec` | `sentiment.info` | Keyboard focus ring (added to the prototype at M3-E0-T4, 2026-10-08) | `:focus-visible` outline only (3px, offset 2px), always with a 2px `--ink` halo in the offset gap: blue alone is 2.45:1 on sand, 2.96:1 on paper, 2.15:1 on sand-2, so the ink halo carries the WCAG 1.4.11 3:1 (ring against ink 5.75:1; blue on espresso 5.25:1 on its own). Rules that set their own `box-shadow` repeat the halo under `:focus-visible` (FAB, selected segment) | Text, fills, any informational meaning |
 | `--r-sm` | `12px` | Radius (small) | Buttons/inputs | Small controls | n/a |
 | `--r-md` | `18px` | Radius (medium) | Cards | Cards, sheets, trays | n/a |
 | `--r-lg` | `24px` | Radius (large) | Featured cards/sheets, hero corners | Hero, big sheets | n/a |
