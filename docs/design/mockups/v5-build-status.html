@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Smart Kitchen: v5 build status & beta milestones</title>
+<style>
+:root{color-scheme:light;--ink:#30291f;--muted:#675e52;--paper:#faf7f0;--line:#ded6c8;--accent:#80502c}
+*{box-sizing:border-box}body{margin:0;background:var(--paper);color:var(--ink);font:16px/1.6 system-ui,sans-serif}main{max-width:1080px;margin:auto;padding:40px 24px}h1{font:700 clamp(28px,4vw,42px)/1.15 Georgia,serif;margin:12px 0}h2{font-size:23px;margin:32px 0 12px}p{margin:10px 0}.meta{color:var(--muted);font-size:14px}.lead{font-size:19px;max-width:850px}.note{background:#eee6d8;border-left:4px solid var(--accent);padding:16px 20px;margin:22px 0}.scroll{overflow-x:auto}table{border-collapse:collapse;width:100%;background:white;font-size:15px}th,td{text-align:left;vertical-align:top;padding:14px;border-bottom:1px solid var(--line)}th{background:#eee6d8}th:first-child{width:20%}.state{display:inline-block;font-size:12px;font-weight:700;padding:2px 8px;border-radius:10px;background:#eee6d8;margin-top:6px}.steps{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}.step{background:white;border:1px solid var(--line);padding:18px;border-radius:12px}.step h3{margin:0 0 8px;font-size:18px}li{margin:7px 0}a{color:#754321;text-underline-offset:3px}.print{font:inherit;background:var(--ink);color:white;border:0;border-radius:8px;padding:10px 16px;cursor:pointer}a:focus-visible,button:focus-visible{outline:3px solid #80502c;outline-offset:4px}footer{margin-top:30px;border-top:1px solid var(--line);padding-top:16px;color:var(--muted);font-size:13px}@media(max-width:650px){main{padding:24px 16px}.steps{grid-template-columns:1fr}table{min-width:760px}}@media print{body{background:white;font-size:11pt}main{max-width:none;padding:0}h1{font-size:27pt}.print{display:none}.scroll{overflow:visible}table{font-size:9pt;min-width:0}th,td{padding:8px}.step{break-inside:avoid}h2{break-after:avoid}a{color:inherit}}
+</style>
+</head>
+<body><main>
+<p class="meta">Andy & Dean · Snapshot: October 8, 2026 · Design reference: prototype v5</p>
+<h1>What’s designed. What’s working. What’s next.</h1>
+<p class="lead">The prototype shows the intended experience. The real app already has a working inventory foundation, but the meal-planning loop and production setup are still being built.</p>
+<p><a href="smart-kitchen-prototype.html">Open the current prototype</a> · <a href="v4-vs-v5-compare.html">Open the v4–v5 comparison</a> · <button class="print" onclick="window.print()">Print / save as PDF</button></p>
+<div class="note"><strong>Timeline:</strong> private MVP testing with friends is targeted for <strong>around February 2027</strong> (roughly four months). This is a planning target, not a committed release date. A paid public launch comes after beta feedback and launch-readiness checks; no date is committed yet.</div>
+
+<h2>v5 experience versus the actual app</h2>
+<p class="meta">“Working” means implemented in the development app, not production-ready. Demo mode uses sample data; API mode connects to a real backend/database. This is a code/document review, not a fresh end-to-end device test.</p>
+<div class="scroll" role="region" aria-label="Feature progress comparison" tabindex="0"><table>
+<thead><tr><th scope="col">Prototype area</th><th scope="col">What works today</th><th scope="col">Gap before the intended experience works</th></tr></thead>
+<tbody>
+<tr><th scope="row">Account / household<br><span class="state">Partial</span></th><td>Onboarding screens, household creation/joining, invite-code rotation.</td><td>Real sign-in/sign-up and production identity integration. Current sessions use fixed development identities, not real user authentication.</td></tr>
+<tr><th scope="row">Allergies / preferences<br><span class="state">Partial</span></th><td>Selection/editor UI; local preferences; tested allergen rules in the underlying domain.</td><td>Persist restrictions to the server and connect screening to actual household data. Scan results currently say allergens are not checked; this is not an allergy-safety guarantee.</td></tr>
+<tr><th scope="row">Home dashboard<br><span class="state">Early</span></th><td>Empty-kitchen entry flow and account navigation.</td><td>Populated dashboard, recommendation cards, and the other v5 Home states.</td></tr>
+<tr><th scope="row">Inventory / item detail<br><span class="state">Working foundation</span></th><td>Database-backed item creation, quantity corrections, removal/undo, history, confirmation, location moves, and expiry-label display.</td><td>Remaining v5 visual/interaction alignment, automated shelf-life estimation, and broader device/error-case testing.</td></tr>
+<tr><th scope="row">Add / barcode / manual entry<br><span class="state">Working foundation</span></th><td>Camera or typed barcode lookup through Open Food Facts, product/nutrition data where available, and manual entry into inventory.</td><td>Complete household allergy screening and wider camera/product coverage testing. Receipt scanning is a later phase; shelf-photo ingestion is future scope.</td></tr>
+<tr><th scope="row">Menu / recipe detail / cook flow<br><span class="state">Not connected</span></th><td>Underlying inventory, quantity, and rule foundations exist.</td><td>Actual Menu screen is a placeholder. Meal generation/ranking, Tonight/Plan ahead, recipe detail, cooking confirmation, and inventory deductions are not an end-to-end working flow.</td></tr>
+<tr><th scope="row">Shopping list<br><span class="state">Partial</span></th><td>Saved backend rows, calculated shortages, check-offs, removal, and purchased items added to inventory without duplicate writes.</td><td>Manual list additions, recipe/meal-plan-generated rows, and persistent offline queue/cache.</td></tr>
+<tr><th scope="row">Profile / members<br><span class="state">Partial</span></th><td>Household identity/role display, member summaries, local allergy editing, and invite-code rotation.</td><td>Server-backed restrictions, agreed member permissions, and real authentication/sign-out.</td></tr>
+<tr><th scope="row">Assistant / receipt AI<br><span class="state">Later scope</span></th><td>No working end-to-end assistant or receipt-processing feature.</td><td>Assistant is deferred beyond MVP; receipt ingestion is a fast-follow feature. Neither should silently become a prerequisite for the friends beta.</td></tr>
+<tr><th scope="row">Hosting / paid launch<br><span class="state">Not launch-ready</span></th><td>Local development backend/database and automated engineering checks.</td><td>Hosted test environment, real authentication, protected access, backups, monitoring, privacy/data handling, mobile distribution, and the purchase/subscription flow if charging inside the app.</td></tr>
+</tbody></table></div>
+
+<h2>Proposed milestones</h2>
+<p>These are discussion checkpoints, not new engineering commitments. The detailed work plan remains in the project backlog.</p>
+<div class="steps">
+<section class="step"><h3>1 · Dean’s guided development test</h3><p><strong>Timing:</strong> arrange the next walkthrough.</p><p>Try inventory, barcode scanning, and existing shopping operations together using the local development setup. Sample identities and missing flows will be clearly called out.</p></section>
+<section class="step"><h3>2 · Remote test environment</h3><p><strong>Timing:</strong> after vendor/account decisions and deployment work.</p><p>Choose team-controlled hosting/auth projects, deploy the API and database, secure access, and arrange phone-build distribution. Signing up for hosting alone does not make the mobile app remotely testable.</p></section>
+<section class="step"><h3>3 · Friends MVP beta</h3><p><strong>Target:</strong> around February 2027, subject to agreed scope and available development time.</p><p>Connect the core loop: pantry → meal suggestions → missing ingredients → shopping → cooking → updated pantry. Add real accounts, clear allergy limitations, and reliable data handling before inviting friends.</p></section>
+<section class="step"><h3>4 · Paid public launch</h3><p><strong>Timing:</strong> decide after beta results; no date promised.</p><p>Resolve beta issues, validate willingness to pay, and complete security/privacy, costs/support, purchase access, and store/distribution requirements.</p></section>
+</div>
+
+<h2>Decisions for our next meeting</h2>
+<ul>
+<li><strong>First-beta scope:</strong> agree which v5 features are essential and which stay later. New prototype features can change the workload.</li>
+<li><strong>Vendor account ownership:</strong> agree the team/business email or domain, account/project owner, billing responsibility, and individual admin access with MFA. Avoid sharing a personal password. While unincorporated, document who holds each account and the intended transfer.</li>
+<li><strong>Hosting and auth:</strong> choose vendors, check ownership/transfer rules, and create the projects together. Prefer a stable project that can move from free to paid; a billing upgrade is different from migrating to another vendor.</li>
+<li><strong>Spending:</strong> agree a monthly budget, usage alerts, and who approves paid services. Add an LLM account when the relevant feature is ready to integrate.</li>
+<li><strong>Product decisions:</strong> settle meal-plan scope and household permissions, which affect the held Menu/Home and server-side restriction work.</li>
+</ul>
+<div class="note"><strong>Why no completion percentage?</strong> A screen can be visible while its real data, AI, failure handling, and security are unfinished. Feature checkpoints are a more useful progress measure than “20% done.”</div>
+<footer>Evidence: active workspace D:\06_Smart-Kitchen; mobile routes and API client; STATUS.md; BACKLOG.md and archived accepted tickets. Some summary paragraphs still mention v4 or older shopping behavior; this snapshot prioritizes actual code and later accepted work. Static snapshot, not an automatically updated dashboard. The prototype link follows the current file and may change beyond v5.</footer>
+</main></body></html>
