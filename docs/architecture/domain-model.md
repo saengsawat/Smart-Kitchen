@@ -18,7 +18,7 @@
 | **Household** | Tenancy + sharing boundary (§12) | Every food-domain row is household-scoped |
 | **HouseholdMembership** | User↔Household + role | Roles: `owner`, `member` for MVP; richer permissions UNKNOWN (Q3) |
 | **MemberProfile** | Per-member personal info, goals (§3) | Age/sex/height/weight/activity/calorie goal — sensitive; optional in MVP |
-| **Preference** | Dietary preference (soft) (§3) | Ranking signal only |
+| **Preference** | Dietary preference (soft) (§3) | Ranking signal and prompt context only; per member; a named diet from the D-031 list or a custom free-text entry; gluten-free is filed as an AllergyRestriction, not here (D-031) |
 | **AllergyRestriction** | Hard safety restriction (§3) | Per member; taxonomy code or user-defined; severity flag. **Never** modeled as a Preference |
 
 ### Food knowledge (household-independent, shared/cached)
@@ -54,7 +54,7 @@
 | **Recipe** | AI-generated original recipe (§4, §18D) | Stored with generation metadata (model, prompt ref) |
 | **RecipeIngredient** | Ingredient + qty + unit | References CanonicalIngredient; optionality flag |
 | **MealLog** | "We cooked/ate this" (§7, §9) | Emits `USE_IN_MEAL` transactions per ingredient (fast-follow); nutrition totals derive from it |
-| *(Meal/MealPlan)* | Deferred | Multi-day planning (§5) is post-MVP; MealLog suffices until then |
+| **MealPlan / MealSlot** | MVP (D-024 partial ratification 2026-10-08) | Tonight and Plan ahead in the Menu tab; a slot holds a recipe or menu for a date and meal; missing ingredients reach Shopping only through the deterministic gap rule (INV-SHOP-1). Shape is set by M3-E0-T5 and the MealPlan API ticket |
 | **ConsumptionEvent / WasteEvent** | Not separate entities | They are ledger transactions (`CONSUME`/`DISCARD`/`EXPIRE`/`DONATE`); analytics are queries over the ledger |
 
 ### Shopping

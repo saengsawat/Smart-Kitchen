@@ -37,7 +37,8 @@ The differentiator is **not** recipe generation (commoditized, §16). It is trus
 | Barcode scan → product | Lookup cascade behind adapter + manual-completion fallback | §2A |
 | Manual add / adjust / deplete | With reasons (used/discarded/expired/…) — the correction path is core UX, not an afterthought | §7, §18C |
 | Allergy profiles | Hard exclusions; deterministic filtering; safety language | §3, §18E |
-| Dietary preferences (basic) | Soft ranking signals only | §3 |
+| Dietary preferences (basic) | Soft ranking signals only; the sorted diet list, gluten-free routed to allergies, custom entries ([D-031](../../DECISIONS.md)) | §3 |
+| Menu planning (Tonight and Plan ahead) | Today's menu and multi-day planning in the Menu tab; missing ingredients go to Shopping through the deterministic gap rule ([D-020](../../DECISIONS.md), D-024 partial ratification 2026-10-08) | §5, §6 |
 | Inventory-aware recipe recommendations | AI-generated original recipes from on-hand items; ranked deterministically; allergen-filtered deterministically | §4, §18D, §18E |
 | Shopping list gap computation | required − usable on-hand → BUY / ALREADY HAVE; editable; syncs | §6 |
 | Purchase → inventory close-the-loop | Checking off shopping items offers to add them to inventory | §1 (closed loop) |
@@ -57,7 +58,7 @@ The differentiator is **not** recipe generation (commoditized, §16). It is trus
 - OCR: fixture receipt images + golden parsed outputs (pipeline built against fixtures before any vendor call).
 
 ### DEFER (post fast-follow)
-- Visual pantry recognition (§2C — the brief itself calls it future), conversational assistant (§10), multi-day meal planning (§5), macro dashboard (§9), leftovers (§15E), portion scaling (§15F), recipe learning (§15D), waste/budget analytics (§15B/C), voice (§11).
+- Visual pantry recognition (§2C — the brief itself calls it future), conversational assistant (§10), macro dashboard (§9), leftovers (§15E), portion scaling (§15F), recipe learning (§15D), waste/budget analytics (§15B/C), voice (§11).
 
 ### Do NOT build until product-market evidence exists
 - Smart-home integrations (§11), store price comparison / shopping routes (§15A), grocery delivery, predictive purchasing, AI nutrition coach (§19 Phase 3).
