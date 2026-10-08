@@ -36,3 +36,6 @@ logs/
 # regenerates on every `expo start`/`expo export`
 .expo/
 expo-env.d.ts
+
+# impeccable design-critique snapshots (local only)
+.impeccable/
