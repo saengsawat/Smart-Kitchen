@@ -1,0 +1,724 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Smart Kitchen New Look</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..900&family=IBM+Plex+Mono:wght@400;500;600&family=Bodoni+Moda:opsz,wght@6..96,400..800&family=Schibsted+Grotesk:wght@400..800&family=Newsreader:opsz,wght@6..72,500..700&family=Inter:wght@400..700&display=swap" rel="stylesheet">
+<style>
+/* ---------- locked safety + provenance tokens (identical in every direction) ---------- */
+:root{
+  --danger:#882020; --danger-bg:#f9d9d9;
+  --amber:#925b0a;  --amber-bg:#f6e6c8;
+  --green:#2c744b;  --green-bg:#dfeee3;
+  --rose:#9d4b51;   --rose-bg:#f7dcdc;
+  --ai:#7b4cb5;     --ai-bg:#eadff7;
+  --stage:#e6e5e1; --stage-ink:#1a1a1a; --stage-ink2:#5a5a58;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:var(--stage);color:var(--stage-ink)}
+body{font:15px/1.45 Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+.num{font-variant-numeric:tabular-nums lining-nums}
+img{display:block;width:100%;height:100%;object-fit:cover}
+
+/* ---------- stage chrome ---------- */
+.top{max-width:1240px;margin:0 auto;padding:28px 16px 8px}
+.top h1{font:800 13px/1 Archivo,sans-serif;letter-spacing:.18em;text-transform:uppercase;color:var(--stage-ink2)}
+.top p{margin-top:8px;color:var(--stage-ink2);font-size:14px;max-width:720px}
+.tabs{display:flex;gap:8px;flex-wrap:wrap;margin-top:18px}
+.tabs button{padding:10px 16px;border-radius:999px;background:#fff;border:1px solid #d3d2cd;font-weight:600;font-size:14px;min-height:44px}
+.tabs button[aria-selected=true]{background:#151515;color:#fff;border-color:#151515}
+.pitch{max-width:1240px;margin:0 auto;padding:18px 16px 0;display:grid;grid-template-columns:1fr auto;gap:12px;align-items:end}
+.pitch h2{font:700 26px/1.15 Archivo,sans-serif;font-stretch:85%}
+.pitch .say{color:var(--stage-ink2);margin-top:6px;max-width:760px}
+.cost{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.cost span{font:600 12px/1 'IBM Plex Mono',monospace;padding:7px 10px;border-radius:6px;background:#fff;border:1px solid #d3d2cd;white-space:nowrap}
+.cost span b{color:#000}
+.row{max-width:1240px;margin:0 auto;padding:20px 16px 40px;display:flex;gap:28px;justify-content:center;flex-wrap:wrap}
+.cap{font:600 12px/1 'IBM Plex Mono',monospace;color:var(--stage-ink2);text-transform:uppercase;letter-spacing:.08em;margin:0 0 10px 6px}
+.phone{width:360px;height:760px;border-radius:44px;background:#0d0d0d;padding:10px;box-shadow:0 30px 60px -30px rgba(0,0,0,.45)}
+.screen{width:100%;height:100%;border-radius:35px;overflow:hidden;position:relative;display:flex;flex-direction:column}
+.scroll{flex:1;overflow-y:auto;scrollbar-width:none}
+.scroll::-webkit-scrollbar{display:none}
+.sb{height:34px;flex:0 0 auto;display:flex;justify-content:space-between;align-items:center;padding:0 26px;font:600 13px/1 Inter,sans-serif}
+.dir{display:none}.dir.on{display:block}
+.locked{max-width:1240px;margin:0 auto;padding:0 16px 48px;color:var(--stage-ink2);font-size:13px}
+.locked b{color:var(--stage-ink)}
+@media (max-width:420px){.phone{width:100%;max-width:360px}.pitch{grid-template-columns:1fr}.cost{justify-content:flex-start}}
+
+/* shared safety components (each direction restyles the frame, never the meaning) */
+.verdict{font-size:13px;line-height:1.4}
+.verdict .l{display:flex;gap:7px;align-items:flex-start;font-weight:600}
+.verdict .c{font-size:12.5px;opacity:.8;margin-top:2px;padding-left:22px}
+.verdict.unk{color:var(--amber);background:var(--amber-bg);padding:10px 12px;border-radius:8px}
+.verdict.unk .c{color:#5b4210;opacity:1}
+.blockbar{display:flex;gap:9px;align-items:flex-start;background:var(--danger-bg);color:var(--danger);border:1.5px solid var(--danger);border-radius:8px;padding:10px 12px;font-size:13px;font-weight:600;line-height:1.35}
+.blockbar .sh{flex:0 0 22px;height:22px;border-radius:50%;background:var(--danger);display:grid;place-items:center}
+.prov{font-size:12px;font-weight:700;padding:3px 8px;border-radius:999px;white-space:nowrap;display:inline-flex;align-items:center;gap:4px}
+.prov.fact{color:var(--green);background:var(--green-bg)}
+.prov.est{color:var(--amber);background:var(--amber-bg)}
+.prov.ai{color:var(--ai);background:var(--ai-bg)}
+
+/* =====================================================================
+   A · PANTRY LABEL
+   ===================================================================== */
+.A{--paper:#f2f0eb;--card:#fbfaf7;--ink:#121212;--ink2:#55534f;--rule:#121212;--cobalt:#2442d6;--cobalt-d:#1a33ad;background:var(--paper);color:var(--ink);font-family:Archivo,sans-serif}
+.A .mono{font-family:'IBM Plex Mono',monospace}
+.A .tape{display:inline-block;background:#141414;color:#f3f3f3;font:800 12px/1 Archivo,sans-serif;font-stretch:72%;letter-spacing:.2em;text-transform:uppercase;padding:7px 10px 6px;border-radius:2px;transform:rotate(-1.2deg);box-shadow:inset 0 1px 0 rgba(255,255,255,.14),inset 0 -2px 0 rgba(0,0,0,.6),0 1px 2px rgba(0,0,0,.25);text-shadow:0 -1px 0 rgba(0,0,0,.9),0 1px 0 rgba(255,255,255,.28)}
+.A .tape.blue{background:var(--cobalt)}
+.A .hd{display:flex;justify-content:space-between;align-items:center;padding:6px 18px 0}
+.A .av{width:36px;height:36px;border:2px solid var(--ink);border-radius:8px;display:grid;place-items:center;font:800 12px/1 Archivo;font-stretch:80%}
+.A .when{padding:16px 18px 0;font:500 12px/1 'IBM Plex Mono',monospace;letter-spacing:.06em;color:var(--ink2);text-transform:uppercase}
+.A .big{padding:2px 18px 0;display:flex;align-items:flex-end;gap:12px}
+.A .big .n{font:900 128px/.82 Archivo;font-stretch:62%;letter-spacing:-.02em}
+.A .big .t{font:700 26px/1.02 Archivo;font-stretch:78%;padding-bottom:6px}
+.A .big .t u{text-decoration:none;box-shadow:inset 0 -7px 0 #c9d2fb}
+/* nutrition-facts panel */
+.A .facts{margin:18px 18px 0;border:2px solid var(--ink);background:var(--card);padding:8px 10px 6px}
+.A .facts h3{font:900 30px/1 Archivo;font-stretch:66%;letter-spacing:-.01em}
+.A .facts .sub{font:500 12px/1.3 'IBM Plex Mono',monospace;color:var(--ink2);padding:3px 0 6px;border-bottom:9px solid var(--ink)}
+.A .facts .r{display:flex;justify-content:space-between;align-items:baseline;padding:7px 0;border-bottom:1px solid var(--ink);font-weight:700;font-size:15px}
+.A .facts .r:last-child{border-bottom:0}
+.A .facts .r span:first-child small{font-weight:400;color:var(--ink2);font-size:12.5px;margin-left:6px}
+.A .facts .r .v{font:600 16px/1 'IBM Plex Mono',monospace}
+.A .facts .r.thick{border-bottom-width:4px}
+.A .vbar{height:6px;background:#dcdad4;margin:2px 0 6px;position:relative}
+.A .vbar i{position:absolute;inset:0 33% 0 0;background:var(--ink)}
+.A .sec{display:flex;justify-content:space-between;align-items:center;padding:26px 18px 10px}
+.A .sec .lnk{font:600 13px/1 Archivo;color:var(--cobalt);text-decoration:underline;text-underline-offset:3px;min-height:44px;display:flex;align-items:center}
+/* tonight */
+.A .tonight{margin:0 18px;background:var(--card);border:2px solid var(--ink);box-shadow:5px 5px 0 var(--ink)}
+.A .tonight .top2{display:flex;gap:12px;padding:14px 14px 10px;border-bottom:2px dashed #b9b6ae}
+.A .stamp{flex:0 0 72px;height:72px;border:2.5px solid var(--cobalt);color:var(--cobalt);border-radius:50%;display:grid;place-items:center;text-align:center;transform:rotate(-8deg);font:800 26px/.9 Archivo;font-stretch:70%}
+.A .stamp small{display:block;font:600 8.5px/1.1 'IBM Plex Mono';letter-spacing:.06em;margin-top:3px}
+.A .tonight h3{font:800 25px/1 Archivo;font-stretch:74%;letter-spacing:-.005em}
+.A .tonight .meta{font:500 12px/1 'IBM Plex Mono';color:var(--ink2);margin-top:8px}
+.A .rcpt{padding:10px 14px 4px;font:500 13px/1 'IBM Plex Mono',monospace}
+.A .rcpt div{display:flex;align-items:baseline;gap:6px;padding:5px 0}
+.A .rcpt .dots{flex:1;border-bottom:1.5px dotted #a8a59d;transform:translateY(-3px)}
+.A .rcpt .short{color:var(--amber);font-weight:600}
+.A .tonight .vwrap{padding:8px 14px 0}
+.A .btns{display:flex;gap:8px;padding:12px 14px 14px}
+.A .btn{flex:1;min-height:48px;font:800 14px/1 Archivo;font-stretch:85%;letter-spacing:.06em;text-transform:uppercase;border:2px solid var(--ink);border-radius:4px}
+.A .btn.pri{background:var(--cobalt);border-color:var(--cobalt);color:#fff}
+.A .btn:active{transform:translate(1px,1px)}
+/* shelf tags */
+.A .shelf{display:flex;gap:10px;overflow-x:auto;padding:4px 18px 6px;scrollbar-width:none}
+.A .tag{flex:0 0 132px;background:var(--card);border:1.5px solid var(--ink);border-radius:4px 14px 14px 4px;padding:12px 12px 10px 22px;position:relative}
+.A .tag::before{content:"";position:absolute;left:8px;top:50%;width:7px;height:7px;margin-top:-3.5px;border-radius:50%;border:1.5px solid var(--ink);background:var(--paper)}
+.A .tag b{display:block;font:800 16px/1.05 Archivo;font-stretch:78%}
+.A .tag .q{font:500 12px/1 'IBM Plex Mono';color:var(--ink2);margin-top:5px}
+.A .ticks{display:flex;gap:2px;margin-top:9px}
+.A .ticks i{flex:1;height:7px;background:#dcdad4}
+.A .dl{font:600 11.5px/1 'IBM Plex Mono';margin-top:6px;letter-spacing:.02em}
+.A .rubber{position:absolute;right:-6px;top:-9px;transform:rotate(9deg);border:2px solid var(--rose);color:var(--rose);background:var(--card);font:800 11px/1 Archivo;font-stretch:72%;letter-spacing:.12em;padding:4px 6px 3px;border-radius:3px}
+/* confirm */
+.A .conf{margin:0 18px;border:1.5px dashed var(--ai);background:#f6f1fb;border-radius:6px}
+.A .conf .ci{display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px dashed #cdb8e6}
+.A .conf .ci:last-of-type{border-bottom:0}
+.A .conf .ci .m{flex:1;min-width:0}
+.A .conf .ci b{font:700 15px/1.2 Archivo;font-stretch:85%;display:block}
+.A .conf .ci i{font:400 12px/1.3 'IBM Plex Mono';font-style:normal;color:#5a4a70}
+.A .okb{min-height:44px;min-width:44px;padding:0 12px;border-radius:4px;font:800 13px/1 Archivo;font-stretch:85%;letter-spacing:.04em;text-transform:uppercase;border:1.5px solid var(--ink)}
+.A .okb.go{background:var(--ink);color:#fff}
+.A .conf .foot{font:500 12px/1.4 'IBM Plex Mono';color:#5a4a70;padding:8px 12px 10px}
+/* nav */
+.A .nav{flex:0 0 auto;display:grid;grid-template-columns:repeat(5,1fr);align-items:end;border-top:2px solid var(--ink);background:var(--card);padding:6px 8px 18px}
+.A .nav button{display:flex;flex-direction:column;align-items:center;gap:4px;font:700 10.5px/1 Archivo;font-stretch:80%;letter-spacing:.12em;text-transform:uppercase;color:var(--ink2);min-height:48px;justify-content:center}
+.A .nav button.on{color:var(--ink)}
+.A .nav button.on::after{content:"";width:18px;height:3px;background:var(--cobalt);margin-top:1px}
+.A .nav .add{background:var(--cobalt);color:#fff;border-radius:6px;height:54px;margin-top:-22px;box-shadow:3px 3px 0 var(--ink)}
+/* inventory */
+.A .ltitle{padding:10px 18px 0;display:flex;justify-content:space-between;align-items:flex-end}
+.A .ltitle h2{font:900 46px/.9 Archivo;font-stretch:64%;letter-spacing:-.01em}
+.A .ltitle .s{font:500 12px/1.4 'IBM Plex Mono';color:var(--ink2);text-align:right}
+.A .seg{display:flex;margin:16px 18px 0;border:2px solid var(--ink);border-radius:4px;overflow:hidden}
+.A .seg button{flex:1;min-height:42px;font:800 12px/1 Archivo;font-stretch:78%;letter-spacing:.14em;text-transform:uppercase;border-right:2px solid var(--ink)}
+.A .seg button:last-child{border-right:0}
+.A .seg button.on{background:var(--ink);color:#fff}
+.A .grp{padding:22px 18px 8px;display:flex;align-items:center;gap:10px}
+.A .grp .c{font:500 12px/1 'IBM Plex Mono';color:var(--ink2)}
+.A .led{margin:0 18px;background:var(--card);border:1.5px solid var(--ink)}
+.A .li{display:grid;grid-template-columns:1fr auto;gap:2px 10px;padding:11px 12px;border-bottom:1px solid #d6d3cb;min-height:56px}
+.A .li:last-child{border-bottom:0}
+.A .li b{font:700 16px/1.15 Archivo;font-stretch:85%}
+.A .li .q{font:600 14px/1 'IBM Plex Mono';text-align:right;align-self:center}
+.A .li .l2{grid-column:1/-1;display:flex;align-items:center;gap:8px;margin-top:4px}
+.A .li .l2 .ticks{flex:1;margin:0}
+.A .li .l2 .dl{margin:0;min-width:72px}
+/* menu */
+.A .mcard{margin:0 18px 12px;background:var(--card);border:1.5px solid var(--ink);display:grid;grid-template-columns:64px 1fr;min-height:64px}
+.A .mcard .score{border-right:1.5px solid var(--ink);display:flex;flex-direction:column;align-items:center;justify-content:center;font:800 26px/1 Archivo;font-stretch:66%}
+.A .mcard .score small{font:500 9px/1.1 'IBM Plex Mono';letter-spacing:.04em;margin-top:3px;color:var(--ink2);text-align:center}
+.A .mcard .b{padding:11px 12px 12px;display:flex;flex-direction:column;gap:7px}
+.A .mcard h3{font:800 19px/1.05 Archivo;font-stretch:76%}
+.A .mcard .meta{font:500 12px/1 'IBM Plex Mono';color:var(--ink2)}
+.A .mcard .need{font:500 12.5px/1.4 'IBM Plex Mono'}
+.A .mcard .need .short{color:var(--amber);font-weight:600}
+.A .mcard.blocked{border-color:var(--danger);background:#fdf6f6}
+.A .mcard.blocked .score{border-color:var(--danger);color:var(--danger);font-size:13px;font-stretch:72%;letter-spacing:.12em}
+.A .mcard.blocked h3{color:var(--ink2);text-decoration:line-through;text-decoration-thickness:2px}
+.A .note{font:500 12px/1.45 'IBM Plex Mono';color:var(--ink2)}
+.A .verdict:not(.unk){color:var(--ink)}
+
+/* =====================================================================
+   B · COOKBOOK
+   ===================================================================== */
+.B{--paper:#fbfaf6;--ink:#0f0f0f;--ink2:#5f5d58;--hair:#d9d6cf;background:var(--paper);color:var(--ink);font-family:'Schibsted Grotesk',sans-serif}
+.B .serif{font-family:'Bodoni Moda',serif;font-optical-sizing:auto}
+.B .mast{padding:6px 20px 0;display:flex;justify-content:space-between;align-items:center}
+.B .mast .name{font:600 12px/1 'Schibsted Grotesk';letter-spacing:.24em;text-transform:uppercase}
+.B .mast .av{width:36px;height:36px;border-radius:50%;background:var(--ink);color:#fff;display:grid;place-items:center;font:700 12px/1 'Schibsted Grotesk'}
+.B .rule{height:1px;background:var(--ink);margin:12px 20px 0}
+.B .kick{padding:18px 20px 0;font:700 12px/1 'Schibsted Grotesk';letter-spacing:.2em;text-transform:uppercase;color:var(--ink2)}
+.B .h{padding:8px 20px 0;font:500 40px/1.02 'Bodoni Moda';letter-spacing:-.015em}
+.B .mosaic{margin:18px 20px 0;display:grid;grid-template-columns:1.25fr 1fr;grid-template-rows:118px 118px;gap:4px}
+.B .mosaic figure{position:relative;background:#ddd8cc;overflow:hidden}
+.B .mosaic figure:first-child{grid-row:1/3}
+.B .mosaic figcaption{position:absolute;left:0;bottom:0;background:var(--paper);padding:5px 8px 4px;font:600 11.5px/1.1 'Schibsted Grotesk'}
+.B .mosaic figcaption.short{background:var(--amber-bg);color:var(--amber)}
+.B .by{display:flex;flex-wrap:wrap;gap:4px 14px;padding:12px 20px 0;font:500 13px/1.3 'Schibsted Grotesk';color:var(--ink2)}
+.B .by b{color:var(--ink);font-weight:700}
+.B .vwrap{padding:14px 20px 0}
+.B .verdict:not(.unk){border-top:1px solid var(--hair);border-bottom:1px solid var(--hair);padding:10px 0}
+.B .btns{display:flex;gap:8px;padding:14px 20px 0}
+.B .btn{flex:1;min-height:50px;font:700 14px/1 'Schibsted Grotesk';border:1.5px solid var(--ink);border-radius:999px}
+.B .btn.pri{background:var(--ink);color:#fff}
+.B .sec{padding:30px 20px 4px;display:flex;justify-content:space-between;align-items:baseline;border-bottom:1px solid var(--ink);margin:0 20px;padding-left:0;padding-right:0}
+.B .sec h3{font:500 26px/1 'Bodoni Moda'}
+.B .sec a{font:600 13px/1 'Schibsted Grotesk';color:var(--ink);min-height:44px;display:flex;align-items:center}
+.B .soon{margin:0 20px}
+.B .soon .it{display:grid;grid-template-columns:40px 52px 1fr auto;gap:12px;align-items:center;padding:12px 0;border-bottom:1px solid var(--hair)}
+.B .soon .ix{font:500 30px/1 'Bodoni Moda';color:var(--ink2)}
+.B .soon .ph{width:52px;height:52px;background:#ddd8cc;overflow:hidden}
+.B .soon b{font:700 15.5px/1.2 'Schibsted Grotesk';display:block}
+.B .soon .q{font:400 13px/1.2 'Schibsted Grotesk';color:var(--ink2)}
+.B .days{font:700 11.5px/1 'Schibsted Grotesk';letter-spacing:.14em;text-transform:uppercase;padding:6px 8px;border-radius:999px;white-space:nowrap}
+.B .days.now{background:var(--rose-bg);color:var(--rose)}
+.B .days.soon{background:var(--amber-bg);color:var(--amber)}
+.B .days.ok{background:var(--green-bg);color:var(--green)}
+.B .stats{margin:22px 20px 0;display:grid;grid-template-columns:repeat(3,1fr);border-top:1px solid var(--ink);border-bottom:1px solid var(--ink)}
+.B .stats div{padding:12px 0 12px 10px;border-right:1px solid var(--hair)}
+.B .stats div:first-child{padding-left:0}
+.B .stats div:last-child{border-right:0}
+.B .stats .v{font:500 36px/1 'Bodoni Moda'}
+.B .stats .l{font:600 11.5px/1.2 'Schibsted Grotesk';color:var(--ink2);margin-top:4px}
+.B .conf{margin:12px 20px 0;padding:4px 14px;background:var(--ai-bg);border-radius:14px}
+.B .conf .ci{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #d7c6ee}
+.B .conf .ci:last-of-type{border-bottom:0}
+.B .conf .m{flex:1}
+.B .conf b{font:700 14.5px/1.25 'Schibsted Grotesk';display:block}
+.B .conf i{font-style:normal;font-size:12.5px;color:#5a4a70}
+.B .okb{min-height:44px;padding:0 16px;border-radius:999px;font:700 13px/1 'Schibsted Grotesk';background:var(--ink);color:#fff}
+.B .conf .foot{font-size:12.5px;color:#5a4a70;padding:8px 0 10px}
+.B .nav{flex:0 0 auto;display:grid;grid-template-columns:repeat(5,1fr);align-items:center;background:var(--paper);border-top:1px solid var(--ink);padding:8px 10px 18px}
+.B .nav button{display:flex;flex-direction:column;align-items:center;gap:5px;font:600 11px/1 'Schibsted Grotesk';color:var(--ink2);min-height:48px;justify-content:center}
+.B .nav button.on{color:var(--ink);font-weight:800}
+.B .nav button.on svg{stroke-width:2.4}
+.B .nav .add{background:var(--ink);color:#fff;border-radius:999px;height:52px;width:52px;justify-self:center}
+.B .ltitle{padding:14px 20px 0}
+.B .ltitle h2{font:500 46px/1 'Bodoni Moda';letter-spacing:-.015em}
+.B .ltitle .s{font:500 13px/1.3 'Schibsted Grotesk';color:var(--ink2);margin-top:6px}
+.B .seg{display:flex;gap:18px;margin:16px 20px 0;border-bottom:1px solid var(--hair)}
+.B .seg button{padding:10px 0 9px;font:600 14px/1 'Schibsted Grotesk';color:var(--ink2);min-height:44px;border-bottom:2px solid transparent;margin-bottom:-1px}
+.B .seg button.on{color:var(--ink);border-color:var(--ink)}
+.B .grp{margin:22px 20px 0;display:flex;justify-content:space-between;align-items:baseline}
+.B .grp h4{font:500 22px/1 'Bodoni Moda'}
+.B .grp span{font:600 12px/1 'Schibsted Grotesk';color:var(--ink2)}
+.B .inv{margin:8px 20px 0;border-top:1px solid var(--ink)}
+.B .inv .it{display:grid;grid-template-columns:52px 1fr auto;gap:12px;align-items:center;padding:10px 0;border-bottom:1px solid var(--hair)}
+.B .inv .ph{width:52px;height:52px;background:#ddd8cc;overflow:hidden;display:grid;place-items:center;font:500 22px/1 'Bodoni Moda';color:#8a8578}
+.B .inv b{font:700 15.5px/1.2 'Schibsted Grotesk';display:block}
+.B .inv .q{font:400 13px/1.3 'Schibsted Grotesk';color:var(--ink2);display:flex;gap:8px;align-items:center;margin-top:3px;flex-wrap:wrap}
+.B .rec{margin:0 20px;padding:18px 0;border-bottom:1px solid var(--hair)}
+.B .rec .ph{height:150px;background:#ddd8cc;overflow:hidden;position:relative}
+.B .rec .pct{position:absolute;right:0;bottom:0;background:var(--paper);padding:6px 10px 4px;font:500 26px/1 'Bodoni Moda'}
+.B .rec .pct small{font:600 10.5px/1 'Schibsted Grotesk';letter-spacing:.12em;text-transform:uppercase;margin-left:4px;color:var(--ink2)}
+.B .rec h3{font:500 26px/1.05 'Bodoni Moda';margin-top:12px}
+.B .rec .meta{font:500 13px/1.3 'Schibsted Grotesk';color:var(--ink2);margin-top:5px}
+.B .rec .need{font:500 13px/1.35 'Schibsted Grotesk';margin:8px 0 10px}
+.B .rec .need .short{color:var(--amber);font-weight:700}
+.B .rec.blocked .ph img{filter:grayscale(1) contrast(.9);opacity:.55}
+.B .rec.blocked h3{color:var(--ink2)}
+.B .note{font-size:12.5px;line-height:1.45;color:var(--ink2);margin-top:8px}
+
+/* =====================================================================
+   C · v5, DE-AI'D (same tokens, tells removed)
+   ===================================================================== */
+.C{--sand:#efe5d5;--paper:#fffbf4;--line:#dfd1ba;--ink:#1e1813;--ink2:#5b5045;--ink3:#665c52;--brand:#b64f28;--espresso:#2a1f18;background:var(--sand);color:var(--ink);font-family:Inter,sans-serif}
+.C .serif{font-family:Newsreader,serif;font-optical-sizing:auto}
+.C .hd{padding:8px 20px 0;display:flex;justify-content:space-between;align-items:center}
+.C .hd .e{font:600 13px/1.2 Inter;color:var(--ink2)}
+.C .hd .av{width:38px;height:38px;border-radius:50%;background:var(--paper);border:1px solid var(--line);display:grid;place-items:center;font:700 12px/1 Inter}
+.C h1{padding:10px 20px 0;font:600 34px/1.05 Newsreader;letter-spacing:-.01em}
+.C .status{margin:12px 20px 0;display:flex;flex-wrap:wrap;gap:6px 16px;font:500 14px/1.3 Inter;color:var(--ink2)}
+.C .status a{color:var(--ink);text-decoration:underline;text-decoration-color:var(--line);text-underline-offset:4px;text-decoration-thickness:2px}
+.C .status b{font-weight:700}
+.C .card{margin:16px 20px 0;background:var(--paper);border:1px solid var(--line);border-radius:18px;overflow:hidden}
+.C .strip{display:grid;grid-template-columns:repeat(4,1fr);height:92px;gap:2px;background:var(--line)}
+.C .strip figure{position:relative;background:#e4d7c2;overflow:hidden}
+.C .strip figure.short::after{content:"short";position:absolute;left:6px;bottom:6px;background:var(--amber-bg);color:var(--amber);font:700 10.5px/1 Inter;padding:4px 6px;border-radius:999px}
+.C .card .b{padding:14px 16px 16px}
+.C .card h3{font:600 23px/1.1 Newsreader}
+.C .card .meta{font:500 13px/1.3 Inter;color:var(--ink2);margin-top:6px}
+.C .card .meta b{color:var(--ink)}
+.C .have{display:flex;flex-wrap:wrap;gap:6px;margin:12px 0}
+.C .have span{font:600 12.5px/1 Inter;padding:6px 9px;border-radius:999px;background:var(--green-bg);color:var(--green)}
+.C .have span.short{background:var(--amber-bg);color:var(--amber)}
+.C .verdict:not(.unk){border-top:1px solid var(--line);padding-top:10px}
+.C .btns{display:flex;gap:8px;margin-top:14px}
+.C .btn{flex:1;min-height:48px;border-radius:12px;font:600 14.5px/1 Inter;border:1px solid var(--line);background:var(--paper)}
+.C .btn.pri{background:var(--brand);border-color:var(--brand);color:#fff}
+.C .sec{padding:26px 20px 10px;display:flex;justify-content:space-between;align-items:baseline}
+.C .sec h2{font:600 22px/1 Newsreader}
+.C .sec a{font:600 13.5px/1 Inter;color:var(--ink2);min-height:44px;display:flex;align-items:center}
+.C .soon{margin:0 20px;background:var(--paper);border:1px solid var(--line);border-radius:18px}
+.C .soon .it{display:grid;grid-template-columns:44px 1fr auto;gap:12px;align-items:center;padding:10px 14px;border-bottom:1px solid #efe6d6}
+.C .soon .it:last-child{border-bottom:0}
+.C .soon .ph{width:44px;height:44px;border-radius:12px;overflow:hidden;background:#e4d7c2}
+.C .soon b{font:600 15px/1.2 Inter;display:block}
+.C .soon .q{font:400 13px/1.2 Inter;color:var(--ink2)}
+.C .days{font:700 12px/1 Inter;padding:6px 9px;border-radius:999px;white-space:nowrap}
+.C .days.now{background:var(--rose-bg);color:var(--rose)}
+.C .days.soon{background:var(--amber-bg);color:var(--amber)}
+.C .days.ok{background:var(--green-bg);color:var(--green)}
+.C .conf{margin:0 20px;background:var(--paper);border:1px solid #d8c8ec;border-radius:18px;padding:4px 14px}
+.C .conf .ci{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #eee4f7}
+.C .conf .ci:last-of-type{border-bottom:0}
+.C .conf .m{flex:1}
+.C .conf b{font:600 14.5px/1.25 Inter;display:block}
+.C .conf i{font-style:normal;font-size:12.5px;color:#5a4a70}
+.C .okb{min-height:44px;padding:0 14px;border-radius:12px;font:600 13.5px/1 Inter;background:var(--espresso);color:#fff}
+.C .conf .foot{font-size:12.5px;color:#5a4a70;padding:8px 0 10px}
+.C .nav{flex:0 0 auto;display:grid;grid-template-columns:repeat(5,1fr);align-items:center;background:var(--paper);border-top:1px solid var(--line);padding:8px 10px 18px}
+.C .nav button{display:flex;flex-direction:column;align-items:center;gap:5px;font:600 11.5px/1 Inter;color:var(--ink3);min-height:48px;justify-content:center}
+.C .nav button.on{color:var(--brand)}
+.C .nav .add{color:var(--ink)}
+.C .nav .add span.ring{width:44px;height:36px;border-radius:12px;background:var(--espresso);color:#fff;display:grid;place-items:center}
+.C .ltitle{padding:10px 20px 0}
+.C .ltitle h2{font:600 34px/1 Newsreader}
+.C .ltitle .s{font:500 13.5px/1.3 Inter;color:var(--ink2);margin-top:6px}
+.C .seg{display:flex;margin:16px 20px 0;background:#e4d7c2;border-radius:12px;padding:3px}
+.C .seg button{flex:1;min-height:40px;border-radius:10px;font:600 13.5px/1 Inter;color:var(--ink2)}
+.C .seg button.on{background:var(--paper);color:var(--ink);box-shadow:0 1px 2px rgba(60,45,35,.15)}
+.C .grp{padding:20px 20px 8px;display:flex;justify-content:space-between;font:700 12.5px/1 Inter;letter-spacing:.08em;text-transform:uppercase;color:var(--ink2)}
+.C .rec{margin:0 20px 12px;background:var(--paper);border:1px solid var(--line);border-radius:18px;display:grid;grid-template-columns:84px 1fr;overflow:hidden}
+.C .rec .ph{background:#e4d7c2;overflow:hidden}
+.C .rec .b{padding:12px 14px;display:flex;flex-direction:column;gap:7px}
+.C .rec h3{font:600 19px/1.1 Newsreader;display:flex;justify-content:space-between;gap:8px}
+.C .rec h3 span{font:700 13px/1 Inter;color:var(--ink2);padding-top:3px}
+.C .rec .meta{font:500 12.5px/1.3 Inter;color:var(--ink2)}
+.C .rec.blocked{border-color:var(--danger)}
+.C .rec.blocked .ph img{filter:grayscale(1);opacity:.6}
+.C .rec.blocked h3{color:var(--ink2)}
+.C .note{font-size:12.5px;line-height:1.45;color:var(--ink3)}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <h1>Smart Kitchen · new look, three directions</h1>
+  <p>Same Chen household as v5 (Dean, plus Maya with a severe peanut and sesame allergy), same nine items, same three allergen states. Only the look changes. Scroll inside each phone.</p>
+  <div class="tabs" role="tablist">
+    <button role="tab" aria-selected="true" data-go="A">A · Pantry label</button>
+    <button role="tab" aria-selected="false" data-go="B">B · Cookbook</button>
+    <button role="tab" aria-selected="false" data-go="C">C · v5, de-AI'd</button>
+  </div>
+</header>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-home" viewBox="0 0 24 24"><path d="M4 11l8-7 8 7"/><path d="M6 9.5V20h12V9.5"/></symbol>
+  <symbol id="i-inv" viewBox="0 0 24 24"><path d="M4 9h16l-1.5 10a2 2 0 0 1-2 1.7h-9a2 2 0 0 1-2-1.7z"/><path d="M8 9l2.5-5"/><path d="M16 9l-2.5-5"/></symbol>
+  <symbol id="i-menu" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2.5"/><path d="M3 10h18"/><path d="M8 3v4"/><path d="M16 3v4"/></symbol>
+  <symbol id="i-shop" viewBox="0 0 24 24"><path d="M3 3h2l2.6 12.4a1 1 0 0 0 1 .6h8.7a1 1 0 0 0 1-.8L20 8H6"/><circle cx="9.5" cy="20" r="1"/><circle cx="17" cy="20" r="1"/></symbol>
+  <symbol id="i-scan" viewBox="0 0 24 24"><path d="M4 8V6a2 2 0 0 1 2-2h2"/><path d="M16 4h2a2 2 0 0 1 2 2v2"/><path d="M20 16v2a2 2 0 0 1-2 2h-2"/><path d="M8 20H6a2 2 0 0 1-2-2v-2"/><path d="M4 12h16"/></symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3l7 3v5c0 4.6-3 7.8-7 9-4-1.2-7-4.4-7-9V6z"/></symbol>
+  <symbol id="i-warn" viewBox="0 0 24 24"><path d="M12 3.5L21.5 20h-19z"/><path d="M12 10v4.5"/><circle cx="12" cy="17.4" r=".6" fill="currentColor"/></symbol>
+</svg>
+
+<!-- ================================================================== A -->
+<section class="dir on" id="dir-A">
+  <div class="pitch">
+    <div>
+      <h2>A · Pantry label</h2>
+      <p class="say">The app is an inventory ledger, so it looks like one. Label-maker tape for sections, a nutrition-facts panel for the kitchen's numbers, shelf tags for food, receipt lines for what a recipe needs. Cobalt is the one brand color, because blue is the only hue the safety rules leave free. No photos needed, so no stock food.</p>
+    </div>
+    <div class="cost"><span>new tokens <b>yes</b></span><span>new layouts <b>most screens</b></span><span>cost <b>high</b></span></div>
+  </div>
+  <div class="row">
+    <!-- A · HOME -->
+    <div><div class="cap">Home</div><div class="phone"><div class="screen A">
+      <div class="sb"><span class="num">6:40</span><span>●●● ▮</span></div>
+      <div class="scroll">
+        <div class="hd"><span class="tape">Chen kitchen</span><span class="av">DC</span></div>
+        <div class="when">Mon · 6:40 pm · 2 members</div>
+        <div class="big"><span class="n num">4</span><span class="t">things to<br><u>use this week</u></span></div>
+
+        <div class="facts">
+          <h3>Kitchen facts</h3>
+          <div class="sub">9 items · fridge, freezer, pantry</div>
+          <div class="r"><span>Use this week<small>strawberries first</small></span><span class="v num">4</span></div>
+          <div class="r"><span>To buy<small>1 for tonight</small></span><span class="v num">5</span></div>
+          <div class="r thick"><span>Verified<small>by scan or by you</small></span><span class="v num">67%</span></div>
+          <div class="vbar"><i></i></div>
+        </div>
+
+        <div class="sec"><span class="tape">Cook tonight</span><a class="lnk">All 4 ideas</a></div>
+        <div class="tonight">
+          <div class="top2">
+            <div class="stamp num">92<small>COVER</small></div>
+            <div><h3>Chicken &amp; spinach stir-fry</h3><div class="meta num">25 min · 540 cal · serves 4</div></div>
+          </div>
+          <div class="rcpt num">
+            <div><span>✓ spinach</span><span class="dots"></span><span>5 oz</span></div>
+            <div><span>✓ mushrooms</span><span class="dots"></span><span>8 oz</span></div>
+            <div><span>✓ rice</span><span class="dots"></span><span>~4 cups</span></div>
+            <div class="short"><span>+ chicken</span><span class="dots"></span><span>0.75 lb short</span></div>
+          </div>
+          <div class="vwrap"><div class="verdict"><div class="l"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><use href="#i-shield"/></svg>No known allergen match · 2 members</div><div class="c">Known matches only · not a guarantee this food is safe.</div></div></div>
+          <div class="btns"><button class="btn">Why this?</button><button class="btn pri">Cook this</button></div>
+        </div>
+
+        <div class="sec"><span class="tape">Use it soon</span><a class="lnk">Inventory</a></div>
+        <div class="shelf">
+          <div class="tag"><span class="rubber">USE TODAY</span><b>Strawberries</b><div class="q num">1 lb · fridge</div><div class="ticks" data-d="1" data-t="rose"></div><div class="dl num" style="color:var(--rose)">1 day left</div></div>
+          <div class="tag"><b>Chicken breast</b><div class="q num">1.25 lb · fridge</div><div class="ticks" data-d="2" data-t="amber"></div><div class="dl num" style="color:var(--amber)">2 days left</div></div>
+          <div class="tag"><b>Spinach</b><div class="q num">5 oz · fridge</div><div class="ticks" data-d="3" data-t="amber"></div><div class="dl num" style="color:var(--amber)">3 days left</div></div>
+          <div class="tag"><b>Mushrooms</b><div class="q num">8 oz · fridge</div><div class="ticks" data-d="3" data-t="amber"></div><div class="dl num" style="color:var(--amber)">3 days left</div></div>
+        </div>
+
+        <div class="sec"><span class="tape">Check these</span><span class="prov ai">AI read · 2</span></div>
+        <div class="conf">
+          <div class="ci"><div class="m"><b>Strawberries · 1 lb?</b><i>receipt said "ORG STRWB 1LB"</i></div><button class="okb">Edit</button><button class="okb go">Yes</button></div>
+          <div class="ci"><div class="m"><b>Mushrooms · 8 oz?</b><i>receipt said "CREMINI MUSHRM 8OZ"</i></div><button class="okb">Edit</button><button class="okb go">Yes</button></div>
+          <div class="foot">Not in your inventory until you say yes.</div>
+        </div>
+        <div style="height:24px"></div>
+      </div>
+      <nav class="nav">
+        <button class="on"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="#i-home"/></svg>Home</button>
+        <button><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="#i-inv"/></svg>Stock</button>
+        <button class="add"><svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><use href="#i-scan"/></svg>Add</button>
+        <button><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="#i-menu"/></svg>Menu</button>
+        <button><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="#i-shop"/></svg>Shop</button>
+      </nav>
+    </div></div></div>
+
+    <!-- A · INVENTORY -->
+    <div><div class="cap">Inventory</div><div class="phone"><div class="screen A">
+      <div class="sb"><span class="num">6:41</span><span>●●● ▮</span></div>
+      <div class="scroll">
+        <div class="ltitle"><h2>Stock</h2><div class="s num">9 items<br>67% verified</div></div>
+        <div class="seg"><button class="on">All</button><button>Fridge</button><button>Freezer</button><button>Pantry</button></div>
+
+        <div class="grp"><span class="tape">Fridge</span><span class="c num">6 items · soonest first</span></div>
+        <div class="led">
+          <div class="li"><b>Strawberries</b><span class="q num">1 lb</span><div class="l2"><div class="ticks" data-d="1" data-t="rose"></div><span class="dl num" style="color:var(--rose)">today</span><span class="prov ai">AI · check</span></div></div>
+          <div class="li"><b>Chicken breast</b><span class="q num">1.25 lb</span><div class="l2"><div class="ticks" data-d="2" data-t="amber"></div><span class="dl num" style="color:var(--amber)">2 days</span><span class="prov fact">✓ Fact</span></div></div>
+          <div class="li"><b>Spinach</b><span class="q num">5 oz</span><div class="l2"><div class="ticks" data-d="3" data-t="amber"></div><span class="dl num" style="color:var(--amber)">3 days</span><span class="prov fact">✓ Fact</span></div></div>
+          <div class="li"><b>Mushrooms</b><span class="q num">8 oz</span><div class="l2"><div class="ticks" data-d="3" data-t="amber"></div><span class="dl num" style="color:var(--amber)">3 days</span><span class="prov ai">AI · check</span></div></div>
+          <div class="li"><b>Greek yogurt</b><span class="q num">3 × 16 oz</span><div class="l2"><div class="ticks" data-d="10" data-t="green"></div><span class="dl num" style="color:var(--green)">10 days</span><span class="prov fact">✓ Fact</span></div></div>
+          <div class="li"><b>Eggs</b><span class="q num">8 of 12</span><div class="l2"><div class="ticks" data-d="14" data-t="green"></div><span class="dl num" style="color:var(--green)">2 weeks</span><span class="prov fact">✓ Fact</span></div></div>
+        </div>
+
+        <div class="grp"><span class="tape">Freezer</span><span class="c num">1 item</span></div>
+        <div class="led">
+          <div class="li"><b>Salmon fillets</b><span class="q num">2 × 6 oz</span><div class="l2"><div class="ticks" data-d="60" data-t="green"></div><span class="dl num" style="color:var(--green)">2 months</span><span class="prov fact">✓ Fact</span></div></div>
+        </div>
+
+        <div class="grp"><span class="tape">Pantry</span><span class="c num">2 items</span></div>
+        <div class="led">
+          <div class="li"><b>Basmati rice</b><span class="q num">~4 cups</span><div class="l2"><span class="note" style="flex:1">qty worked out from 2 meals</span><span class="prov est">≈ Est.</span></div></div>
+          <div class="li"><b>Olive oil</b><span class="q num">1 bottle</span><div class="l2"><span class="note" style="flex:1">opened Aug 30</span><span class="prov fact">✓ Fact</span></div></div>
+        </div>
+        <div style="height:24px"></div>
+      </div>
+      <nav class="nav">
+        <button><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="#i-home"/></svg>Home</button>
+        <button class="on"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="#i-inv"/></svg>Stock</button>
+        <button class="add"><svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><use href="#i-scan"/></svg>Add</button>
+        <button><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="#i-menu"/></svg>Menu</button>
+        <button><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="#i-shop"/></svg>Shop</button>
+      </nav>
+    </div></div></div>
+
+    <!-- A · MENU -->
+    <div><div class="cap">Menu · all three allergen states</div><div class="phone"><div class="screen A">
+      <div class="sb"><span class="num">6:42</span><span>●●● ▮</span></div>
+      <div class="scroll">
+        <div class="ltitle"><h2>Tonight</h2><div class="s num">4 ideas<br>ranked by coverage</div></div>
+        <div class="grp" style="padding-top:16px"><span class="note">Coverage = how much is already on hand, weighted toward food that expires first. Worked out from your stock, not guessed.</span></div>
+
+        <div class="mcard"><div class="score num">92<small>COVER</small></div><div class="b"><h3>Chicken &amp; spinach stir-fry</h3><div class="meta num">25 min · 540 cal · uses 3 expiring</div><div class="need num">have spinach, mushrooms, rice · <span class="short">+ 0.75 lb chicken</span></div><div class="verdict"><div class="l"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><use href="#i-shield"/></svg>No known allergen match · 2 members</div><div class="c">Known matches only · not a guarantee this food is safe.</div></div></div></div>
+
+        <div class="mcard"><div class="score num">84<small>COVER</small></div><div class="b"><h3>Yogurt berry parfait</h3><div class="meta num">10 min · 320 cal · breakfast</div><div class="need">have yogurt, strawberries · <span class="short">+ granola</span></div><div class="verdict"><div class="l"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><use href="#i-shield"/></svg>No known allergen match · 2 members</div><div class="c">Known matches only · not a guarantee this food is safe.</div></div></div></div>
+
+        <div class="mcard"><div class="score num">78<small>COVER</small></div><div class="b"><h3>Miso-glazed salmon</h3><div class="meta num">30 min · 610 cal · thaw first</div><div class="need">have salmon, rice · <span class="short">+ miso, broccoli</span></div><div class="verdict unk"><div class="l"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><use href="#i-warn"/></svg>Allergen data incomplete for Maya, severe sesame allergy</div><div class="c">Known matches only · not a guarantee this food is safe.</div></div></div></div>
+
+        <div class="mcard blocked"><div class="score">BLOCKED</div><div class="b"><h3>Thai peanut noodles</h3><div class="blockbar"><span class="sh"><svg width="13" height="13" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round"><use href="#i-warn"/></svg></span>Contains peanut · matched 'peanuts' in the ingredient statement · blocked for Maya</div><div class="note">Blocked recipes are shown for transparency, and cannot be cooked or planned.</div><div class="note">Known matches only · not a guarantee this food is safe.</div></div></div>
+        <div style="height:24px"></div>
+      </div>
+      <nav class="nav">
+        <button><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="#i-home"/></svg>Home</button>
+        <button><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="#i-inv"/></svg>Stock</button>
+        <button class="add"><svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><use href="#i-scan"/></svg>Add</button>
+        <button class="on"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="#i-menu"/></svg>Menu</button>
+        <button><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="#i-shop"/></svg>Shop</button>
+      </nav>
+    </div></div></div>
+  </div>
+</section>
+
+<!-- ================================================================== B -->
+<section class="dir" id="dir-B">
+  <div class="pitch">
+    <div>
+      <h2>B · Cookbook</h2>
+      <p class="say">Reads like a good cookbook, not an app. Black ink, hairline rules, a high-contrast Bodoni for headlines, no brand color at all. The food photos supply the color. Tonight's dish is shown as the four things you actually have, not a stock photo of someone else's bowl.</p>
+    </div>
+    <div class="cost"><span>new tokens <b>yes</b></span><span>new layouts <b>some</b></span><span>needs <b>real photos</b></span><span>cost <b>medium</b></span></div>
+  </div>
+  <div class="row">
+    <!-- B · HOME -->
+    <div><div class="cap">Home</div><div class="phone"><div class="screen B">
+      <div class="sb"><span class="num">6:40</span><span>●●● ▮</span></div>
+      <div class="scroll">
+        <div class="mast"><span class="name">The Chen Kitchen</span><span class="av">DC</span></div>
+        <div class="rule"></div>
+        <div class="kick">Monday · Tonight</div>
+        <div class="h serif">Chicken &amp; spinach <span style="white-space:nowrap">stir&#8209;fry</span></div>
+        <div class="mosaic">
+          <figure><img src="https://images.unsplash.com/photo-1576045057995-568f588f82fb?auto=format&fit=crop&w=500&q=75" alt="Spinach"><figcaption>Spinach · 5 oz</figcaption></figure>
+          <figure><img src="https://images.unsplash.com/photo-1504545102780-26774c1bb073?auto=format&fit=crop&w=400&q=70" alt="Mushrooms"><figcaption>Mushrooms · 8 oz</figcaption></figure>
+          <figure><img src="https://images.unsplash.com/photo-1604503468506-a8da13d82791?auto=format&fit=crop&w=400&q=70" alt="Chicken breast"><figcaption class="short num">Chicken · 0.75 lb short</figcaption></figure>
+        </div>
+        <div class="by num"><span><b>25</b> min</span><span><b>540</b> cal</span><span>serves <b>4</b></span><span><b>92</b>% on hand</span></div>
+        <div class="vwrap"><div class="verdict"><div class="l"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><use href="#i-shield"/></svg>No known allergen match · 2 members</div><div class="c">Known matches only · not a guarantee this food is safe.</div></div></div>
+        <div class="btns"><button class="btn">Why this?</button><button class="btn pri">Cook this</button></div>
+
+        <div class="stats num">
+          <div><div class="v">4</div><div class="l">use this week</div></div>
+          <div><div class="v">5</div><div class="l">to buy</div></div>
+          <div><div class="v">67%</div><div class="l">verified</div></div>
+        </div>
+
+        <div class="sec"><h3 class="serif">Use it soon</h3><a>Inventory</a></div>
+        <div class="soon">
+          <div class="it"><span class="ix num">01</span><div class="ph"><img src="https://images.unsplash.com/photo-1464965911861-746a04b4bca6?auto=format&fit=crop&w=160&q=70" alt=""></div><div><b>Strawberries</b><span class="q num">1 lb · fridge</span></div><span class="days now">Today</span></div>
+          <div class="it"><span class="ix num">02</span><div class="ph"><img src="https://images.unsplash.com/photo-1604503468506-a8da13d82791?auto=format&fit=crop&w=160&q=70" alt=""></div><div><b>Chicken breast</b><span class="q num">1.25 lb · fridge</span></div><span class="days soon num">2 days</span></div>
+          <div class="it"><span class="ix num">03</span><div class="ph"><img src="https://images.unsplash.com/photo-1576045057995-568f588f82fb?auto=format&fit=crop&w=160&q=70" alt=""></div><div><b>Spinach</b><span class="q num">5 oz · fridge</span></div><span class="days soon num">3 days</span></div>
+          <div class="it"><span class="ix num">04</span><div class="ph"><img src="https://images.unsplash.com/photo-1504545102780-26774c1bb073?auto=format&fit=crop&w=160&q=70" alt=""></div><div><b>Mushrooms</b><span class="q num">8 oz · fridge</span></div><span class="days soon num">3 days</span></div>
+        </div>
+
+        <div class="sec"><h3 class="serif">Check these two</h3><span class="prov ai">AI read</span></div>
+        <div class="conf">
+          <div class="ci"><div class="m"><b>Strawberries · 1 lb?</b><i>receipt said "ORG STRWB 1LB"</i></div><button class="okb">Yes</button></div>
+          <div class="ci"><div class="m"><b>Mushrooms · 8 oz?</b><i>receipt said "CREMINI MUSHRM 8OZ"</i></div><button class="okb">Yes</button></div>
+          <div class="foot">Tap a line to fix it. Nothing is added until you say yes.</div>
+        </div>
+        <div style="height:28px"></div>
+      </div>
+      <nav class="nav">
+        <button class="on"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><use href="#i-home"/></svg>Home</button>
+        <button><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><use href="#i-inv"/></svg>Kitchen</button>
+        <button class="add" aria-label="Add food"><svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><use href="#i-scan"/></svg></button>
+        <button><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><use href="#i-menu"/></svg>Menu</button>
+        <button><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><use href="#i-shop"/></svg>List</button>
+      </nav>
+    </div></div></div>
+
+    <!-- B · INVENTORY -->
+    <div><div class="cap">Inventory</div><div class="phone"><div class="screen B">
+      <div class="sb"><span class="num">6:41</span><span>●●● ▮</span></div>
+      <div class="scroll">
+        <div class="ltitle"><h2 class="serif">The kitchen</h2><div class="s num">9 items · 67% verified · 2 to check</div></div>
+        <div class="seg"><button class="on">All</button><button>Fridge</button><button>Freezer</button><button>Pantry</button></div>
+        <div class="grp"><h4 class="serif">Fridge</h4><span class="num">6</span></div>
+        <div class="inv">
+          <div class="it"><div class="ph"><img src="https://images.unsplash.com/photo-1464965911861-746a04b4bca6?auto=format&fit=crop&w=160&q=70" alt=""></div><div><b>Strawberries</b><div class="q num">1 lb <span class="days now">Today</span></div></div><span class="prov ai">AI · check</span></div>
+          <div class="it"><div class="ph"><img src="https://images.unsplash.com/photo-1604503468506-a8da13d82791?auto=format&fit=crop&w=160&q=70" alt=""></div><div><b>Chicken breast</b><div class="q num">1.25 lb <span class="days soon">2 days</span></div></div><span class="prov fact">✓ Fact</span></div>
+          <div class="it"><div class="ph"><img src="https://images.unsplash.com/photo-1576045057995-568f588f82fb?auto=format&fit=crop&w=160&q=70" alt=""></div><div><b>Spinach</b><div class="q num">5 oz <span class="days soon">3 days</span></div></div><span class="prov fact">✓ Fact</span></div>
+          <div class="it"><div class="ph"><img src="https://images.unsplash.com/photo-1504545102780-26774c1bb073?auto=format&fit=crop&w=160&q=70" alt=""></div><div><b>Mushrooms</b><div class="q num">8 oz <span class="days soon">3 days</span></div></div><span class="prov ai">AI · check</span></div>
+          <div class="it"><div class="ph"><img src="https://images.unsplash.com/photo-1488477181946-6428a0291777?auto=format&fit=crop&w=160&q=70" alt=""></div><div><b>Greek yogurt</b><div class="q num">3 × 16 oz <span class="days ok">10 days</span></div></div><span class="prov fact">✓ Fact</span></div>
+          <div class="it"><div class="ph"><img src="https://images.unsplash.com/photo-1582722872445-44dc5f7e3c8f?auto=format&fit=crop&w=160&q=70" alt=""></div><div><b>Eggs</b><div class="q num">8 of 12 <span class="days ok">2 weeks</span></div></div><span class="prov fact">✓ Fact</span></div>
+        </div>
+        <div class="grp"><h4 class="serif">Freezer</h4><span class="num">1</span></div>
+        <div class="inv">
+          <div class="it"><div class="ph"><img src="https://images.unsplash.com/photo-1467003909585-2f8a72700288?auto=format&fit=crop&w=160&q=70" alt=""></div><div><b>Salmon fillets</b><div class="q num">2 × 6 oz <span class="days ok">2 months</span></div></div><span class="prov fact">✓ Fact</span></div>
+        </div>
+        <div class="grp"><h4 class="serif">Pantry</h4><span class="num">2</span></div>
+        <div class="inv">
+          <div class="it"><div class="ph"><img src="https://images.unsplash.com/photo-1536304993881-ff6e9eefa2a6?auto=format&fit=crop&w=160&q=70" alt=""></div><div><b>Basmati rice</b><div class="q num">~4 cups · from 2 meals</div></div><span class="prov est">≈ Est.</span></div>
+          <div class="it"><div class="ph">O</div><div><b>Olive oil</b><div class="q">1 bottle · opened Aug 30</div></div><span class="prov fact">✓ Fact</span></div>
+        </div>
+        <div style="height:28px"></div>
+      </div>
+      <nav class="nav">
+        <button><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><use href="#i-home"/></svg>Home</button>
+        <button class="on"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><use href="#i-inv"/></svg>Kitchen</button>
+        <button class="add" aria-label="Add food"><svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><use href="#i-scan"/></svg></button>
+        <button><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><use href="#i-menu"/></svg>Menu</button>
+        <button><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><use href="#i-shop"/></svg>List</button>
+      </nav>
+    </div></div></div>
+
+    <!-- B · MENU -->
+    <div><div class="cap">Menu · all three allergen states</div><div class="phone"><div class="screen B">
+      <div class="sb"><span class="num">6:42</span><span>●●● ▮</span></div>
+      <div class="scroll">
+        <div class="ltitle"><h2 class="serif">Tonight's menu</h2><div class="s">Ranked by what's on hand and what expires first. Tonight's pick is on Home.</div></div>
+
+        <div class="rec"><div class="ph"><img src="https://images.unsplash.com/photo-1488477181946-6428a0291777?auto=format&fit=crop&w=700&q=70" alt=""><span class="pct num">84<small>% on hand</small></span></div><h3 class="serif">Yogurt berry parfait</h3><div class="meta num">10 min · 320 cal · breakfast</div><div class="need">yogurt, strawberries · <span class="short">+ granola</span></div><div class="verdict"><div class="l"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><use href="#i-shield"/></svg>No known allergen match · 2 members</div><div class="c">Known matches only · not a guarantee this food is safe.</div></div></div>
+
+        <div class="rec"><div class="ph"><img src="https://images.unsplash.com/photo-1467003909585-2f8a72700288?auto=format&fit=crop&w=700&q=70" alt=""><span class="pct num">78<small>% on hand</small></span></div><h3 class="serif">Miso-glazed salmon</h3><div class="meta num">30 min · 610 cal · thaw first</div><div class="need">salmon, rice · <span class="short">+ miso, broccoli</span></div><div class="verdict unk"><div class="l"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><use href="#i-warn"/></svg>Allergen data incomplete for Maya, severe sesame allergy</div><div class="c">Known matches only · not a guarantee this food is safe.</div></div></div>
+
+        <div class="rec blocked"><div class="ph"><img src="https://images.unsplash.com/photo-1555949258-eb67b1ef0ceb?auto=format&fit=crop&w=700&q=70" alt=""></div><h3 class="serif">Thai peanut noodles</h3><div style="height:10px"></div><div class="blockbar"><span class="sh"><svg width="13" height="13" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round"><use href="#i-warn"/></svg></span>Contains peanut · matched 'peanuts' in the ingredient statement · blocked for Maya</div><div class="note">Blocked recipes are shown for transparency, and cannot be cooked or planned.</div><div class="note" style="margin-top:2px">Known matches only · not a guarantee this food is safe.</div></div>
+        <div style="height:28px"></div>
+      </div>
+      <nav class="nav">
+        <button><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><use href="#i-home"/></svg>Home</button>
+        <button><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><use href="#i-inv"/></svg>Kitchen</button>
+        <button class="add" aria-label="Add food"><svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><use href="#i-scan"/></svg></button>
+        <button class="on"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><use href="#i-menu"/></svg>Menu</button>
+        <button><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><use href="#i-shop"/></svg>List</button>
+      </nav>
+    </div></div></div>
+  </div>
+</section>
+
+<!-- ================================================================== C -->
+<section class="dir" id="dir-C">
+  <div class="pitch">
+    <div>
+      <h2>C · v5, de-AI'd</h2>
+      <p class="say">Same sand, terracotta and espresso tokens you already ship. What goes: the dark hero, the glow blob, the italic orange word, the glass stat pills, the sparkle and the chat bar (post-MVP anyway), and the stock bowl. Fraunces becomes Newsreader, set straight. The cheapest real improvement.</p>
+    </div>
+    <div class="cost"><span>new tokens <b>font only</b></span><span>new layouts <b>Home</b></span><span>cost <b>low</b></span></div>
+  </div>
+  <div class="row">
+    <!-- C · HOME -->
+    <div><div class="cap">Home</div><div class="phone"><div class="screen C">
+      <div class="sb"><span class="num">6:40</span><span>●●● ▮</span></div>
+      <div class="scroll">
+        <div class="hd"><span class="e">Monday evening · Chen household</span><span class="av">DC</span></div>
+        <h1 class="serif">Cook tonight</h1>
+        <div class="status num"><a><b>4</b> to use this week</a><a><b>5</b> to buy</a><a><b>67%</b> verified</a></div>
+        <div class="card">
+          <div class="strip">
+            <figure><img src="https://images.unsplash.com/photo-1576045057995-568f588f82fb?auto=format&fit=crop&w=200&q=70" alt="Spinach"></figure>
+            <figure><img src="https://images.unsplash.com/photo-1504545102780-26774c1bb073?auto=format&fit=crop&w=200&q=70" alt="Mushrooms"></figure>
+            <figure><img src="https://images.unsplash.com/photo-1536304993881-ff6e9eefa2a6?auto=format&fit=crop&w=200&q=70" alt="Rice"></figure>
+            <figure class="short"><img src="https://images.unsplash.com/photo-1604503468506-a8da13d82791?auto=format&fit=crop&w=200&q=70" alt="Chicken"></figure>
+          </div>
+          <div class="b">
+            <h3 class="serif">Chicken &amp; spinach stir-fry</h3>
+            <div class="meta num">25 min · 540 cal · serves 4 · <b>92% coverage</b></div>
+            <div class="have"><span>✓ spinach</span><span>✓ mushrooms</span><span>✓ rice</span><span class="short num">+ 0.75 lb chicken</span></div>
+            <div class="verdict"><div class="l"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><use href="#i-shield"/></svg>No known allergen match · 2 members</div><div class="c">Known matches only · not a guarantee this food is safe.</div></div>
+            <div class="btns"><button class="btn">Why this?</button><button class="btn pri">Cook this</button></div>
+          </div>
+        </div>
+
+        <div class="sec"><h2 class="serif">Use it soon</h2><a>Inventory</a></div>
+        <div class="soon">
+          <div class="it"><div class="ph"><img src="https://images.unsplash.com/photo-1464965911861-746a04b4bca6?auto=format&fit=crop&w=120&q=70" alt=""></div><div><b>Strawberries</b><span class="q num">1 lb · fridge</span></div><span class="days now">Today</span></div>
+          <div class="it"><div class="ph"><img src="https://images.unsplash.com/photo-1604503468506-a8da13d82791?auto=format&fit=crop&w=120&q=70" alt=""></div><div><b>Chicken breast</b><span class="q num">1.25 lb · fridge</span></div><span class="days soon num">2 days</span></div>
+          <div class="it"><div class="ph"><img src="https://images.unsplash.com/photo-1576045057995-568f588f82fb?auto=format&fit=crop&w=120&q=70" alt=""></div><div><b>Spinach</b><span class="q num">5 oz · fridge</span></div><span class="days soon num">3 days</span></div>
+          <div class="it"><div class="ph"><img src="https://images.unsplash.com/photo-1504545102780-26774c1bb073?auto=format&fit=crop&w=120&q=70" alt=""></div><div><b>Mushrooms</b><span class="q num">8 oz · fridge</span></div><span class="days soon num">3 days</span></div>
+        </div>
+
+        <div class="sec"><h2 class="serif">Check these</h2><span class="prov ai">AI read · 2</span></div>
+        <div class="conf">
+          <div class="ci"><div class="m"><b>Strawberries · 1 lb?</b><i>receipt said "ORG STRWB 1LB"</i></div><button class="okb">Yes</button></div>
+          <div class="ci"><div class="m"><b>Mushrooms · 8 oz?</b><i>receipt said "CREMINI MUSHRM 8OZ"</i></div><button class="okb">Yes</button></div>
+          <div class="foot">Tap a line to fix it. Nothing is added until you say yes.</div>
+        </div>
+        <div style="height:28px"></div>
+      </div>
+      <nav class="nav">
+        <button class="on"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="#i-home"/></svg>Home</button>
+        <button><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="#i-inv"/></svg>Inventory</button>
+        <button class="add"><span class="ring"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><use href="#i-scan"/></svg></span>Add</button>
+        <button><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="#i-menu"/></svg>Menu</button>
+        <button><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="#i-shop"/></svg>Shopping</button>
+      </nav>
+    </div></div></div>
+
+    <!-- C · INVENTORY -->
+    <div><div class="cap">Inventory</div><div class="phone"><div class="screen C">
+      <div class="sb"><span class="num">6:41</span><span>●●● ▮</span></div>
+      <div class="scroll">
+        <div class="ltitle"><h2 class="serif">Inventory</h2><div class="s num">9 items · 67% verified · 2 to check</div></div>
+        <div class="seg"><button class="on">All</button><button>Fridge</button><button>Freezer</button><button>Pantry</button></div>
+        <div class="grp"><span>Fridge</span><span class="num">6</span></div>
+        <div class="soon">
+          <div class="it"><div class="ph"><img src="https://images.unsplash.com/photo-1464965911861-746a04b4bca6?auto=format&fit=crop&w=120&q=70" alt=""></div><div><b>Strawberries</b><span class="q num">1 lb · <span style="color:var(--rose);font-weight:600">use today</span></span></div><span class="prov ai">AI · check</span></div>
+          <div class="it"><div class="ph"><img src="https://images.unsplash.com/photo-1604503468506-a8da13d82791?auto=format&fit=crop&w=120&q=70" alt=""></div><div><b>Chicken breast</b><span class="q num">1.25 lb · <span style="color:var(--amber);font-weight:600">2 days</span></span></div><span class="prov fact">✓ Fact</span></div>
+          <div class="it"><div class="ph"><img src="https://images.unsplash.com/photo-1576045057995-568f588f82fb?auto=format&fit=crop&w=120&q=70" alt=""></div><div><b>Spinach</b><span class="q num">5 oz · <span style="color:var(--amber);font-weight:600">3 days</span></span></div><span class="prov fact">✓ Fact</span></div>
+          <div class="it"><div class="ph"><img src="https://images.unsplash.com/photo-1504545102780-26774c1bb073?auto=format&fit=crop&w=120&q=70" alt=""></div><div><b>Mushrooms</b><span class="q num">8 oz · <span style="color:var(--amber);font-weight:600">3 days</span></span></div><span class="prov ai">AI · check</span></div>
+          <div class="it"><div class="ph"><img src="https://images.unsplash.com/photo-1488477181946-6428a0291777?auto=format&fit=crop&w=120&q=70" alt=""></div><div><b>Greek yogurt</b><span class="q num">3 × 16 oz · <span style="color:var(--green);font-weight:600">10 days</span></span></div><span class="prov fact">✓ Fact</span></div>
+          <div class="it"><div class="ph"><img src="https://images.unsplash.com/photo-1582722872445-44dc5f7e3c8f?auto=format&fit=crop&w=120&q=70" alt=""></div><div><b>Eggs</b><span class="q num">8 of 12 · <span style="color:var(--green);font-weight:600">2 weeks</span></span></div><span class="prov fact">✓ Fact</span></div>
+        </div>
+        <div class="grp"><span>Freezer</span><span class="num">1</span></div>
+        <div class="soon">
+          <div class="it"><div class="ph"><img src="https://images.unsplash.com/photo-1467003909585-2f8a72700288?auto=format&fit=crop&w=120&q=70" alt=""></div><div><b>Salmon fillets</b><span class="q num">2 × 6 oz · <span style="color:var(--green);font-weight:600">2 months</span></span></div><span class="prov fact">✓ Fact</span></div>
+        </div>
+        <div class="grp"><span>Pantry</span><span class="num">2</span></div>
+        <div class="soon">
+          <div class="it"><div class="ph"><img src="https://images.unsplash.com/photo-1536304993881-ff6e9eefa2a6?auto=format&fit=crop&w=120&q=70" alt=""></div><div><b>Basmati rice</b><span class="q num">~4 cups · from 2 meals</span></div><span class="prov est">≈ Est.</span></div>
+          <div class="it"><div class="ph" style="display:grid;place-items:center;font:600 18px Newsreader;color:#8f8274">O</div><div><b>Olive oil</b><span class="q">1 bottle · opened Aug 30</span></div><span class="prov fact">✓ Fact</span></div>
+        </div>
+        <div style="height:28px"></div>
+      </div>
+      <nav class="nav">
+        <button><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="#i-home"/></svg>Home</button>
+        <button class="on"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="#i-inv"/></svg>Inventory</button>
+        <button class="add"><span class="ring"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><use href="#i-scan"/></svg></span>Add</button>
+        <button><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="#i-menu"/></svg>Menu</button>
+        <button><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="#i-shop"/></svg>Shopping</button>
+      </nav>
+    </div></div></div>
+
+    <!-- C · MENU -->
+    <div><div class="cap">Menu · all three allergen states</div><div class="phone"><div class="screen C">
+      <div class="sb"><span class="num">6:42</span><span>●●● ▮</span></div>
+      <div class="scroll">
+        <div class="ltitle"><h2 class="serif">Menu</h2><div class="s">Tonight · ranked by what's on hand and what expires first</div></div>
+        <div style="height:16px"></div>
+        <div class="rec"><div class="ph"><img src="https://images.unsplash.com/photo-1488477181946-6428a0291777?auto=format&fit=crop&w=200&q=70" alt=""></div><div class="b"><h3 class="serif">Yogurt berry parfait<span class="num">84%</span></h3><div class="meta num">10 min · 320 cal · + granola</div><div class="verdict"><div class="l"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><use href="#i-shield"/></svg>No known allergen match · 2 members</div><div class="c">Known matches only · not a guarantee this food is safe.</div></div></div></div>
+        <div class="rec"><div class="ph"><img src="https://images.unsplash.com/photo-1467003909585-2f8a72700288?auto=format&fit=crop&w=200&q=70" alt=""></div><div class="b"><h3 class="serif">Miso-glazed salmon<span class="num">78%</span></h3><div class="meta num">30 min · thaw first · + miso, broccoli</div><div class="verdict unk"><div class="l"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><use href="#i-warn"/></svg>Allergen data incomplete for Maya, severe sesame allergy</div><div class="c">Known matches only · not a guarantee this food is safe.</div></div></div></div>
+        <div class="rec blocked"><div class="ph"><img src="https://images.unsplash.com/photo-1555949258-eb67b1ef0ceb?auto=format&fit=crop&w=200&q=70" alt=""></div><div class="b"><h3 class="serif">Thai peanut noodles</h3><div class="blockbar"><span class="sh"><svg width="13" height="13" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round"><use href="#i-warn"/></svg></span>Contains peanut · matched 'peanuts' in the ingredient statement · blocked for Maya</div><div class="note">Blocked recipes are shown for transparency, and cannot be cooked or planned.</div><div class="note">Known matches only · not a guarantee this food is safe.</div></div></div>
+        <div style="height:28px"></div>
+      </div>
+      <nav class="nav">
+        <button><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="#i-home"/></svg>Home</button>
+        <button><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="#i-inv"/></svg>Inventory</button>
+        <button class="add"><span class="ring"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><use href="#i-scan"/></svg></span>Add</button>
+        <button class="on"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="#i-menu"/></svg>Menu</button>
+        <button><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="#i-shop"/></svg>Shopping</button>
+      </nav>
+    </div></div></div>
+  </div>
+</section>
+
+<p class="locked"><b>Locked in all three, on purpose:</b> allergen red only on a blocked recipe; unknown allergen data in amber, naming who and what; the verdict and caveat copy word for word from v5; the expiry ladder green to amber to rose, never red; purple only for AI-read items; Fact / Est. / AI chips on every item; touch targets 44px and up. Photos are the same Unsplash placeholders v5 uses (OQ-D8 still applies).</p>
+
+<script>
+// direction tabs
+document.querySelectorAll('.tabs button').forEach(b=>b.addEventListener('click',()=>{
+  document.querySelectorAll('.tabs button').forEach(x=>x.setAttribute('aria-selected',x===b));
+  document.querySelectorAll('.dir').forEach(d=>d.classList.toggle('on',d.id==='dir-'+b.dataset.go));
+}));
+const h=location.hash.slice(1);if(h){const b=document.querySelector(`.tabs [data-go="${h}"]`);b&&b.click();}
+// days-left tick bars (A): 10 segments, 1 per day, capped
+const tone={rose:'var(--rose)',amber:'var(--amber)',green:'var(--green)'};
+document.querySelectorAll('.A .ticks').forEach(t=>{
+  const d=Math.min(+t.dataset.d,10);
+  t.innerHTML=Array.from({length:10},(_,i)=>`<i style="${i<d?'background:'+tone[t.dataset.t]:''}"></i>`).join('');
+});
+</script>
+</body>
+</html>
