@@ -126,7 +126,7 @@ Explicitly **rejected** from that mockup: cool blue-gray neutrals and gradients 
 - ~~OQ-D2~~ **resolved 2026-09-15: Fraunces** adopted as the display face (headings, recipe titles, hero).
 - ~~OQ-D3~~ **done:** three prototype iterations; v3 is the PO's revamp (v1/v2 and the GPT reference kept in `mockups/Archives/`).
 - **OQ-D7 (new):** provenance tier for Open Food Facts–sourced nutrition and allergen *label data* — the prototype shows the product identity as Known Fact but leaves nutrition/allergen rows tier-labelled per field; who may mint a KNOWN_FACT declaration from label data is D-017's open item (pre-M4 gate b). Decide before M4.
-- **OQ-D8 (new):** photo licensing — the prototype hotlinks Unsplash; product imagery must come from the catalog source or licensed assets (add to R-4 legal list).
+- ~~OQ-D8~~ **resolved 2026-10-10 (D-032):** recipe and ingredient imagery is AI-generated (Meta Muse Image, OpenAI image as fallback, pending Andy's terms check) from the versioned [image-prompt-template.md](image-prompt-template.md), human-reviewed against the ingredient list, and decoration only. Photos of packaged catalog products stay with R-4. The prototype's Unsplash hotlinks remain until a new build reference replaces v5.
 
 ## 7. Architect assessment of the PO's revamp (2026-09-15) — what was adopted, fixed, or rejected
 
