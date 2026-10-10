@@ -1,0 +1,1279 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Smart Kitchen Cookbook Preview</title>
+<!--
+  Cookbook (B) preview, 2026-10-10. A look preview built on prototype v5's data and safety copy.
+  NOT the build reference: v5 (smart-kitchen-prototype.html) stays the reference until Andy adopts a new one.
+  Food images: AI-generated (Meta Muse) from each recipe's ingredient list and reviewed per D-032,
+  prompts in ../new-look/image-prompts-cookbook-preview.md. Masters are not in this folder.
+  Data changes from v5, made so every photo matches its ingredient list (D-032):
+  - stir-fry and miso salmon list garlic (missing, already on the Shopping list), soy sauce and olive oil;
+    the stir-fry "Why this?" now counts 2 purchases (chicken, garlic).
+  - the blocked Thai peanut noodles lists its full ingredients for transparency, with no stock status.
+  - soy sauce shows as a pantry staple that is not tracked (v5 listed it as "have" without an inventory row).
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:opsz,wght@6..96,400..700&family=Schibsted+Grotesk:wght@400..800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#fbfaf6; --tile:#f1eee6; --ink:#0f0f0f; --ink2:#5f5d58; --ink3:#6f6c66; --hair:#dcd8cf;
+  --danger:#882020; --danger-bg:#f9d9d9;
+  --amber:#925b0a;  --amber-bg:#f6e6c8;
+  --green:#2c744b;  --green-bg:#dfeee3;
+  --rose:#9d4b51;   --rose-bg:#f7dcdc;
+  --ai:#7b4cb5;     --ai-bg:#eadff7; --ai-ink:#5a4a70;
+  --stage:#e6e5e1;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:var(--stage);color:var(--ink)}
+body{font:15px/1.45 'Schibsted Grotesk',system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+:focus-visible{outline:2.5px solid #2442d6;outline-offset:2px;border-radius:4px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+img{display:block}
+.num{font-variant-numeric:tabular-nums lining-nums}
+.serif{font-family:'Bodoni Moda',serif;font-optical-sizing:auto;font-weight:500}
+
+/* ---------- stage ---------- */
+.stagehead{max-width:900px;margin:0 auto;padding:24px 16px 6px;text-align:center}
+.stagehead h1{font:700 12px/1 'Schibsted Grotesk';letter-spacing:.2em;text-transform:uppercase;color:#4a4945}
+.stagehead p{margin:8px auto 0;max-width:620px;color:#55534f;font-size:13.5px}
+.jump{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin:14px auto 0;max-width:640px}
+.jump button{min-height:40px;padding:0 14px;border-radius:999px;background:#fff;border:1px solid #d3d2cd;font-size:13px;font-weight:600}
+.jump button[aria-pressed=true]{background:#151515;color:#fff;border-color:#151515}
+.phone{width:390px;max-width:calc(100vw - 32px);height:820px;margin:18px auto 14px;border-radius:46px;background:#0d0d0d;padding:10px;box-shadow:0 30px 60px -30px rgba(0,0,0,.45)}
+.device{width:100%;height:100%;border-radius:37px;overflow:hidden;position:relative;background:var(--paper)}
+.foot{max-width:640px;margin:0 auto;padding:0 16px 40px;color:#55534f;font-size:12.5px;line-height:1.5;text-align:center}
+.foot b{color:#222}
+
+/* ---------- screen shell ---------- */
+.screen{position:absolute;inset:0;display:none;flex-direction:column;background:var(--paper)}
+.screen.on{display:flex}
+.sb{height:36px;flex:0 0 auto;display:flex;justify-content:space-between;align-items:center;padding:0 28px;font:600 13px/1 'Schibsted Grotesk'}
+.scroll{flex:1;overflow-y:auto;scrollbar-width:none;padding-bottom:20px}
+.scroll::-webkit-scrollbar{display:none}
+.pad{padding-left:20px;padding-right:20px}
+
+/* nav */
+.nav{flex:0 0 auto;display:grid;grid-template-columns:repeat(5,1fr);align-items:center;background:var(--paper);border-top:1px solid var(--ink);padding:8px 8px 20px}
+.nav button{display:flex;flex-direction:column;align-items:center;gap:5px;font:600 12px/1 'Schibsted Grotesk';color:var(--ink2);min-height:48px;justify-content:center}
+.nav button[aria-current=page]{color:var(--ink);font-weight:800}
+.nav button[aria-current=page] svg{stroke-width:2.3}
+.nav .add{gap:4px}
+.nav .add .disc{width:46px;height:46px;border-radius:50%;background:var(--ink);color:#fff;display:grid;place-items:center}
+
+/* type + chrome */
+.mast{display:flex;justify-content:space-between;align-items:center;padding:6px 20px 0}
+.mast>span:first-child{white-space:nowrap}
+.mast .when{font:500 13px/1 'Schibsted Grotesk';color:var(--ink2)}
+.mast .name{font:600 12px/1 'Schibsted Grotesk';letter-spacing:.22em;text-transform:uppercase}
+.av{width:38px;height:38px;border-radius:50%;background:var(--ink);color:#fff;display:grid;place-items:center;font:700 12px/1 'Schibsted Grotesk'}
+.rule{height:1px;background:var(--ink);margin:12px 20px 0}
+.kick{padding:18px 20px 0;font:700 12px/1 'Schibsted Grotesk';letter-spacing:.2em;text-transform:uppercase;color:var(--ink2)}
+.h1{padding:8px 20px 0;font-size:40px;line-height:1.02;letter-spacing:-.015em}
+.title{padding:12px 20px 0;font-size:44px;line-height:1;letter-spacing:-.015em}
+.sub{padding:6px 20px 0;font:500 13.5px/1.35 'Schibsted Grotesk';color:var(--ink2)}
+.sec{display:flex;justify-content:space-between;align-items:baseline;margin:30px 20px 0;padding-bottom:6px;border-bottom:1px solid var(--ink)}
+.sec h2{font-size:25px;line-height:1}
+.sec .lnk{font:600 13px/1 'Schibsted Grotesk';min-height:44px;display:flex;align-items:center;text-decoration:underline;text-decoration-color:var(--hair);text-underline-offset:4px;text-decoration-thickness:2px}
+
+/* hero photo */
+.hero{margin:16px 20px 0;position:relative;aspect-ratio:4/3;overflow:hidden;background:var(--tile)}
+.hero img{width:100%;height:100%;object-fit:cover}
+.hero .pct{position:absolute;right:0;bottom:0;background:var(--paper);padding:7px 10px 5px;font:500 28px/1 'Bodoni Moda'}
+.hero .pct small{font:700 12px/1 'Schibsted Grotesk';letter-spacing:.12em;text-transform:uppercase;margin-left:5px;color:var(--ink2)}
+.hero.blocked img{filter:grayscale(1) contrast(.92);opacity:.6}
+
+/* cutout tiles */
+.tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:10px 20px 0}
+.tile{display:flex;flex-direction:column;gap:6px}
+.tile .ti{aspect-ratio:1;background:var(--tile);display:grid;place-items:center}
+.tile .ti img{width:100%;height:100%;object-fit:contain;padding:3px}
+.tile .cap{font:500 12px/1.25 'Schibsted Grotesk';color:var(--ink2)}
+.tile .cap b{display:block;color:var(--ink);font-weight:700}
+.tile.short .ti{background:var(--amber-bg)}
+.tile.short .cap,.tile.short .cap b{color:var(--amber)}
+.tilenote{margin:6px 20px 0;font:500 12.5px/1.3 'Schibsted Grotesk';color:var(--ink2)}
+
+.by{display:flex;flex-wrap:wrap;gap:4px 14px;padding:12px 20px 0;font:500 13px/1.3 'Schibsted Grotesk';color:var(--ink2)}
+.by b{color:var(--ink);font-weight:700}
+
+/* verdicts (copy is v5 / copy-deck verbatim) */
+.vwrap{margin:14px 20px 0}
+.verdict{font-size:13.5px;line-height:1.4}
+.verdict .l{display:flex;gap:7px;align-items:flex-start;font-weight:600}
+.verdict .l svg{flex:0 0 auto;margin-top:2px}
+.verdict .u{font-size:13px;margin-top:3px;padding-left:22px}
+.verdict .c{font-size:12.5px;color:var(--ink2);margin-top:3px;padding-left:22px}
+.verdict.ok{border-top:1px solid var(--hair);border-bottom:1px solid var(--hair);padding:10px 0}
+.verdict.unk{color:var(--amber);background:var(--amber-bg);padding:11px 12px;border-radius:10px}
+.verdict.unk .c,.verdict.unk .u{color:#5b4210}
+.blockbar{display:flex;gap:9px;align-items:flex-start;background:var(--danger-bg);color:var(--danger);border:1.5px solid var(--danger);border-radius:10px;padding:11px 12px;font-size:13.5px;font-weight:600;line-height:1.35}
+.blockbar .sh{flex:0 0 24px;height:24px;border-radius:50%;background:var(--danger);display:grid;place-items:center}
+.note{font-size:12.5px;line-height:1.45;color:var(--ink2);margin-top:8px}
+
+/* buttons */
+.btns{display:flex;gap:8px;margin:14px 20px 0}
+.btn{flex:1;min-height:50px;font:700 14px/1 'Schibsted Grotesk';border:1.5px solid var(--ink);border-radius:999px;padding:0 12px}
+.btn.pri{background:var(--ink);color:#fff}
+.btn:active{transform:scale(.98)}
+.why{display:none;margin:10px 20px 0;padding:12px 14px;background:var(--tile);font-size:13px;line-height:1.5;color:var(--ink2)}
+.why.open{display:block}
+.why b{color:var(--ink)}
+
+/* stats */
+.stats{margin:24px 20px 0;display:grid;grid-template-columns:repeat(3,1fr);border-top:1px solid var(--ink);border-bottom:1px solid var(--ink)}
+.stats button{padding:12px 0 12px 10px;border-right:1px solid var(--hair);text-align:left;min-height:72px}
+.stats button:first-child{padding-left:0}
+.stats button:last-child{border-right:0}
+.stats .v{font:500 36px/1 'Bodoni Moda'}
+.stats .l{font:600 12px/1.2 'Schibsted Grotesk';color:var(--ink2);margin-top:4px}
+
+/* lists */
+.list{margin:0 20px}
+.row{display:grid;grid-template-columns:56px 1fr auto;gap:12px;align-items:center;padding:10px 0;border-bottom:1px solid var(--hair);min-height:72px;width:100%;text-align:left}
+.row .th{width:56px;height:56px;background:var(--tile);display:grid;place-items:center;overflow:hidden}
+.row .th img{width:100%;height:100%;object-fit:contain;padding:5px}
+.row b{font:700 15.5px/1.2 'Schibsted Grotesk';display:block}
+.row .q{font:400 13px/1.3 'Schibsted Grotesk';color:var(--ink2);display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:3px}
+.row .ix{font:500 28px/1 'Bodoni Moda';color:var(--ink3);width:56px;text-align:center}
+.row.soon{grid-template-columns:34px 56px 1fr auto}
+.days{font:700 12px/1 'Schibsted Grotesk';letter-spacing:.12em;text-transform:uppercase;padding:6px 8px;border-radius:999px;white-space:nowrap}
+.days.now{background:var(--rose-bg);color:var(--rose)}
+.days.soon{background:var(--amber-bg);color:var(--amber)}
+.days.ok{background:var(--green-bg);color:var(--green)}
+.prov{font-size:12px;font-weight:700;padding:4px 9px;border-radius:999px;white-space:nowrap}
+.prov.fact{color:var(--green);background:var(--green-bg)}
+.prov.est{color:var(--amber);background:var(--amber-bg)}
+.prov.ai{color:var(--ai);background:var(--ai-bg)}
+.grp{display:flex;justify-content:space-between;align-items:baseline;margin:24px 20px 0;padding-bottom:6px;border-bottom:1px solid var(--ink)}
+.grp h2{font-size:22px;line-height:1}
+.grp span{font:600 12px/1 'Schibsted Grotesk';color:var(--ink2)}
+
+/* segmented */
+.seg{display:flex;gap:20px;margin:16px 20px 0;border-bottom:1px solid var(--hair)}
+.seg button{padding:10px 0 9px;font:600 14px/1 'Schibsted Grotesk';color:var(--ink2);min-height:44px;border-bottom:2px solid transparent;margin-bottom:-1px}
+.seg button[aria-pressed=true]{color:var(--ink);border-color:var(--ink)}
+
+/* confirm tray */
+.tray{margin:12px 20px 0;padding:4px 14px;background:var(--ai-bg);border-radius:14px}
+.tray .ci{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #d7c6ee}
+.tray .ci:last-of-type{border-bottom:0}
+.tray .ci .th{width:44px;height:44px;flex:0 0 44px;background:#f5f0fb;display:grid;place-items:center}
+.tray .ci .th img{width:100%;height:100%;object-fit:contain;padding:4px}
+.tray .m{flex:1;min-width:0}
+.tray b{font:700 14.5px/1.25 'Schibsted Grotesk';display:block}
+.tray i{font-style:normal;font-size:12.5px;color:var(--ai-ink)}
+.okb{min-height:44px;min-width:56px;padding:0 14px;border-radius:999px;font:700 13px/1 'Schibsted Grotesk';background:var(--ink);color:#fff}
+.okb.ghost{background:transparent;color:var(--ink);border:1.5px solid var(--ink)}
+.tray .foot2{font-size:12.5px;color:var(--ai-ink);padding:8px 0 10px}
+
+/* menu cards */
+.rec{margin:0 20px;padding:18px 0;border-bottom:1px solid var(--hair);display:block;width:calc(100% - 40px);text-align:left}
+.rec .ph{aspect-ratio:4/3;background:var(--tile);overflow:hidden;position:relative}
+.rec .ph img{width:100%;height:100%;object-fit:cover}
+.rec .pct{position:absolute;right:0;bottom:0;background:var(--paper);padding:6px 10px 4px;font:500 26px/1 'Bodoni Moda'}
+.rec .pct small{font:700 12px/1 'Schibsted Grotesk';letter-spacing:.12em;text-transform:uppercase;margin-left:4px;color:var(--ink2)}
+.rec h2{font-size:27px;line-height:1.05;margin-top:12px}
+.rec .meta{font:500 13px/1.3 'Schibsted Grotesk';color:var(--ink2);margin-top:5px}
+.rec .need{font:500 13px/1.35 'Schibsted Grotesk';margin:8px 0 10px}
+.short{color:var(--amber);font-weight:700}
+.rec.blocked .ph img{filter:grayscale(1) contrast(.92);opacity:.6}
+.rec.blocked h2{color:var(--ink2)}
+
+/* recipe detail */
+.back{display:flex;align-items:center;gap:8px;padding:4px 12px 0}
+.iconb{width:44px;height:44px;display:grid;place-items:center;border-radius:50%}
+.ingr{margin:8px 20px 0}
+.ingr .row{grid-template-columns:48px 1fr auto;min-height:62px}
+.ingr .row .th{width:48px;height:48px}
+.stat{font:700 12px/1 'Schibsted Grotesk';letter-spacing:.1em;text-transform:uppercase;padding:6px 8px;border-radius:999px;white-space:nowrap}
+.stat.have{background:var(--green-bg);color:var(--green)}
+.stat.shortby{background:var(--amber-bg);color:var(--amber)}
+.stat.miss{background:var(--amber-bg);color:var(--amber)}
+.stat.list{background:var(--tile);color:var(--ink2)}
+.stat.staple{background:transparent;color:var(--ink3);border:1px solid var(--hair)}
+.rv{display:none}
+
+/* shopping */
+.loop{margin:14px 20px 0;padding:12px 14px;background:var(--green-bg);color:#1f4d33;display:flex;gap:10px;align-items:center;justify-content:space-between;font:600 13.5px/1.35 'Schibsted Grotesk'}
+.loop .okb{background:var(--green);flex:0 0 auto}
+.srow{display:grid;grid-template-columns:44px 48px 1fr auto;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid var(--hair);min-height:68px}
+.chk{width:44px;height:44px;display:grid;place-items:center}
+.chk span{width:26px;height:26px;border:1.75px solid var(--ink);border-radius:50%;display:grid;place-items:center}
+.chk[aria-pressed=true] span{background:var(--ink)}
+.chk svg{opacity:0}
+.chk[aria-pressed=true] svg{opacity:1}
+.srow .th{width:48px;height:48px;background:var(--tile);display:grid;place-items:center}
+.srow .th img{width:100%;height:100%;object-fit:contain;padding:4px}
+.srow b{font:700 15px/1.2 'Schibsted Grotesk';display:block}
+.srow .s{font:400 12.5px/1.35 'Schibsted Grotesk';color:var(--ink2);margin-top:2px}
+.srow .amt{font:600 14px/1 'Schibsted Grotesk';text-align:right}
+.srow.done b,.srow.done .amt{color:var(--ink3);text-decoration:line-through}
+.msrc{font:700 12px/1 'Schibsted Grotesk';letter-spacing:.08em;text-transform:uppercase;padding:3px 6px;background:var(--tile);margin-right:4px}
+.mchip{display:inline-grid;place-items:center;width:26px;height:26px;border-radius:50%;background:var(--ink);color:#fff;font:700 12px/1 'Schibsted Grotesk';margin-right:4px;vertical-align:middle}
+.rmv{min-height:36px;padding:0 10px;border-radius:999px;border:1px solid var(--hair);font:600 12px/1 'Schibsted Grotesk';margin-top:4px}
+
+/* sheet + toast */
+.modal{position:absolute;inset:0;display:none;z-index:20}
+.modal.on{display:block}
+.modal .scrim{position:absolute;inset:0;background:rgba(15,15,15,.45)}
+.sheet{position:absolute;left:0;right:0;bottom:0;background:var(--paper);border-radius:22px 22px 0 0;padding:20px 20px 28px;max-height:86%;overflow:auto}
+.sheet h2{font-size:26px;line-height:1.05;margin-bottom:12px}
+.sheet .shortnote{font-size:13px;line-height:1.45;color:var(--ink2);margin:10px 0}
+.alloc{display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:center;padding:10px 0;border-bottom:1px solid var(--hair);font-size:13.5px}
+.alloc .amt{font-weight:700}
+.sheet .btns{margin:16px 0 0}
+.toast{position:absolute;left:16px;right:16px;bottom:100px;background:var(--ink);color:#fff;padding:12px 14px;border-radius:12px;font-size:13.5px;line-height:1.35;opacity:0;transform:translateY(8px);transition:opacity .2s,transform .2s;pointer-events:none;z-index:30}
+.toast.on{opacity:1;transform:none}
+
+[hidden]{display:none!important}
+.ltop{display:flex;justify-content:space-between;align-items:flex-end;padding-right:16px}
+.iconb.round{border:1px solid var(--hair)}
+.lg{color:var(--ink);text-decoration:underline;text-underline-offset:3px;text-decoration-color:var(--hair);text-decoration-thickness:2px;min-height:32px;font-weight:600}
+.chips{display:flex;gap:8px;overflow-x:auto;padding:12px 20px 2px;scrollbar-width:none}
+.chips::-webkit-scrollbar{display:none}
+.chip{flex:0 0 auto;min-height:40px;padding:0 15px;border-radius:999px;border:1.5px solid var(--ink);font:600 13.5px/1 'Schibsted Grotesk'}
+.chip[aria-pressed=true]{background:var(--ink);color:#fff}
+.trh{display:flex;justify-content:space-between;align-items:center;padding:10px 0 4px;color:var(--ai);font:700 13.5px/1 'Schibsted Grotesk'}
+.trh b{display:flex;gap:6px;align-items:center;font:inherit}
+.tray .ci .okb{padding:0 12px}
+.menucard{margin:14px 20px 0;border:1px solid var(--ink);background:var(--paper)}
+.mh{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;padding:14px 14px 10px;border-bottom:1px solid var(--hair)}
+.mh h3{font-size:22px;line-height:1.05}
+.mh i{font-style:normal;font-size:12.5px;color:var(--ink2);display:block;margin-top:4px}
+.mtag{font:700 12px/1 'Schibsted Grotesk';letter-spacing:.1em;text-transform:uppercase;padding:6px 8px;background:var(--tile)}
+.slot{display:grid;grid-template-columns:44px 64px 1fr;gap:10px;align-items:center;padding:10px 14px;border-bottom:1px solid var(--hair);width:100%;text-align:left;min-height:76px}
+.slot .d b{display:block;font:700 14px/1.1 'Schibsted Grotesk'}
+.slot .d i,.slot .m i{font-style:normal;font-size:12.5px;color:var(--ink2);display:block;margin-top:2px}
+.slot .th{width:64px;height:48px;overflow:hidden;background:var(--tile)}
+.slot .th img{width:100%;height:100%;object-fit:cover}
+.slot .m b{display:block;font:700 14.5px/1.2 'Schibsted Grotesk'}
+.slot.empty{grid-template-columns:44px 1fr;background:var(--tile)}
+.verdict.sm{display:block;margin-top:5px;font-size:12.5px;line-height:1.35}
+.verdict.sm .l{display:flex;gap:5px;font-weight:600}
+.verdict.unk.sm{padding:6px 8px;border-radius:8px}
+
+.mfoot{display:flex;gap:10px;align-items:center;justify-content:space-between;padding:12px 14px;background:var(--amber-bg)}
+.mfoot b{display:block;color:var(--amber);font:700 14px/1.2 'Schibsted Grotesk'}
+.mfoot i{font-style:normal;font-size:12.5px;line-height:1.4;color:#5b4210;display:block;margin-top:2px}
+.mcav{padding:8px 14px 12px;font-size:12.5px;color:var(--ink2)}
+.rail{display:flex;gap:12px;overflow-x:auto;padding:12px 20px 4px;scrollbar-width:none}
+.rail::-webkit-scrollbar{display:none}
+.rcard{flex:0 0 172px;display:flex;flex-direction:column;gap:3px}
+.rph{display:block;aspect-ratio:4/3;position:relative;overflow:hidden;background:var(--tile);width:100%;padding:0}
+.rph img{width:100%;height:100%;object-fit:cover}
+.rph.collage{display:grid;grid-template-columns:1fr 1fr}
+.rph.collage img{object-fit:contain;padding:10px 4px}
+.rph.blocked img{filter:grayscale(1) contrast(.92);opacity:.6}
+.rph .pct{position:absolute;left:0;top:0;background:var(--paper);padding:5px 8px 3px;font:500 20px/1 'Bodoni Moda'}
+.rcard b{font:700 14px/1.2 'Schibsted Grotesk';margin-top:6px}
+.rcard i{font-style:normal;font-size:12.5px;color:var(--ink2)}
+.rcard .okb{margin-top:6px;align-self:flex-start}
+.pick{display:flex;justify-content:space-between;align-items:center;width:100%;padding:12px 0;border-bottom:1px solid var(--hair);min-height:52px;font:600 14.5px/1.3 'Schibsted Grotesk';text-align:left}
+.pick .pp{font:500 20px/1 'Bodoni Moda'}
+
+/* add food */
+.modes{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:18px 20px 0}
+.mode{position:relative;display:flex;flex-direction:column;align-items:flex-start;gap:4px;text-align:left;padding:16px 14px;min-height:168px;border:1px solid var(--ink);background:var(--paper)}
+.mode .mi{width:44px;height:44px;display:grid;place-items:center;border:1px solid var(--hair);margin-bottom:10px}
+.mode .phase{margin-top:10px}
+.mode i{margin-bottom:2px}
+.mode b{font:700 15.5px/1.2 'Schibsted Grotesk'}
+.mode i{font-style:normal;font-size:13px;line-height:1.35;color:var(--ink2)}
+.mode.pri{background:var(--ink);color:#fff}
+.mode.pri .mi{border-color:rgba(255,255,255,.35)}
+.mode.pri i{color:rgba(255,255,255,.75)}
+.mode.ai{background:var(--ai-bg);border-color:var(--ai)}
+.mode.ai b{color:#4a2f73}
+.mode.ai i{color:var(--ai-ink)}
+.mode.ai .mi{border-color:#cdb8e6;color:var(--ai)}
+.phase{order:9;margin-top:auto;font:700 12px/1 'Schibsted Grotesk';letter-spacing:.1em;text-transform:uppercase;padding:6px 8px;background:var(--tile);color:var(--ink2)}
+.mode.ai .phase{background:#fff;color:var(--ai)}
+/* scan */
+#scan{background:#121212}
+.cam{position:relative;flex:0 0 auto;height:300px;background:radial-gradient(120% 90% at 50% 40%,#2b2a27,#121212);color:#f3f1ec;display:flex;flex-direction:column;align-items:center}
+.camtop{width:100%;display:flex;justify-content:space-between;align-items:center;padding:40px 12px 0}
+.camtop h1{font:700 15px/1 'Schibsted Grotesk';color:#f3f1ec}
+.iconb.light{color:#f3f1ec;border:1px solid rgba(255,255,255,.3)}
+.frame{position:relative;width:230px;height:120px;margin-top:34px}
+.frame i{position:absolute;width:26px;height:26px;border-color:#f3f1ec;border-style:solid}
+.frame i:nth-child(1){top:0;left:0;border-width:3px 0 0 3px}
+.frame i:nth-child(2){top:0;right:0;border-width:3px 3px 0 0}
+.frame i:nth-child(3){bottom:0;left:0;border-width:0 0 3px 3px}
+.frame i:nth-child(4){bottom:0;right:0;border-width:0 3px 3px 0}
+.laser{position:absolute;left:14px;right:14px;top:50%;height:2px;background:#f3f1ec;opacity:.85}
+.camhint{margin-top:18px;font:600 13px/1.3 'Schibsted Grotesk';color:#d9d6cf;padding:0 20px;text-align:center}
+.denied{align-self:stretch;padding:40px 24px 0;color:#f3f1ec}
+#scan[data-state=denied] .cam{flex:1}
+.denied .btn{padding:0 6px;min-width:0}
+.denied h2{font-size:30px;line-height:1.05}
+.denied p{margin-top:10px;font-size:14px;line-height:1.5;color:#d9d6cf}
+.btn.light{border-color:rgba(255,255,255,.6);color:#f3f1ec}
+.btn.pri.inv{background:#f3f1ec;color:var(--ink);border-color:#f3f1ec}
+.panel{flex:1;overflow-y:auto;background:var(--paper);border-radius:22px 22px 0 0;margin-top:-18px;position:relative;padding:20px 20px 24px}
+.kline{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12.5px;color:var(--ink2)}
+.pname{font-size:30px;line-height:1.05;margin-top:12px}
+.pbrand{font-size:13.5px;color:var(--ink2);margin-top:4px}
+.macros{display:grid;grid-template-columns:repeat(4,1fr);margin-top:16px;border-top:1px solid var(--ink);border-bottom:1px solid var(--ink)}
+.macros div{padding:10px 8px 9px;border-right:1px solid var(--hair)}
+.macros div:first-child{padding-left:0}
+.macros div:last-child{border-right:0}
+.macros b{display:block;font:500 24px/1 'Bodoni Moda'}
+.macros i{font-style:normal;font:600 12px/1 'Schibsted Grotesk';color:var(--ink2);text-transform:uppercase;letter-spacing:.08em;display:block;margin-top:5px}
+.kv{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 0;border-top:1px solid var(--hair);min-height:56px}
+.kv:first-of-type{margin-top:12px}
+.kv .k{font:700 12px/1 'Schibsted Grotesk';letter-spacing:.12em;text-transform:uppercase;color:var(--ink2)}
+.kv .v{display:flex;align-items:center;gap:8px;font:700 14px/1.3 'Schibsted Grotesk'}
+.kv .v.col{flex-direction:column;align-items:flex-end;gap:3px;text-align:right}
+.kv .v.col b{font-size:12.5px;color:var(--ink2)}
+.kv .vs{font:400 12.5px/1.3 'Schibsted Grotesk';color:var(--ink2)}
+.tagm{display:inline-block;padding:4px 10px;background:var(--tile);font-size:12.5px;font-weight:700}
+.step{display:inline-flex;align-items:center;gap:14px}
+.step button{width:44px;height:44px;border:1.5px solid var(--ink);border-radius:50%;font:600 20px/1 'Schibsted Grotesk'}
+.step b{font:500 26px/1 'Bodoni Moda';min-width:22px;text-align:center}
+.btn.wide{display:block;width:100%;margin-top:16px;min-height:52px}
+/* manual */
+.codenote{margin:14px 20px 0;padding:12px 14px;background:var(--tile);font-size:13px;line-height:1.5;color:var(--ink2)}
+.field{margin:22px 20px 0}
+.fl{display:flex;justify-content:space-between;align-items:center;font:700 12px/1 'Schibsted Grotesk';letter-spacing:.12em;text-transform:uppercase;color:var(--ink2)}
+.inp{width:100%;height:50px;margin-top:8px;border:0;border-bottom:1.5px solid var(--ink);background:transparent;font:500 16px/1 'Schibsted Grotesk';color:var(--ink);padding:0 2px}
+.inp::placeholder{color:#6f6c66}
+.amtrow{display:flex;align-items:center;gap:14px;margin-top:12px;flex-wrap:wrap}
+.chips.units{padding:0;flex:0 0 100%;flex-wrap:wrap;overflow:visible}
+.chips.units .chip{min-height:40px;padding:0 13px}
+
+/* states switches (simulated, not product UI) */
+.statesbar{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;align-items:center;margin:8px auto 0;max-width:640px}
+.statesbar .slbl{font:700 12px/1 'Schibsted Grotesk';letter-spacing:.14em;text-transform:uppercase;color:#55534f;margin-right:4px}
+.statesbar button{min-height:40px;padding:0 14px;border-radius:999px;background:transparent;border:1.5px dashed #9a978f;font-size:13px;font-weight:600}
+.statesbar button[aria-pressed=true]{background:#151515;color:#fff;border:1.5px solid #151515}
+/* state visibility */
+#device.h-ready [data-h]:not([data-h~=ready]),
+#device.h-sparse [data-h]:not([data-h~=sparse]),
+#device.h-empty [data-h]:not([data-h~=empty]){display:none!important}
+#menu .rec-empty,#menu .rec-blocked{display:none}
+#menu.m-empty .rec-normal,#menu.m-blocked .rec-normal{display:none}
+#menu.m-empty .rec-empty,#menu.m-blocked .rec-blocked{display:block}
+.offbar,.queued{display:none}
+#device.offline .offbar{display:flex}
+#device.offline .queued{display:inline-block}
+/* shared bits */
+.boxed{margin:12px 20px 0;padding:16px;border:1px solid var(--ink)}
+.boxed .btn.wide{margin-top:14px}
+.bh{font:700 15px/1.2 'Schibsted Grotesk'}
+.boxed .inp{margin-top:6px}
+.emptyst{margin:22px 20px 0;padding:28px 20px;border:1px dashed var(--ink2);text-align:center;display:flex;flex-direction:column;align-items:center;gap:10px}
+.emptyst .mi{width:52px;height:52px;display:grid;place-items:center;border:1px solid var(--hair)}
+.emptyst h2{font-size:28px;line-height:1.05}
+.emptyst p{font-size:14px;line-height:1.5;color:var(--ink2);max-width:280px}
+.emptyst .btn{flex:none;padding:0 22px;margin-top:6px}
+.tastes{margin:22px 20px 0;padding:14px 16px;background:var(--tile);display:flex;gap:12px;align-items:center}
+.tastes b{display:block;font:700 15px/1.2 'Schibsted Grotesk'}
+.tastes i{display:block;font-style:normal;font-size:13px;line-height:1.45;color:var(--ink2);margin-top:4px}
+.tastes .tb{display:flex;flex-direction:column;gap:8px;flex:0 0 auto}
+.tiles.three{grid-template-columns:repeat(3,1fr)}
+.offbar{margin:14px 20px 0;padding:12px 14px;gap:10px;align-items:flex-start;background:var(--tile);border:1px solid var(--ink2);font-size:13px;line-height:1.45}
+.offbar svg{flex:0 0 auto;margin-top:2px}
+.queued{font:700 12px/1 'Schibsted Grotesk';padding:4px 7px;background:var(--amber-bg);color:var(--amber);margin-left:4px;vertical-align:middle}
+.ph.lettr{display:grid;place-items:center;font:500 54px/1 'Bodoni Moda';color:#6f6c66}
+/* item detail */
+.itemhead{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:0 20px}
+.itemimg{width:96px;height:96px;flex:0 0 96px;background:var(--tile);display:grid;place-items:center;margin-top:6px}
+.itemimg img{width:100%;height:100%;object-fit:contain;padding:6px}
+.qtybig{display:flex;align-items:baseline;gap:10px;margin:18px 20px 0;padding:12px 0;border-top:1px solid var(--ink);border-bottom:1px solid var(--ink)}
+.qtybig b{font:500 46px/1 'Bodoni Moda'}
+.qtybig span{font:600 13.5px/1.2 'Schibsted Grotesk';color:var(--ink2)}
+.whyplain{margin:14px 20px 0;font-size:13.5px;line-height:1.55;color:var(--ink2)}
+.whyplain b{color:var(--ink)}
+.unitlbl{font:600 14px/1 'Schibsted Grotesk';color:var(--ink2);margin-left:-6px}
+.why .num,.whyplain .num,.bub .num,p .num{font-variant-numeric:normal}
+.rlbl{flex:0 0 auto;align-self:center;font:700 12px/1 'Schibsted Grotesk';letter-spacing:.12em;text-transform:uppercase;color:var(--ink2);margin-right:2px}
+.led{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:start;padding:12px 0;border-bottom:1px solid var(--hair)}
+.led .m b{display:block;font:700 14.5px/1.25 'Schibsted Grotesk'}
+.led .m i{display:block;font-style:normal;font-size:12.5px;line-height:1.6;color:var(--ink2);margin-top:3px}
+.led.sys{background:var(--tile);padding:12px 10px}
+.amt.pos{color:var(--green);font:700 14px/1.2 'Schibsted Grotesk'}
+.amt.neg{color:var(--ink);font:700 14px/1.2 'Schibsted Grotesk'}
+/* legend */
+.legrows{margin:16px 20px 0;border-top:1px solid var(--ink)}
+.lgr{display:grid;grid-template-columns:116px 1fr;gap:12px;align-items:start;padding:14px 0;border-bottom:1px solid var(--hair)}
+.lgr .prov{justify-self:start}
+.lgr p{font-size:13.5px;line-height:1.5;color:var(--ink2)}
+.lgr p b{color:var(--ink)}
+.prov.alg{color:var(--danger);background:var(--danger-bg);display:inline-flex;gap:4px;align-items:center}
+/* profile */
+.me{display:flex;gap:14px;align-items:center;margin:16px 20px 0;padding:16px;background:var(--tile)}
+.me b{display:block;font:700 16px/1.2 'Schibsted Grotesk'}
+.me i{display:block;font-style:normal;font-size:13px;color:var(--ink2);margin-top:3px}
+.av.big{width:52px;height:52px;font-size:15px;flex:0 0 52px}
+.row.mem{grid-template-columns:44px 1fr auto}
+.mchip.lg2{width:40px;height:40px;font-size:13px;margin:0}
+.mchip.plus{background:var(--tile);color:var(--ink);font-size:18px}
+/* allergies */
+.chips.wrap{flex-wrap:wrap;overflow:visible}
+.sev{display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:center;padding:8px 0;border-top:1px solid var(--hair)}
+.sev span{font:700 14px/1.2 'Schibsted Grotesk';text-transform:capitalize}
+.sev button{min-height:40px;padding:0 13px;border-radius:999px;border:1.5px solid var(--ink);font:600 13px/1 'Schibsted Grotesk'}
+.sev button[aria-pressed=true]{background:var(--ink);color:#fff}
+.addrow{display:flex;gap:10px;align-items:flex-end;margin:10px 20px 0}
+.addrow .inp{flex:1;margin:0}
+.noneopt{display:flex;align-items:center;gap:12px;margin:16px 20px 0;min-height:48px;font:600 14.5px/1.2 'Schibsted Grotesk';text-align:left}
+.noneopt .box{width:26px;height:26px;border:1.75px solid var(--ink);display:grid;place-items:center;flex:0 0 26px}
+.noneopt .box svg{opacity:0}
+.noneopt[aria-pressed=true] .box{background:var(--ink)}
+.noneopt[aria-pressed=true] .box svg{opacity:1}
+/* assistant */
+.chat{display:flex;flex-direction:column;gap:12px;margin:16px 20px 0}
+.bub{max-width:88%;padding:12px 14px;font-size:14px;line-height:1.5}
+.bub.me{align-self:flex-end;background:var(--ink);color:#fff}
+.bub.ai{align-self:flex-start;background:var(--tile)}
+.evid{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:10px;font-size:12.5px;color:var(--ink2)}
+.inbar{flex:0 0 auto;display:flex;gap:10px;align-items:center;padding:10px 16px 22px;border-top:1px solid var(--ink);background:var(--paper)}
+.send{width:46px;height:46px;border-radius:50%;background:var(--ink);color:#fff;display:grid;place-items:center;flex:0 0 46px}
+</style>
+</head>
+<body>
+
+<header class="stagehead">
+  <h1>Smart Kitchen · Cookbook preview</h1>
+  <p>Prototype v5's data and safety copy in the Cookbook look, with AI-generated food photos made from each recipe's ingredient list. A preview only: v5 is still the build reference.</p>
+  <div class="jump" role="group" aria-label="Jump to screen">
+    <button data-jump="home" aria-pressed="true">Home</button>
+    <button data-jump="inventory" aria-pressed="false">Inventory</button>
+    <button data-jump="menu" aria-pressed="false">Menu · Tonight</button>
+    <button data-jump="plan" aria-pressed="false">Menu · Plan ahead</button>
+    <button data-jump="ok" aria-pressed="false">Recipe · no match</button>
+    <button data-jump="unk" aria-pressed="false">Recipe · data incomplete</button>
+    <button data-jump="blocked" aria-pressed="false">Recipe · blocked</button>
+    <button data-jump="shopping" aria-pressed="false">Shopping</button>
+    <button data-jump="add" aria-pressed="false">Add food</button>
+    <button data-jump="scan-match" aria-pressed="false">Scan · match</button>
+    <button data-jump="scan-miss" aria-pressed="false">Scan · no match</button>
+    <button data-jump="scan-denied" aria-pressed="false">Scan · camera off</button>
+    <button data-jump="manual" aria-pressed="false">Add manually</button>
+    <button data-jump="item" aria-pressed="false">Item detail</button>
+    <button data-jump="legend" aria-pressed="false">Legend</button>
+    <button data-jump="account" aria-pressed="false">Sign up</button>
+    <button data-jump="allergies" aria-pressed="false">Allergies</button>
+    <button data-jump="profile" aria-pressed="false">Profile</button>
+    <button data-jump="assistant" aria-pressed="false">Assistant</button>
+  </div>
+  <div class="statesbar" role="group" aria-label="Simulate states">
+    <span class="slbl">States</span>
+    <button id="sNew" aria-pressed="false">New user</button>
+    <button id="sHome">Home: ready</button>
+    <button id="sOff" aria-pressed="false">Offline</button>
+    <button id="sMenu">Menu tonight: normal</button>
+  </div>
+</header>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-home" viewBox="0 0 24 24"><path d="M4 11l8-7 8 7"/><path d="M6 9.5V20h12V9.5"/></symbol>
+  <symbol id="i-inv" viewBox="0 0 24 24"><path d="M4 9h16l-1.5 10a2 2 0 0 1-2 1.7h-9a2 2 0 0 1-2-1.7z"/><path d="M8 9l2.5-5"/><path d="M16 9l-2.5-5"/></symbol>
+  <symbol id="i-menu" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2.5"/><path d="M3 10h18"/><path d="M8 3v4"/><path d="M16 3v4"/></symbol>
+  <symbol id="i-shop" viewBox="0 0 24 24"><path d="M3 3h2l2.6 12.4a1 1 0 0 0 1 .6h8.7a1 1 0 0 0 1-.8L20 8H6"/><circle cx="9.5" cy="20" r="1"/><circle cx="17" cy="20" r="1"/></symbol>
+  <symbol id="i-scan" viewBox="0 0 24 24"><path d="M4 8V6a2 2 0 0 1 2-2h2"/><path d="M16 4h2a2 2 0 0 1 2 2v2"/><path d="M20 16v2a2 2 0 0 1-2 2h-2"/><path d="M8 20H6a2 2 0 0 1-2-2v-2"/><path d="M4 12h16"/></symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3l7 3v5c0 4.6-3 7.8-7 9-4-1.2-7-4.4-7-9V6z"/></symbol>
+  <symbol id="i-warn" viewBox="0 0 24 24"><path d="M12 3.5L21.5 20h-19z"/><path d="M12 10v4.5"/><circle cx="12" cy="17.4" r=".6" fill="currentColor"/></symbol>
+  <symbol id="i-back" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12l4.5 4.5L19 7"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M16.5 16.5L21 21"/></symbol>
+  <symbol id="i-spark" viewBox="0 0 24 24"><path d="M11 4l1.6 4.2L17 9.8l-4.4 1.6L11 16l-1.6-4.6L5 9.8l4.4-1.6z"/></symbol>
+  <symbol id="i-receipt" viewBox="0 0 24 24"><path d="M6 3h12v18l-2-1.4L14 21l-2-1.4L10 21l-2-1.4L6 21z"/><path d="M9 8h6"/><path d="M9 12h6"/></symbol>
+  <symbol id="i-camera" viewBox="0 0 24 24"><path d="M4 8h3l1.5-2h7L17 8h3v11H4z"/><circle cx="12" cy="13.5" r="3.5"/></symbol>
+  <symbol id="i-pen" viewBox="0 0 24 24"><path d="M15.5 4.5l4 4L9 19H5v-4z"/></symbol>
+  <symbol id="i-offline" viewBox="0 0 24 24"><path d="M3 3l18 18"/><path d="M8.5 16.5a7 7 0 0 1 7-1.7"/><path d="M5 12.5a11 11 0 0 1 3-2"/><path d="M19 12.5a11 11 0 0 0-2.6-1.9"/><path d="M12 20h.01"/></symbol>
+  <symbol id="i-towel" viewBox="0 0 24 24"><rect x="6" y="3" width="12" height="18" rx="2"/><circle cx="12" cy="12" r="2.5"/><path d="M6 7h12"/></symbol>
+</svg>
+
+<div class="phone"><div class="device h-ready" id="device">
+
+<!-- ======================= HOME ======================= -->
+<section class="screen on" id="home" aria-label="Home">
+  <div class="sb"><span class="num">6:40</span><span aria-hidden="true">●●● ▮</span></div>
+  <div class="scroll">
+    <div class="mast"><span><span class="name">Chen household</span><span class="when"> · Monday</span></span><span style="display:flex;gap:8px"><button class="iconb round" aria-label="Kitchen assistant" onclick="go('assistant')"><svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="#i-spark"/></svg></button><button class="av" aria-label="Account" onclick="avatarTap()">DC</button></span></div>
+    <div class="rule"></div>
+    <h1 class="h1 serif" style="padding-top:18px"><span data-h="ready">Tonight: Chicken &amp; spinach <span style="white-space:nowrap">stir&#8209;fry</span></span><span data-h="sparse">Getting to know your kitchen</span><span data-h="empty">Let's stock your kitchen</span></h1>
+    <div data-h="ready">
+    <button class="hero" style="display:block;width:calc(100% - 40px);padding:0" onclick="openRecipe('ok')" aria-label="Open Chicken and spinach stir-fry">
+      <img src="img/dish-chicken-spinach-stir-fry.webp" alt="Chicken and spinach stir-fry">
+      <span class="pct num">92<small>% coverage</small></span>
+    </button>
+    <div class="tiles">
+      <div class="tile"><span class="ti"><img src="img/ing-spinach.webp" alt=""></span><span class="cap num"><b>Spinach</b>5 oz</span></div>
+      <div class="tile"><span class="ti"><img src="img/ing-mushrooms.webp" alt=""></span><span class="cap num"><b>Mushrooms</b>8 oz</span></div>
+      <div class="tile"><span class="ti"><img src="img/ing-basmati-rice.webp" alt=""></span><span class="cap num"><b>Rice</b>~4 cups</span></div>
+      <div class="tile short"><span class="ti"><img src="img/ing-chicken-breast.webp" alt=""></span><span class="cap num"><b>Chicken</b>0.75 lb short</span></div>
+    </div>
+    <div class="tilenote">From your kitchen tonight · uses 3 expiring items</div>
+    <div class="by num"><span><b>25</b> min</span><span><b>540</b> cal</span><span>serves <b>4</b></span></div>
+    <div class="vwrap"><div class="verdict ok"><div class="l"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><use href="#i-shield"/></svg>No known allergen match · 2 members</div><div class="c">Known matches only · not a guarantee this food is safe.</div></div></div>
+    <div class="btns"><button class="btn" aria-controls="whyHome" aria-expanded="false" onclick="toggleWhy('whyHome',this)">Why this?</button><button class="btn pri" onclick="openRecipe('ok')">Cook this</button></div>
+    <div class="why" id="whyHome"><b>Why this?</b> Ranked <span class="num">92%</span> (a coverage score, weighted by expiry · not a confidence): uses <b>3 expiring items</b> (chicken · 2d, spinach and mushrooms · 3d), needs <b>2 purchases</b> (0.75 lb of chicken and garlic, both already on your shopping list), fits a <span class="num">25 min</span> window, matches the high-protein preference. Score is computed from inventory · not generated text.</div>
+    <div class="tastes" id="tastesCard"><div><b>Tell us your tastes</b><i>Cuisines you like, how you eat, how much time you have. About a minute, and it only sharpens ranking. Allergies are already handled.</i></div><div class="tb"><button class="okb" onclick="toast('Preferences · 4 quick questions · not wired in this preview')">Start</button><button class="okb ghost" onclick="document.getElementById('tastesCard').remove();toast('Skipped · ask again from Profile')">Skip</button></div></div>
+
+    <div class="stats num">
+      <button onclick="go('inventory')"><div class="v">4</div><div class="l">use this week</div></button>
+      <button onclick="go('shopping')"><div class="v">5</div><div class="l">to buy</div></button>
+      <button onclick="go('inventory')"><div class="v">67%</div><div class="l">verified</div></button>
+    </div>
+
+    <div class="sec"><h2 class="serif">Use it soon</h2><button class="lnk" onclick="go('inventory')">Inventory</button></div>
+    <div class="list">
+      <button class="row soon" onclick="go('inventory')"><span class="ix num">1</span><span class="th"><img src="img/ing-strawberries.webp" alt=""></span><span><b>Strawberries</b><span class="q num">1 lb · fridge</span></span><span class="days now">Today</span></button>
+      <button class="row soon" onclick="go('inventory')"><span class="ix num">2</span><span class="th"><img src="img/ing-chicken-breast.webp" alt=""></span><span><b>Chicken breast</b><span class="q num">1.25 lb · fridge</span></span><span class="days soon num">2 days</span></button>
+      <button class="row soon" onclick="go('inventory')"><span class="ix num">3</span><span class="th"><img src="img/ing-spinach.webp" alt=""></span><span><b>Spinach</b><span class="q num">5 oz · fridge</span></span><span class="days soon num">3 days</span></button>
+      <button class="row soon" onclick="go('inventory')"><span class="ix num">4</span><span class="th"><img src="img/ing-mushrooms.webp" alt=""></span><span><b>Mushrooms</b><span class="q num">8 oz · fridge</span></span><span class="days soon num">3 days</span></button>
+    </div>
+
+    <div class="sec"><h2 class="serif">Needs your confirmation</h2><span class="prov ai">AI read · 2</span></div>
+    <div class="tray" id="homeTray">
+      <div class="ci" data-item="strawberries"><span class="th"><img src="img/ing-strawberries.webp" alt=""></span><div class="m"><b>Strawberries · 1 lb?</b><i>receipt read "ORG STRWB 1LB"</i></div><button class="okb" aria-label="Confirm Strawberries" onclick="confirmInv(this,'Strawberries')">Yes</button></div>
+      <div class="ci" data-item="mushrooms"><span class="th"><img src="img/ing-mushrooms.webp" alt=""></span><div class="m"><b>Mushrooms · 8 oz?</b><i>receipt read "CREMINI MUSHRM 8OZ"</i></div><button class="okb" aria-label="Confirm Mushrooms" onclick="confirmInv(this,'Mushrooms')">Yes</button></div>
+      <div class="foot2">Nothing enters your inventory as fact until you say so.</div>
+    </div>
+    </div>
+
+    <div data-h="sparse">
+      <div class="stats num">
+        <button onclick="go('inventory')"><div class="v">6</div><div class="l">items on hand</div></button>
+        <button onclick="go('menu')"><div class="v">0</div><div class="l">menus yet</div></button>
+        <button onclick="go('add')"><div class="v">+2</div><div class="l">to unlock ideas</div></button>
+      </div>
+      <div class="boxed" style="margin-top:18px">
+        <h2 class="serif" style="font-size:26px;line-height:1.05">Almost there</h2>
+        <p class="note" style="font-size:14px">You have <b class="num">6</b> items. Add a protein or a vegetable and we can start suggesting what to cook. Recommendations only appear when they can be honest about what you have.</p>
+        <div class="btns" style="margin:14px 0 0"><button class="btn" onclick="go('inventory')">See my 6 items</button><button class="btn pri" onclick="go('add')">Add food</button></div>
+      </div>
+      <div class="sec"><h2 class="serif">On hand</h2><button class="lnk" onclick="go('inventory')">Inventory</button></div>
+      <div class="tiles three">
+        <div class="tile"><span class="ti"><img src="img/ing-greek-yogurt.webp" alt=""></span><span class="cap num"><b>Greek yogurt</b>3 × 16 oz · Fridge</span></div>
+        <div class="tile"><span class="ti"><img src="img/ing-basmati-rice.webp" alt=""></span><span class="cap num"><b>Rice</b>~4 cups · Pantry</span></div>
+        <div class="tile"><span class="ti"><img src="img/ing-eggs.webp" alt=""></span><span class="cap num"><b>Eggs</b>8 of 12 · Fridge</span></div>
+      </div>
+      <div class="sec"><h2 class="serif">Safety is set</h2></div>
+      <p class="sub" style="font-size:13.5px;line-height:1.5;padding-top:10px">Allergies are recorded for both members, so every future suggestion is screened. Tastes and cuisines can wait until there is something to recommend.</p>
+    </div>
+    <div data-h="empty">
+      <div class="emptyst"><h2 class="serif">Your kitchen is empty</h2><p>Scan a barcode and we will fill in the facts. No typing, and nothing becomes a Known Fact until you confirm it.</p><button class="btn pri" onclick="openScan('match')">Scan your first item</button></div>
+    </div>
+  </div>
+  <nav class="nav" aria-label="Main" data-cur="home"></nav>
+</section>
+
+<!-- ======================= INVENTORY ======================= -->
+<section class="screen" id="inventory" aria-label="Inventory">
+  <div class="sb"><span class="num">6:41</span><span aria-hidden="true">●●● ▮</span></div>
+  <div class="scroll">
+    <div class="ltop"><h1 class="title serif">Inventory</h1><button class="iconb round" aria-label="Search" onclick="toast('Search · not in this preview')"><svg width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><use href="#i-search"/></svg></button></div>
+    <div class="sub num" data-h="ready sparse">9 items · 67% verified · <button class="lg" onclick="go('legend')">what do these mean?</button></div>
+    <div class="sub" data-h="empty">no items yet · <button class="lg" onclick="go('legend')">what do these mean?</button></div>
+    <div class="seg" id="seg" data-h="ready sparse">
+      <button aria-pressed="true" data-loc="all">All</button><button aria-pressed="false" data-loc="fridge">Fridge</button><button aria-pressed="false" data-loc="freezer">Freezer</button><button aria-pressed="false" data-loc="pantry">Pantry</button>
+    </div>
+    <div class="chips" data-h="ready sparse">
+      <button class="chip" aria-pressed="false" id="sortExp">Sort · expiry</button>
+      <button class="chip" aria-pressed="false" id="filtConf">Needs confirmation</button>
+    </div>
+
+    <div class="tray" id="invTray" data-h="ready sparse" style="margin-top:14px">
+      <div class="trh"><b><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><use href="#i-spark"/></svg>Needs your confirmation</b><span class="num" id="trayCount">2</span></div>
+      <div class="ci" data-item="strawberries"><span class="th"><img src="img/ing-strawberries.webp" alt=""></span><div class="m"><b>Strawberries · 1 lb?</b><i>receipt read "ORG STRWB 1LB"</i></div><button class="okb" aria-label="Confirm Strawberries" onclick="confirmInv(this,'Strawberries')">Confirm</button><button class="okb ghost" aria-label="Edit Strawberries" onclick="toast('Edit · not in this preview')">Edit</button></div>
+      <div class="ci" data-item="mushrooms"><span class="th"><img src="img/ing-mushrooms.webp" alt=""></span><div class="m"><b>Mushrooms · 8 oz?</b><i>receipt read "CREMINI MUSHRM 8OZ"</i></div><button class="okb" aria-label="Confirm Mushrooms" onclick="confirmInv(this,'Mushrooms')">Confirm</button><button class="okb ghost" aria-label="Edit Mushrooms" onclick="toast('Edit · not in this preview')">Edit</button></div>
+    </div>
+
+    <div id="invGrouped" data-h="ready sparse">
+      <div class="locgrp" data-loc="fridge">
+        <div class="grp"><h2 class="serif">Fridge</h2><span class="num">6</span></div>
+        <div class="list">
+          <button class="row inv" data-loc="fridge" data-days="1" data-conf="1" data-item="strawberries" onclick="toast('Item detail in this preview covers chicken breast')"><span class="th"><img src="img/ing-strawberries.webp" alt=""></span><span><b>Strawberries</b><span class="q num">1 lb <span class="days now">Today</span></span></span><span class="prov ai">AI · confirm</span></button>
+          <button class="row inv" data-loc="fridge" data-days="2" data-conf="0" onclick="go('item')"><span class="th"><img src="img/ing-chicken-breast.webp" alt=""></span><span><b>Chicken breast</b><span class="q num">1.25 lb <span class="days soon">2 days</span></span></span><span class="prov fact">✓ Fact</span></button>
+          <button class="row inv" data-loc="fridge" data-days="3" data-conf="0" onclick="toast('Item detail in this preview covers chicken breast')"><span class="th"><img src="img/ing-spinach.webp" alt=""></span><span><b>Spinach</b><span class="q num">5 oz <span class="days soon">3 days</span></span></span><span class="prov fact">✓ Fact</span></button>
+          <button class="row inv" data-loc="fridge" data-days="3" data-conf="1" data-item="mushrooms" onclick="toast('Item detail in this preview covers chicken breast')"><span class="th"><img src="img/ing-mushrooms.webp" alt=""></span><span><b>Mushrooms</b><span class="q num">8 oz <span class="days soon">3 days</span></span></span><span class="prov ai">AI · confirm</span></button>
+          <button class="row inv" data-loc="fridge" data-days="10" data-conf="0" onclick="toast('Item detail in this preview covers chicken breast')"><span class="th"><img src="img/ing-greek-yogurt.webp" alt=""></span><span><b>Greek yogurt</b><span class="q num">3 × 16 oz <span class="days ok">10 days</span></span></span><span class="prov fact">✓ Fact</span></button>
+          <button class="row inv" data-loc="fridge" data-days="14" data-conf="0" onclick="toast('Item detail in this preview covers chicken breast')"><span class="th"><img src="img/ing-eggs.webp" alt=""></span><span><b>Eggs</b><span class="q num">8 of 12 <span class="days ok">2 weeks</span></span></span><span class="prov fact">✓ Fact</span></button>
+        </div>
+      </div>
+      <div class="locgrp" data-loc="freezer">
+        <div class="grp"><h2 class="serif">Freezer</h2><span class="num">1</span></div>
+        <div class="list">
+          <button class="row inv" data-loc="freezer" data-days="60" data-conf="0" onclick="toast('Item detail in this preview covers chicken breast')"><span class="th"><img src="img/ing-salmon-fillets.webp" alt=""></span><span><b>Salmon fillets</b><span class="q num">2 × 6 oz <span class="days ok">2 months</span></span></span><span class="prov fact">✓ Fact</span></button>
+        </div>
+      </div>
+      <div class="locgrp" data-loc="pantry">
+        <div class="grp"><h2 class="serif">Pantry</h2><span class="num">2</span></div>
+        <div class="list">
+          <button class="row inv" data-loc="pantry" data-days="999" data-conf="0" onclick="toast('Item detail in this preview covers chicken breast')"><span class="th"><img src="img/ing-basmati-rice.webp" alt=""></span><span><b>Basmati rice</b><span class="q num">~4 cups · qty derived from 2 meals</span></span><span class="prov est">≈ Est.</span></button>
+          <button class="row inv" data-loc="pantry" data-days="999" data-conf="0" onclick="toast('Item detail in this preview covers chicken breast')"><span class="th"><img src="img/ing-olive-oil.webp" alt=""></span><span><b>Olive oil</b><span class="q">1 bottle · opened Aug 30</span></span><span class="prov fact">✓ Fact</span></button>
+        </div>
+      </div>
+    </div>
+    <div id="invFlat" hidden data-h="ready sparse">
+      <div class="grp"><h2 class="serif" id="flatTitle">Soonest first</h2><span class="num" id="flatCount"></span></div>
+      <div class="list" id="flatList"></div>
+      <div class="pad note" id="flatEmpty" hidden>Nothing here. Every item in this view is confirmed.</div>
+    </div>
+    <div data-h="empty"><div class="emptyst"><h2 class="serif">Nothing here yet</h2><p>Every item you add shows its provenance, so you always know what is a verified fact and what is a guess.</p><button class="btn pri" onclick="openScan('match')">Scan a barcode</button></div></div>
+  </div>
+  <nav class="nav" aria-label="Main" data-cur="inventory"></nav>
+</section>
+
+<!-- ======================= MENU ======================= -->
+<section class="screen" id="menu" aria-label="Menu">
+  <div class="sb"><span class="num">6:42</span><span aria-hidden="true">●●● ▮</span></div>
+  <div class="scroll">
+    <h1 class="title serif">Menu</h1>
+    <div class="sub">Chen household · <b class="num" style="color:var(--ink)">2</b> eating · recipes and plans live here</div>
+    <div class="seg" id="menuSeg"><button aria-pressed="true" data-view="tonight">Tonight</button><button aria-pressed="false" data-view="plan">Plan ahead</button></div>
+
+    <div class="mv" data-view="tonight">
+      <div class="sub" style="padding-top:14px">What can I make from <b class="num" style="color:var(--ink)">9</b> items?</div>
+      <div class="chips"><button class="chip" aria-pressed="false">≤ 30 min</button><button class="chip" aria-pressed="false">High protein</button><button class="chip" aria-pressed="false">Uses expiring</button><button class="chip" aria-pressed="false">Kid-friendly</button></div>
+
+      <div class="rec-normal">
+      <button class="rec" onclick="openRecipe('ok')"><div class="ph"><img src="img/dish-chicken-spinach-stir-fry.webp" alt="Chicken and spinach stir-fry"><span class="pct num">92<small>% coverage</small></span></div><h2 class="serif">Chicken &amp; spinach <span style="white-space:nowrap">stir&#8209;fry</span></h2><div class="meta num">25 min · 540 cal · uses 3 expiring</div><div class="need">spinach, mushrooms, rice · <span class="short num">+ 0.75 lb chicken, garlic</span></div><div class="verdict ok"><div class="l"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><use href="#i-shield"/></svg>No known allergen match · 2 members</div><div class="c">Known matches only · not a guarantee this food is safe.</div></div></button>
+
+      <button class="rec" onclick="toast('Recipe detail in this preview covers the stir-fry, miso salmon and peanut noodles')"><div class="ph"><img src="img/dish-yogurt-berry-parfait.webp" alt="Yogurt berry parfait"><span class="pct num">84<small>% coverage</small></span></div><h2 class="serif">Yogurt berry parfait</h2><div class="meta num">10 min · 320 cal · breakfast</div><div class="need">yogurt, strawberries · <span class="short">+ granola</span></div><div class="verdict ok"><div class="l"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><use href="#i-shield"/></svg>No known allergen match · 2 members</div><div class="c">Known matches only · not a guarantee this food is safe.</div></div></button>
+
+      <button class="rec" onclick="openRecipe('unk')"><div class="ph"><img src="img/dish-miso-glazed-salmon.webp" alt="Miso-glazed salmon"><span class="pct num">78<small>% coverage</small></span></div><h2 class="serif">Miso-glazed salmon</h2><div class="meta num">30 min · 610 cal · thaw first</div><div class="need">salmon, rice · <span class="short">+ miso, broccoli, garlic</span></div><div class="verdict unk"><div class="l"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><use href="#i-warn"/></svg>Allergen data incomplete for Maya, severe sesame allergy</div><div class="c">Known matches only · not a guarantee this food is safe.</div></div></button>
+
+      <button class="rec blocked" onclick="openRecipe('blocked')"><div class="ph"><img src="img/dish-thai-peanut-noodles.webp" alt="Thai peanut noodles"></div><h2 class="serif">Thai peanut noodles</h2><div style="height:10px"></div><div class="blockbar"><span class="sh"><svg width="13" height="13" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round"><use href="#i-warn"/></svg></span>Contains peanut · matched 'peanuts' in the ingredient statement · blocked for Maya</div><div class="note">Blocked recipes are shown for transparency, and cannot be cooked or planned.</div><div class="note" style="margin-top:2px">Known matches only · not a guarantee this food is safe.</div></button>
+      </div>
+      <div class="rec-empty"><div class="emptyst"><h2 class="serif">No recipes match yet</h2><p>Add a few more staples and we can suggest what to cook tonight. Try adding a protein or a vegetable.</p><button class="btn pri" onclick="go('add')">Add an item</button></div></div>
+      <div class="rec-blocked">
+        <div style="margin:16px 20px 0"><div class="blockbar"><span class="sh"><svg width="13" height="13" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round"><use href="#i-warn"/></svg></span>Every candidate tonight is blocked for at least one member</div><div class="note">Known matches only · not a guarantee this food is safe.</div></div>
+        <button class="rec blocked" onclick="openRecipe('blocked')"><div class="ph"><img src="img/dish-thai-peanut-noodles.webp" alt="Thai peanut noodles"></div><h2 class="serif">Thai peanut noodles</h2><div style="height:10px"></div><div class="blockbar"><span class="sh"><svg width="13" height="13" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round"><use href="#i-warn"/></svg></span>Contains peanut · matched 'peanuts' in the ingredient statement · blocked for Maya</div></button>
+        <button class="rec blocked" onclick="toast('Recipe detail reuses the Thai peanut noodles example for the blocked state')"><div class="ph lettr" aria-hidden="true">S</div><h2 class="serif">Sesame noodle bowl</h2><div style="height:10px"></div><div class="blockbar"><span class="sh"><svg width="13" height="13" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round"><use href="#i-warn"/></svg></span>Contains sesame · matched 'tahini' in the ingredient statement · blocked for Maya</div></button>
+        <p class="pad note" style="margin-top:12px">Blocked recipes are shown for transparency only. Add more inventory or adjust who is eating to see other matches.</p>
+      </div>
+    </div>
+
+    <div class="mv" data-view="plan" hidden>
+      <div class="sec"><h2 class="serif">Your menus</h2><button class="lnk" onclick="toast('New menu · pick a name and days · not wired in this preview')">+ New menu</button></div>
+      <div class="chips"><button class="chip" aria-pressed="false" onclick="toast('Monday menu created · empty')">Monday</button><button class="chip" aria-pressed="true">Weekend</button><button class="chip" aria-pressed="false" onclick="toast('Next 3 days menu created · 3 empty dinner slots')">Next 3 days</button><button class="chip" aria-pressed="false" onclick="toast('Custom menu · name it and pick days')">Custom…</button></div>
+
+      <div class="menucard">
+        <div class="mh"><div><h3 class="serif">Weekend menu</h3><i class="num">Sat 27 · Sun 28 · <span id="slotsFilled">2</span> of 3 slots filled</i></div><span class="mtag">Shared</span></div>
+        <button class="slot" onclick="openRecipe('unk')"><span class="d"><b>Sat</b><i>dinner</i></span><span class="th"><img src="img/dish-miso-glazed-salmon.webp" alt=""></span><span class="m"><b>Miso-glazed salmon</b><i class="num">30 min · missing 3</i><span class="verdict unk sm"><span class="l"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><use href="#i-warn"/></svg>Allergen data incomplete for Maya, severe sesame allergy</span></span></span></button>
+        <button class="slot" onclick="toast('Recipe detail in this preview covers the stir-fry, miso salmon and peanut noodles')"><span class="d"><b>Sun</b><i>brunch</i></span><span class="th"><img src="img/dish-yogurt-berry-parfait.webp" alt=""></span><span class="m"><b>Yogurt berry parfait</b><i class="num">10 min · missing 1</i><span class="verdict sm"><span class="l"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><use href="#i-shield"/></svg>No known allergen match · 2 members</span></span></span></button>
+        <button class="slot empty" id="emptySlot" onclick="openSheet('sheetPick')"><span class="d"><b>Sun</b><i>dinner</i></span><span class="m" style="color:var(--ink2);font-weight:700">+ Add a recipe to this slot</span></button>
+        <div class="mfoot">
+          <div><b class="num">4 items missing</b><i>miso paste · broccoli · garlic · granola. Broccoli, garlic and granola are already on your list.</i></div>
+          <button class="btn pri" style="flex:0 0 auto;min-height:44px;font-size:13px;padding:0 14px" onclick="this.remove();toast('Miso paste added to Shopping · tagged Weekend menu')">Add miso paste</button>
+        </div>
+        <div class="mcav">Known matches only · not a guarantee this food is safe.</div>
+      </div>
+
+      <div class="menucard">
+        <div class="mh"><div><h3 class="serif">Tonight</h3><i class="num">Mon 22 · from the Tonight view</i></div><span class="mtag">Auto</span></div>
+        <button class="slot" onclick="openRecipe('ok')"><span class="d"><b>Mon</b><i>dinner</i></span><span class="th"><img src="img/dish-chicken-spinach-stir-fry.webp" alt=""></span><span class="m"><b>Chicken &amp; spinach stir&#8209;fry</b><i class="num">25 min · short 0.75 lb chicken, garlic</i></span></button>
+      </div>
+
+      <div class="sec"><h2 class="serif">Suggested for your menus</h2><span style="font:600 12px/1 'Schibsted Grotesk';color:var(--ink2)">ranked from inventory</span></div>
+      <div class="rail">
+        <div class="rcard">
+          <button class="rph" onclick="openRecipe('ok')" aria-label="Open Chicken and spinach stir-fry"><img src="img/dish-chicken-spinach-stir-fry.webp" alt=""><span class="pct num">92%</span></button>
+          <b>Chicken &amp; spinach stir&#8209;fry</b><i>uses 3 expiring</i>
+          <button class="okb ghost" aria-label="Add Chicken and spinach stir-fry to Weekend menu" onclick="toast('Added to Weekend menu · Sun dinner')">Add to Weekend</button>
+        </div>
+        <div class="rcard">
+          <button class="rph collage" onclick="toast('Recipe detail in this preview covers the stir-fry, miso salmon and peanut noodles')" aria-label="Open Veggie fried rice"><img src="img/ing-basmati-rice.webp" alt=""><img src="img/ing-mushrooms.webp" alt=""><span class="pct num">81%</span></button>
+          <b>Veggie fried rice</b><i>uses rice, mushrooms</i>
+          <button class="okb ghost" aria-label="Add Veggie fried rice to Weekend menu" onclick="toast('Added to Weekend menu · Sun dinner')">Add to Weekend</button>
+        </div>
+        <div class="rcard">
+          <button class="rph blocked" onclick="openRecipe('blocked')" aria-label="Open Thai peanut noodles"><img src="img/dish-thai-peanut-noodles.webp" alt=""></button>
+          <b style="color:var(--ink2)">Thai peanut noodles</b><i style="color:var(--danger);font-weight:700">Blocked for Maya · cannot be planned</i>
+        </div>
+      </div>
+      <div class="pad note" style="margin-top:12px">Suggestions are ranked by what you have and what is expiring. Adding to a menu never changes inventory; cooking does.</div>
+    </div>
+  </div>
+  <nav class="nav" aria-label="Main" data-cur="menu"></nav>
+</section>
+
+<!-- ======================= ADD FOOD ======================= -->
+<section class="screen" id="add" aria-label="Add food">
+  <div class="sb"><span class="num">6:45</span><span aria-hidden="true">●●● ▮</span></div>
+  <div class="scroll">
+    <div class="back"><button class="iconb" aria-label="Back" onclick="goBack()"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><use href="#i-back"/></svg></button></div>
+    <h1 class="title serif" style="padding-top:2px">Add food</h1>
+    <div class="sub">Every path except manual is a proposal · nothing becomes a Known Fact until you confirm it.</div>
+    <div class="modes">
+      <button class="mode pri" onclick="openScan('match')">
+        <span class="mi"><svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><use href="#i-scan"/></svg></span>
+        <b>Scan barcode</b><i>Product facts fill in from the label database</i>
+      </button>
+      <button class="mode" onclick="toast('Receipt scan · fast-follow phase')">
+        <span class="phase">Fast-follow</span>
+        <span class="mi"><svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><use href="#i-receipt"/></svg></span>
+        <b>Scan receipt</b><i>One photo adds the whole grocery run</i>
+      </button>
+      <button class="mode ai" onclick="toast('Shelf photo · future phase')">
+        <span class="phase">Future</span>
+        <span class="mi"><svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><use href="#i-camera"/></svg></span>
+        <b>Photograph a shelf</b><i>AI proposes what it sees</i>
+      </button>
+      <button class="mode" onclick="openManual(false)">
+        <span class="mi"><svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><use href="#i-pen"/></svg></span>
+        <b>Type it in</b><i>Always available, never blocked</i>
+      </button>
+    </div>
+    <div class="sec"><h2 class="serif">Recently added</h2></div>
+    <div class="list">
+      <div class="row"><span class="th"><img src="img/ing-greek-yogurt.webp" alt=""></span><span><b>Greek yogurt · 3</b><span class="q num">barcode · today 6:12 pm</span></span><span class="prov fact">✓ Fact</span></div>
+      <div class="row"><span class="th"><img src="img/ing-chicken-breast.webp" alt=""></span><span><b>Chicken breast · 1.25 lb</b><span class="q">barcode · Sat</span></span><span class="prov fact">✓ Fact</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= SCAN (match / no match / camera off) ======================= -->
+<section class="screen" id="scan" aria-label="Scan barcode" data-state="match">
+  <div class="cam">
+    <div class="camtop"><button class="iconb light" aria-label="Back" onclick="goBack()"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><use href="#i-back"/></svg></button><h1>Scan barcode</h1><span style="width:44px"></span></div>
+    <div class="frame" aria-hidden="true"><i></i><i></i><i></i><i></i><span class="laser"></span></div>
+    <div class="camhint num" data-for="match">Matched · Open Food Facts · GTIN 0689544081128</div>
+    <div class="camhint num" data-for="miss" hidden>Read 0 40000 51907 3 · no match</div>
+    <div class="denied" data-for="denied" hidden>
+      <h2 class="serif">Camera access is off</h2>
+      <p>KitchenSmart needs the camera to scan barcodes. Turn it on in your device Settings, or add this item by hand.</p>
+      <div class="btns" style="margin:14px 0 0"><button class="btn light" onclick="toast('Opens device Settings · not in this preview')">Open Settings</button><button class="btn pri inv" onclick="openManual(false)">Enter manually</button></div>
+    </div>
+  </div>
+
+  <div class="panel" data-for="match">
+    <div class="kline"><span class="prov fact">✓ Known fact</span><span>product identity · barcode match</span></div>
+    <h2 class="serif pname">Fage Total 2% Greek Yogurt</h2>
+    <div class="pbrand num">Fage · 16 oz cup</div>
+    <div class="macros num"><div><b>140</b><i>cal</i></div><div><b>20 g</b><i>protein</i></div><div><b>5 g</b><i>carbs</i></div><div><b>4 g</b><i>fat</i></div></div>
+    <div class="note" style="margin-top:6px">Nutrition &amp; allergens: label data via Open Food Facts · tier shown per field</div>
+    <div class="kv"><span class="k">Allergens</span><span class="v col"><span><span class="tagm">Milk</span> <b>no known household match</b></span><span class="vs">label declaration · not a safety guarantee</span></span></div>
+    <div class="kv"><span class="k">Best by</span><span class="v num">Sep 28 <span class="prov est">≈ Est.</span></span></div>
+    <div class="kv"><span class="k">Quantity</span><span class="step"><button aria-label="Decrease quantity" onclick="stepScan(-1)">−</button><b class="num" id="scanQty">2</b><button aria-label="Increase quantity" onclick="stepScan(1)">+</button></span></div>
+    <div class="chips" style="padding:12px 0 0" id="scanLoc"><button class="chip" aria-pressed="true">Fridge</button><button class="chip" aria-pressed="false">Freezer</button><button class="chip" aria-pressed="false">Pantry</button></div>
+    <button class="btn pri wide" id="scanCta" onclick="confirmScan()">Add 2 to Fridge</button>
+  </div>
+
+  <div class="panel" data-for="miss" hidden>
+    <div class="kline"><span class="prov est">No match</span><span>code not found in any source we checked</span></div>
+    <div class="kv" style="border-top:0"><span class="k">Scanned code</span><span class="v num">0 40000 51907 3</span></div>
+    <p class="note" style="font-size:13.5px;margin-top:4px">We could not find this product in Open Food Facts or USDA. The code is kept so we can fill in the facts automatically later if it gets added.</p>
+    <button class="btn pri wide" onclick="openManual(true)">Enter it manually</button>
+  </div>
+</section>
+
+<!-- ======================= ADD MANUALLY ======================= -->
+<section class="screen" id="manual" aria-label="Add manually">
+  <div class="sb"><span class="num">6:46</span><span aria-hidden="true">●●● ▮</span></div>
+  <div class="scroll">
+    <div class="back"><button class="iconb" aria-label="Back" onclick="goBack()"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><use href="#i-back"/></svg></button></div>
+    <h1 class="title serif" style="padding-top:2px">Add manually</h1>
+    <div class="codenote num" id="codeNote" hidden>Barcode 0 40000 51907 3 kept on file. If it is added to a data source later, we will offer to fill in these facts automatically.</div>
+    <div class="field">
+      <div class="fl"><label for="manName">Name</label><span class="prov fact">✓ Fact</span></div>
+      <input id="manName" class="inp" placeholder="e.g. Trader Joe's frozen dumplings" autocomplete="off">
+    </div>
+    <div class="field">
+      <div class="fl"><span>Amount</span><span class="prov fact">✓ Fact</span></div>
+      <div class="chips" style="padding:4px 0 0" id="unitKind"><button class="chip" aria-pressed="true" data-kind="mass">Mass</button><button class="chip" aria-pressed="false" data-kind="volume">Volume</button><button class="chip" aria-pressed="false" data-kind="count">Count</button></div>
+      <div class="amtrow"><span class="step"><button aria-label="Decrease quantity" onclick="stepMan(-1)">−</button><b class="num" id="manQty">1</b><button aria-label="Increase quantity" onclick="stepMan(1)">+</button></span><div class="chips units" id="unitChips"></div></div>
+    </div>
+    <div class="field">
+      <div class="fl"><span>Location</span><span class="prov fact">✓ Fact</span></div>
+      <div class="chips" style="padding:4px 0 0" id="manLoc"><button class="chip" aria-pressed="true">Fridge</button><button class="chip" aria-pressed="false">Freezer</button><button class="chip" aria-pressed="false">Pantry</button></div>
+    </div>
+    <button class="btn pri wide" style="margin:22px 20px 0;width:calc(100% - 40px)" onclick="saveManual()">Add to inventory</button>
+  </div>
+</section>
+
+<!-- ======================= ITEM DETAIL (S5, v5 copy) ======================= -->
+<section class="screen" id="item" aria-label="Chicken breast">
+  <div class="sb"><span class="num">6:47</span><span aria-hidden="true">●●● ▮</span></div>
+  <div class="scroll">
+    <div class="back"><button class="iconb" aria-label="Back" onclick="goBack()"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><use href="#i-back"/></svg></button></div>
+    <div class="itemhead">
+      <div><h1 class="title serif" style="padding:2px 0 0">Chicken breast</h1><span class="prov fact" style="display:inline-block;margin-top:8px">✓ Fact</span></div>
+      <span class="itemimg"><img src="img/ing-chicken-breast.webp" alt=""></span>
+    </div>
+    <div class="qtybig"><b class="num" id="itemQtyDisplay">1.25 lb</b><span>on hand · Fridge</span></div>
+    <div class="whyplain" id="whyPlain"><b>Why 1.25 lb?</b> Bought <span class="num">2.0 lb</span> Wednesday. On Thursday, <span class="num">2.25 lb</span> was recorded used for Chicken &amp; spinach stir&#8209;fry, more than was on hand, so <span class="num">0.25 lb</span> was added back to correct the count. Bought another <span class="num">1.25 lb</span> Saturday. <span class="num">2.0 − 2.25 + 0.25 + 1.25 = 1.25 lb</span>. <button class="lg" onclick="go('legend')">What do these badges mean?</button></div>
+
+    <div class="sec"><h2 class="serif">Correct this</h2></div>
+    <div class="boxed">
+      <p class="note" style="margin:0 0 12px;font-size:13.5px">One tap if this number is wrong. A correction teaches the system. It is never an apology.</p>
+      <div class="step"><button aria-label="Decrease quantity" onclick="stepItem(-0.25)">−</button><b class="num" id="itemQtyVal">1.25</b><span class="unitlbl">lb</span><button aria-label="Increase quantity" onclick="stepItem(0.25)">+</button></div>
+      <button class="btn pri wide" onclick="correctQty()">Save correction</button>
+    </div>
+
+    <div class="sec"><h2 class="serif">Use or remove</h2></div>
+    <div class="chips wrap" id="reasonTop"><button class="chip" aria-pressed="false" data-act="Consumed">Consume</button><button class="chip" aria-pressed="false" data-act="Discarded">Discard</button><button class="chip" aria-pressed="false" data-act="Marked expired">Mark expired</button><button class="chip" aria-pressed="false" data-act="Donated">Donate</button></div>
+    <div class="chips wrap" id="reasonChips" hidden><span class="rlbl">Why?</span><button class="chip" onclick="applyReason(this)">Spoiled</button><button class="chip" onclick="applyReason(this)">Wrong item</button><button class="chip" onclick="applyReason(this)">Used it all</button><button class="chip" onclick="applyReason(this)">Other</button></div>
+
+    <div class="sec"><h2 class="serif">Lots</h2></div>
+    <div class="list"><div class="row" style="grid-template-columns:1fr auto;min-height:60px"><span><b class="num">1.25 lb</b><span class="q">bought Sat · <span class="days soon">expires in 2 days</span></span></span><span class="prov fact">✓ Fact</span></div></div>
+
+    <div class="sec"><h2 class="serif">History</h2></div>
+    <div class="list" id="historyList">
+      <div class="led"><div class="m"><b>Purchased</b><i><span class="mchip">DC</span>barcode scan <span class="prov fact">✓ Fact</span> Wed 6:04 pm</i></div><div class="amt pos num">+2.0 lb</div></div>
+      <div class="led"><div class="m"><b>Used in Chicken &amp; spinach stir&#8209;fry</b><i><span class="mchip">DC</span>cook confirm, FEFO plan <span class="prov fact">✓ Fact</span> Thu 7:20 pm</i></div><div class="amt neg num">−2.25 lb</div></div>
+      <div class="led sys"><div class="m"><b>Adjustment · corrects the 7:20 pm entry</b><i><span class="prov est">≈ Est.</span> You recorded 2.25 lb but our record showed 2.0 lb. We added back the 0.25 lb difference so the count matches reality. Not entered by a person. Thu 7:21 pm</i></div><div class="amt pos num">+0.25 lb</div></div>
+      <div class="led"><div class="m"><b>Purchased</b><i><span class="mchip">DC</span>barcode scan <span class="prov fact">✓ Fact</span> Sat 5:40 pm</i></div><div class="amt pos num">+1.25 lb</div></div>
+      <div id="ledgerEnd"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= LEGEND ======================= -->
+<section class="screen" id="legend" aria-label="What do these mean?">
+  <div class="sb"><span class="num">6:48</span><span aria-hidden="true">●●● ▮</span></div>
+  <div class="scroll">
+    <div class="back"><button class="iconb" aria-label="Back" onclick="goBack()"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><use href="#i-back"/></svg></button></div>
+    <h1 class="title serif" style="padding-top:2px">What do these mean?</h1>
+    <p class="sub" style="font-size:14.5px;line-height:1.5">Every value in KitchenSmart wears a tag showing how sure we are. A tag is our confidence in a fact. It is never a safety check by itself.</p>
+    <div class="legrows">
+      <div class="lgr"><span class="prov fact">✓ Fact</span><p><b>Known Fact.</b> Verified against a source we trust, such as a barcode match or something you typed yourself.</p></div>
+      <div class="lgr"><span class="prov est">≈ Est.</span><p><b>Estimated.</b> A reasonable guess, such as a shelf-life date or a quantity worked out from meals you have logged. Correct it any time, one tap.</p></div>
+      <div class="lgr"><span class="prov ai">AI · confirm</span><p><b>AI interpretation.</b> Read from a receipt or a photo. It stays a proposal until you confirm it. Nothing enters your inventory as fact until you say so.</p></div>
+      <div class="lgr"><span class="prov alg"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><use href="#i-warn"/></svg>Allergen</span><p><b>Allergen alert.</b> The only red tag in the app. Always shown with an icon and words, never colour alone. It never claims a food is guaranteed free of anything, only that we found or did not find a match.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= S1 ACCOUNT + HOUSEHOLD ======================= -->
+<section class="screen" id="account" aria-label="Welcome">
+  <div class="sb"><span class="num">6:30</span><span aria-hidden="true">●●● ▮</span></div>
+  <div class="scroll">
+    <div class="mast" style="padding-top:14px"><span class="name">Smart Kitchen</span></div>
+    <div class="rule"></div>
+    <h1 class="title serif" style="padding-top:22px">Welcome</h1>
+    <p class="sub" style="font-size:14.5px">Sign in to start your kitchen. This mockup skips real authentication.</p>
+    <div style="margin:18px 20px 0;display:flex;flex-direction:column;gap:10px">
+      <button class="btn pri wide" style="margin:0" onclick="toast('Signed in as dean@example.com')">Continue with email</button>
+      <button class="btn wide" style="margin:0" onclick="toast('Signed in with Google')">Continue with Google</button>
+    </div>
+    <div class="sec"><h2 class="serif">Your household</h2></div>
+    <div class="boxed">
+      <h3 class="bh">Create a new household</h3>
+      <input id="hhName" class="inp" aria-label="Household name" placeholder="Household name, for example The Chens" autocomplete="off">
+      <button class="btn pri wide" onclick="startHousehold('create')">Create household</button>
+    </div>
+    <div class="boxed">
+      <h3 class="bh">Join with a code</h3>
+      <input id="hhCode" class="inp" aria-label="Join code" placeholder="Join code, for example CHEN-482" autocomplete="off">
+      <button class="btn wide" onclick="startHousehold('join')">Join household</button>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= S2 ALLERGIES + PREFERENCES ======================= -->
+<section class="screen" id="allergies" aria-label="Allergies">
+  <div class="sb"><span class="num">6:32</span><span aria-hidden="true">●●● ▮</span></div>
+  <div class="scroll">
+    <div class="back"><button class="iconb" aria-label="Back" onclick="goBack()"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><use href="#i-back"/></svg></button></div>
+    <h1 class="title serif" style="padding-top:2px">Allergies</h1>
+    <p class="sub" style="font-size:14px;line-height:1.5">Required for every member before recipes can be screened. We can only warn about what you tell us, so an honest "none" is as useful as a real allergy. Preferences below are optional.</p>
+    <div class="grp"><h2 class="serif">Maya Chen</h2><span>member 2 of 2</span></div>
+    <div class="chips wrap" id="allergenChips">
+      <button class="chip" aria-pressed="false" data-term="milk">Milk</button><button class="chip" aria-pressed="false" data-term="egg">Egg</button><button class="chip" aria-pressed="false" data-term="fish">Fish</button><button class="chip" aria-pressed="false" data-term="shellfish">Shellfish</button><button class="chip" aria-pressed="false" data-term="tree_nut">Tree nut</button><button class="chip" aria-pressed="true" data-term="peanut">Peanut</button><button class="chip" aria-pressed="true" data-term="sesame">Sesame</button><button class="chip" aria-pressed="false" data-term="wheat">Wheat</button><button class="chip" aria-pressed="false" data-term="soy">Soy</button>
+    </div>
+    <div class="list" id="severityList" style="margin-top:10px"></div>
+    <div class="addrow"><input id="customAllergen" class="inp" aria-label="Add another allergen or ingredient" placeholder="Add another allergen or ingredient" autocomplete="off"><button class="btn" style="flex:0 0 auto;padding:0 18px" onclick="addCustomAllergen()">Add</button></div>
+    <button class="noneopt" id="noneBtn" aria-pressed="false" onclick="toggleNone()"><span class="box"><svg width="14" height="14" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><use href="#i-check"/></svg></span>No known allergies for Maya</button>
+
+    <div class="sec"><h2 class="serif">Preferences</h2><button class="lnk" onclick="skipPreferences()">Skip preferences</button></div>
+    <div class="chips wrap" id="prefChips"><button class="chip" aria-pressed="false">Vegetarian</button><button class="chip" aria-pressed="true">High protein</button><button class="chip" aria-pressed="false">Kid-friendly</button></div>
+    <button class="btn pri wide" style="margin:22px 20px 0;width:calc(100% - 40px)" onclick="continueAllergies()">Continue</button>
+  </div>
+</section>
+
+<!-- ======================= S12 PROFILE + HOUSEHOLD ======================= -->
+<section class="screen" id="profile" aria-label="Profile and household">
+  <div class="sb"><span class="num">6:49</span><span aria-hidden="true">●●● ▮</span></div>
+  <div class="scroll">
+    <div class="back"><button class="iconb" aria-label="Back" onclick="goBack()"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><use href="#i-back"/></svg></button></div>
+    <h1 class="title serif" style="padding-top:2px">Profile &amp; household</h1>
+    <div class="me"><span class="av big" role="img" aria-label="Dean Chen">DC</span><div><b>Dean Chen</b><i>dean@example.com · owner · Chen household</i></div></div>
+    <div class="sec"><h2 class="serif">Household members</h2><button class="lnk" onclick="toast('Join code CHEN-482 ready to share')">Invite</button></div>
+    <div class="list">
+      <button class="row mem" onclick="go('allergies')"><span class="mchip lg2">DC</span><span><b>Dean Chen</b><span class="q">No known allergies · edit</span></span><svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transform:rotate(180deg)"><use href="#i-back"/></svg></button>
+      <button class="row mem" onclick="go('allergies')"><span class="mchip lg2">MC</span><span><b>Maya Chen</b><span class="q">Peanut, sesame · severe · edit</span></span><svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transform:rotate(180deg)"><use href="#i-back"/></svg></button>
+      <div class="row mem"><span class="mchip lg2 plus">+</span><span><b>Add a member</b><span class="q">share the join code CHEN-482</span></span><span></span></div>
+    </div>
+    <div class="sec"><h2 class="serif">Account</h2></div>
+    <button class="btn wide" style="margin:14px 20px 0;width:calc(100% - 40px)" onclick="toast('Signed out')">Sign out</button>
+  </div>
+</section>
+
+<!-- ======================= ASSISTANT (post-MVP preview) ======================= -->
+<section class="screen" id="assistant" aria-label="Kitchen assistant">
+  <div class="sb"><span class="num">6:50</span><span aria-hidden="true">●●● ▮</span></div>
+  <div class="scroll">
+    <div class="back"><button class="iconb" aria-label="Back" onclick="goBack()"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><use href="#i-back"/></svg></button><span class="prov ai">post-MVP preview</span></div>
+    <h1 class="title serif" style="padding-top:2px">Kitchen assistant</h1>
+    <div class="chips"><button class="chip" aria-pressed="false" onclick="toast('Assistant is a post-MVP preview')">What can I make tonight?</button><button class="chip" aria-pressed="false" onclick="toast('Assistant is a post-MVP preview')">What's expiring?</button><button class="chip" aria-pressed="false" onclick="toast('Assistant is a post-MVP preview')">Plan this week</button></div>
+    <div class="chat">
+      <div class="bub me">What can I make for dinner in under 30 minutes?</div>
+      <div class="bub ai"><div>Best match is <b>chicken &amp; spinach stir&#8209;fry</b> · <span class="num">25 min</span>, uses the chicken, spinach and mushrooms expiring in the next 2–3 days. You are 0.75 lb of chicken short, and it is already on your shopping list.</div>
+        <button class="btn" style="min-height:44px;margin-top:10px;flex:none;padding:0 16px" onclick="openRecipe('ok')">See recipe</button>
+        <div class="evid"><span class="prov fact">✓ Fact</span>inventory · <span class="prov est">≈ Est.</span>expiry dates</div></div>
+      <div class="bub me">Can Maya have the granola bars I bought today?</div>
+      <div class="bub ai"><div class="blockbar" style="margin-bottom:8px"><span class="sh"><svg width="13" height="13" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round"><use href="#i-warn"/></svg></span>Blocked for Maya</div>
+        <div>This one is blocked for Maya's peanut allergy, so I won't suggest it. I still can't mark any food as safe.</div>
+        <div class="evid"><span class="prov fact">✓ Fact</span>verified label data + household rules · never generated text</div></div>
+    </div>
+  </div>
+  <div class="inbar"><input class="inp" aria-label="Ask about meals, food, or shopping" placeholder="Ask about meals, food, or shopping…" style="margin:0;flex:1"><button class="send" aria-label="Send" onclick="toast('Assistant is a post-MVP preview')"><svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="transform:rotate(180deg)"><use href="#i-back"/></svg></button></div>
+</section>
+
+<!-- ======================= RECIPE DETAIL ======================= -->
+<section class="screen" id="recipe" aria-label="Recipe">
+  <div class="sb"><span class="num">6:43</span><span aria-hidden="true">●●● ▮</span></div>
+  <div class="scroll">
+    <div class="back"><button class="iconb" aria-label="Back" onclick="goBack()"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><use href="#i-back"/></svg></button><span class="kick" style="padding:0">Recipe</span></div>
+
+    <!-- ok -->
+    <div class="rv" data-v="ok">
+      <h1 class="h1 serif" style="padding-top:4px">Chicken &amp; spinach <span style="white-space:nowrap">stir&#8209;fry</span></h1>
+      <div class="hero"><img src="img/dish-chicken-spinach-stir-fry.webp" alt="Chicken and spinach stir-fry"><span class="pct num">92<small>% coverage</small></span></div>
+      <div class="by num"><span><b>25</b> min</span><span><b>540</b> cal</span><span>serves <b>4</b></span></div>
+      <div class="sec"><h2 class="serif">Ingredients</h2><span class="num" style="font:600 12px/1 'Schibsted Grotesk';color:var(--ink2)">7 · 2 to buy</span></div>
+      <div class="ingr">
+        <div class="row"><span class="th"><img src="img/ing-chicken-breast.webp" alt=""></span><span><b>Chicken breast</b><span class="q num">need 2 lb · have 1.25 lb <span class="prov fact">✓ Fact</span></span></span><span class="stat shortby num">short 0.75 lb</span></div>
+        <div class="row"><span class="th"><img src="img/ing-spinach.webp" alt=""></span><span><b>Spinach</b><span class="q num">need 5 oz · have 5 oz <span class="prov fact">✓ Fact</span></span></span><span class="stat have">have</span></div>
+        <div class="row"><span class="th"><img src="img/ing-mushrooms.webp" alt=""></span><span><b>Mushrooms</b><span class="q num">need 8 oz · have 8 oz <span class="prov ai">AI</span></span></span><span class="stat have">have</span></div>
+        <div class="row"><span class="th"><img src="img/ing-basmati-rice.webp" alt=""></span><span><b>Basmati rice</b><span class="q num">need ~2 cups · have ~4 cups <span class="prov est">≈ Est.</span></span></span><span class="stat have">have</span></div>
+        <div class="row"><span class="th"><img src="img/ing-garlic.webp" alt=""></span><span><b>Garlic</b><span class="q num">need 2 cloves · none on hand</span></span><span class="stat list">On list</span></div>
+        <div class="row"><span class="th"><img src="img/ing-soy-sauce.webp" alt=""></span><span><b>Soy sauce</b><span class="q num">need 1 tbsp · pantry staple</span></span><span class="stat staple">not tracked</span></div>
+        <div class="row"><span class="th"><img src="img/ing-olive-oil.webp" alt=""></span><span><b>Olive oil</b><span class="q num">need 1 tbsp · have 1 bottle <span class="prov fact">✓ Fact</span></span></span><span class="stat have">have</span></div>
+      </div>
+      <div class="vwrap"><div class="verdict ok"><div class="l"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><use href="#i-shield"/></svg>No known allergen match · 2 members</div><div class="c">Known matches only · not a guarantee this food is safe.</div></div></div>
+      <div class="btns"><button class="btn" aria-controls="whyOk" aria-expanded="false" onclick="toggleWhy('whyOk',this)">Why this?</button><button class="btn" onclick="toast('Added to Sun dinner · Menu')">Add to menu</button></div>
+      <div class="btns" style="margin-top:8px"><button class="btn pri" onclick="openSheet('sheetOk')">Cook this</button></div>
+      <div class="why" id="whyOk">Ranked <span class="num">92%</span>: a coverage score, not a confidence. Uses 3 items expiring within 3 days, needs 2 purchases (0.75 lb of chicken and garlic, both already on your shopping list), fits a 25 minute window, matches the high-protein preference.</div>
+    </div>
+
+    <!-- unknown -->
+    <div class="rv" data-v="unk">
+      <h1 class="h1 serif" style="padding-top:4px">Miso-glazed salmon</h1>
+      <div class="hero"><img src="img/dish-miso-glazed-salmon.webp" alt="Miso-glazed salmon"><span class="pct num">78<small>% coverage</small></span></div>
+      <div class="by num"><span><b>30</b> min</span><span><b>610</b> cal</span><span>thaw first</span></div>
+      <div class="vwrap"><div class="verdict unk"><div class="l"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><use href="#i-warn"/></svg>Allergen data incomplete for Maya</div><div class="u">There's no ingredient list on file to check for Maya's severe sesame allergy.</div><div class="c">Known matches only · not a guarantee this food is safe.</div></div></div>
+      <div class="sec"><h2 class="serif">Ingredients</h2><span class="num" style="font:600 12px/1 'Schibsted Grotesk';color:var(--ink2)">6 · 3 to buy</span></div>
+      <div class="ingr">
+        <div class="row"><span class="th"><img src="img/ing-salmon-fillets.webp" alt=""></span><span><b>Salmon fillets</b><span class="q num">need 12 oz · have 12 oz <span class="prov fact">✓ Fact</span></span></span><span class="stat have">have</span></div>
+        <div class="row"><span class="th"><img src="img/ing-basmati-rice.webp" alt=""></span><span><b>Basmati rice</b><span class="q num">need ~1 cup · have ~4 cups <span class="prov est">≈ Est.</span></span></span><span class="stat have">have</span></div>
+        <div class="row"><span class="th"><img src="img/ing-miso.webp" alt=""></span><span><b>Miso paste</b><span class="q num">need 2 tbsp · none on hand</span></span><button class="stat miss" style="min-height:36px" onclick="toast('Miso paste 2 tbsp added to Shopping · from Weekend menu')">+ list</button></div>
+        <div class="row"><span class="th"><img src="img/ing-broccoli.webp" alt=""></span><span><b>Broccoli</b><span class="q num">need 2 lb · none on hand</span></span><span class="stat list">On list</span></div>
+        <div class="row"><span class="th"><img src="img/ing-garlic.webp" alt=""></span><span><b>Garlic</b><span class="q num">need 2 cloves · none on hand</span></span><span class="stat list">On list</span></div>
+        <div class="row"><span class="th"><img src="img/ing-soy-sauce.webp" alt=""></span><span><b>Soy sauce</b><span class="q num">need 2 tbsp · pantry staple</span></span><span class="stat staple">not tracked</span></div>
+      </div>
+      <div class="btns"><button class="btn" aria-controls="whyUnk" aria-expanded="false" onclick="toggleWhy('whyUnk',this)">Why this?</button><button class="btn" onclick="toast('Added to Sun dinner · Menu')">Add to menu</button></div>
+      <div class="btns" style="margin-top:8px"><button class="btn pri" onclick="openSheet('sheetUnk')">Cook this</button></div>
+      <div class="why" id="whyUnk">Ranked <span class="num">78%</span>: a coverage score, not a confidence. Missing miso, broccoli and garlic, so 3 purchases needed (broccoli and garlic are already on your shopping list). Fits a 30 minute window once thawed.</div>
+    </div>
+
+    <!-- blocked -->
+    <div class="rv" data-v="blocked">
+      <h1 class="h1 serif" style="padding-top:4px;color:var(--ink2)">Thai peanut noodles</h1>
+      <div class="hero blocked"><img src="img/dish-thai-peanut-noodles.webp" alt="Thai peanut noodles"></div>
+      <div class="by num"><span><b>20</b> min</span><span><b>480</b> cal</span><span>serves <b>4</b></span></div>
+      <div class="vwrap">
+        <div class="blockbar"><span class="sh"><svg width="13" height="13" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round"><use href="#i-warn"/></svg></span>Contains peanut · matched 'peanuts' in the ingredient statement · blocked for Maya</div>
+        <div class="note">Blocked recipes are shown for transparency only.</div>
+        <div class="note" style="margin-top:4px">Known matches only · not a guarantee this food is safe.</div>
+      </div>
+      <div class="sec"><h2 class="serif">Ingredients</h2></div>
+      <div class="ingr">
+        <div class="row"><span class="th" style="font:500 20px/1 'Bodoni Moda';color:var(--ink3)">P</span><span><b>Peanut sauce</b><span class="q num">4 tbsp</span></span><span></span></div>
+        <div class="row"><span class="th" style="font:500 20px/1 'Bodoni Moda';color:var(--ink3)">R</span><span><b>Flat rice noodles</b><span class="q num">8 oz</span></span><span></span></div>
+        <div class="row"><span class="th" style="font:500 20px/1 'Bodoni Moda';color:var(--ink3)">P</span><span><b>Roasted peanuts, crushed</b><span class="q num">2 tbsp</span></span><span></span></div>
+        <div class="row"><span class="th" style="font:500 20px/1 'Bodoni Moda';color:var(--ink3)">S</span><span><b>Scallions, cucumber, lime</b><span class="q">to finish</span></span><span></span></div>
+      </div>
+      <div class="pad" style="font-size:13px;color:var(--ink2);line-height:1.5;margin-top:14px">This recipe cannot be cooked or planned while it is blocked for a household member. There is no cook action and no add-to-menu action for a blocked recipe.</div>
+    </div>
+  </div>
+  <nav class="nav" aria-label="Main" data-cur="menu"></nav>
+</section>
+
+<!-- ======================= SHOPPING ======================= -->
+<section class="screen" id="shopping" aria-label="Shopping">
+  <div class="sb"><span class="num">6:44</span><span aria-hidden="true">●●● ▮</span></div>
+  <div class="scroll">
+    <h1 class="title serif">Shopping</h1>
+    <div class="sub">Shared · <b class="num" id="buyCount" style="color:var(--ink)">5</b> to buy · each item shows where it came from: a menu gap, an AI suggestion, or the member who added it</div>
+    <div class="offbar" role="status"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="#i-offline"/></svg><span><b>Offline.</b> Showing your last synced list from 12 min ago. Check-offs are queued and will sync automatically.</span></div>
+    <div class="loop" id="loop"><span>Olive oil checked off · add it to the pantry?</span><button class="okb" onclick="this.closest('.loop').remove();toast('Olive oil added to Pantry · inventory updated')">Add</button></div>
+
+    <div class="grp"><h2 class="serif">Meat &amp; seafood</h2></div>
+    <div class="list">
+      <div class="srow"><button class="chk" aria-pressed="false" aria-label="Check off Chicken breast" onclick="toggleCheck(this)"><span><svg width="14" height="14" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><use href="#i-check"/></svg></span></button><span class="th"><img src="img/ing-chicken-breast.webp" alt=""></span><div><b>Chicken breast</b><div class="s num"><span class="msrc">Tonight</span>need 2 lb · have 1.25 lb</div></div><div class="amt num">0.75 lb</div></div>
+    </div>
+    <div class="grp"><h2 class="serif">Produce</h2></div>
+    <div class="list">
+      <div class="srow"><button class="chk" aria-pressed="false" aria-label="Check off Broccoli" onclick="toggleCheck(this)"><span><svg width="14" height="14" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><use href="#i-check"/></svg></span></button><span class="th"><img src="img/ing-broccoli.webp" alt=""></span><div><b>Broccoli</b><div class="s"><span class="msrc">Weekend menu</span>miso salmon · none on hand</div></div><div class="amt num">2 lb</div></div>
+      <div class="srow"><button class="chk" aria-pressed="false" aria-label="Check off Garlic" onclick="toggleCheck(this)"><span><svg width="14" height="14" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><use href="#i-check"/></svg></span></button><span class="th"><img src="img/ing-garlic.webp" alt=""></span><div><b>Garlic</b><div class="s"><span class="prov ai" style="font-size:12px;padding:2px 7px">AI</span> suggested for tonight's stir&#8209;fry · a proposal until you keep it</div></div><div style="display:flex;flex-direction:column;align-items:flex-end"><div class="amt num">1</div><button class="rmv" aria-label="Remove Garlic" onclick="removeRow(this,'Garlic removed · AI suggestion declined')">Remove</button></div></div>
+    </div>
+    <div class="grp"><h2 class="serif">Pantry &amp; household</h2></div>
+    <div class="list">
+      <div class="srow"><button class="chk" aria-pressed="false" aria-label="Check off Granola" onclick="toggleCheck(this)"><span><svg width="14" height="14" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><use href="#i-check"/></svg></span></button><span class="th"><img src="img/ing-granola.webp" alt=""></span><div><b>Granola</b><div class="s"><span class="msrc">Weekend menu</span>yogurt parfait</div></div><div class="amt num">1</div></div>
+      <div class="srow"><button class="chk" aria-pressed="false" aria-label="Check off Paper towels" onclick="toggleCheck(this)"><span><svg width="14" height="14" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><use href="#i-check"/></svg></span></button><span class="th"><svg width="26" height="26" fill="none" stroke="var(--ink2)" stroke-width="1.6" stroke-linecap="round"><use href="#i-towel"/></svg></span><div><b>Paper towels</b><div class="s"><span class="mchip">MC</span>added by Maya · not tied to a menu</div></div><div class="amt num">1</div></div>
+      <div class="srow done"><button class="chk" aria-pressed="true" aria-label="Check off Olive oil" onclick="toggleCheck(this)"><span><svg width="14" height="14" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><use href="#i-check"/></svg></span></button><span class="th"><img src="img/ing-olive-oil.webp" alt=""></span><div><b>Olive oil</b><div class="s"><span class="mchip">DC</span>added and checked off by Dean <span class="queued">queued · will sync</span></div></div><div class="amt num">1</div></div>
+    </div>
+    <div class="grp"><h2 class="serif">Already have · skipped</h2></div>
+    <div class="list">
+      <div class="srow" style="grid-template-columns:44px 48px 1fr auto"><span style="color:var(--green);text-align:center;font-weight:700">✓</span><span class="th"><img src="img/ing-basmati-rice.webp" alt=""></span><div><b style="font-weight:600;color:var(--ink2)">Rice</b></div><div class="s num">~4 cups <span class="prov est">≈ Est.</span></div></div>
+      <div class="srow" style="grid-template-columns:44px 48px 1fr auto"><span style="color:var(--green);text-align:center;font-weight:700">✓</span><span class="th"><img src="img/ing-soy-sauce.webp" alt=""></span><div><b style="font-weight:600;color:var(--ink2)">Soy sauce</b></div><div class="s">sufficient</div></div>
+    </div>
+  </div>
+  <nav class="nav" aria-label="Main" data-cur="shopping"></nav>
+</section>
+
+<!-- ======================= SHEETS (v5 copy) ======================= -->
+<div class="modal" id="sheetOk" role="dialog" aria-modal="true" aria-labelledby="sheetOkT">
+  <div class="scrim" onclick="closeSheet()"></div>
+  <div class="sheet" tabindex="-1">
+    <h2 class="serif" id="sheetOkT">Cook this · confirm deductions</h2>
+    <div class="shortnote">This recipe needs 2 lb of chicken breast and 2 cloves of garlic. Only 1.25 lb of chicken and no garlic are on hand. Record what we have and flag the shortfall, or cancel and shop first.</div>
+    <div class="alloc"><span>Chicken breast, all of lot bought Sat, expires 2d</span><span class="prov fact">✓ Fact</span><span class="amt num">1.25 lb</span></div>
+    <div class="alloc"><span>Spinach, lot bought Fri, expires 3d</span><span class="prov fact">✓ Fact</span><span class="amt num">5 oz</span></div>
+    <div class="alloc"><span>Mushrooms, lot bought Fri, expires 3d</span><span class="prov ai">AI</span><span class="amt num">8 oz</span></div>
+    <div class="alloc"><span>Rice, pantry lot</span><span class="prov est">≈ Est.</span><span class="amt num">~2 cups</span></div>
+    <div class="alloc"><span>Olive oil, opened Aug 30</span><span class="prov fact">✓ Fact</span><span class="amt num">1 tbsp</span></div>
+    <div class="btns"><button class="btn" onclick="closeSheet()">Cancel</button><button class="btn pri" onclick="closeSheet();toast('Meal logged · deductions recorded · shortfall flagged')">Log meal, record deductions</button></div>
+  </div>
+</div>
+<div class="modal" id="sheetUnk" role="dialog" aria-modal="true" aria-labelledby="sheetUnkT">
+  <div class="scrim" onclick="closeSheet()"></div>
+  <div class="sheet" tabindex="-1">
+    <h2 class="serif" id="sheetUnkT">Cook this · confirm deductions</h2>
+    <div class="verdict unk"><div class="l"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><use href="#i-warn"/></svg>Allergen data incomplete for Maya</div><div class="u">There's no ingredient list on file to check for Maya's severe sesame allergy.</div><div class="c">Known matches only · not a guarantee this food is safe.</div></div>
+    <div class="alloc"><span>Salmon fillets, both 6 oz lots, expire in 2 months</span><span class="prov fact">✓ Fact</span><span class="amt num">12 oz</span></div>
+    <div class="alloc"><span>Rice, pantry lot</span><span class="prov est">≈ Est.</span><span class="amt num">~1 cup</span></div>
+    <div class="alloc"><span>Soy sauce, pantry</span><span></span><span class="amt num">2 tbsp</span></div>
+    <div class="shortnote">Miso paste, broccoli and garlic are not on hand. Record what we have and flag the shortfall, or cancel and shop first.</div>
+    <div class="btns"><button class="btn" onclick="closeSheet()">Cancel</button><button class="btn pri" onclick="closeSheet();toast('Meal logged · deductions recorded · shortfall flagged')">Log meal, record deductions</button></div>
+  </div>
+</div>
+
+<div class="modal" id="sheetPick" role="dialog" aria-modal="true" aria-labelledby="sheetPickT">
+  <div class="scrim" onclick="closeSheet()"></div>
+  <div class="sheet" tabindex="-1">
+    <h2 class="serif" id="sheetPickT">Add to Sun dinner</h2>
+    <button class="pick" onclick="pickForSlot('Chicken &amp; spinach stir-fry','dish-chicken-spinach-stir-fry')"><span>Chicken &amp; spinach stir&#8209;fry</span><span class="pp num">92%</span></button>
+    <button class="pick" onclick="pickForSlot('Veggie fried rice','ing-basmati-rice')"><span>Veggie fried rice</span><span class="pp num">81%</span></button>
+    <div class="pick" style="opacity:.75;cursor:default"><span style="color:var(--ink2)">Thai peanut noodles</span><span style="font-size:12.5px;font-weight:700;color:var(--danger)">Blocked for Maya · not selectable</span></div>
+    <div class="btns"><button class="btn" onclick="closeSheet()">Cancel</button></div>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+</div></div>
+
+<p class="foot"><b>Same rules as v5:</b> allergen red only on a blocked recipe; incomplete allergen data in amber, naming who and what; the verdict and caveat copy word for word from v5; the expiry ladder never turns red; purple only on AI-read items; Fact, Est. and AI chips on every item. <b>Photos</b> are AI-generated from each recipe's ingredient list and checked against it (D-032). They are decoration: allergen information comes only from the verdict line. Whether the app labels them as illustrations is open (OQ-D11).</p>
+
+<script>
+// nav bars
+const NAV=[['home','Home','i-home'],['inventory','Inventory','i-inv'],['add','Add','i-scan'],['menu','Menu','i-menu'],['shopping','Shopping','i-shop']];
+document.querySelectorAll('.nav').forEach(n=>{
+  n.innerHTML=NAV.map(([id,l,ic])=>id==='add'
+    ?`<button class="add" aria-label="Add food" onclick="go('add')"><span class="disc"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><use href="#${ic}"/></svg></span></button>`
+    :`<button ${n.dataset.cur===id?'aria-current="page"':''} onclick="go('${id}')"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><use href="#${ic}"/></svg>${l}</button>`).join('');
+});
+// screens
+let cur='home'; const stack=[];
+function show(id){cur=id;document.querySelectorAll('.screen').forEach(s=>s.classList.toggle('on',s.id===id));
+  const s=document.getElementById(id).querySelector('.scroll'); if(s) s.scrollTop=0; syncJump();}
+function go(id){if(id!==cur){stack.push(cur);show(id);}}
+function goBack(){show(stack.pop()||'home');}
+let variant='ok';
+function openRecipe(v){variant=v;document.querySelectorAll('#recipe .rv').forEach(r=>r.style.display=r.dataset.v===v?'block':'none');go('recipe');}
+function syncJump(){const key=cur==='recipe'?variant:cur==='scan'?'scan-'+document.getElementById('scan').dataset.state:cur;document.querySelectorAll('.jump button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.jump===key));}
+document.querySelectorAll('.jump button').forEach(b=>b.addEventListener('click',()=>{
+  const j=b.dataset.jump; stack.length=0;
+  if(['ok','unk','blocked'].includes(j)){cur='menu';openRecipe(j);return;}
+  if(j.startsWith('scan-')){openScan(j.slice(5));document.querySelectorAll('.jump button').forEach(x=>x.setAttribute('aria-pressed',x===b));return;}
+  if(j==='manual'){openManual(false);return;}
+  if(j==='plan'||j==='menu'){show('menu');document.querySelector('#menuSeg [data-view="'+(j==='plan'?'plan':'tonight')+'"]').click();document.querySelectorAll('.jump button').forEach(x=>x.setAttribute('aria-pressed',x===b));return;}
+  show(j);}));
+// inventory: location tabs, sort by expiry, needs-confirmation filter
+const inv={loc:'all',sort:false,conf:false};
+function renderInv(){
+  const flat=inv.sort||inv.conf;
+  document.getElementById('invGrouped').hidden=flat; document.getElementById('invFlat').hidden=!flat;
+  document.querySelectorAll('#invGrouped .locgrp').forEach(g=>g.hidden=!(inv.loc==='all'||g.dataset.loc===inv.loc));
+  if(!flat) return;
+  let rows=[...document.querySelectorAll('#invGrouped .row.inv')].filter(r=>(inv.loc==='all'||r.dataset.loc===inv.loc)&&(!inv.conf||r.dataset.conf==='1'));
+  if(inv.sort) rows.sort((x,y)=>(+x.dataset.days)-(+y.dataset.days));
+  const list=document.getElementById('flatList'); list.innerHTML=''; rows.forEach(r=>list.appendChild(r.cloneNode(true)));
+  document.getElementById('flatTitle').textContent=inv.conf?'Needs confirmation':'Soonest first';
+  document.getElementById('flatCount').textContent=rows.length;
+  document.getElementById('flatEmpty').hidden=rows.length>0;
+}
+document.querySelectorAll('#seg button').forEach(b=>b.addEventListener('click',()=>{
+  document.querySelectorAll('#seg button').forEach(x=>x.setAttribute('aria-pressed',x===b)); inv.loc=b.dataset.loc; renderInv();}));
+document.getElementById('sortExp').addEventListener('click',e=>{inv.sort=!inv.sort;e.currentTarget.setAttribute('aria-pressed',inv.sort);renderInv();});
+document.getElementById('filtConf').addEventListener('click',e=>{inv.conf=!inv.conf;e.currentTarget.setAttribute('aria-pressed',inv.conf);renderInv();});
+// confirming an AI read clears it from both trays and turns the row into a Known Fact
+function confirmInv(btn,name){
+  const key=btn.closest('.ci').dataset.item;
+  document.querySelectorAll('.ci[data-item="'+key+'"]').forEach(c=>c.remove());
+  document.querySelectorAll('.row.inv[data-item="'+key+'"]').forEach(r=>{r.dataset.conf='0';const p=r.querySelector('.prov');p.className='prov fact';p.textContent='✓ Fact';});
+  const left=document.querySelectorAll('#invTray .ci').length; document.getElementById('trayCount').textContent=left;
+  if(!left) document.getElementById('invTray').hidden=true;
+  if(!document.querySelectorAll('#homeTray .ci').length) document.getElementById('homeTray').hidden=true;
+  renderInv(); toast(name+' confirmed · now a Known Fact');
+}
+// menu: Tonight / Plan ahead, filter chips, slot picker
+document.querySelectorAll('#menuSeg button').forEach(b=>b.addEventListener('click',()=>{
+  document.querySelectorAll('#menuSeg button').forEach(x=>x.setAttribute('aria-pressed',x===b));
+  document.querySelectorAll('#menu .mv').forEach(v=>v.hidden=v.dataset.view!==b.dataset.view);}));
+document.querySelectorAll('#menu .mv[data-view=tonight] .chip').forEach(c=>c.addEventListener('click',()=>c.setAttribute('aria-pressed',c.getAttribute('aria-pressed')!=='true')));
+function pickForSlot(name,img){
+  const slot=document.getElementById('emptySlot');
+  const b=document.createElement('button'); b.className='slot'; b.onclick=()=>toast('Recipe detail in this preview covers the stir&#8209;fry, miso salmon and peanut noodles');
+  b.innerHTML='<span class="d"><b>Sun</b><i>dinner</i></span><span class="th"><img src="img/'+img+'.webp" alt=""></span><span class="m"><b>'+name+'</b><i>just added</i></span>';
+  slot.replaceWith(b);
+  document.getElementById('slotsFilled').textContent='3'; closeSheet(); toast(name.replace('&amp;','&')+' added to Weekend menu · Sun dinner');
+}
+
+// add food: scan states, quantity + location, manual entry (v5 behaviour and copy)
+function openScan(state){
+  const sc=document.getElementById('scan'); sc.dataset.state=state;
+  sc.querySelectorAll('[data-for]').forEach(el=>el.hidden=el.dataset.for!==state);
+  sc.querySelector('.frame').hidden=state==='denied';
+  if(cur==='scan') syncJump(); else go('scan');
+}
+let scanQty=2, scanLoc='Fridge';
+function scanCta(){document.getElementById('scanCta').textContent='Add '+scanQty+' to '+scanLoc;}
+function stepScan(d){scanQty=Math.max(1,scanQty+d);document.getElementById('scanQty').textContent=scanQty;scanCta();}
+function chipGroup(id,cb){document.querySelectorAll('#'+id+' .chip').forEach(c=>c.addEventListener('click',()=>{
+  document.querySelectorAll('#'+id+' .chip').forEach(x=>x.setAttribute('aria-pressed',x===c)); cb&&cb(c);}));}
+chipGroup('scanLoc',c=>{scanLoc=c.textContent.trim();scanCta();});
+function confirmScan(){if(dev.newUser||dev.home==='empty'){dev.newUser=false;dev.home='sparse';applyDev();}toast('Added '+scanQty+' × Greek yogurt to '+scanLoc+' · Known Fact');stack.length=0;show('inventory');}
+const UNITS={mass:['g','kg','oz','lb'],volume:['ml','l','tsp','tbsp','cup','fl oz'],count:['each']};
+let manQty=1, manUnit='g', manLoc='Fridge';
+function renderUnits(kind){const w=document.getElementById('unitChips');w.innerHTML='';
+  UNITS[kind].forEach((u,i)=>{const b=document.createElement('button');b.className='chip';b.textContent=u;b.setAttribute('aria-pressed',i===0);
+    b.onclick=()=>{w.querySelectorAll('.chip').forEach(x=>x.setAttribute('aria-pressed',x===b));manUnit=u;};w.appendChild(b);});
+  manUnit=UNITS[kind][0];}
+chipGroup('unitKind',c=>renderUnits(c.dataset.kind)); renderUnits('mass');
+chipGroup('manLoc',c=>{manLoc=c.textContent.trim();});
+function stepMan(d){manQty=Math.max(1,manQty+d);document.getElementById('manQty').textContent=manQty;}
+function openManual(fromMiss){document.getElementById('codeNote').hidden=!fromMiss;go('manual');}
+function saveManual(){const n=(document.getElementById('manName').value||'New item').trim();
+  toast('Added '+n+' · '+manQty+' '+manUnit+' to '+manLoc+' · Known Fact');document.getElementById('manName').value='';stack.length=0;show('inventory');}
+
+// simulated states (v5 dev switches): new user, home state, offline, menu tonight mode
+const dev={newUser:false,home:'ready',offline:false,menu:'normal'};
+const HOME_LABEL={ready:'ready',sparse:'almost there',empty:'empty'};
+const MENU_LABEL={normal:'normal',empty:'no matches',blocked:'all blocked'};
+function applyDev(){
+  const dv=document.getElementById('device');
+  dv.classList.remove('h-ready','h-sparse','h-empty'); dv.classList.add('h-'+dev.home);
+  dv.classList.toggle('offline',dev.offline);
+  const m=document.getElementById('menu'); m.classList.remove('m-normal','m-empty','m-blocked'); m.classList.add('m-'+dev.menu);
+  document.getElementById('sNew').setAttribute('aria-pressed',dev.newUser);
+  document.getElementById('sOff').setAttribute('aria-pressed',dev.offline);
+  document.getElementById('sHome').textContent='Home: '+HOME_LABEL[dev.home];
+  document.getElementById('sMenu').textContent='Menu tonight: '+MENU_LABEL[dev.menu];
+}
+document.getElementById('sNew').addEventListener('click',()=>{
+  dev.newUser=!dev.newUser; stack.length=0;
+  if(dev.newUser){dev.home='empty';applyDev();show('account');} else {dev.home='ready';applyDev();show('home');}
+});
+document.getElementById('sHome').addEventListener('click',()=>{
+  dev.home=dev.home==='ready'?'sparse':dev.home==='sparse'?'empty':'ready'; applyDev(); stack.length=0; show('home');
+});
+document.getElementById('sOff').addEventListener('click',()=>{dev.offline=!dev.offline; applyDev(); if(dev.offline){stack.length=0;show('shopping');}});
+document.getElementById('sMenu').addEventListener('click',()=>{
+  dev.menu=dev.menu==='normal'?'empty':dev.menu==='empty'?'blocked':'normal'; applyDev(); stack.length=0; show('menu');
+  document.querySelector('#menuSeg [data-view="tonight"]').click();
+});
+function avatarTap(){go(dev.newUser?'account':'profile');}
+// S1 account + household
+function startHousehold(kind){
+  if(kind==='create'){toast('Household "'+((document.getElementById('hhName').value||'The Chens').trim())+'" created');}
+  else{toast('Joined household via code '+((document.getElementById('hhCode').value||'CHEN-482').trim()));}
+  go('allergies');
+}
+// S2 allergies + preferences
+let allergens={peanut:'severe',sesame:'severe'};
+function renderSeverity(){
+  const el=document.getElementById('severityList'); el.innerHTML='';
+  Object.keys(allergens).forEach(t=>{
+    const label=t.startsWith('custom:')?t.slice(7):t.replace('_',' '); const sev=allergens[t];
+    const row=document.createElement('div'); row.className='sev';
+    row.innerHTML='<span>'+label+'</span><button aria-pressed="'+(sev==='standard')+'">Standard</button><button aria-pressed="'+(sev==='severe')+'">Severe</button>';
+    const [b1,b2]=row.querySelectorAll('button');
+    b1.setAttribute('aria-label',label+' standard'); b2.setAttribute('aria-label',label+' severe');
+    b1.onclick=()=>{allergens[t]='standard';renderSeverity();}; b2.onclick=()=>{allergens[t]='severe';renderSeverity();};
+    el.appendChild(row);
+  });
+}
+document.querySelectorAll('#allergenChips .chip').forEach(c=>c.addEventListener('click',()=>{
+  const on=c.getAttribute('aria-pressed')!=='true'; c.setAttribute('aria-pressed',on); const t=c.dataset.term;
+  if(on){allergens[t]=allergens[t]||'standard';document.getElementById('noneBtn').setAttribute('aria-pressed','false');} else delete allergens[t];
+  renderSeverity();
+}));
+function addCustomAllergen(){const i=document.getElementById('customAllergen');const v=i.value.trim();if(!v)return;
+  allergens['custom:'+v.toLowerCase()]='standard';i.value='';document.getElementById('noneBtn').setAttribute('aria-pressed','false');renderSeverity();}
+function toggleNone(){const b=document.getElementById('noneBtn');const on=b.getAttribute('aria-pressed')!=='true';b.setAttribute('aria-pressed',on);
+  if(on){allergens={};document.querySelectorAll('#allergenChips .chip').forEach(c=>c.setAttribute('aria-pressed','false'));renderSeverity();}}
+document.querySelectorAll('#prefChips .chip').forEach(c=>c.addEventListener('click',()=>c.setAttribute('aria-pressed',c.getAttribute('aria-pressed')!=='true')));
+function continueAllergies(){
+  const none=document.getElementById('noneBtn').getAttribute('aria-pressed')==='true';
+  if(!none&&!Object.keys(allergens).length){toast('Select at least one allergen, or confirm none, to continue');return;}
+  toast('Allergy profile saved for Maya Chen');
+  if(dev.newUser){stack.length=0;show('home');} else go('profile');
+}
+function skipPreferences(){document.querySelectorAll('#prefChips .chip').forEach(c=>c.setAttribute('aria-pressed','false'));continueAllergies();}
+renderSeverity();
+// S5 item detail (chicken breast), v5 behaviour
+let itemQty=1.25,itemBase=1.25,pendingAct=null;
+function stepItem(d){itemQty=Math.max(0,+(itemQty+d).toFixed(2));document.getElementById('itemQtyVal').textContent=itemQty.toFixed(2);}
+function ledRow(title,meta,amt,pos){const r=document.createElement('div');r.className='led';
+  r.innerHTML='<div class="m"><b>'+title+'</b><i>'+meta+'</i></div><div class="amt '+(pos?'pos':'neg')+' num">'+amt+'</div>';return r;}
+function correctQty(){
+  const d=+(itemQty-itemBase).toFixed(2); if(d===0){toast('No change to record');return;}
+  const list=document.getElementById('historyList');
+  list.insertBefore(ledRow('Adjustment','<span class="mchip">DC</span>one-tap correction <span class="prov fact">✓ Fact</span> just now',(d>0?'+':'−')+Math.abs(d).toFixed(2)+' lb',d>0),list.firstChild);
+  itemBase=itemQty; document.getElementById('itemQtyDisplay').textContent=itemQty.toFixed(2)+' lb';
+  document.getElementById('whyPlain').innerHTML='<b>Why '+itemQty.toFixed(2)+' lb?</b> Includes a one-tap correction made just now. See History below for the full ledger. <button class="lg" onclick="go(\'legend\')">What do these badges mean?</button>';
+  toast('Corrected to '+itemQty.toFixed(2)+' lb · Undo');
+}
+document.querySelectorAll('#reasonTop .chip').forEach(c=>c.addEventListener('click',()=>{
+  document.querySelectorAll('#reasonTop .chip').forEach(x=>x.setAttribute('aria-pressed',x===c)); pendingAct=c.dataset.act;
+  document.getElementById('reasonChips').hidden=false;}));
+function applyReason(btn){
+  const reason=btn.textContent.trim().toLowerCase(), label=pendingAct||'Updated';
+  document.getElementById('ledgerEnd').before(ledRow(label,'<span class="mchip">DC</span>reason: '+reason+' <span class="prov fact">✓ Fact</span> just now','−'+itemBase.toFixed(2)+' lb',false));
+  itemBase=0;itemQty=0;document.getElementById('itemQtyDisplay').textContent='0.00 lb';document.getElementById('itemQtyVal').textContent='0.00';
+  document.getElementById('reasonChips').hidden=true;
+  toast(label+' · reason: '+reason+' · Undo'); go('inventory');
+}
+applyDev();
+
+// why
+function toggleWhy(id,btn){const o=document.getElementById(id).classList.toggle('open');btn.setAttribute('aria-expanded',o);}
+// shopping
+function updateCount(){document.getElementById('buyCount').textContent=document.querySelectorAll('#shopping .chk[aria-pressed=false]').length;}
+function toggleCheck(b){const on=b.getAttribute('aria-pressed')!=='true';b.setAttribute('aria-pressed',on);b.closest('.srow').classList.toggle('done',on);updateCount();}
+function removeRow(b,msg){b.closest('.srow').remove();updateCount();toast(msg);}
+// sheets
+let lastFocus=null;
+function openSheet(id){lastFocus=document.activeElement;const m=document.getElementById(id);m.classList.add('on');m.querySelector('.sheet').focus();}
+function closeSheet(){document.querySelectorAll('.modal.on').forEach(m=>m.classList.remove('on'));lastFocus&&lastFocus.focus();}
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeSheet();});
+// toast
+let tt;function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('on');clearTimeout(tt);tt=setTimeout(()=>t.classList.remove('on'),2400);}
+// deep link: #ok #unk #blocked #menu ...
+const h=location.hash.slice(1); if(h){const b=document.querySelector(`.jump [data-jump="${h}"]`); b&&b.click();}
+</script>
+</body>
+</html>
