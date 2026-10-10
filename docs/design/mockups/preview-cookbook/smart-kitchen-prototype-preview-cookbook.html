@@ -435,11 +435,38 @@ img{display:block}
 .evid{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:10px;font-size:12.5px;color:var(--ink2)}
 .inbar{flex:0 0 auto;display:flex;gap:10px;align-items:center;padding:10px 16px 22px;border-top:1px solid var(--ink);background:var(--paper)}
 .send{width:46px;height:46px;border-radius:50%;background:var(--ink);color:#fff;display:grid;place-items:center;flex:0 0 46px}
+
+/* fit: the phone never taller than the window on a laptop */
+.phone{height:min(820px,calc(100dvh - 24px))}
+.mbar{display:none}
+/* on a real phone: no drawn phone, the app fills the screen, pickers collapse */
+@media (max-width:520px){
+  .stagehead{position:sticky;top:0;z-index:50;background:var(--stage);padding:8px 12px;border-bottom:1px solid #d3d2cd}
+  .stagehead h1,.stagehead p,.jump{display:none}
+  .mbar{display:flex;gap:8px;align-items:center}
+  .mlbl{font:700 12px/1 'Schibsted Grotesk';letter-spacing:.12em;text-transform:uppercase;color:#4a4945}
+  #jumpSel{flex:1;min-width:0;min-height:44px;border:1.5px solid #151515;border-radius:999px;background:#fff;padding:0 14px;font:600 14px/1 'Schibsted Grotesk';color:#151515}
+  #statesTgl{min-height:44px;padding:0 16px;border-radius:999px;border:1.5px dashed #9a978f;font:600 14px/1 'Schibsted Grotesk'}
+  #statesTgl[aria-expanded=true]{background:#151515;color:#fff;border-style:solid;border-color:#151515}
+  .statesbar{display:none;justify-content:flex-start;margin-top:8px}
+  .statesbar.open{display:flex}
+  .statesbar .slbl{display:none}
+  .phone{width:100%;max-width:none;height:calc(100dvh - 61px);margin:0;padding:0;border-radius:0;background:none;box-shadow:none}
+  .device{border-radius:0}
+  .sb{display:none}
+  .camtop{padding-top:14px}
+  .foot{padding-top:18px}
+}
 </style>
 </head>
 <body>
 
 <header class="stagehead">
+  <div class="mbar">
+    <label for="jumpSel" class="mlbl">Screen</label>
+    <select id="jumpSel"></select>
+    <button id="statesTgl" aria-expanded="false" aria-controls="statesBar">States</button>
+  </div>
   <h1>Smart Kitchen · Cookbook preview</h1>
   <p>Prototype v5's data and safety copy in the Cookbook look, with AI-generated food photos made from each recipe's ingredient list. A preview only: v5 is still the build reference.</p>
   <div class="jump" role="group" aria-label="Jump to screen">
@@ -463,7 +490,7 @@ img{display:block}
     <button data-jump="profile" aria-pressed="false">Profile</button>
     <button data-jump="assistant" aria-pressed="false">Assistant</button>
   </div>
-  <div class="statesbar" role="group" aria-label="Simulate states">
+  <div class="statesbar" id="statesBar" role="group" aria-label="Simulate states">
     <span class="slbl">States</span>
     <button id="sNew" aria-pressed="false">New user</button>
     <button id="sHome">Home: ready</button>
@@ -1259,6 +1286,16 @@ function applyReason(btn){
 }
 applyDev();
 
+// phone layout: screen dropdown mirrors the jump buttons; states toggle
+(function(){
+  const sel=document.getElementById('jumpSel');
+  document.querySelectorAll('.jump button').forEach(b=>{const o=document.createElement('option');o.value=b.dataset.jump;o.textContent=b.textContent;sel.appendChild(o);});
+  sel.addEventListener('change',()=>{const b=document.querySelector('.jump [data-jump="'+sel.value+'"]');b&&b.click();});
+  const t=document.getElementById('statesTgl'),bar=document.getElementById('statesBar');
+  t.addEventListener('click',()=>{const o=!bar.classList.contains('open');bar.classList.toggle('open',o);t.setAttribute('aria-expanded',o);});
+  new MutationObserver(()=>{const p=document.querySelector('.jump button[aria-pressed=true]');if(p&&sel.value!==p.dataset.jump)sel.value=p.dataset.jump;})
+    .observe(document.querySelector('.jump'),{subtree:true,attributes:true,attributeFilter:['aria-pressed']});
+})();
 // why
 function toggleWhy(id,btn){const o=document.getElementById(id).classList.toggle('open');btn.setAttribute('aria-expanded',o);}
 // shopping
@@ -1273,7 +1310,7 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape')closeSheet();});
 // toast
 let tt;function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('on');clearTimeout(tt);tt=setTimeout(()=>t.classList.remove('on'),2400);}
 // deep link: #ok #unk #blocked #menu ...
-const h=location.hash.slice(1); if(h){const b=document.querySelector(`.jump [data-jump="${h}"]`); b&&b.click();}
+const h=location.hash.slice(1); if(h){const b=document.querySelector(`.jump [data-jump="${h}"]`); b&&b.click(); setTimeout(()=>window.scrollTo(0,0),0);}
 </script>
 </body>
 </html>
