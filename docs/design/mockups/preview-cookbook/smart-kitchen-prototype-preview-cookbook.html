@@ -73,7 +73,6 @@ img{display:block}
 .mast .name{font:600 12px/1 'Schibsted Grotesk';letter-spacing:.22em;text-transform:uppercase}
 .av{width:38px;height:38px;border-radius:50%;background:var(--ink);color:#fff;display:grid;place-items:center;font:700 12px/1 'Schibsted Grotesk'}
 .rule{height:1px;background:var(--ink);margin:12px 20px 0}
-.kick{padding:18px 20px 0;font:700 12px/1 'Schibsted Grotesk';letter-spacing:.2em;text-transform:uppercase;color:var(--ink2)}
 .h1{padding:8px 20px 0;font-size:40px;line-height:1.02;letter-spacing:-.015em}
 .title{padding:12px 20px 0;font-size:44px;line-height:1;letter-spacing:-.015em}
 .sub{padding:6px 20px 0;font:500 13.5px/1.35 'Schibsted Grotesk';color:var(--ink2)}
@@ -277,23 +276,23 @@ img{display:block}
 .pick{display:flex;justify-content:space-between;align-items:center;width:100%;padding:12px 0;border-bottom:1px solid var(--hair);min-height:52px;font:600 14.5px/1.3 'Schibsted Grotesk';text-align:left}
 .pick .pp{font:500 20px/1 'Bodoni Moda'}
 
-/* add food */
-.modes{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:18px 20px 0}
-.mode{position:relative;display:flex;flex-direction:column;align-items:flex-start;gap:4px;text-align:left;padding:16px 14px;min-height:168px;border:1px solid var(--ink);background:var(--paper)}
-.mode .mi{width:44px;height:44px;display:grid;place-items:center;border:1px solid var(--hair);margin-bottom:10px}
-.mode .phase{margin-top:10px}
-.mode i{margin-bottom:2px}
-.mode b{font:700 15.5px/1.2 'Schibsted Grotesk'}
-.mode i{font-style:normal;font-size:13px;line-height:1.35;color:var(--ink2)}
-.mode.pri{background:var(--ink);color:#fff}
-.mode.pri .mi{border-color:rgba(255,255,255,.35)}
-.mode.pri i{color:rgba(255,255,255,.75)}
-.mode.ai{background:var(--ai-bg);border-color:var(--ai)}
-.mode.ai b{color:#4a2f73}
-.mode.ai i{color:var(--ai-ink)}
-.mode.ai .mi{border-color:#cdb8e6;color:var(--ai)}
-.phase{order:9;margin-top:auto;font:700 12px/1 'Schibsted Grotesk';letter-spacing:.1em;text-transform:uppercase;padding:6px 8px;background:var(--tile);color:var(--ink2)}
-.mode.ai .phase{background:#fff;color:var(--ai)}
+/* add food: one primary block, then ruled rows (2026-10-12 critique) */
+.addprimary{display:flex;align-items:center;gap:14px;width:calc(100% - 40px);margin:20px 20px 0;padding:18px 16px;min-height:88px;background:var(--ink);color:#fff;border-radius:14px;text-align:left}
+.addprimary:focus-visible{border-radius:14px}
+.addprimary .ap{flex:1;min-width:0}
+.addprimary b{display:block;font:700 17px/1.2 'Schibsted Grotesk'}
+.addprimary .ap span{display:block;font-size:13.5px;line-height:1.4;color:rgba(255,255,255,.78);margin-top:3px}
+.addlist{border-top:1px solid var(--ink);margin-top:14px}
+.sec + .addlist{border-top:0;margin-top:0}
+.arow{display:flex;align-items:center;gap:14px;width:100%;min-height:68px;padding:12px 0;border-bottom:1px solid var(--hair);text-align:left}
+.arow .am{flex:1;min-width:0}
+.arow b{display:flex;align-items:center;gap:8px;font:700 15.5px/1.2 'Schibsted Grotesk'}
+.arow .am>span{display:block;font-size:13px;line-height:1.4;color:var(--ink2);margin-top:3px}
+.arow .chev{color:var(--ink2)}
+.arow.soon{color:var(--ink2)}
+.arow.soon b{font-weight:600;color:var(--ink2)}
+.arow.soon .am>span{color:var(--ink3)}
+.arow.soon .prov{font-size:12px}
 /* scan */
 #scan{background:#121212}
 .cam{position:relative;flex:0 0 auto;height:300px;background:radial-gradient(120% 90% at 50% 40%,#2b2a27,#121212);color:#f3f1ec;display:flex;flex-direction:column;align-items:center}
@@ -457,6 +456,35 @@ img{display:block}
   .camtop{padding-top:14px}
   .foot{padding-top:18px}
 }
+
+/* polish 2026-10-12 */
+.num{font-variant-numeric:lining-nums}
+.stats .v,.macros b,.qtybig b{font-variant-numeric:tabular-nums lining-nums}
+.stats .v,.stats .l{display:block}
+.rec{position:relative}
+.reclink{font:inherit;color:inherit;text-align:left;padding:0;background:none;border:0;cursor:pointer}
+.reclink::after{content:"";position:absolute;inset:0}
+.reclink:focus-visible{outline:none}
+.rec:has(.reclink:focus-visible){outline:2.5px solid #2442d6;outline-offset:4px}
+#invTray .ci{flex-wrap:wrap}
+#invTray .ci .m{flex:1 1 calc(100% - 54px)}
+#invTray .ci .okb:first-of-type{margin-left:54px}
+::selection{background:#151515;color:#fbfaf6}
+input{caret-color:#151515}
+@media (hover:hover){
+  .btn:not(.pri):not(.light):hover{background:var(--tile)}
+  .btn.pri:not(.inv):hover{background:#2b2b2b}
+  .btn.pri.inv:hover{background:#e4e1d9}
+  .btn.light:hover{background:rgba(255,255,255,.1)}
+  .chip:hover:not([aria-pressed=true]),.okb.ghost:hover{background:var(--tile)}
+  .okb:not(.ghost):hover{background:#2b2b2b}
+  .loop .okb:hover{background:#235f3d}
+  button.row:hover,.arow:not(.soon):hover,.slot:hover,.pick:hover{background:#f4f2ec}
+  .rec:hover .reclink{text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:5px}
+  .nav button:not(.add):hover{color:var(--ink)}
+  .addprimary:hover{background:#2b2b2b}
+  .lnk:hover,.lg:hover{text-decoration-color:var(--ink)}
+}
 </style>
 </head>
 <body>
@@ -546,9 +574,9 @@ img{display:block}
     <div class="tastes" id="tastesCard"><div><b>Tell us your tastes</b><i>Cuisines you like, how you eat, how much time you have. About a minute, and it only sharpens ranking. Allergies are already handled.</i></div><div class="tb"><button class="okb" onclick="toast('Preferences · 4 quick questions · not wired in this preview')">Start</button><button class="okb ghost" onclick="document.getElementById('tastesCard').remove();toast('Skipped · ask again from Profile')">Skip</button></div></div>
 
     <div class="stats num">
-      <button onclick="go('inventory')"><div class="v">4</div><div class="l">use this week</div></button>
-      <button onclick="go('shopping')"><div class="v">5</div><div class="l">to buy</div></button>
-      <button onclick="go('inventory')"><div class="v">67%</div><div class="l">verified</div></button>
+      <button onclick="go('inventory')"><span class="v">4</span><span class="l">use this week</span></button>
+      <button onclick="go('shopping')"><span class="v">5</span><span class="l">to buy</span></button>
+      <button onclick="go('inventory')"><span class="v">67%</span><span class="l">verified</span></button>
     </div>
 
     <div class="sec"><h2 class="serif">Use it soon</h2><button class="lnk" onclick="go('inventory')">Inventory</button></div>
@@ -569,9 +597,9 @@ img{display:block}
 
     <div data-h="sparse">
       <div class="stats num">
-        <button onclick="go('inventory')"><div class="v">6</div><div class="l">items on hand</div></button>
-        <button onclick="go('menu')"><div class="v">0</div><div class="l">menus yet</div></button>
-        <button onclick="go('add')"><div class="v">+2</div><div class="l">to unlock ideas</div></button>
+        <button onclick="go('inventory')"><span class="v">6</span><span class="l">items on hand</span></button>
+        <button onclick="go('menu')"><span class="v">0</span><span class="l">menus yet</span></button>
+        <button onclick="go('add')"><span class="v">+2</span><span class="l">to unlock ideas</span></button>
       </div>
       <div class="boxed" style="margin-top:18px">
         <h2 class="serif" style="font-size:26px;line-height:1.05">Almost there</h2>
@@ -664,19 +692,19 @@ img{display:block}
       <div class="chips"><button class="chip" aria-pressed="false">≤ 30 min</button><button class="chip" aria-pressed="false">High protein</button><button class="chip" aria-pressed="false">Uses expiring</button><button class="chip" aria-pressed="false">Kid-friendly</button></div>
 
       <div class="rec-normal">
-      <button class="rec" onclick="openRecipe('ok')"><div class="ph"><img src="img/dish-chicken-spinach-stir-fry.webp" alt="Chicken and spinach stir-fry"><span class="pct num">92<small>% coverage</small></span></div><h2 class="serif">Chicken &amp; spinach <span style="white-space:nowrap">stir&#8209;fry</span></h2><div class="meta num">25 min · 540 cal · uses 3 expiring</div><div class="need">spinach, mushrooms, rice · <span class="short num">+ 0.75 lb chicken, garlic</span></div><div class="verdict ok"><div class="l"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><use href="#i-shield"/></svg>No known allergen match · 2 members</div><div class="c">Known matches only · not a guarantee this food is safe.</div></div></button>
+      <div class="rec"><div class="ph"><img src="img/dish-chicken-spinach-stir-fry.webp" alt="Chicken and spinach stir-fry"><span class="pct num">92<small>% coverage</small></span></div><h2 class="serif"><button class="reclink" onclick="openRecipe('ok')">Chicken &amp; spinach <span style="white-space:nowrap">stir&#8209;fry</span></button></h2><div class="meta num">25 min · 540 cal · uses 3 expiring</div><div class="need">spinach, mushrooms, rice · <span class="short num">+ 0.75 lb chicken, garlic</span></div><div class="verdict ok"><div class="l"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><use href="#i-shield"/></svg>No known allergen match · 2 members</div><div class="c">Known matches only · not a guarantee this food is safe.</div></div></div>
 
-      <button class="rec" onclick="toast('Recipe detail in this preview covers the stir-fry, miso salmon and peanut noodles')"><div class="ph"><img src="img/dish-yogurt-berry-parfait.webp" alt="Yogurt berry parfait"><span class="pct num">84<small>% coverage</small></span></div><h2 class="serif">Yogurt berry parfait</h2><div class="meta num">10 min · 320 cal · breakfast</div><div class="need">yogurt, strawberries · <span class="short">+ granola</span></div><div class="verdict ok"><div class="l"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><use href="#i-shield"/></svg>No known allergen match · 2 members</div><div class="c">Known matches only · not a guarantee this food is safe.</div></div></button>
+      <div class="rec"><div class="ph"><img src="img/dish-yogurt-berry-parfait.webp" alt="Yogurt berry parfait"><span class="pct num">84<small>% coverage</small></span></div><h2 class="serif"><button class="reclink" onclick="toast('Recipe detail in this preview covers the stir-fry, miso salmon and peanut noodles')">Yogurt berry parfait</button></h2><div class="meta num">10 min · 320 cal · breakfast</div><div class="need">yogurt, strawberries · <span class="short">+ granola</span></div><div class="verdict ok"><div class="l"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><use href="#i-shield"/></svg>No known allergen match · 2 members</div><div class="c">Known matches only · not a guarantee this food is safe.</div></div></div>
 
-      <button class="rec" onclick="openRecipe('unk')"><div class="ph"><img src="img/dish-miso-glazed-salmon.webp" alt="Miso-glazed salmon"><span class="pct num">78<small>% coverage</small></span></div><h2 class="serif">Miso-glazed salmon</h2><div class="meta num">30 min · 610 cal · thaw first</div><div class="need">salmon, rice · <span class="short">+ miso, broccoli, garlic</span></div><div class="verdict unk"><div class="l"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><use href="#i-warn"/></svg>Allergen data incomplete for Maya, severe sesame allergy</div><div class="c">Known matches only · not a guarantee this food is safe.</div></div></button>
+      <div class="rec"><div class="ph"><img src="img/dish-miso-glazed-salmon.webp" alt="Miso-glazed salmon"><span class="pct num">78<small>% coverage</small></span></div><h2 class="serif"><button class="reclink" onclick="openRecipe('unk')">Miso-glazed salmon</button></h2><div class="meta num">30 min · 610 cal · thaw first</div><div class="need">salmon, rice · <span class="short">+ miso, broccoli, garlic</span></div><div class="verdict unk"><div class="l"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><use href="#i-warn"/></svg>Allergen data incomplete for Maya, severe sesame allergy</div><div class="c">Known matches only · not a guarantee this food is safe.</div></div></div>
 
-      <button class="rec blocked" onclick="openRecipe('blocked')"><div class="ph"><img src="img/dish-thai-peanut-noodles.webp" alt="Thai peanut noodles"></div><h2 class="serif">Thai peanut noodles</h2><div style="height:10px"></div><div class="blockbar"><span class="sh"><svg width="13" height="13" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round"><use href="#i-warn"/></svg></span>Contains peanut · matched 'peanuts' in the ingredient statement · blocked for Maya</div><div class="note">Blocked recipes are shown for transparency, and cannot be cooked or planned.</div><div class="note" style="margin-top:2px">Known matches only · not a guarantee this food is safe.</div></button>
+      <div class="rec blocked"><div class="ph"><img src="img/dish-thai-peanut-noodles.webp" alt="Thai peanut noodles"></div><h2 class="serif"><button class="reclink" onclick="openRecipe('blocked')">Thai peanut noodles</button></h2><div style="height:10px"></div><div class="blockbar"><span class="sh"><svg width="13" height="13" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round"><use href="#i-warn"/></svg></span>Contains peanut · matched 'peanuts' in the ingredient statement · blocked for Maya</div><div class="note">Blocked recipes are shown for transparency, and cannot be cooked or planned.</div><div class="note" style="margin-top:2px">Known matches only · not a guarantee this food is safe.</div></div>
       </div>
       <div class="rec-empty"><div class="emptyst"><h2 class="serif">No recipes match yet</h2><p>Add a few more staples and we can suggest what to cook tonight. Try adding a protein or a vegetable.</p><button class="btn pri" onclick="go('add')">Add an item</button></div></div>
       <div class="rec-blocked">
         <div style="margin:16px 20px 0"><div class="blockbar"><span class="sh"><svg width="13" height="13" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round"><use href="#i-warn"/></svg></span>Every candidate tonight is blocked for at least one member</div><div class="note">Known matches only · not a guarantee this food is safe.</div></div>
-        <button class="rec blocked" onclick="openRecipe('blocked')"><div class="ph"><img src="img/dish-thai-peanut-noodles.webp" alt="Thai peanut noodles"></div><h2 class="serif">Thai peanut noodles</h2><div style="height:10px"></div><div class="blockbar"><span class="sh"><svg width="13" height="13" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round"><use href="#i-warn"/></svg></span>Contains peanut · matched 'peanuts' in the ingredient statement · blocked for Maya</div></button>
-        <button class="rec blocked" onclick="toast('Recipe detail reuses the Thai peanut noodles example for the blocked state')"><div class="ph lettr" aria-hidden="true">S</div><h2 class="serif">Sesame noodle bowl</h2><div style="height:10px"></div><div class="blockbar"><span class="sh"><svg width="13" height="13" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round"><use href="#i-warn"/></svg></span>Contains sesame · matched 'tahini' in the ingredient statement · blocked for Maya</div></button>
+        <div class="rec blocked"><div class="ph"><img src="img/dish-thai-peanut-noodles.webp" alt="Thai peanut noodles"></div><h2 class="serif"><button class="reclink" onclick="openRecipe('blocked')">Thai peanut noodles</button></h2><div style="height:10px"></div><div class="blockbar"><span class="sh"><svg width="13" height="13" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round"><use href="#i-warn"/></svg></span>Contains peanut · matched 'peanuts' in the ingredient statement · blocked for Maya</div></div>
+        <div class="rec blocked"><div class="ph lettr" aria-hidden="true">S</div><h2 class="serif"><button class="reclink" onclick="toast('Recipe detail reuses the Thai peanut noodles example for the blocked state')">Sesame noodle bowl</button></h2><div style="height:10px"></div><div class="blockbar"><span class="sh"><svg width="13" height="13" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round"><use href="#i-warn"/></svg></span>Contains sesame · matched 'tahini' in the ingredient statement · blocked for Maya</div></div>
         <p class="pad note" style="margin-top:12px">Blocked recipes are shown for transparency only. Add more inventory or adjust who is eating to see other matches.</p>
       </div>
     </div>
@@ -727,31 +755,31 @@ img{display:block}
 
 <!-- ======================= ADD FOOD ======================= -->
 <section class="screen" id="add" aria-label="Add food">
+  <!-- 2026-10-12 restructure after /impeccable critique (PO chose: restructure, "Coming soon", neutral AI row).
+       PROPOSED strings, not yet in the copy deck: the "Coming soon" heading (replaces v5's fast-follow / future phase labels),
+       and the two coming-soon toasts. Every other string is v5's. -->
   <div class="sb"><span class="num">6:45</span><span aria-hidden="true">●●● ▮</span></div>
   <div class="scroll">
     <div class="back"><button class="iconb" aria-label="Back" onclick="goBack()"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><use href="#i-back"/></svg></button></div>
     <h1 class="title serif" style="padding-top:2px">Add food</h1>
     <div class="sub">Every path except manual is a proposal · nothing becomes a Known Fact until you confirm it.</div>
-    <div class="modes">
-      <button class="mode pri" onclick="openScan('match')">
-        <span class="mi"><svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><use href="#i-scan"/></svg></span>
-        <b>Scan barcode</b><i>Product facts fill in from the label database</i>
-      </button>
-      <button class="mode" onclick="toast('Receipt scan · fast-follow phase')">
-        <span class="phase">Fast-follow</span>
-        <span class="mi"><svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><use href="#i-receipt"/></svg></span>
-        <b>Scan receipt</b><i>One photo adds the whole grocery run</i>
-      </button>
-      <button class="mode ai" onclick="toast('Shelf photo · future phase')">
-        <span class="phase">Future</span>
-        <span class="mi"><svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><use href="#i-camera"/></svg></span>
-        <b>Photograph a shelf</b><i>AI proposes what it sees</i>
-      </button>
-      <button class="mode" onclick="openManual(false)">
-        <span class="mi"><svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><use href="#i-pen"/></svg></span>
-        <b>Type it in</b><i>Always available, never blocked</i>
-      </button>
+
+    <button class="addprimary" onclick="openScan('match')">
+      <svg width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#i-scan"/></svg>
+      <span class="ap"><b>Scan barcode</b><span>Product facts fill in from the label database</span></span>
+      <svg class="chev" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transform:rotate(180deg)" aria-hidden="true"><use href="#i-back"/></svg>
+    </button>
+
+    <div class="list addlist">
+      <button class="arow" onclick="openManual(false)"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#i-pen"/></svg><span class="am"><b>Type it in</b><span>Always available, never blocked</span></span><svg class="chev" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transform:rotate(180deg)" aria-hidden="true"><use href="#i-back"/></svg></button>
     </div>
+
+    <div class="sec"><h2 class="serif">Coming soon</h2></div>
+    <div class="list addlist">
+      <button class="arow soon" aria-disabled="true" aria-label="Scan receipt, coming soon" onclick="toast('Receipt scanning is coming soon. For now, scan a barcode or type it in.')"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#i-receipt"/></svg><span class="am"><b>Scan receipt</b><span>One photo adds the whole grocery run</span></span></button>
+      <button class="arow soon" aria-disabled="true" aria-label="Photograph a shelf, coming soon, AI" onclick="toast('Shelf photos are coming soon. For now, scan a barcode or type it in.')"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#i-camera"/></svg><span class="am"><b>Photograph a shelf <span class="prov ai">AI</span></b><span>AI proposes what it sees</span></span></button>
+    </div>
+
     <div class="sec"><h2 class="serif">Recently added</h2></div>
     <div class="list">
       <div class="row"><span class="th"><img src="img/ing-greek-yogurt.webp" alt=""></span><span><b>Greek yogurt · 3</b><span class="q num">barcode · today 6:12 pm</span></span><span class="prov fact">✓ Fact</span></div>
@@ -962,7 +990,7 @@ img{display:block}
 <section class="screen" id="recipe" aria-label="Recipe">
   <div class="sb"><span class="num">6:43</span><span aria-hidden="true">●●● ▮</span></div>
   <div class="scroll">
-    <div class="back"><button class="iconb" aria-label="Back" onclick="goBack()"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><use href="#i-back"/></svg></button><span class="kick" style="padding:0">Recipe</span></div>
+    <div class="back"><button class="iconb" aria-label="Back" onclick="goBack()"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><use href="#i-back"/></svg></button></div>
 
     <!-- ok -->
     <div class="rv" data-v="ok">
@@ -1306,11 +1334,18 @@ function removeRow(b,msg){b.closest('.srow').remove();updateCount();toast(msg);}
 let lastFocus=null;
 function openSheet(id){lastFocus=document.activeElement;const m=document.getElementById(id);m.classList.add('on');m.querySelector('.sheet').focus();}
 function closeSheet(){document.querySelectorAll('.modal.on').forEach(m=>m.classList.remove('on'));lastFocus&&lastFocus.focus();}
-document.addEventListener('keydown',e=>{if(e.key==='Escape')closeSheet();});
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape'){closeSheet();return;}
+  const m=document.querySelector('.modal.on'); if(!m||e.key!=='Tab')return;
+  const f=[...m.querySelectorAll('button:not([disabled]),input,[tabindex]:not([tabindex="-1"])')]; if(!f.length)return;
+  const first=f[0],last=f[f.length-1];
+  if(e.shiftKey&&(document.activeElement===first||!m.contains(document.activeElement))){e.preventDefault();last.focus();}
+  else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus();}
+});
 // toast
 let tt;function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('on');clearTimeout(tt);tt=setTimeout(()=>t.classList.remove('on'),2400);}
 // deep link: #ok #unk #blocked #menu ...
-const h=location.hash.slice(1); if(h){const b=document.querySelector(`.jump [data-jump="${h}"]`); b&&b.click(); setTimeout(()=>window.scrollTo(0,0),0);}
+const h=location.hash.slice(1); if(h){const b=document.querySelector(`.jump [data-jump="${h}"]`); b&&b.click(); window.addEventListener("load",()=>setTimeout(()=>window.scrollTo(0,0),60));}
 </script>
 </body>
 </html>
