@@ -2,6 +2,8 @@
 
 **Status:** PROPOSED. Binding on client implementation once the PO signs off M3-E0 (BACKLOG.md M3-E0-T2 DoD: "the M3 epic links the deck as binding").
 
+**Prototype v6 (2026-10-13, D-033):** v6 keeps every safety and provenance string of this deck verbatim. Its new non-safety strings are marked PROPOSED in the prototype's HTML comments (Add food's "Coming soon" heading and its two toasts, the Home headline "Tonight: <recipe>", the masthead date); M3-E0-T6 lists them for adoption here.
+
 **Scope:** every user-visible string for allergen verdicts, provenance chips, corrections, consumption/shortfall prompts, confirmation trays, phase labels, empty/offline/error/permission states, and the user-facing ledger errors. Out of scope: i18n, marketing copy, assistant dialogue beyond the one labelled preview line this deck needs for coverage.
 
 **Binding rules this deck must satisfy (read together):**

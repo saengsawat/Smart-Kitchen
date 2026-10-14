@@ -1,5 +1,7 @@
 # Design Direction — v2 (2026-09-15), reconciled to the PO's revamped prototype
 
+**Superseded in part (2026-10-13, D-033):** the look in §0 (sand, terracotta, espresso Home hero, Fraunces over Inter) is replaced by prototype v6, the Cookbook direction ([mockups/smart-kitchen-prototype.html](mockups/smart-kitchen-prototype.html)). The semantic and safety rows (danger, warning, positive, urgency, ai) and the §3 safety rules still bind. Until M3-E0-T6 rewrites tokens.md, the v6 values live in the prototype's `:root`.
+
 **Status:** ADOPTED as the visual direction by PO decision (2026-09-15, D-019) — tokens below are the **v2 values used by [mockups/smart-kitchen-prototype.html](mockups/smart-kitchen-prototype.html)**; final token file is produced in M3-E0 with contrast ratios documented. Sections 1–5 below are the v1 synthesis (2026-09-03) kept as rationale; **where v1 and the v2 table in §0 disagree, §0 wins.** Competitor research and the "point of view" argument live in [KitchenSmart UIUX Design Plan_09-14-2026.md](KitchenSmart%20UIUX%20Design%20Plan_09-14-2026.md) (PO's design agent); architect assessment of that plan is §7.
 
 ## 0. v2 token sheet (authoritative)

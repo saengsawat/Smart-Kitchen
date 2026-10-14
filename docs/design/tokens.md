@@ -1,5 +1,7 @@
 # Design Tokens · measured contrast and scarcity audit (M3-E0-T3)
 
+**2026-10-13 (D-033):** prototype v6 (the Cookbook direction) is now the build reference. This sheet still describes the v5 values the app is built on (`apps/mobile/src/design/tokens.ts`); M3-E0-T6 rewrites it for v6. The safety and semantic values below are unchanged in v6.
+
 **Status:** docs only. This file turns [design-direction.md](design-direction.md) §0 into a measured, source-cited token sheet, ready to become the typed token module in M3 (design-direction §4). Every value below is copied verbatim from `:root` in [mockups/smart-kitchen-prototype.html](mockups/smart-kitchen-prototype.html) or marked PROPOSED where this document suggests a change the prototype does not yet make. No hex value in this file was invented; every one traces to `:root` or to a stated arithmetic transform of a `:root` value (documented in the contrast table).
 
 **Inputs carried forward from M3-E0-T1 acceptance** (BACKLOG "Accepted follow-ups from completed tickets", M3-E0-T1 row): measured tap-target shortfalls, `prefers-reduced-motion`, `--danger` on allergy-selection controls, the green-check "none" option, the `--ink-3` dot on the espresso hero, and the two camera-chrome terracotta exceptions. All are addressed in sections 4, 5, 6 and 3 respectively below.

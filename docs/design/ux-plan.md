@@ -59,6 +59,8 @@ Rationale: the scan button is the product's front door (P1) and owns the center;
 
 ## 7. Prototype coverage (v3 adopted 2026-09-15, D-019; **v4 2026-09-21**: Menu tab replaces Recipes with Tonight and Plan ahead views (D-020 PROPOSED), Home adapts to kitchen state empty, sparse, ready (OQ-D9), A12 darkenings applied as PROPOSED; v3 archived at mockups/Archives/smart-kitchen-prototype-v3.html)
 
+**v6 2026-10-13 (D-033):** the Cookbook direction applied to every v5 screen and state, same coverage as v5; Add food restructured (one Scan barcode block, Type it in, a "Coming soon" group). v5 is archived in `mockups/Archives/`.
+
 | Screen | v3 status | Gap to close in M3-E0 |
 |---|---|---|
 | S1 account + household | **done (M3-E0-T1)** | sign-in gesture, create/join by code, reached from Home avatar when the "New user" dev switch is on |
