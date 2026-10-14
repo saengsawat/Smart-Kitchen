@@ -712,3 +712,17 @@ ARCHITECTURE.md: the top status line (three ADRs are DECIDED), §2 shape (Expo a
 - **File scope:** the eleven screen files above, `apps/mobile/src/test-support/safe-area-mock.ts`, their tests (new or existing under `apps/mobile/**`), `docs/handoff/M3-T10.worker.md`.
 - **Out of scope:** Home and Menu; migrating the older per-file safe-area mocks (BUG-003 follow-up); tokens.md (the architect adds the §8 top-inset line at acceptance from the report).
 - **DoD:** rule 26; the report lists any screen where the convention did not fit and why.
+
+#### M3-E0-T6: v6 token sheet (Cookbook) and the v6 string list (design, docs only) ✅ DONE 2026-10-14
+*Written 2026-10-13 at the v6 adoption (D-033). Unblocks M3-T13.*
+- **Implementation model:** Sonnet. Measuring and transcribing values from the v6 prototype; no product logic.
+- **Review model:** Sonnet. No rule-23 surface; the reviewer re-measures every contrast pair and checks that every safety and semantic value is byte-identical to D-021.
+- **Objective:** (a) rewrite `docs/design/tokens.md` for v6: every colour, font, radius, spacing and type-scale value in the v6 prototype's `:root` and CSS, each with its role; a measured contrast ratio for every text and background pair v6 uses (P9); the scarcity rules restated for an ink-primary system with no brand accent; the safety and semantic rows carried forward unchanged; the two fonts (Bodoni Moda, Schibsted Grotesk) with licence and source in the `apps/mobile/assets/fonts/SOURCES.md` pattern; a v5-to-v6 mapping table (old token, new token) for M3-T13. (b) list every v6 string that differs from v5 or is marked PROPOSED in the prototype, with screen and context, for the architect to apply to the copy deck.
+- **Context:** D-033, D-021, D-032 in DECISIONS.md; `docs/design/mockups/smart-kitchen-prototype.html` (v6) and `docs/design/mockups/Archives/smart-kitchen-prototype-v5.html`; [tokens.md](docs/design/tokens.md) (current, v5); [copy-deck.md](docs/design/copy-deck.md); [design-principles.md](docs/design/design-principles.md) P9, P10, P11; `apps/mobile/src/design/tokens.ts` (read only).
+- **Dependencies:** none.
+- **Invariants:** no safety or semantic value changes; allergen red only for allergens; every pair meets 4.5:1 for body text and 3:1 for large text or is flagged; zero em dashes; no app code.
+- **Acceptance criteria:** every `:root` value in v6 appears in tokens.md with its role; the contrast table covers every pair with no unflagged failure; the mapping table covers every token in tokens.ts; the string list is complete against a diff of v5 and v6.
+- **Tests required:** none automated (docs only). The report includes the contrast table, the em-dash grep and the string list.
+- **File scope:** `docs/design/tokens.md`, `docs/handoff/M3-E0-T6.worker.md`.
+- **Out of scope:** copy-deck edits (listed in the report, applied by the architect); any `apps/**` change (M3-T13); the prototype itself.
+- **DoD:** rule 26.
