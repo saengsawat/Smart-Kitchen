@@ -1,54 +1,187 @@
-# Design Tokens · measured contrast and scarcity audit (M3-E0-T3)
+# Design Tokens, v6 (Cookbook) token sheet (M3-E0-T6)
 
-**2026-10-13 (D-033):** prototype v6 (the Cookbook direction) is now the build reference. This sheet still describes the v5 values the app is built on (`apps/mobile/src/design/tokens.ts`); M3-E0-T6 rewrites it for v6. The safety and semantic values below are unchanged in v6.
+**Status:** docs only, written 2026-10-14 for ticket M3-E0-T6. This sheet describes prototype v6, the Cookbook direction, which is the build reference since D-033 (2026-10-13). It replaces the v5 sheet (M3-E0-T3), whose measured findings were adopted by D-021 and are now history. The app is still built on the v5 values in `apps/mobile/src/design/tokens.ts` until M3-T13 restyles it; section 11 is the v5-to-v6 mapping M3-T13 works from.
 
-**Status:** docs only. This file turns [design-direction.md](design-direction.md) §0 into a measured, source-cited token sheet, ready to become the typed token module in M3 (design-direction §4). Every value below is copied verbatim from `:root` in [mockups/smart-kitchen-prototype.html](mockups/smart-kitchen-prototype.html) or marked PROPOSED where this document suggests a change the prototype does not yet make. No hex value in this file was invented; every one traces to `:root` or to a stated arithmetic transform of a `:root` value (documented in the contrast table).
+**Source of truth:** every value below is copied from `:root` and the stylesheet of [mockups/smart-kitchen-prototype.html](mockups/smart-kitchen-prototype.html) (v6). Nothing is invented. Where this sheet suggests a name or a fix the prototype does not make, it is marked PROPOSED (CLAUDE.md rule 5) and the architect decides. Contrast ratios are computed by script (WCAG 2.x relative luminance), never by eye.
 
-**Inputs carried forward from M3-E0-T1 acceptance** (BACKLOG "Accepted follow-ups from completed tickets", M3-E0-T1 row): measured tap-target shortfalls, `prefers-reduced-motion`, `--danger` on allergy-selection controls, the green-check "none" option, the `--ink-3` dot on the espresso hero, and the two camera-chrome terracotta exceptions. All are addressed in sections 4, 5, 6 and 3 respectively below.
+**Unchanged by v6 (D-033 item 3):** every safety and semantic value from D-021. The hex values for `--danger`, `--danger-bg`, `--amber`, `--amber-bg`, `--green`, `--green-bg`, `--rose`, `--rose-bg`, `--ai` and `--ai-bg` in v6 `:root` are identical to the v5 values the app already carries. Section 1 marks them "carried forward unchanged".
 
 ---
 
-## 1. Token table
+## 1. Colour tokens
 
-Every custom property in `:root` (lines 12-37 of the prototype), matched against design-direction §0's "v2 token sheet". **Result: zero drift.** All 15 §0 rows were checked against `:root` and every hex matches exactly; no correction to design-direction §0 is needed or made.
+### 1a. Every custom property in v6 `:root`
 
-| `:root` property | Hex | §0 semantic name | Role | Allowed uses | Forbidden uses |
+`:root` holds 18 colour properties. v6 has no radius, spacing or font custom properties; those values live in the stylesheet and are catalogued in sections 2 and 3.
+
+| `:root` property | Hex | Role | Allowed uses | Forbidden uses |
+|---|---|---|---|---|
+| `--paper` | `#fbfaf6` | Page canvas, sheet and nav surface. v6 has one light surface; cards are unboxed or hairline-ruled | Screen background, sheets, nav bar, hero badge fill, scrim-free panels | Text colour |
+| `--tile` | `#f1eee6` | Quiet panel and photo-tile fallback | Photo and thumbnail backing, "Why this?" panel, tastes card, code note, profile card, assistant bubble, empty slot, neutral stat chip (`.stat.list`), pressed/hover fill | Primary page background, text colour |
+| `--ink` | `#0f0f0f` | Primary text, rules, and the primary action colour | All body text and headings, section rules, primary button fill, selected chip fill, avatar, FAB-style nav "Add" disc, toast fill, checkbox ring | Backgrounds of large areas other than the camera and button fills above |
+| `--ink2` | `#5f5d58` | Secondary text | Sub-lines, meta, captions, inactive nav labels, quantities, notes | Backgrounds |
+| `--ink3` | `#6f6c66` | Tertiary text (only on `--paper` and `--tile`) | "Coming soon" row sublines, "not tracked" staple chip, struck-through done rows, rank numerals, placeholder text, blocked-recipe initials | Body text smaller than 12px; any pair not measured in section 4 |
+| `--hair` | `#dcd8cf` | Hairline | Row dividers, underlines, quiet borders | Fill, text, and any border that is the only thing identifying a control (see section 4 flags) |
+| `--danger` | `#882020` | **Allergen only.** Carried forward unchanged | `.blockbar` (blocked recipe), `.prov.alg` (allergen legend chip), the "Blocked for Maya" lines | Everywhere else, including destructive actions, generic errors, expired food |
+| `--danger-bg` | `#f9d9d9` | Allergen tint surface. Carried forward unchanged | Backing for the above | Same |
+| `--amber` | `#925b0a` | Estimated, expiring-soon, short and "allergen data incomplete". Carried forward unchanged | `.prov.est`, `.days.soon`, `.stat.shortby`, `.stat.miss`, `.verdict.unk`, `.mfoot`, `.tile.short`, `.short`, `.queued` | Allergen-blocked contexts, AI content |
+| `--amber-bg` | `#f6e6c8` | Amber tint surface. Carried forward unchanged | Backing for the above | Same |
+| `--green` | `#2c744b` | Known Fact, have, fresh, positive. Carried forward unchanged | `.prov.fact`, `.days.ok`, `.stat.have`, `.amt.pos`, shopping "already have" check, `.loop` pantry banner | Allergen contexts, AI-tier content |
+| `--green-bg` | `#dfeee3` | Green tint surface. Carried forward unchanged | Backing for the above | Same |
+| `--rose` | `#9d4b51` | "Use today" urgency, never allergen. Carried forward unchanged | `.days.now` ("Today") | **Allergen contexts** (zero crossover found, section 6) |
+| `--rose-bg` | `#f7dcdc` | Rose tint surface. Carried forward unchanged | Backing for the above | Same |
+| `--ai` | `#7b4cb5` | AI Interpretation tier, exclusive hue. Carried forward unchanged | `.prov.ai`, the confirmation-tray heading (`.trh`) | Anywhere that is not an AI-read item |
+| `--ai-bg` | `#eadff7` | AI tint surface. Carried forward unchanged | Backing for the above, and the confirmation tray background | Same |
+| `--ai-ink` | `#5a4a70` | **New in v6.** Secondary text on the AI tray (`--ai-bg`) | `.tray i` source lines, `.tray .foot2` | Anywhere off the AI tray |
+| `--stage` | `#e6e5e1` | **Prototype chrome only.** The page behind the drawn phone | Not a product token. Do not carry to the app | Everything in the app |
+
+### 1b. Literal colours in the v6 stylesheet outside `:root`
+
+These are hard-coded in v6 CSS. They are listed so M3-T13 can name them (names are PROPOSED, ENGINEERING INFERENCE) rather than leak raw hex into components.
+
+| Literal | Where | Role | PROPOSED token |
+|---|---|---|---|
+| `#ffffff` (`#fff`) | `.btn.pri`, `.okb`, `.chip` pressed, `.sev` pressed, `.bub.me`, `.toast`, `.addprimary`, `.av`, `.send`, nav "Add" disc | Text and icons on ink fills | `white` (already in tokens.ts) |
+| `rgba(255,255,255,.78)` | `.addprimary` subline | Secondary text on the ink primary block | `onInkMuted` (composite `#cacaca` on ink) |
+| `#2b2b2b` | `:hover` on `.btn.pri`, `.okb`, `.addprimary` | Hover fill for ink buttons | `inkHover` |
+| `#f4f2ec` | `:hover` on `button.row`, `.arow`, `.slot`, `.pick` | Hover fill for list rows | `rowHover` |
+| `#e4e1d9` | `:hover` on `.btn.pri.inv` | Hover fill for the inverted button on the camera screen | `invHover` |
+| `#5b4210` | `.verdict.unk .c/.u`, `.mfoot i` | Body text on `--amber-bg` | `amberInk` |
+| `#1f4d33` | `.loop` banner text | Body text on `--green-bg` | `greenInk` |
+| `#235f3d` | `:hover` on `.loop .okb` | Hover fill for the green pantry button | `greenHover` |
+| `#d7c6ee` | `.tray .ci` divider | Hairline on the AI tray | `aiHair` |
+| `#f5f0fb` | `.tray .ci .th` | Thumbnail backing on the AI tray | `aiTile` |
+| `#2442d6` | `:focus-visible` outline (2.5px, offset 2px), `.rec:has(.reclink:focus-visible)` | Keyboard focus ring. Replaces v5 `--info` `#3898ec` and its ink halo | `focus` |
+| `#121212` | `#scan` background and camera panel | The one dark surface (camera screen) | `cameraBg` |
+| `#2b2a27` | camera panel radial-gradient top stop | Camera decoration | `cameraBg2` |
+| `#f3f1ec` | camera brackets, laser, camera text and icons, `.btn.pri.inv` fill | Text and chrome on the camera screen | `cameraText` |
+| `#d9d6cf` | `.camhint`, `.denied p` | Secondary text on the camera screen | `cameraTextMuted` |
+| `rgba(255,255,255,.3)` / `.6` / `.1` | `.iconb.light` border, `.btn.light` border, `.btn.light:hover` fill | Camera-screen control outlines | `cameraLine` family |
+| `rgba(15,15,15,.45)` | `.modal .scrim` | Sheet scrim (ink at 45%) | `scrim` |
+| `#151515`, `#0d0d0d`, `#4a4945`, `#55534f`, `#222`, `#d3d2cd`, `#9a978f`, `#fff` on stage | Stage header, jump and state buttons, drawn phone | **Prototype chrome only.** Not product tokens | none |
+
+### 1c. Scarcity of colour in v6
+
+See section 5 for the rules restated for an ink-primary system with no brand accent. v6 has **no brand colour**. The v5 terracotta triad, the espresso hero, the cream-on-dark text, the sand canvas and the `--info` blue are all gone (mapping in section 11).
+
+---
+
+## 2. Typography
+
+### 2a. Fonts (SOURCES.md pattern)
+
+Both families are SIL Open Font License 1.1 and are loaded in the prototype from Google Fonts with `family=Bodoni+Moda:opsz,wght@6..96,400..700` and `family=Schibsted+Grotesk:wght@400..800`. They would be vendored into `apps/mobile/assets/fonts/` by M3-T13 the way Fraunces and Inter are today.
+
+| Role | Family | Axes in the prototype request | Weights v6 actually uses | Licence | Source |
 |---|---|---|---|---|---|
-| `--sand` | `#efe5d5` | `bg.page` | Page canvas | Screen background only | Cards (use `--paper`), text |
-| `--sand-2` | `#e4d7c2` | `bg.page.alt` | Pressed / segmented track, photo-tile fallback | Segmented-control track, empty photo tiles, "why" explainer panel bg, dev-switch active fill target's inverse | Primary page background, text color |
-| `--paper` | `#fffbf4` | `bg.card` | Card / sheet / nav-bar surface | Cards, rows, nav bar, bottom sheets, buttons (`.btn.sec`) | Full-page background (kept distinct from `--sand` so cards visibly lift) |
-| `--line` | `#dfd1ba` | `border` | Hairline | Borders/dividers only | Fill, text |
-| `--ink` | `#1e1813` | `text.primary` | Primary body text and headings | Any body text, headings, primary numerals | Backgrounds |
-| `--ink-2` | `#5b5045` | `text.secondary` | Secondary text | Sub-labels, secondary meta, section links | Backgrounds |
-| `--ink-3` | `#8f8274` | `text.tertiary` | Tertiary / caption text | Captions, quantities-as-meta, timestamps, inactive nav labels | As body text at current hex without the fix in §2 (see FAILs) |
-| `--espresso` | `#2a1f18` | `bg.hero` | Dark warm hero surface | Home hero header only, plus the small set of dark-accent components that intentionally borrow it (`.loc.on`, `.chip.on`, `.toast`, dev-switch "on" state) | Any other screen's primary canvas ("the one large dark surface allowed", design-direction §0) |
-| `--espresso-2` | `#3b2d23` | `bg.hero` (+ variant) | Hero gradient / secondary dark tone | Hero decoration only | Same as `--espresso` |
-| `--cream` | `#f7efe2` | `text.onHero` | Text on dark surfaces | Text/icons on `--espresso` only | Text on light surfaces (not measured for that pairing; not designed for it) |
-| `--brand` | `#d9673b` | `accent.brand` (default) | Terracotta brand accent | Primary CTA, active-nav icon stroke, hero accent (orb/italic/sparkle), camera-chrome viewfinder + laser (documented exception, §3) | Any background/large surface, any badge or decoration outside the scarcity list (design-direction §2 "Scarcity rule") |
-| `--brand-deep` | `#b64f28` | `accent.brand` (pressed/deep) | Pressed CTA state, active-nav text, loop-banner text | Same scarcity list as `--brand`, pressed/deep variant | Same as `--brand` |
-| `--brand-tint` | `#f9dece` | `accent.brand` (tint) | Brand tint surface | **Currently unused anywhere in the prototype**, flagged, not a violation | N/A until adopted; when adopted, keep to the same scarcity list |
-| `--green` | `#2f7d51` | `sentiment.positive` | Positive / fresh / verified | Known Fact chip, on-hand ("have") chips, fresh freshness-ring stop, `.noneopt.on`, `.chk.done` | Allergen contexts, AI-tier content |
-| `--green-bg` | `#dfeee3` | `sentiment.positive` bg | Positive tint surface | Backing for the above | Same |
-| `--amber` | `#b4700c` | `sentiment.warning` | Warning / estimated / expiring | Estimated chip, expiring-soon freshness stop, shortage/"miss" chips, allergen-**unknown** lines (explicitly allowed by §0, distinct from `--danger`) | BLOCKED/verdict-danger context, AI content |
-| `--amber-bg` | `#f6e6c8` | `sentiment.warning` bg | Warning tint surface | Backing for the above | Same |
-| `--rose` | `#c75f66` | `urgency.today` | "Use today" urgency, never allergen | Freshness-ring "now" stop, `.exp.now`, ingredient "miss" status | **Allergen contexts** (hard rule, verified in §4: zero crossover found) |
-| `--rose-bg` | `#f7dcdc` | `urgency.today` bg | Urgency tint surface | Backing for the above | Same |
-| `--danger` | `#b12a2a` | `sentiment.danger` | **Allergen only** | `.allergen` banner, `.allergychip.on`, `.sevbtn.on`, `.verdictblock.blocked`, provenance legend's allergen row | Everywhere else, including destructive/delete actions, generic errors, expired food (verified in §4: zero crossover found) |
-| `--danger-bg` | `#f9d9d9` | `sentiment.danger` bg | Allergen tint surface | Backing for the above | Same |
-| `--ai` | `#7b4cb5` | `ai` | AI Interpretation tier, exclusive hue | `.prov.ai`, confirmation tray, `.okbtn`, `.mode.cam`, `.chip.needsconf.on`, "future"/AI-adjacent phase labels | Anywhere else ("purple appears nowhere else", verified in §4: confirmed) |
-| `--ai-bg` | `#eadff7` | `ai` bg | AI tint surface | Backing for the above | Same |
-| `--info` | `#3898ec` | `sentiment.info` | Keyboard focus ring (added to the prototype at M3-E0-T4, 2026-10-08) | `:focus-visible` outline only (3px, offset 2px), always with a 2px `--ink` halo in the offset gap: blue alone is 2.45:1 on sand, 2.96:1 on paper, 2.15:1 on sand-2, so the ink halo carries the WCAG 1.4.11 3:1 (ring against ink 5.75:1; blue on espresso 5.25:1 on its own). Rules that set their own `box-shadow` repeat the halo under `:focus-visible` (FAB, selected segment) | Text, fills, any informational meaning |
-| `--r-sm` | `12px` | Radius (small) | Buttons/inputs | Small controls | n/a |
-| `--r-md` | `18px` | Radius (medium) | Cards | Cards, sheets, trays | n/a |
-| `--r-lg` | `24px` | Radius (large) | Featured cards/sheets, hero corners | Hero, big sheets | n/a |
+| Display (`.serif` class: headings, quantities, percentages, numerals in stats) | Bodoni Moda | `opsz` 6 to 96, `wght` 400 to 700; `font-optical-sizing: auto` | 500 only | SIL OFL 1.1 | `github.com/google/fonts`, directory `ofl/bodonimoda` (upstream project: Indestructible Type, `github.com/indestructible-type/Bodoni`) |
+| UI and body (default `body`) | Schibsted Grotesk | `wght` 400 to 800 | 400, 500, 600, 700, 800 (800 only for the current nav tab) | SIL OFL 1.1 | `github.com/google/fonts`, directory `ofl/schibstedgrotesk` (upstream project: Schibsted, `github.com/schibsted/schibsted-grotesk`) |
 
-**Note (not a §0 drift, an M3 module recommendation):** the pill radius (`999px`) and the FAB/nav-button circle (`50%`) are never tokenized. They appear as the literal value `999px` at eleven call sites (`.ask`, `.pill`, `.nav`, `.chip`, `.loc`, `.allergychip`, `.toast`, `.okbtn` uses `9px` not `999px`, checked individually) and `50%` at four (`.hbtn`, `.fab`, `.ringbadge`, `.mchip`, `.chk` uses `9px` not `50%`, checked individually). Recommend adding `--r-pill: 9999px` to the typed module so the M3 build never repeats the raw number. This is a structural observation, not a hex-value question, so it does not affect the "zero drift" finding above.
+The upstream project names above are from memory of the `google/fonts` layout and are to be confirmed against each family's `OFL.txt` (copyright line) at fetch time.
+
+**Not yet fetched, so not pinned.** Following `apps/mobile/assets/fonts/SOURCES.md`, the vendoring step must record the exact file name, raw URL, `google/fonts` commit hash and fetch date, and copy each family's `OFL.txt` next to the font file. This ticket is docs only and did not fetch anything, so no commit hash is stated here (nothing invented). File names are expected to be the variable files `BodoniModa[opsz,wght].ttf` and `SchibstedGrotesk[wght].ttf`; verify against the directory listing at fetch time.
+
+**Fallback stacks as written in v6:** body `'Schibsted Grotesk', system-ui, sans-serif`; display `'Bodoni Moda', serif`.
+
+**Risks M3-T13 must check on a real device (carried from the M3-T1 note in SOURCES.md):**
+1. Variable-weight selection through `fontWeight` is reliable on iOS and unverified on some Android versions. v6 relies on five Schibsted weights and one Bodoni weight.
+2. Bodoni Moda's `opsz` axis (`font-optical-sizing: auto`) is a CSS behaviour. React Native has no automatic optical sizing, so display sizes from 20px to 54px will render at the font's default optical size unless M3-T13 sets variation settings or vendors fixed instances. The visual effect (hairlines thinning at large sizes) is a v6 design feature, so this is a real fidelity risk, not a nicety.
+3. Numerals: v6 sets `font-variant-numeric: lining-nums` on `.num` and `tabular-nums lining-nums` on stats, macros and the big quantity. React Native needs `fontVariant: ['lining-nums', 'tabular-nums']`; confirm the fonts ship both features.
+
+### 2b. Type scale
+
+Every font size and weight in v6 CSS, grouped by role. Line heights are as written (unitless multipliers). All sizes are CSS px and map 1:1 to React Native points. v6 has **no size below 12px** (v5's caption was 11.5px).
+
+**Display (Bodoni Moda 500)**
+
+| Size | Line height | Letter spacing | Role | Selectors |
+|---|---|---|---|---|
+| 54 | 1 | none | Initial on a letter tile | `.ph.lettr` |
+| 46 | 1 | none | Item quantity | `.qtybig b` |
+| 44 | 1 | -.015em | Screen title | `.title` |
+| 40 | 1.02 | -.015em | Home headline, recipe name | `.h1` |
+| 36 | 1 | none | Stat value | `.stats .v` |
+| 30 | 1.05 | none | Scanned product name, camera-denied heading | `.pname`, `.denied h2` |
+| 28 | 1 | none | Coverage badge on hero, rank numeral, empty-state heading | `.hero .pct`, `.row .ix`, `.emptyst h2` |
+| 27 | 1.05 | none | Recipe card name | `.rec h2` |
+| 26 | 1 | none | Coverage badge on cards, stepper value | `.rec .pct`, `.step b` |
+| 26 | 1.05 | none | Sheet title | `.sheet h2` |
+| 25 | 1 | none | Section heading | `.sec h2` |
+| 24 | 1 | none | Macro value | `.macros b` |
+| 22 | 1 | none | Group heading, menu-card heading | `.grp h2`, `.mh h3` |
+| 20 | 1 | none | Rail badge, picker percentage, blocked-ingredient initial | `.rph .pct`, `.pick .pp`, inline initials |
+
+**UI and body (Schibsted Grotesk)**
+
+| Size | Weight | Line height | Role | Selectors |
+|---|---|---|---|---|
+| 20 | 600 | 1 | Stepper glyph | `.step button` |
+| 17 | 700 | 1.2 | Primary block title | `.addprimary b` |
+| 16 | 500 | 1 | Text input | `.inp` |
+| 16 | 700 | 1.2 | Profile name | `.me b` |
+| 15.5 | 700 | 1.2 | Row title | `.row b`, `.arow b` |
+| 15 | 400 | 1.45 | Body default | `body` |
+| 15 | 700 | 1.2 | Shopping row title, box heading, tastes heading | `.srow b`, `.bh`, `.tastes b` |
+| 15 | 700 | 1 | Camera title | `.camtop h1` |
+| 14.5 | 700 | 1.25 | Tray item, ledger title, slot title | `.tray b`, `.led .m b`, `.slot .m b` |
+| 14.5 | 600 | 1.2 to 1.3 | Picker row, none-option | `.pick`, `.noneopt` |
+| 14 | 700 | 1 | Button | `.btn` |
+| 14 | 600 | 1 | Segment label, amount, unit label | `.seg button`, `.srow .amt`, `.unitlbl` |
+| 14 | 700 | 1.1 to 1.3 | Day label, rail title, signed amounts, key value | `.slot .d b`, `.rcard b`, `.amt.pos`, `.amt.neg`, `.kv .v`, `.mfoot b` |
+| 14 | 400 | 1.5 | Paragraph on empty and camera states, chat bubble | `.emptyst p`, `.denied p`, `.bub` |
+| 13.5 | 400 to 700 | 1.35 to 1.5 | Verdict line, block bar, toast, alloc row, loop banner, chip label, sub-line | `.verdict`, `.blockbar`, `.toast`, `.alloc`, `.loop`, `.chip`, `.sub`, `.trh`, `.addprimary .ap span` |
+| 13 | 400 to 700 | 1 to 1.5 | Short note, link, ok button, byline, meta, status bar | `.verdict .u`, `.why`, `.arow .am>span`, `.okb`, `.by`, `.rec .meta`, `.sec .lnk`, `.sev button`, `.row .q`, `.camhint` |
+| 12.5 | 400 to 500 | 1.3 to 1.6 | Caveat line, note, tray source, ledger detail, small verdict | `.verdict .c`, `.note`, `.tray i`, `.led .m i`, `.srow .s`, `.tilenote`, `.kv .vs` |
+| 12 | 700 | 1 | Chip, label, stat | `.prov`, `.days`, `.stat`, `.av`, `.hero .pct small`, `.kv .k`, `.fl`, `.rlbl`, `.queued`, `.msrc`, `.mtag` |
+| 12 | 500 to 600 | 1 to 1.25 | Nav label, caption, group count | `.nav button`, `.mast .name`, `.grp span`, `.rmv`, `.macros i`, `.stats .l`, `.tile .cap` |
+
+**Letter spacing (uppercase labels)** `.22em` masthead name; `.14em` stage label (chrome); `.12em` key labels, days chips, coverage unit, field labels; `.1em` stat chips, menu tag; `.08em` source tag, macro captions. These labels use `text-transform: uppercase` (`.mast .name`, `.days`, `.stat`, `.kv .k`, `.fl`, `.rlbl`, `.mtag`, `.msrc`, `.macros i`, `.hero .pct small`, `.rec .pct small`). The copy deck must hold their strings in sentence case; React Native's `textTransform: 'uppercase'` does the rest.
 
 ---
 
-## 2. Contrast table
+## 3. Radius, spacing and size
 
-**Formula (WCAG 2.x relative luminance and contrast ratio), shown once:**
+### 3a. Radius
+
+v6 has no radius custom properties. Photos and tiles are square (radius 0).
+
+| Value | Where | PROPOSED name |
+|---|---|---|
+| `0` | Hero, rail and card photos, thumbnails, tiles, the labels `.mtag`, `.msrc`, `.tagm` | `radius.none` |
+| `999px` | `.btn`, `.chip`, `.okb`, `.days`, `.prov`, `.stat`, `.rmv`, `.sev button` | `radius.pill` (tokens.ts already has `9999`) |
+| `50%` | `.av`, `.iconb`, `.chk span`, `.mchip`, `.step button`, `.send`, nav "Add" disc, `.blockbar .sh` | `radius.circle` |
+| `22px 22px 0 0` | `.sheet`, `.panel` (scan product panel) | `radius.sheet` |
+| `14px` | `.tray`, `.addprimary` | `radius.panel` |
+| `12px` | `.toast` | `radius.toast` (equals today's `radius.sm`) |
+| `10px` | `.verdict.unk`, `.blockbar` | `radius.verdict` |
+| `8px` | `.verdict.unk.sm` | `radius.verdictSm` |
+| `4px` | `:focus-visible` | not tokenised; the ring's own corner |
+
+### 3b. Spacing
+
+Measured from every `padding`, `margin` and `gap` declaration in the product CSS (stage chrome excluded): 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 18, 20, 22, 24, 28, 30, 40 px. Most used: **20px** (48 declarations, the screen gutter and section margin), 12px (37), 10px (35), 14px (28), 8px (24), 4px and 6px (14 each), 16px (12).
+
+Recommendation (ENGINEERING INFERENCE, architect decides): keep the existing 4-step scale in tokens.ts (`xs` 4, `sm` 8, `md` 12, `lg` 16, `xl` 24, `xxl` 32) and add the three steps v6 leans on that the scale lacks: `snug` 10, `cozy` 14, `gutter` 20, plus `section` 30 for the large heading gap. The odd values (3, 5, 7, 9, 11, 13) are optical nudges inside chips and rows; round them to the nearest scale step in the app.
+
+### 3c. Fixed sizes (control and media)
+
+| Item | Value |
+|---|---|
+| Screen gutter | 20px (`.pad`, `margin: 0 20px`) |
+| Primary button | min-height 50px; wide variant 52px |
+| Nav bar | items min-height 48px, padding `8px 8px 20px`, 5-column grid; "Add" disc 46px |
+| Row thumbnails | 56px (list), 48px (ingredient, shopping), 44px (tray), 64x48 (menu slot), 96px (item detail) |
+| Photo aspect | 4:3 for hero and cards; tiles square |
+| Row min-heights | 72 (list), 68 (shopping, Add-food rows), 62 (ingredient), 56 (key-value), 52 (picker), 76 (menu slot) |
+| Inventory tiles | 4 columns, 8px gap (3 columns in the three-up variant) |
+| Icon sizes | 14 to 28px strokes at 1.9 to 2.3 (nav current tab 2.3) |
+| Minimum touch target | 44px (D-033 item 3, still binding); exceptions listed in section 7 |
+
+---
+
+## 4. Contrast table
+
+**Formula (WCAG 2.x), shown once:**
 
 ```
 for channel c in {R,G,B} (0-255): s = c/255
@@ -58,218 +191,269 @@ L = 0.2126*R_lin + 0.7152*G_lin + 0.0722*B_lin
 contrast(A,B) = (L_lighter + 0.05) / (L_darker + 0.05)
 ```
 
-For a translucent layer over a photo, the layer is alpha-composited first: `result_c = alpha*fg_c + (1-alpha)*bg_c` per channel, then the same formula runs on the composite. **Stated assumption:** the prototype hotlinks real Unsplash photos (already flagged OQ-D8, licensing), so there is no single "true" photo luminance. This document assumes a mid-tone photo equivalent to 50% grey (`#808080`) wherever text sits on a photo, which is a deliberately conservative middle ground, not a measurement of the specific hotlinked images.
+Translucent layers are composited first: `result_c = round(alpha*fg_c + (1-alpha)*bg_c)` per channel. Where text sits on a photo, v6 puts it on an opaque paper badge (`.pct`), so no photo-luminance assumption is needed (v5 needed one). The script is `contrast.js` run with `node`; its source is reproduced in the worker report.
 
-**Script used** (`node -e`, reproduced in full in the worker report):
+**Thresholds:** body text 4.5:1; large text (24px regular or 18.66px bold and up) 3:1; alert text (allergen context) 7:1, the bar set in D-021 and kept; non-text UI (focus ring, control boundary that carries meaning) 3:1; decorative glyph fills reported only.
 
-```js
-function hexToRgb(hex){hex=hex.replace('#','');const n=parseInt(hex,16);return [(n>>16)&255,(n>>8)&255,n&255];}
-function relLum([r,g,b]){const f=c=>{const s=c/255;return s<=0.03928?s/12.92:Math.pow((s+0.055)/1.055,2.4);};
-  const [R,G,B]=[f(r),f(g),f(b)];return 0.2126*R+0.7152*G+0.0722*B;}
-function contrast(h1,h2){const L1=relLum(hexToRgb(h1)),L2=relLum(hexToRgb(h2));
-  const l=Math.max(L1,L2),d=Math.min(L1,L2);return (l+0.05)/(d+0.05);}
-function composite(fgHex,alpha,bgHex){const [fr,fg,fb]=hexToRgb(fgHex),[br,bg,bb]=hexToRgb(bgHex);
-  const mix=(f,b)=>Math.round(alpha*f+(1-alpha)*b);return {r:mix(fr,br),g:mix(fg,bg),b:mix(fb,bb)};}
-```
+54 pairs measured: every text-on-background pair v6 renders, the state-change pairs (hover, pressed), the camera screen, the focus ring and the non-text borders. Stage chrome (rows 49 to 54) is prototype-only and does not bind the app.
 
-**Text-size rule applied:** per WCAG, "large text" is >=24px regular or >=18.66px (14pt) **bold**. This document applies that size rule strictly rather than eyeballing "reads as a button so it must be large." Two findings below (ink-3, and white-on-brand) turn on this: text that looked "large enough" at a glance is measured against the 4.5:1 body threshold because it is actually 15px or smaller.
-
-**Category thresholds:** body 4.5:1, large 3:1, alert (allergen-context text) 7:1, decorative (icon glyphs/fills that are not text and are not the sole carrier of information) not held to a numeric threshold but reported for completeness.
-
-| # | Pair | Fg | Bg (or composite) | Size/weight in prototype | Category | Target | Ratio | Result |
+| # | Pair | Fg | Bg (or composite) | Where and size | Category | Target | Ratio | Result |
 |---|---|---|---|---|---|---|---|---|
-| 1 | ink on sand | `#1e1813` | `#efe5d5` | body text, 15-16px | body | 4.5 | 14.09 | PASS |
-| 2 | ink on paper | `#1e1813` | `#fffbf4` | body text | body | 4.5 | 17.03 | PASS |
-| 3 | ink on sand-2 | `#1e1813` | `#e4d7c2` | body text | body | 4.5 | 12.38 | PASS |
-| 4 | ink on cream | `#1e1813` | `#f7efe2` | body text | body | 4.5 | 15.39 | PASS |
-| 5 | ink-2 on sand | `#5b5045` | `#efe5d5` | secondary text, 12-14px | body | 4.5 | 6.29 | PASS |
-| 6 | ink-2 on paper | `#5b5045` | `#fffbf4` | secondary text | body | 4.5 | 7.60 | PASS |
-| 7 | ink-2 on sand-2 | `#5b5045` | `#e4d7c2` | secondary text | body | 4.5 | 5.53 | PASS |
-| 8 | ink-2 on cream | `#5b5045` | `#f7efe2` | secondary text | body | 4.5 | 6.87 | PASS |
-| 9 | ink-3 on sand | `#8f8274` | `#efe5d5` | captions/meta, 11-13px, never >=18.66px bold | body | 4.5 | 3.00 | **FAIL** |
-| 10 | ink-3 on paper | `#8f8274` | `#fffbf4` | captions/meta | body | 4.5 | 3.63 | **FAIL** |
-| 11 | ink-3 on sand-2 | `#8f8274` | `#e4d7c2` | captions/meta | body | 4.5 | 2.64 | **FAIL** (worst case) |
-| 12 | ink-3 on cream | `#8f8274` | `#f7efe2` | captions/meta | body | 4.5 | 3.28 | **FAIL** |
-| 13 | `#c9b9a4` hero eyebrow on espresso | `#c9b9a4` | `#2a1f18` | 12px, 600, uppercase | body | 4.5 | 8.38 | PASS |
-| 14 | `#d8c9b3` "ask" placeholder on espresso | `#d8c9b3` | `#2a1f18` | 14px | body | 4.5 | 9.88 | PASS |
-| 15 | cream (text.onHero) on espresso | `#f7efe2` | `#2a1f18` | hero `h1`, 34px | large | 3 | 14.07 | PASS |
-| 16 | cream on darkest `.scrim` stop (rgba(30,24,19,.72)) over assumed mid-tone photo `#808080` | `#f7efe2` | composite `#393532` | recipe-card `h3`, 26px | large | 3 | 10.64 | PASS |
-| 17 | amber on amber-bg | `#b4700c` | `#f6e6c8` | "miss" chip / shortage note, 12-12.5px, 600 | body | 4.5 | 3.24 | **FAIL** |
-| 18 | green on green-bg | `#2f7d51` | `#dfeee3` | "have" chip, 12-13.5px, 600 | body | 4.5 | 4.19 | **FAIL** (narrow) |
-| 19 | danger on danger-bg | `#b12a2a` | `#f9d9d9` | `.allergen` banner text, 13px 700; `.allergychip.on`, 13px 600 | alert | 7 | 4.93 | **FAIL** |
-| 20 | white on danger | `#ffffff` | `#b12a2a` | `.sevbtn.on` severity label, 12.5px 700 | alert | 7 | 6.49 | **FAIL** |
-| 21 | ai on ai-bg | `#7b4cb5` | `#eadff7` | soft AI chip, 11-12px, 700 | body | 4.5 | 4.63 | PASS |
-| 22 | rose on rose-bg | `#c75f66` | `#f7dcdc` | ingredient "miss" status, 11.5px, 700 | body | 4.5 | 3.09 | **FAIL** |
-| 23 | brand-deep on brand-tint | `#b64f28` | `#f9dece` | not used in the prototype today (`--brand-tint` unused, see §1) | body | 4.5 | 3.96 | **FAIL** (if adopted) |
-| 24 | white on brand (`.btn.pri`) | `#ffffff` | `#d9673b` | primary CTA label, **15px, 700, below the 18.66px-bold "large" cutoff**, so held to body | body | 4.5 | 3.53 | **FAIL** |
-| 25 | brand-deep on sand (`.loop b` banner) | `#b64f28` | `#efe5d5` | "close the loop" prompt, 13.5px, 700 | body | 4.5 | 4.07 | **FAIL** (narrow) |
-| 26 | brand-deep on paper (active nav label) | `#b64f28` | `#fffbf4` | nav label, 10.5px, 600 | body | 4.5 | 4.92 | PASS |
-| 27 | ink-3 on espresso (`.pill .dot`, decorative fill) | `#8f8274` | `#2a1f18` | 8px circular fill, no text; the number beside it carries the meaning | decorative | n/a | 4.29 | reported only, not a text failure |
-| 28 | cream on espresso (`.chip.on` selected filter) | `#f7efe2` | `#2a1f18` | chip label, 13px, 600 | body | 4.5 | 14.07 | PASS (same ratio as #15) |
-| 29 | cream on espresso (`.toast`) | `#f7efe2` | `#2a1f18` | toast text, 13px, 600 | body | 4.5 | 14.07 | PASS (same ratio as #15) |
-| 30 | cream on `.toastUndo` pill, rgba(247,239,226,.18) over espresso | `#f7efe2` | composite `#4f443c` | "Undo" label, 12px, 700 | body | 4.5 | 8.27 | PASS |
-| 31 | white on `.tag.glass`, rgba(30,24,19,.55) over assumed mid-tone photo `#808080` | `#ffffff` | composite `#4a4744` | "92% match" / "uses 3 expiring" tags, 11.5px, 700 | body | 4.5 | 9.23 | PASS |
-| 32 | ink-3 on paper (inactive nav label) | `#8f8274` | `#fffbf4` | nav label, 10.5px, 600 | body | 4.5 | 3.63 | **FAIL** (duplicate of #10, listed for the nav-labels-on-paper item) |
-| 33 | white on ai (`.prov.ai` solid chip) | `#ffffff` | `#7b4cb5` | AI Interpretation chip, 11px, 700 | body | 4.5 | 5.93 | PASS |
-| 34 | white on green (`.chk.done` check glyph) | `#ffffff` | `#2f7d51` | check icon, not text | decorative | n/a | 5.03 | reported only |
-| 35 | white on danger (`.allergen .sh` icon swatch) | `#ffffff` | `#b12a2a` | warning-triangle icon, not text | decorative | n/a | 6.49 | reported only (duplicate ratio of #20) |
-| 36 | amber on paper (`.prov.est` badge, transparent bg; `.exp.soon` expiry text) | `#b4700c` | `#fffbf4` | badge 11-12px 700; expiry text 12.5px 700 | body | 4.5 | 3.87 | **FAIL** |
-| 37 | amber on sand (`.prov.est` badge inside `.ledgerrow.sys`, and inside the shopping "Rice" row whose `background:transparent` reveals the `.scroll` container's `--sand`) | `#b4700c` | `#efe5d5` | same badge, on the sand-backed contexts | body | 4.5 | 3.20 | **FAIL** |
-| 38 | rose on paper (`.exp.now` expiry text) | `#c75f66` | `#fffbf4` | expiry text, 12.5px, 700 | body | 4.5 | 3.87 | **FAIL** |
-| 39 | green on paper (`.exp.ok` expiry text; `.ledgerrow .amt.pos`, e.g. "+2.0 lb", "+1.25 lb") | `#2f7d51` | `#fffbf4` | expiry text 12.5px 700; ledger amount 15px 800 | body | 4.5 | 4.88 | PASS |
-| 40 | green on sand (`.ledgerrow.sys .amt.pos`, the "+0.25 lb" correction row, confirmed in markup at line 994) | `#2f7d51` | `#efe5d5` | ledger amount, 15px, 800 | body | 4.5 | 4.04 | **FAIL** |
+| 1 | ink on paper | `#0f0f0f` | `#fbfaf6` | body and headings, 13-44px | body | 4.5 | 18.35 | PASS |
+| 2 | ink on tile | `#0f0f0f` | `#f1eee6` | .bub.ai, .why b, .tastes b, .me b, .tagm | body | 4.5 | 16.53 | PASS |
+| 3 | ink on ai-bg | `#0f0f0f` | `#eadff7` | .tray b item names, 14.5px 700 | body | 4.5 | 14.97 | PASS |
+| 4 | ink on amber-bg | `#0f0f0f` | `#f6e6c8` | not used as a text pair today (completeness) | body | 4.5 | 15.58 | PASS |
+| 5 | ink2 on paper | `#5f5d58` | `#fbfaf6` | .sub, .row .q, .note, nav labels (12px 600), .pct small | body | 4.5 | 6.30 | PASS |
+| 6 | ink2 on tile | `#5f5d58` | `#f1eee6` | .why, .tastes i, .codenote, .stat.list, .tile .cap | body | 4.5 | 5.67 | PASS |
+| 7 | ink3 on paper | `#6f6c66` | `#fbfaf6` | .arow.soon span (13px), .stat.staple (12px 700), .srow.done (15px, struck through), input placeholder (16px) | body | 4.5 | 5.01 | PASS |
+| 8 | ink3 on tile | `#6f6c66` | `#f1eee6` | blocked ingredient initials (20px Bodoni 500), blocked-recipe letter tile | body | 4.5 | 4.51 | PASS (narrow, margin 0.01) |
+| 9 | ink3 on paper, large | `#6f6c66` | `#fbfaf6` | .row .ix rank numerals, 28px Bodoni 500 | large | 3 | 5.01 | PASS |
+| 10 | ink3 on tile, large | `#6f6c66` | `#f1eee6` | .ph.lettr initial, 54px Bodoni 500 | large | 3 | 4.51 | PASS |
+| 11 | ink2 on paper, large | `#5f5d58` | `#fbfaf6` | .rec.blocked h2 (27px), blocked recipe h1 (40px) | large | 3 | 6.30 | PASS |
+| 12 | white on ink | `#ffffff` | `#0f0f0f` | .btn.pri, .okb, pressed .chip and .sev, .bub.me, .toast, .addprimary b, .av, .send, nav Add disc | body | 4.5 | 19.17 | PASS |
+| 13 | white 78% on ink (composite) | `#cacaca` | `#0f0f0f` | .addprimary subline, 13.5px 400 | body | 4.5 | 11.70 | PASS |
+| 14 | white on #2b2b2b (hover) | `#ffffff` | `#2b2b2b` | .btn.pri, .okb, .addprimary on hover | body | 4.5 | 14.16 | PASS |
+| 15 | ink on tile (hover) | `#0f0f0f` | `#f1eee6` | .btn, .chip, .okb.ghost on hover | body | 4.5 | 16.53 | PASS |
+| 16 | ink on #f4f2ec (hover) | `#0f0f0f` | `#f4f2ec` | button.row, .arow, .slot, .pick on hover | body | 4.5 | 17.12 | PASS |
+| 17 | ink2 on #f4f2ec (hover) | `#5f5d58` | `#f4f2ec` | .arow span, .row .q on hover | body | 4.5 | 5.87 | PASS |
+| 18 | ink on #e4e1d9 (hover) | `#0f0f0f` | `#e4e1d9` | .btn.pri.inv on hover (scan screen) | body | 4.5 | 14.67 | PASS |
+| 19 | paper on #151515 (selection) | `#fbfaf6` | `#151515` | ::selection | body | 4.5 | 17.48 | PASS |
+| 20 | danger on danger-bg | `#882020` | `#f9d9d9` | .blockbar 13.5px 600, .prov.alg 12px 700 | alert | 7 | 7.02 | PASS |
+| 21 | danger on paper | `#882020` | `#fbfaf6` | blocked line in the menu rail (12.5px 700), .pick blocked row | alert | 7 | 8.84 | PASS |
+| 22 | danger on paper at 75% opacity (composite) | `#a55756` | `#fbfaf6` | the blocked row in the Sun dinner sheet (`.pick` row carries `opacity: .75`) | alert | 7 | 4.91 | **FAIL** |
+| 23 | white on danger | `#ffffff` | `#882020` | .blockbar .sh warning icon swatch, not text | decorative | n/a | 9.23 | reported only |
+| 24 | amber on amber-bg | `#925b0a` | `#f6e6c8` | .verdict.unk 13.5px 600, .days.soon, .stat.shortby/.miss, .prov.est, .mfoot b, .queued, .tile.short captions | body | 4.5 | 4.59 | PASS |
+| 25 | #5b4210 on amber-bg | `#5b4210` | `#f6e6c8` | .verdict.unk .u/.c, .mfoot i, 12.5-13px | body | 4.5 | 7.65 | PASS |
+| 26 | amber on paper | `#925b0a` | `#fbfaf6` | .short (13px 700), .rec .need | body | 4.5 | 5.40 | PASS |
+| 27 | green on green-bg | `#2c744b` | `#dfeee3` | .days.ok, .prov.fact, .stat.have | body | 4.5 | 4.71 | PASS |
+| 28 | green on paper | `#2c744b` | `#fbfaf6` | .amt.pos (14px 700), shopping "already have" check (16px 700) | body | 4.5 | 5.42 | PASS |
+| 29 | green on tile | `#2c744b` | `#f1eee6` | .led.sys .amt.pos | body | 4.5 | 4.89 | PASS |
+| 30 | #1f4d33 on green-bg | `#1f4d33` | `#dfeee3` | .loop banner text, 13.5px 600 | body | 4.5 | 8.06 | PASS |
+| 31 | white on green | `#ffffff` | `#2c744b` | .loop .okb "Add", 13px 700 | body | 4.5 | 5.67 | PASS |
+| 32 | white on #235f3d (hover) | `#ffffff` | `#235f3d` | .loop .okb on hover | body | 4.5 | 7.57 | PASS |
+| 33 | rose on rose-bg | `#9d4b51` | `#f7dcdc` | .days.now, 12px 700 | body | 4.5 | 4.56 | PASS |
+| 34 | ai on ai-bg | `#7b4cb5` | `#eadff7` | .prov.ai 12px 700, .trh 13.5px 700 | body | 4.5 | 4.63 | PASS |
+| 35 | ai-ink on ai-bg | `#5a4a70` | `#eadff7` | .tray i, .tray .foot2, 12.5px | body | 4.5 | 6.19 | PASS |
+| 36 | ai on paper | `#7b4cb5` | `#fbfaf6` | AI glyph or label where a chip background is transparent (v6 always sets ai-bg; completeness) | body | 4.5 | 5.67 | PASS |
+| 37 | #f3f1ec on #121212 | `#f3f1ec` | `#121212` | camera chrome, headings, brackets, laser, 15px 700 and up | body | 4.5 | 16.60 | PASS |
+| 38 | #f3f1ec on #2b2a27 | `#f3f1ec` | `#2b2a27` | lightest stop of the camera gradient | body | 4.5 | 12.71 | PASS |
+| 39 | #d9d6cf on #121212 | `#d9d6cf` | `#121212` | .camhint 13px 600, .denied p 14px | body | 4.5 | 12.91 | PASS |
+| 40 | #d9d6cf on #2b2a27 | `#d9d6cf` | `#2b2a27` | .camhint over the lightest gradient stop | body | 4.5 | 9.89 | PASS |
+| 41 | ink on #f3f1ec | `#0f0f0f` | `#f3f1ec` | .btn.pri.inv "Enter manually" | body | 4.5 | 16.98 | PASS |
+| 42 | #f3f1ec on #121212 | `#f3f1ec` | `#121212` | .btn.light label 14px 700 | body | 4.5 | 16.60 | PASS |
+| 43 | focus ring on paper | `#2442d6` | `#fbfaf6` | 2.5px ring, 2px offset (non-text, WCAG 1.4.11) | non-text | 3 | 7.12 | PASS |
+| 44 | focus ring on tile | `#2442d6` | `#f1eee6` | ring around tile-backed controls | non-text | 3 | 6.41 | PASS |
+| 45 | focus ring on camera | `#2442d6` | `#121212` | ring on the scan screen controls | non-text | 3 | 2.52 | **FAIL** |
+| 46 | hair on paper | `#dcd8cf` | `#fbfaf6` | dividers, `.iconb.round` and `.rmv` borders, `.stat.staple` border | non-text | 3 | 1.36 | **FAIL** (see flag) |
+| 47 | ink2 on paper | `#5f5d58` | `#fbfaf6` | .emptyst dashed border, .offbar border | non-text | 3 | 6.30 | PASS |
+| 48 | ink on paper | `#0f0f0f` | `#fbfaf6` | .chk ring, .noneopt box, .btn and .chip borders, .rule, .sec rule | non-text | 3 | 18.35 | PASS |
+| 49 | #4a4945 on stage | `#4a4945` | `#e6e5e1` | stage heading (chrome) | body | 4.5 | 7.15 | PASS |
+| 50 | #55534f on stage | `#55534f` | `#e6e5e1` | stage description and footer (chrome) | body | 4.5 | 6.09 | PASS |
+| 51 | ink on white | `#0f0f0f` | `#ffffff` | jump buttons (chrome) | body | 4.5 | 19.17 | PASS |
+| 52 | white on #151515 | `#ffffff` | `#151515` | pressed jump and state buttons (chrome) | body | 4.5 | 18.26 | PASS |
+| 53 | ink on stage | `#0f0f0f` | `#e6e5e1` | state-button labels (chrome) | body | 4.5 | 15.21 | PASS |
+| 54 | #9a978f on stage | `#9a978f` | `#e6e5e1` | dashed state-button border (chrome) | non-text | 3 | 2.31 | **FAIL** (chrome only, not product) |
 
-Rows 36-40 were added after independent review flagged that `.prov.est` and the `.exp`/`.amt.pos` family render color-only text directly on a card background rather than inside a tinted chip, so they were missing from the first pass, which sampled the highest-traffic tinted-chip pairs. **Method note:** a systematic pass over every `color: var(--X)` declaration in the stylesheet that has no co-located background (i.e. text color set without a matching tint-background on the same rule or a parent) is recommended as a follow-up before the M3 typed module ships, so this class of gap cannot recur; this audit's two passes together cover every amber/rose/green text usage found by direct grep, but a rule-by-rule stylesheet walk was not performed a second time end-to-end.
+### FAILs and proposed fixes (PROPOSED, architect decides; the prototype is out of scope here)
 
-### FAILs and proposed fixes
+Of 54 pairs, 49 pass, 4 fail (rows 22, 45, 46, 54) and 1 is reported only (row 23). Three of the failures matter to the product.
 
-**ADOPTED 2026-09-21 (D-021).** All seven token changes below are the palette; prototype v4 renders them. Row 25 resolved as: `.loop b` uses the new `--brand-on-tint` `#a74925`; `.btn.pri` resting fill `--brand-deep`, pressed `#9c4322`.
-
-16 of 40 measured pairs fail their threshold (rows 9-12, 17-20, 22-25, 36-38, 40). Every fix below darkens or lightens an *existing* token (or, for row 24, swaps to an existing token) rather than inventing a new hex, found by scaling the failing color toward black/white in 1% steps until the ratio clears the target, then checking the fix against every other pair that shares the token, **including, after review, the plain-card-background contexts in rows 36-40 alongside each token's original tinted-chip context.**
-
-| Rows | Failing token(s) | Proposed fix | New ratio(s) | Rationale |
+| Row | Finding | Proposed fix | New ratio | Note |
 |---|---|---|---|---|
-| 9-12 | `--ink-3` (`#8f8274`) | Darken to `#665c52` | sand 5.23, paper 6.33, sand-2 4.60, cream 5.72 (all >=4.5, worst case sand-2 clears by 0.10) | `--ink-3` is used for real information (quantities, timestamps, expiry meta), not decoration, everywhere it fails; a single darkened value clears all four backgrounds at once. |
-| 17, 36, 37 | `--amber` (`#b4700c`) | Darken to `#925b0a` | amber-bg 4.59; paper 5.47; sand 4.52 | Text-on-tint usage (shortage chip, short-note) and text directly on a card (`.prov.est`, `.exp.soon`) are both body text at 11-12.5px, need 4.5, not the "quiet, not bright" 3.24-3.87 range the current value gives across these three backgrounds. One darkened value clears all three, recomputed against each after review, not assumed from the amber-bg fix alone. |
-| 18, 39, 40 | `--green` (`#2f7d51`) | Darken to `#2c744b` (supersedes an earlier `#2d774d` candidate that cleared `--green-bg` alone but left green-on-sand at 4.37, short of 4.5) | green-bg 4.71; paper 5.49; sand 4.54 | Row 18's miss (4.19 vs 4.5) is narrow, but row 40 (`.ledgerrow.sys .amt.pos` on sand) misses by more (4.04). The single value above was chosen by solving for the hardest case (sand) first, then re-verified against green-bg and paper, both of which clear with margin to spare. |
-| 19, 20 | `--danger` (`#b12a2a`) | Darken to `#882020` | danger-on-danger-bg 7.02; white-on-danger 9.23 | **One token change clears both alert-category FAILs at once** (verified by testing both directions against the single candidate). This is the allergen-exclusive red (rule 9, P5); given rule 6 (domain safety over UI convenience), the 7:1 alert target is applied to it without exception, including on the selection controls (`.allergychip.on`, `.sevbtn.on`) since they are allergen-severity data entry, not decoration. |
-| 22, 38 | `--rose` (`#c75f66`) | Darken to `#9d4b51` | rose-bg 4.56; paper 5.72; sand 4.73 (sand recomputed for robustness; no current markup places rose text on sand, but the value already clears it if one appears) | "Use today" and "miss" status text (row 22) and the `.exp.now` expiry countdown directly on `.item`'s paper background (row 38) both need body contrast; the current value under-delivers on both by 0.6-1.4 points. |
-| 23 | `--brand-tint` (`#f9dece`) | If ever adopted for `brand-deep`-on-tint text, pair with `#a74925` instead of `#b64f28` (4.52) | 4.52 | Currently unused (§1); recorded so a future component does not inherit a silent failure. |
-| 24 | `.btn.pri` background | **Use `--brand-deep` (`#b64f28`) as the resting background instead of `--brand`**, keep `--brand` for the scarcity list's non-text uses (orb, active-nav stroke, camera chrome) | white on brand-deep = 5.07 | No new hex needed: `--brand-deep` already exists as the token's own "deep" variant and already clears 4.5:1 comfortably. The button's pressed state would then need its own, slightly darker third stop if the press-feedback distinction is to be kept (a PROPOSED follow-up, not resolved here since a new hex would be required). |
-| 25 | `--brand-deep` (`#b64f28`) on `--sand` | Same darkened value proposed for row 24's context does not help here (brand-deep is already the darker variant). Alternative fix: bump `.loop b` from 600 to 700 weight and 13.5px to 15px+ so it clears the large-text 3:1 line instead (13.5px 700 is still short of 18.66px, so this alone will not qualify either), or darken `--brand-deep` further to `#9c431f` (computed separately, not shown above, flagged as an open trade-off since `--brand-deep` is shared with the button's pressed state and the active-nav label, both of which already pass) | n/a | PROPOSED, needs a design call. Darkening `--brand-deep` globally to fix the loop banner would change two already-passing pairs' visual weight. Simplest non-invasive fix: recolor `.loop b` to `--ink` (already proven at 14+:1 on `--sand`) since the banner's brand-colored text is decorative emphasis, not the loop banner's only informational text. |
+| 22 | The blocked row in the Sun dinner sheet (`.pick` with `opacity: .75`) dims the allergen text "Blocked for Maya · not selectable" from 8.84:1 to 4.91:1, under the 7:1 alert bar | Drop the row's `opacity`. The name is already `--ink2` and the row is already not tappable, so full-strength danger text keeps the "unavailable" read | 8.84 | Safety copy. The allergen line must never be dimmed. Fix in M3-T13 (build) and note for the prototype owner |
+| 45 | On the camera screen the focus ring `#2442d6` on `#121212` is 2.52:1, under 3:1. v5 solved this with an ink halo; v6 dropped the halo | Use a light ring on the camera screen only: `#f3f1ec` on `#121212` is 16.60:1 | 16.60 | Keep `#2442d6` everywhere on paper and tile (rows 43, 44) |
+| 46 | `--hair` is 1.36:1 on paper. As a divider it is decorative and exempt. As the only visible boundary of `.iconb.round` (icon button) and `.rmv` (Remove, 36px) it fails 1.4.11 | Keep `--hair` for dividers. For those two controls use `--ink2` as the border (`#5f5d58` on paper 6.30:1), or drop the border and rely on the icon and label | 6.30 | `.stat.staple` ("not tracked") is a non-interactive label whose text passes (row 7), so its hairline is decorative |
+| 54 | Prototype stage button border | none | n/a | Chrome only, not product |
 
-**Summary:** 40 pairs measured, 16 FAILs. Counting one fix per failing row (the convention used throughout this table): 16 proposed fixes, 14 direct token darkenings/lightenings using only values derived from existing tokens (rows 9-12 via `--ink-3`, 17/36/37 via `--amber`, 18/40 via `--green`, 19/20 via `--danger`, 22/38 via `--rose`, 23 via a hypothetical `--brand-tint` pairing) and 2 reroutes to an existing token (row 24 to `--brand-deep`; row 25 to `--ink`, offered as one of two open options). Counting by *distinct token change* instead (7 changes total) shows the leverage more clearly: `--ink-3` resolves 4 rows with one value, `--danger` resolves 2, `--amber` resolves 3 (one tinted-chip context plus the two plain-card contexts review added), `--green` resolves 3 rows (1 already-passing, 2 FAIL) with a single value chosen against its hardest case (sand), `--rose` resolves 2, plus the two single-row reroutes (rows 24, 25) and the one hypothetical `--brand-tint` fix (row 23, unused today).
+**Narrow passes to protect** (clear 4.5:1 by under 0.1): row 8 ink3 on tile 4.51, row 24 amber on amber-bg 4.59, row 33 rose on rose-bg 4.56, row 34 ai on ai-bg 4.63 (0.13). Do not lighten any of these tokens, or change the surface under them, without re-running the script.
+
+**What did not change since D-021:** `--danger` on its tint is 7.02:1, the 7:1 alert bar, unchanged. `--amber`, `--green`, `--rose` all clear 4.5:1 on their tints and on paper. v6 also resolves the v5 colour-only failures: `--ink3` moved from `#665c52` to `#6f6c66` and still clears 4.5:1 on both light surfaces (5.01 and 4.51).
 
 ---
 
-## 3. Terracotta scarcity table
+## 5. Scarcity rules (ink-primary system, no brand accent)
 
-Every `--brand` / `--brand-deep` / `--brand-tint` / `#f4b48f` use remaining after M3-E0-T1's reduction (its review counted **nine**; this audit finds **ten** CSS rules, which reconcile to the review's nine if the active-nav text color and active-nav icon stroke below are counted as one combined "active nav indicator" instead of two declarations). All ten are **KEEP**, re-verified against the scarcity rule (design-direction §2: "brand accent appears only on the primary CTA, active nav indicator, and focus states").
+v5's scarcity rule policed a terracotta brand colour. v6 has no brand colour, so the rule moves to **what ink is allowed to do** and **what colour is allowed to mean**. Rules 1 to 4 restate D-033 items 2 and 3; rules 5 to 7 are ENGINEERING INFERENCE derived from how v6 is drawn and need architect sign-off before they bind.
 
-| Element (selector) | Screen(s) | Terracotta value | Keep/Remove | Reason |
-|---|---|---|---|---|
-| `.hero::after` (decorative orb) | Home | `--brand` at 18% opacity | KEEP | Hero accent, explicitly on the scarcity list ("hero accent"). |
-| `.hero h1 em` (italic "tonight?") | Home | `#f4b48f` | KEEP | Hero accent (typographic emphasis inside the one permitted dark hero surface). |
-| Sparkle icon beside the hero headline | Home | `#f4b48f` | KEEP | Hero accent, same surface as the two rows above. |
-| `.btn.pri` (primary CTA, resting) | 16 call sites across Home, Add, Recipes, Recipe detail, cook-confirm sheets, Manual entry, Household, Allergies, Item detail | `--brand` | KEEP | Primary CTA, the first item on the scarcity list. Subject to the contrast fix in §2 row 24. |
-| `.btn.pri:active` (primary CTA, pressed) | Same 16 sites | `--brand-deep` | KEEP | Press feedback on the same primary CTA. |
-| `.frame i` (viewfinder brackets, 4 corner marks) | Scan screen only | `--brand` | **KEEP, documented camera-chrome exception** | Not on the scarcity list's three named categories, but retained by the M3-E0-T1 review as camera-chrome convention (a viewfinder is universally drawn in an accent color in every scanning UI; treating it as decoration inside a full-bleed camera view, not as a competing brand surface). |
-| `.laser` (scan-line sweep) | Scan screen only | `--brand` (fill + glow) | **KEEP, documented camera-chrome exception** | Same reasoning as `.frame i`; the two are the paired camera-chrome exception the review named explicitly. |
-| `.loop b` (shopping "close the loop" banner text) | Shopping | `--brand-deep` | KEEP | Not literally "primary CTA" but the loop banner is the screen's one call-to-action-adjacent prompt; kept per T1's review disposition. Flagged in §2 row 25 for a contrast fix that may recolor this specific text to `--ink` while leaving the rest of the scarcity list untouched. |
-| `.nav button.on` (active tab label color) | Home, Inventory, Recipes, Shopping nav bars (4 sites) | `--brand-deep` | KEEP | Active nav indicator, the second item on the scarcity list. |
-| `.nav button.on svg` (active tab icon stroke) | Same 4 nav bars | `--brand` | KEEP | Active nav indicator (icon half of the same component as the row above). |
+1. **Ink is the only action colour.** Primary actions, selected chips and segments, the active tab, checkboxes, the avatar and the toast are ink (`#0f0f0f`) with white or paper text. The pressed state is `scale(.98)` and the hover state is `#2b2b2b`; neither introduces a hue. No terracotta, orange or any new hue is added as an accent without an ADR or a logged decision.
+2. **Colour is reserved for meaning, never decoration.** Food photography carries the colour of the product. The only coloured text and chips are the semantic set in section 1a: green (Known Fact, have, fresh, positive), amber (estimated, expiring soon, short, allergen data incomplete), rose ("use today"), purple (AI-read), allergen red.
+3. **Allergen red is for allergens only.** `--danger` and `--danger-bg` appear only on the blocked-recipe bar, the allergen legend chip, and the "Blocked for Maya" lines (section 6). Never on delete, error, expired food or a selection control.
+4. **The expiry ladder never turns red.** Today is rose, 2 to 3 days is amber, further out is green.
+5. **One ink-filled primary per decision.** A screen region offers at most one ink-filled primary action; the alternatives are outlined (`.btn`, `.okb.ghost`, `.btn.light`). PROPOSED.
+6. **Dark surfaces are the camera screen and ink controls only.** The v5 "one large dark surface" (espresso Home hero) is retired. `#121212` is allowed behind the live camera; ink is allowed as a button, toast or avatar fill. No dark hero, card or banner. PROPOSED.
+7. **Ink rules structure the page, hairlines divide rows.** A 1px ink rule marks a section head, the nav top edge, a stat band or a macro band; a 1px `--hair` rule separates rows inside a list. Tinted panels use `--tile` for neutral content and a semantic tint only for its own meaning. PROPOSED.
 
-**`--brand-tint` (`#f9dece`):** zero uses found. Not a scarcity violation (it cannot violate a rule it never invokes); recorded in §1 as an unused token and in §2 row 23 with a contrast fix ready if a future component adopts it.
+**One v6 exception that breaks rule 1 (flag):** the pantry banner `.loop` ("Olive oil checked off · add it to the pantry?") fills its **Add** button with `--green` (hover `#235f3d`) while every other action in v6 is ink. It passes contrast (rows 31, 32). PROPOSED decision for the architect: keep green as a positive-confirmation exception, or move the button to ink. Not decided here.
 
-**Net effect since M3-E0-T1:** the review's own count went from 15 live uses (six unaudited, two new) down to nine; this audit independently re-derives the same post-fix set (ten CSS rules covering the same nine semantic roles) and finds nothing further to remove. No new terracotta uses were found outside this list.
+**Colour-bearing rules in v6 and their classification:**
 
----
-
-## 4. Semantic-colour decisions (PROPOSED, PO decides)
-
-Per CLAUDE.md rule 4, these are recorded as PROPOSED for the product owner, not decided here.
-
-1. **`--danger` on `.allergychip.on` / `.sevbtn.on`** (declaring an allergy, and choosing its severity). PROPOSED: **keep**. This is data entry directly about an allergy, the narrowest possible allergen context, not a scarcity violation of the "allergen only" rule, it *is* the allergen rule applied to input controls rather than output verdicts. Audited in this ticket (see below): every other `--danger`/`--danger-bg` use in the file is also allergen-context; there is no crossover. Dependent on §2's proposed `--danger` darkening to clear the alert-category FAIL.
-2. **`.noneopt.on` green check beside allergy copy.** PROPOSED, PO to decide between: (a) **keep** the green check, on the reasoning that it marks a **user's declaration** ("I have no allergies") rather than a **system verdict** ("this food is safe"), a different semantic register from the banned ALLOWED-as-green-check pattern (P5, rule 9); pair with a copy-deck note (M3-E0-T2's deck) explicitly distinguishing "declaration checkmark" from "verdict clearance" so the distinction is documented, not just assumed; or (b) **swap** to a neutral ink checkmark to remove the visual ambiguity the M3-E0-T1 reviewer flagged ("one glance from the banned pattern"). This document does not choose between (a) and (b); both are viable and the choice is a PO call, not an engineering one.
-3. **`.chk.done` green** (shopping check-off). PROPOSED: **keep, no PO decision needed.** This is the general "positive/complete" sentiment use design-direction §0 already permits broadly (task done, item fresh, item verified), not the allergen-verdict-specific banned pattern; it sits outside any allergen surface entirely (Shopping screen, no allergen data present).
-4. **`--rose` vs `--danger` boundary.** Verified by direct grep of the prototype: every `--danger` use (8 sites: **5 CSS class rules**, `.allergen`, `.allergen .sh`, `.allergychip.on`, `.sevbtn.on`, `.verdictblock.blocked`, **plus 3 inline uses on the legend row**, its own `border-color`, the "Allergen" `.prov` tag's `background`, and the caveat paragraph's `color`) is allergen-context; every `--rose`/`--rose-bg` use (4 CSS rules: freshness-ring "now" stop, `.exp.now`, `.ingredrow .stat.miss`, plus one inline style on the same ring) is expiry/urgency-context. **Zero crossover found.** PROPOSED: record the boundary as CONFIRMED, not just designed, ready for the M3 typed module's lint rule (design-direction §4 mentions a typed token module; recommend a rule there forbidding `--danger` outside `allergen*`-named components).
-5. **AI purple exclusivity.** Verified by grep: every `--ai`/`--ai-bg` use (10 sites: `.prov.ai`, `.prov.ai.soft`, `.tray`, `.okbtn`, `.mode.cam`, `.chip.needsconf.on`, the "Needs your confirmation" section label, and the "future" phase label on one AI-adjacent scan-mode tile) is provenance/AI-tier or AI-adjacent phase-labeling. **Confirmed exclusive**, PROPOSED as CONFIRMED for the M3 module.
-6. **Freshness-ring ramp.** Verified by grep: `.fr-now` uses `--rose`, `.fr-soon` uses `--amber`, `.fr-fresh` uses `--green`; `--danger` never appears in the ramp. **Confirmed** it never touches allergen red, matching design-direction §0's explicit rule.
+| Colour | v6 rules that use it | Meaning held |
+|---|---|---|
+| `--danger` / `--danger-bg` | `.blockbar`, `.blockbar .sh`, `.prov.alg`, inline "Blocked for Maya" text (menu rail, picker sheet) | Allergen only |
+| `--rose` / `--rose-bg` | `.days.now` | Use today |
+| `--amber` / `--amber-bg` | `.verdict.unk`, `.days.soon`, `.prov.est`, `.stat.shortby`, `.stat.miss`, `.mfoot`, `.tile.short`, `.short`, `.queued` | Estimated, expiring, short, data incomplete |
+| `--green` / `--green-bg` | `.days.ok`, `.prov.fact`, `.stat.have`, `.amt.pos`, shopping "already have" check, `.loop` | Known Fact, have, fresh, positive |
+| `--ai` / `--ai-bg` / `--ai-ink` | `.prov.ai`, `.trh`, `.tray`, `.tray i`, `.tray .foot2` | AI-read only |
 
 ---
 
-## 5. Tap-target table
+## 6. Semantic decisions carried forward, and what v6 changed in use
 
-**Method:** height = (font-size x line-height) + top-padding + bottom-padding + top-border + bottom-border, for controls with no explicit CSS height/width. **Line-height assumption: 1.2x font-size** where no `line-height` is set (this is the value that reproduces the M3-E0-T1 review's own measured estimates exactly for `.leglink` (14.4 vs "~15"), `.toastUndo` (24.4 vs "~24"), `.chip` (33.6 vs "~34"), and `.loc` (34.6 vs "~35"), so it is used consistently here rather than assumed fresh). Where a rule sets an explicit `width`/`height`, that value is used directly (no line-height math needed); `box-sizing: border-box` is set globally so an explicit dimension already includes padding/border.
+Values are unchanged. Three **uses** changed between v5 and v6; they narrow colour, they do not widen it. Recorded so the architect can confirm each (CLAUDE.md rule 4: none of these is a decision made here).
 
-| Selector | CSS basis | Computed height | Target | Result |
-|---|---|---|---|---|
-| `.chip` | 13px font x 1.2 + 2x8px padding + 2x1px border | 33.6px (~34px) | 44px | FAIL (-10px) |
-| `.loc` | 13px x 1.2 + 2x8px padding + 2x1.5px border | 34.6px (~35px) | 44px | FAIL (-9px) |
-| `.seg button` | explicit `height: 36px` | 36px | 44px | FAIL (-8px) |
-| `.chk` | explicit `width/height: 26px` | 26px | 44px | FAIL (-18px, worst case) |
-| `.okbtn` | explicit `height: 32px` | 32px | 44px | FAIL (-12px) |
-| `.sevbtn` | explicit `height: 34px` | 34px | 44px | FAIL (-10px) |
-| `.allergychip` | 13px x 1.2 + 2x9px padding + 2x1.5px border | 36.6px (~37px) | 44px | FAIL (-7px) |
-| `.leglink` | 12px x 1.2, no padding/border (plain underlined text) | 14.4px (~14px) | 44px | FAIL (-30px, worst case) |
-| `.toastUndo` | 12px x 1.2 + 2x5px padding | 24.4px (~24px) | 44px | FAIL (-20px) |
-| `.hbtn` | explicit `width/height: 40px` | 40px | 44px | FAIL (-4px) |
-| `.iconb` | explicit `width/height: 42px` | 42px | 44px | FAIL (-2px) |
-| `.step button` | explicit `width/height: 42px` | 42px | 44px | FAIL (-2px) |
-| `.btn` | explicit `height: 48px` | 48px | 44px | PASS |
-| `.fab` | explicit `width/height: 62px` | 62px | 44px | PASS |
-| `.nav button` | `height: 100%` of `.nav`'s explicit `height: 66px` | 66px | 44px | PASS |
-
-**12 of 15 controls fail.** Remediation without changing the look uses two techniques:
-
-**A. Grow the box (near-misses, <=4px short):** `.hbtn` 40 -> 44px, `.iconb` 42 -> 44px, `.step button` 42 -> 44px. A 2-4px larger circle/square is not visually distinguishable at a glance and needs no other layout change.
-
-**B. Invisible hit-slop, keep the visible pill exactly as drawn (far short, growing the box would blow the compact aesthetic):** add touch-area padding beyond the rendered control (React Native `hitSlop`, or on web a transparent `::before` sized to 44x44 and centered via `inset: calc((44px - width)/-2)`), computed as `ceil((44 - height)/2)` per side, using the **precise** computed height from §5's table (e.g. `.chip`'s 33.6px, not its rounded ~34px display value; `ceil((44-33.6)/2) = ceil(5.2) = 6`, not the 5 a rounded-height computation would give):
-
-| Selector | Per-side hit-slop needed |
-|---|---|
-| `.chk` | 9px |
-| `.leglink` | 15px |
-| `.toastUndo` | 10px |
-| `.okbtn` | 6px |
-| `.chip` | 6px |
-| `.sevbtn` | 5px |
-| `.loc` | 5px |
-| `.allergychip` | 4px |
-
-**C. Grow the strip, not hit-slop (adjacent flex items sharing one continuous track, so per-item hit-slop would overlap the neighbor):** `.seg button` and `.sevbtn` sit edge-to-edge (or 8px-gapped) inside a shared row (`.seg`, `.sevrow`) with only a few px of container padding around them; recommend raising the row's own height (36 -> 44 for `.seg`, 34 -> 44 for `.sevbtn`) rather than hit-slop, since hit-slop on one segment would extend into the next segment's rendered area. This is a real, if minor, visual change (a segmented control and a severity-picker row 8-10px taller); flagged as the one remediation in this table that is not purely invisible.
+1. **Allergen red on allergy selection controls (v5 section 4 item 1) is gone.** In v5 `.allergychip.on` and `.sevbtn.on` were `--danger`. In v6 the allergen chips and severity buttons are ordinary chips: a selected state is ink fill (`.chip[aria-pressed=true]`, `.sev button[aria-pressed=true]`). Allergen red now appears only where a verdict is shown. This keeps "red only for allergens" true, and it means a declared allergy is no longer drawn red while it is being entered. PROPOSED: accept, since the allergen severity words ("severe") still appear in text.
+2. **The none-of-the-above allergy option (v5 section 4 item 2, left to the PO between a green check and an ink check) is drawn in ink in v6** (`.noneopt[aria-pressed=true] .box` is ink fill). That is option (b), the neutral check, which removes the "green check beside allergy copy" ambiguity. The PO choice was never recorded as decided. PROPOSED: record option (b) as adopted by D-033.
+3. **The shopping check-off (`.chk`, v5 section 4 item 3) is ink in v6, not green.** The green positive sentiment now shows on the "have" chip and the pantry banner only.
+4. **`--rose` versus `--danger` boundary.** Verified by direct grep of the v6 stylesheet: every `--danger` use is allergen context (5 CSS rules, 2 inline styles on blocked lines); the only `--rose` use is `.days.now`. **Zero crossover.** The M3 typed module should forbid `danger` outside allergen-named components (design-direction section 4).
+5. **AI purple exclusivity.** `--ai`, `--ai-bg` and `--ai-ink` appear in `.prov.ai`, `.trh`, `.tray`, `.tray i` and `.tray .foot2` only. Confirmed exclusive.
+6. **`--info` is replaced.** v5's `--info` `#3898ec` plus ink halo is replaced by the literal `#2442d6` focus ring without a halo (section 1b). It clears 3:1 on paper and tile (rows 43, 44) and fails on the camera screen (row 45, fix in section 4).
 
 ---
 
-## 6. Motion table
+## 7. Tap-target table (v6)
 
-**No `prefers-reduced-motion` media query exists anywhere in the file** (grep confirmed: zero matches for `prefers-reduced-motion`). Design-principles P9 requires reduced motion to be respected; this is currently un-met everywhere below.
+**Method:** the declared `min-height`, `height` or `width` in the v6 CSS (v6 declares sizes explicitly for almost every control, so the line-height arithmetic v5 needed is not required). Controls that grow with content are not listed when their declared minimum already clears 44px. D-033 keeps 44px binding.
 
-| Rule | Motion | Duration | Trigger | Proposed `prefers-reduced-motion: reduce` treatment |
-|---|---|---|---|---|
-| `.screen.active { animation: in .28s ease both; }` | Slide-up + fade-in on every screen transition | 0.28s, once per navigation | Every `go()` screen change | Disable entirely (`animation: none`); screen appears instantly. This is the review's flagged "screen-in animation." |
-| `.laser { animation: sweep 1.8s ease-in-out infinite alternate; }` | Continuous vertical sweep | 1.8s, **infinite loop** | Always running while the scan screen is open | Disable (`animation: none`) and freeze at a static mid-frame position (`top: 74px`, the sweep's midpoint) so the viewfinder still reads as a scan indicator without motion. This is the review's flagged "laser sweep," and the highest-priority fix in this table since it is the only truly infinite, continuous animation in the file (a known vestibular/motion-sickness trigger class). |
-| `.card.tap { transition: transform .12s ease; }` + `:active { transform: scale(.985); }` | Press-scale feedback | 0.12s, on tap | Card tap | Drop `transition` (instant scale on press) or drop the rule entirely; the scale itself (1.5%) is small enough that removing only the *animated interpolation* (not the state change) satisfies "respected" while keeping tactile feedback. |
-| `.btn { transition: transform .1s; }` + `:active { transform: scale(.97); }` | Press-scale feedback | 0.1s | Button tap | Same treatment as `.card.tap`. |
-| `.item { transition: transform .1s; }` + `:active { transform: scale(.985); }` | Press-scale feedback | 0.1s | Inventory/list row tap | Same treatment. |
-| `.mode { transition: transform .1s; }` + `:active { transform: scale(.97); }` | Press-scale feedback | 0.1s | Add-food mode tile tap | Same treatment. |
-| `.fab { transition: transform .12s; }` + `:active { transform: translateX(-50%) scale(.93); }` | Press-scale feedback | 0.12s | FAB tap | Same treatment. |
-| `.chk svg { opacity: 0; transform: scale(.6); transition: .15s; }` | Check-mark fade/scale-in | 0.15s | Checkbox toggled | Keep the opacity fade (content appearing/disappearing is exempted by most reduced-motion guidance); drop the `scale(.6)` component so the glyph appears at full size instead of growing in. |
-| `.toast { transition: .18s; }` | Toast fade/slide-in | 0.18s | Any `toast()` call | Keep the opacity fade; drop the `translateY` component (currently baked into the same `transform` the rule animates via the `.show` class swap). |
+| Selector | Declared size | Target | Result |
+|---|---|---|---|
+| `.btn` | min-height 50px (wide 52px) | 44px | PASS |
+| `.addprimary` | min-height 88px | 44px | PASS |
+| `.nav button` | min-height 48px | 44px | PASS |
+| `.iconb`, `.chk`, `.step button`, `.okb`, `.seg button`, `.sec .lnk` | 44px | 44px | PASS |
+| `.send` | 46px | 44px | PASS |
+| `.noneopt` | min-height 48px | 44px | PASS |
+| `.row`, `.arow`, `.slot`, `.pick`, `.stats button`, `.inp` | 50 to 76px | 44px | PASS |
+| `.chip` | min-height 40px | 44px | FAIL (-4px) |
+| `.chips.units .chip` | min-height 40px | 44px | FAIL (-4px) |
+| `.sev button` | min-height 40px | 44px | FAIL (-4px) |
+| `.av` (masthead avatar as a button) | 38px | 44px | FAIL (-6px) |
+| `.rmv` | min-height 36px | 44px | FAIL (-8px) |
+| `.stat.miss` as a button ("+ list") | inline min-height 36px | 44px | FAIL (-8px) |
+| `.lg` (inline link "what do these mean?") | min-height 32px | 44px | FAIL (-12px) |
+| `.reclink` | the whole recipe card via `::after` | 44px | PASS |
+| `.jump button`, `.statesbar button` | 40px | n/a | prototype chrome, not product |
 
-**Summary:** 9 animation/transition declarations, 0 currently guarded, 2 flagged by the M3-E0-T1 review (screen-in, laser sweep) as the priority fixes, 7 secondary (micro press-feedback and toast/check transitions) that should drop their transform component under reduced motion while most can keep opacity fades.
+**7 of the 25 product controls listed fall short.** All are near-misses fixed by invisible hit-slop, the technique v5 used (`hitSlop` per side = `ceil((44 - height) / 2)`): `.chip`, `.chips.units .chip`, `.sev button` 2px; `.av` 3px; `.rmv` and `.stat.miss` 4px; `.lg` 6px. The segmented strips (`.seg button`) already pass at 44px and need no change. This replaces the v5 table (12 of 15 failed) entirely.
 
 ---
 
-## 7. Dark-mode readiness (OQ-D6, still open)
+## 8. Motion
 
-Design-direction §2's v1 foundation table is the only place a dark counterpart exists at all, and it predates the v2 token sheet in §0 that the prototype actually ships (§0 changed most of the light-side hex values; the dark side was never re-derived to match).
+v6 adds a global rule: `@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important } }`. The v5 gap (no reduced-motion handling anywhere, laser sweep infinite) is closed: v6 has **no `@keyframes` and no infinite animation**; the camera laser is static.
 
-**Have a documented dark counterpart (v1 table, §2), but the light side is now stale relative to §0/`:root`:**
+| Rule | Motion | Duration | Reduced-motion treatment |
+|---|---|---|---|
+| `.btn:active { transform: scale(.98) }` | Press scale | instant (no transition) | Covered by the global rule |
+| `.toast` (`opacity`, `translateY(8px)` to none) | Fade and rise on show | .2s | Global rule removes the transition; the toast appears and disappears instantly |
+| `@media (hover:hover)` hover fills | Colour change | instant | n/a |
 
-| Token | v1 light (documented, now superseded) | v2 light (`:root`, actually shipped) | Documented dark | Status |
-|---|---|---|---|---|
-| `bg.page` | `#f5f4ed` | `#efe5d5` | `#141413` | Dark value never re-checked against the new, warmer light value |
-| `bg.card` | `#faf9f5` | `#fffbf4` | `#30302e` | Same gap |
-| `bg.interactive` | `#e8e6dc` | `#e4d7c2` (closest v2 analog, `bg.page.alt`) | `#3d3d3a` | Same gap |
-| `border.subtle` / `border.strong` | `#f0eee6` / `#d1cfc5` | `#dfd1ba` (single `--line`, v2 collapsed subtle/strong to one token) | `#30302e` / `#4d4c48` | v2 merged two border tokens into one; the dark table still has two, needs reconciling |
-| `text.primary` | `#141413` | `#1e1813` | `#faf9f5` | Same gap |
-| `text.secondary` | `#5e5d59` | `#5b5045` | `#b0aea5` | Same gap |
-| `text.tertiary` | `#87867f` | `#8f8274` | `#87867f` (identical to its own light value, likely a placeholder, not a real dark derivation) | Needs a real dark value, and the light side needs the §2 fix from this document first |
+In the app, M3-T13 should honour the platform's reduce-motion setting (`AccessibilityInfo.isReduceMotionEnabled`) for the toast and any press animation it adds.
 
-**No dark counterpart exists at all (v2-only tokens):**
+---
 
-`--espresso` / `--espresso-2` (bg.hero), `--cream` (text.onHero), `--brand` / `--brand-deep` / `--brand-tint` (accent.brand triad), `--green` / `--green-bg`, `--amber` / `--amber-bg` (both updated hexes from v1), `--rose` / `--rose-bg` (urgency.today, new in v2), `--danger` / `--danger-bg` (updated hex from v1), `--ai` / `--ai-bg`, the freshness-ring ramp, and the Fraunces display face's dark-mode legibility (untested).
+## 9. Dark-mode readiness (OQ-D6, still open)
 
-**Recommendation for M3:** dark mode (OQ-D6) stays open; this section is the inventory of what a dark pass would need to produce (a re-derivation of the 7-row v1 table against the actual v2 light values, plus a from-scratch dark value for every v2-only token above), not a resolution of it.
+v6 ships light only. The v1 dark table in design-direction section 2 and the v5 inventory in the previous version of this sheet predate v6 and are superseded. A dark pass would need a derived value for every token in sections 1a and 1b: `paper`, `tile`, `ink`, `ink2`, `ink3`, `hair`, the ten semantic tokens (each re-measured against its own tint, the 7:1 alert bar included), `ai-ink`, the hover literals, and the focus ring. The camera screen's `#121212` already is a dark surface and can seed `paper` in dark. OQ-D6 stays open; this is the inventory, not a resolution.
 
-## 8. Device layout rules (BUG-003, 2026-10-01)
+---
+
+## 10. Device layout rules (BUG-003, 2026-10-01)
+
+Carried forward unchanged; they describe app behaviour, not v5 tokens. One row (S7 hint) is updated for the v6 camera screen.
 
 | Rule | Value | Where |
 |---|---|---|
-| Floating tab bar clearance | `TAB_BAR_HEIGHT + TAB_BAR_BOTTOM_OFFSET + insets.bottom + spacing.lg` (66 + 18 + inset + 16) via `useTabBarClearance()` from `src/navigation/TabBar.tsx` | the content bottom padding of every scrolling screen that shows the bar (S4, S5, S6 legend, S11, S12; Home and Menu when they scroll) |
+| Floating tab bar clearance | `TAB_BAR_HEIGHT + TAB_BAR_BOTTOM_OFFSET + insets.bottom + spacing.lg` (66 + 18 + inset + 16) via `useTabBarClearance()` from `src/navigation/TabBar.tsx` | the content bottom padding of every scrolling screen that shows the bar (S4, S5, S6 legend, S11, S12; Home and Menu when they scroll). v6's nav is a full-width bar (min-height 48px, padding `8px 8px 20px`), not floating; M3-T13 revisits this constant |
 | Bottom sheets and bottom-anchored inputs | pad by `insets.bottom` plus the sheet's own padding; keep them visible when the keyboard opens | S7 typed-code sheet today; S8 and the miss panel on the device pass |
-| S7 camera panel | at most 55% of the window height, brackets centred in the panel, hint directly under it, sand below | `app/add/scan.tsx` |
+| S7 camera panel | at most 55% of the window height, brackets centred in the panel, hint directly under it, paper below | `app/add/scan.tsx` |
 | Screens that hide the bar | no clearance padding (onboarding, the Add flow) | |
 | Top inset (M3-T10, 2026-10-07) | every screen header pads `insets.top + spacing.md` from `useSafeAreaInsets()`, never a fixed `spacing.xl`; on S7 the camera stays full-bleed and only the overlay controls pad | every screen under `app/` |
-| S7 hint on sand | `ink2` on `sand`, 6.29:1 (§2 row 5) | `app/add/scan.tsx` |
+| S7 hint under the camera (v6) | `#d9d6cf` on `#121212`, 12.91:1 (section 4 row 39); v5 was `ink2` on `sand` | `app/add/scan.tsx` |
+
+---
+
+## 11. v5 to v6 token mapping (for M3-T13)
+
+Covers every export of `apps/mobile/src/design/tokens.ts` (`colors`, `radius`, `spacing`, `fontFamily`, `typeScale`, `minTouchTarget`) plus the v5 `:root` property `--info`, which tokens.ts never carried. "Same" means the hex is identical in v6. "Removed" means v6 has no equivalent and M3-T13 deletes the token and every use of it. New v6 tokens (names PROPOSED) are listed after the table.
+
+### 11a. Colours
+
+| Old token (tokens.ts) | v5 value | New token | v6 value | Note |
+|---|---|---|---|---|
+| `sand` | `#efe5d5` | `paper` | `#fbfaf6` | Page canvas is now paper |
+| `sand2` | `#e4d7c2` | `tile` | `#f1eee6` | Segmented track is gone (v6 segments are underlined); tile covers panels and photo fallback |
+| `paper` | `#fffbf4` | `paper` | `#fbfaf6` | Same name, new value; v6 has one light surface (no card surface lifting off a canvas) |
+| `line` | `#dfd1ba` | `hair` | `#dcd8cf` | Renamed |
+| `ink` | `#1e1813` | `ink` | `#0f0f0f` | Also the primary action fill |
+| `ink2` | `#5b5045` | `ink2` | `#5f5d58` | |
+| `ink3` | `#665c52` | `ink3` | `#6f6c66` | Pairs measured in section 4 |
+| `espresso` | `#2a1f18` | removed | none | Home hero is now a photo. Camera screen uses `cameraBg` `#121212` |
+| `espresso2` | `#3b2d23` | removed | none | |
+| `cream` | `#f7efe2` | `white` / `cameraText` | `#ffffff` / `#f3f1ec` | Text on ink fills is `white`; text on the camera is `cameraText` |
+| `brand` | `#d9673b` | removed | none | No brand accent. Primary action is `ink`; active tab is `ink` at weight 800 |
+| `brandDeep` | `#b64f28` | removed | none | |
+| `brandPressed` | `#9c4322` | `inkHover` (hover) | `#2b2b2b` | Pressed is `scale(.98)`, hover is `inkHover` |
+| `brandTint` | `#f9dece` | removed | none | Was unused in v5 |
+| `brandOnTint` | `#a74925` | removed | none | |
+| `green` | `#2c744b` | `green` | `#2c744b` | Same |
+| `greenBg` | `#dfeee3` | `greenBg` | `#dfeee3` | Same |
+| `amber` | `#925b0a` | `amber` | `#925b0a` | Same |
+| `amberBg` | `#f6e6c8` | `amberBg` | `#f6e6c8` | Same |
+| `rose` | `#9d4b51` | `rose` | `#9d4b51` | Same |
+| `roseBg` | `#f7dcdc` | `roseBg` | `#f7dcdc` | Same |
+| `danger` | `#882020` | `danger` | `#882020` | Same. Allergen only |
+| `dangerBg` | `#f9d9d9` | `dangerBg` | `#f9d9d9` | Same |
+| `ai` | `#7b4cb5` | `ai` | `#7b4cb5` | Same |
+| `aiBg` | `#eadff7` | `aiBg` | `#eadff7` | Same |
+| `white` | `#ffffff` | `white` | `#ffffff` | Same |
+| `--info` (prototype only) | `#3898ec` | `focus` | `#2442d6` | Focus ring; the ink halo is dropped. Camera screen uses `cameraText` for its ring (section 4 row 45) |
+
+**New in v6:** `aiInk` `#5a4a70`; `amberInk` `#5b4210`; `greenInk` `#1f4d33`; `greenHover` `#235f3d`; `inkHover` `#2b2b2b`; `rowHover` `#f4f2ec`; `invHover` `#e4e1d9`; `onInkMuted` `rgba(255,255,255,.78)`; `aiHair` `#d7c6ee`; `aiTile` `#f5f0fb`; `focus` `#2442d6`; `cameraBg` `#121212`; `cameraBg2` `#2b2a27`; `cameraText` `#f3f1ec`; `cameraTextMuted` `#d9d6cf`; `scrim` `rgba(15,15,15,.45)`. `--stage` and the other stage-chrome literals are not carried.
+
+### 11b. Radius
+
+| Old token | v5 value | New token | v6 value | Note |
+|---|---|---|---|---|
+| `radius.sm` | 12 | `radius.toast` | 12 | Used by the toast only in v6 |
+| `radius.md` | 18 | removed | none | Cards are square or hairline-ruled in v6. Nearest v6 value is `radius.panel` 14 for the tray and primary block |
+| `radius.lg` | 24 | `radius.sheet` | 22 (top corners only) | Sheet and scan panel |
+| `radius.pill` | 9999 | `radius.pill` | 9999 (CSS 999px) | Same |
+
+New (section 3a): `radius.none` 0, `radius.circle` 50%, `radius.panel` 14, `radius.verdict` 10, `radius.verdictSm` 8.
+
+### 11c. Spacing
+
+| Old token | v5 value | New token | v6 value | Note |
+|---|---|---|---|---|
+| `spacing.xs` | 4 | `spacing.xs` | 4 | Same |
+| `spacing.sm` | 8 | `spacing.sm` | 8 | Same |
+| `spacing.md` | 12 | `spacing.md` | 12 | Same |
+| `spacing.lg` | 16 | `spacing.lg` | 16 | Same |
+| `spacing.xl` | 24 | `spacing.xl` | 24 | Same |
+| `spacing.xxl` | 32 | `spacing.xxl` | 32 | Kept; v6 uses 28 and 30 nearby (PROPOSED `section` 30) |
+
+New (section 3b, PROPOSED): `snug` 10, `cozy` 14, `gutter` 20, `section` 30.
+
+### 11d. Fonts and type scale
+
+| Old token | v5 value | New token | v6 value | Note |
+|---|---|---|---|---|
+| `fontFamily.display` | Fraunces | `fontFamily.display` | Bodoni Moda | Weight 500 only (v5 asked for 600) |
+| `fontFamily.displayFallback` | serif | `fontFamily.displayFallback` | serif | Same |
+| `fontFamily.body` | Inter | `fontFamily.body` | Schibsted Grotesk | |
+| `fontFamily.bodyFallback` | sans-serif | `fontFamily.bodyFallback` | `system-ui, sans-serif` | v6 stack is `'Schibsted Grotesk', system-ui, sans-serif` |
+| `typeScale.display` | 34 / 40, Fraunces 600 | `typeScale.h1` | 40 / 1.02 (41), Bodoni 500, -.015em | Home headline and recipe name. Screen title is `typeScale.title` 44 / 1 |
+| `typeScale.heading` | 21 / 26, Fraunces 600 | `typeScale.section` | 25 / 1, Bodoni 500 (group heading 22 / 1) | |
+| `typeScale.title` | 17 / 22, Inter 600 | `typeScale.rowTitle` | 15.5 / 1.2, Schibsted 700 (primary block title 17 / 1.2, 700) | |
+| `typeScale.body` | 15 / 21, Inter 400 | `typeScale.body` | 15 / 1.45 (about 22), Schibsted 400 | |
+| `typeScale.label` | 13 / 18, Inter 600 | `typeScale.label` | 13 / 1 to 1.3, Schibsted 600 to 700 | |
+| `typeScale.caption` | 11.5 / 15, Inter 500 | `typeScale.caption` | 12.5 / 1.3, Schibsted 400 to 500 (chip floor is 12 / 1, 700) | v6 has no text under 12px |
+
+New display steps (section 2b): 54, 46, 44, 40, 36, 30, 28, 27, 26, 25, 24, 22, 20; the sheet and screen-title sizes are the ones M3-T13 most needs named.
+
+### 11e. Other
+
+| Old token | v5 value | New token | v6 value | Note |
+|---|---|---|---|---|
+| `minTouchTarget` | 44 | `minTouchTarget` | 44 | Same, binding (D-033). Exceptions in section 7 |
+| `tokens` (aggregate export) | colors, radius, spacing, fontFamily, typeScale, minTouchTarget | same | same | Add the new groups |
