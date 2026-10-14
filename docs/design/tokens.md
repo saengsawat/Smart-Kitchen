@@ -12,6 +12,8 @@
 
 ### 1a. Every custom property in v6 `:root`
 
+Safety and semantic rows: hex byte-identical to D-021; use prose updated for v6 selectors (see section 6 item 1). Allergy selection controls going ink (no longer red) is PROPOSED, an open PO call, not decided here.
+
 `:root` holds 18 colour properties. v6 has no radius, spacing or font custom properties; those values live in the stylesheet and are catalogued in sections 2 and 3.
 
 | `:root` property | Hex | Role | Allowed uses | Forbidden uses |
@@ -74,8 +76,8 @@ Both families are SIL Open Font License 1.1 and are loaded in the prototype from
 
 | Role | Family | Axes in the prototype request | Weights v6 actually uses | Licence | Source |
 |---|---|---|---|---|---|
-| Display (`.serif` class: headings, quantities, percentages, numerals in stats) | Bodoni Moda | `opsz` 6 to 96, `wght` 400 to 700; `font-optical-sizing: auto` | 500 only | SIL OFL 1.1 | `github.com/google/fonts`, directory `ofl/bodonimoda` (upstream project: Indestructible Type, `github.com/indestructible-type/Bodoni`) |
-| UI and body (default `body`) | Schibsted Grotesk | `wght` 400 to 800 | 400, 500, 600, 700, 800 (800 only for the current nav tab) | SIL OFL 1.1 | `github.com/google/fonts`, directory `ofl/schibstedgrotesk` (upstream project: Schibsted, `github.com/schibsted/schibsted-grotesk`) |
+| Display (`.serif` class: headings, quantities, percentages, numerals in stats) | Bodoni Moda | `opsz` 6 to 96, `wght` 400 to 700; `font-optical-sizing: auto` | 500 only | SIL OFL 1.1 (unverified until OFL.txt is fetched) | `github.com/google/fonts`, directory `ofl/bodonimoda` (upstream project: Indestructible Type, `github.com/indestructible-type/Bodoni`) |
+| UI and body (default `body`) | Schibsted Grotesk | `wght` 400 to 800 | 400, 500, 600, 700, 800 (800 only for the current nav tab) | SIL OFL 1.1 (unverified until OFL.txt is fetched) | `github.com/google/fonts`, directory `ofl/schibstedgrotesk` (upstream project: Schibsted, `github.com/schibsted/schibsted-grotesk`) |
 
 The upstream project names above are from memory of the `google/fonts` layout and are to be confirmed against each family's `OFL.txt` (copyright line) at fetch time.
 
