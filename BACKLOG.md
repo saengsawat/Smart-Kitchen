@@ -22,6 +22,8 @@ Authoritative work plan. Structure: **Milestone → Epic → Ticket**. M0 and M1
 10. **Out of scope**
 11. **Definition of done (DoD)**
 
+**Design and UI-style tickets** (the prototype or `apps/mobile` styles) also say in Acceptance criteria that `impeccable detect` on the changed files shows no new findings, or each is fixed or explained in the report; the worker runs it and the reviewer re-runs it. A full `/impeccable critique` or `polish` (multi-agent, costly) is named in the ticket only when wanted, typically once per new prototype version (PO, 2026-10-14).
+
 Model routing rules (default Sonnet; Opus for the high-risk domain list; separate reviewer always required before done) are defined in [CLAUDE.md rules 20–27](CLAUDE.md). The architect sets the model lines; deviating requires architect sign-off recorded on the ticket. Work outside a ticket's file scope requires escalation, not improvisation.
 
 ---
