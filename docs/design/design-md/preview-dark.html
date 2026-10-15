@@ -1,0 +1,283 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Smart Kitchen Tokens Dark</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:opsz,wght@6..96,400..700&family=Schibsted+Grotesk:wght@400..800&display=swap" rel="stylesheet">
+<style>:root{--paper:#121212;--tile:#2b2a27;--ink:#f3f1ec;--ink2:#d9d6cf;--ink3:#9a978f;--hair:#3f3f3e;--danger:#f9d9d9;--danger-bg:#351616;--amber:#f6e6c8;--amber-bg:#382810;--green:#dfeee3;--green-bg:#1a2f23;--rose:#f7dcdc;--rose-bg:#3c2325;--ai:#eadff7;--ai-bg:#322343;--ai-ink:#c5b9d3;--on-ink:#121212;--ink-hover:#e4e1d9;--row-hover:#201f1f;--amber-ink:#d4c4a7;--green-ink:#bcccc0;--green-hover:#235f3d;--ai-hair:#594c65;--ai-tile:#413351;--focus:#f3f1ec;--danger-solid:#882020;--green-solid:#2c744b;--on-solid:#ffffff;--on-ink-muted:rgba(18,18,18,.78);--scrim:rgba(15,15,15,.45);--sel-bg:#f3f1ec;--sel-fg:#121212}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:var(--paper);color:var(--ink)}
+body{font:15px/1.45 'Schibsted Grotesk',system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+:focus-visible{outline:2.5px solid var(--focus);outline-offset:2px;border-radius:4px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+.num{font-variant-numeric:tabular-nums lining-nums}
+.serif{font-family:'Bodoni Moda',serif;font-optical-sizing:auto;font-weight:500}
+code{font:inherit;font-weight:600}
+.wrap{max-width:960px;margin:0 auto;padding:24px 20px 56px}
+.mast{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px}
+.mast .name{font:600 12px/1 'Schibsted Grotesk';letter-spacing:.22em;text-transform:uppercase}
+.mast .when{font:500 13px/1 'Schibsted Grotesk';color:var(--ink2)}
+.rule{height:1px;background:var(--ink);margin:12px 0 0}
+.title{padding-top:12px;font-size:44px;line-height:1;letter-spacing:-.015em}
+.sub{padding-top:6px;font:500 13.5px/1.35 'Schibsted Grotesk';color:var(--ink2);max-width:640px}
+.notice{margin-top:14px;padding:12px 14px;background:var(--tile);font-size:13px;line-height:1.5;color:var(--ink2)}
+.notice b{color:var(--ink)}
+.sec{display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin-top:30px;padding-bottom:6px;border-bottom:1px solid var(--ink)}
+.sec h2{font-size:25px;line-height:1}
+.sec span{font:600 12px/1 'Schibsted Grotesk';color:var(--ink2)}
+.lead{margin-top:10px;font-size:13.5px;line-height:1.5;color:var(--ink2);max-width:680px}
+.grp{display:flex;justify-content:space-between;align-items:baseline;margin-top:24px;padding-bottom:6px;border-bottom:1px solid var(--ink)}
+.grp h3{font-size:22px;line-height:1;font-weight:500}
+.grp span{font:600 12px/1 'Schibsted Grotesk';color:var(--ink2)}
+.swatches{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:14px 12px;margin-top:14px}
+.sw .chipbox{height:64px;border:1px solid var(--hair)}
+.sw b{display:block;margin-top:6px;font:700 14px/1.2 'Schibsted Grotesk'}
+.sw .hex{font:600 12.5px/1.3 'Schibsted Grotesk';color:var(--ink)}
+.sw .meta{font:400 12.5px/1.35 'Schibsted Grotesk';color:var(--ink2);margin-top:2px}
+.tscale{margin-top:10px}
+.trow{display:grid;grid-template-columns:190px 1fr;gap:6px 16px;align-items:baseline;padding:10px 0;border-bottom:1px solid var(--hair)}
+.trow .spec{font:600 12px/1.5 'Schibsted Grotesk';color:var(--ink2)}
+.trow .spec i{display:block;font-style:normal;font-weight:400;font-size:12.5px;line-height:1.5;margin-top:2px}
+.trow .sample{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.demo{max-width:390px;background:var(--paper);min-width:0}
+.cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:24px;margin-top:6px}
+.btns{display:flex;gap:8px;margin-top:14px}
+.btn{flex:1;min-height:50px;font:700 14px/1 'Schibsted Grotesk';border:1.5px solid var(--ink);border-radius:999px;padding:0 12px}
+.btn.pri{background:var(--ink);color:var(--on-ink)}
+.btn:active{transform:scale(.98)}
+.okb{min-height:44px;min-width:56px;padding:0 14px;border-radius:999px;font:700 13px/1 'Schibsted Grotesk';background:var(--ink);color:var(--on-ink)}
+.okb.ghost{background:transparent;color:var(--ink);border:1.5px solid var(--ink)}
+.row2{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:14px}
+.chip{flex:0 0 auto;display:inline-flex;align-items:center;min-height:40px;padding:0 15px;border-radius:999px;border:1.5px solid var(--ink);font:600 13.5px/1 'Schibsted Grotesk'}
+.chip.is-on{background:var(--ink);color:var(--on-ink)}
+.chip.alg-on{border-color:var(--danger);background:var(--danger-bg);color:var(--danger)}
+.sevbtn{display:inline-flex;align-items:center;min-height:40px;padding:0 13px;border-radius:999px;border:1.5px solid var(--ink);font:600 13px/1 'Schibsted Grotesk'}
+.sevbtn.alg-on{background:var(--danger-solid);color:var(--on-solid);border-color:var(--danger-solid)}
+.days{font:700 12px/1 'Schibsted Grotesk';letter-spacing:.12em;text-transform:uppercase;padding:6px 8px;border-radius:999px;white-space:nowrap}
+.days.now{background:var(--rose-bg);color:var(--rose)}
+.days.soon{background:var(--amber-bg);color:var(--amber)}
+.days.ok{background:var(--green-bg);color:var(--green)}
+.prov{font-size:12px;font-weight:700;padding:4px 9px;border-radius:999px;white-space:nowrap}
+.prov.fact{color:var(--green);background:var(--green-bg)}
+.prov.est{color:var(--amber);background:var(--amber-bg)}
+.prov.ai{color:var(--ai);background:var(--ai-bg)}
+.prov.alg{color:var(--danger);background:var(--danger-bg);display:inline-flex;gap:4px;align-items:center}
+.stat{font:700 12px/1 'Schibsted Grotesk';letter-spacing:.1em;text-transform:uppercase;padding:6px 8px;border-radius:999px;white-space:nowrap}
+.stat.have{background:var(--green-bg);color:var(--green)}
+.stat.shortby{background:var(--amber-bg);color:var(--amber)}
+.stat.list{background:var(--tile);color:var(--ink2)}
+.stat.staple{background:transparent;color:var(--ink3);border:1px solid var(--hair)}
+.msrc{font:700 12px/1 'Schibsted Grotesk';letter-spacing:.08em;text-transform:uppercase;padding:3px 6px;background:var(--tile);margin-right:4px}
+.verdict{font-size:13.5px;line-height:1.4;margin-top:14px}
+.verdict .l{display:flex;gap:7px;align-items:flex-start;font-weight:600}
+.verdict .l svg{flex:0 0 auto;margin-top:2px}
+.verdict .u{font-size:13px;margin-top:3px;padding-left:22px}
+.verdict .c{font-size:12.5px;color:var(--ink2);margin-top:3px;padding-left:22px}
+.verdict.ok{border-top:1px solid var(--hair);border-bottom:1px solid var(--hair);padding:10px 0}
+.verdict.unk{color:var(--amber);background:var(--amber-bg);padding:11px 12px;border-radius:10px}
+.verdict.unk .c,.verdict.unk .u{color:var(--amber-ink)}
+.blockbar{display:flex;gap:9px;align-items:flex-start;background:var(--danger-bg);color:var(--danger);border:1.5px solid var(--danger);border-radius:10px;padding:11px 12px;font-size:13.5px;font-weight:600;line-height:1.35;margin-top:14px}
+.blockbar .sh{flex:0 0 24px;height:24px;border-radius:50%;background:var(--danger-solid);display:grid;place-items:center}
+.note{font-size:12.5px;line-height:1.45;color:var(--ink2);margin-top:8px}
+.list{margin-top:6px}
+.row{display:grid;grid-template-columns:56px 1fr auto;gap:12px;align-items:center;padding:10px 0;border-bottom:1px solid var(--hair);min-height:72px;width:100%;text-align:left}
+.row .th{width:56px;height:56px;background:var(--tile);display:grid;place-items:center;font:500 28px/1 'Bodoni Moda';color:var(--ink3)}
+.row b{font:700 15.5px/1.2 'Schibsted Grotesk';display:block}
+.row .q{font:400 13px/1.3 'Schibsted Grotesk';color:var(--ink2);display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:3px}
+.srow{display:grid;grid-template-columns:44px 48px 1fr auto;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid var(--hair);min-height:68px}
+.chk{width:44px;height:44px;display:grid;place-items:center}
+.chk span{width:26px;height:26px;border:1.75px solid var(--ink);border-radius:50%;display:grid;place-items:center}
+.srow .th{width:48px;height:48px;background:var(--tile);display:grid;place-items:center;font:500 24px/1 'Bodoni Moda';color:var(--ink3)}
+.srow b{font:700 15px/1.2 'Schibsted Grotesk';display:block}
+.srow .s{font:400 12.5px/1.35 'Schibsted Grotesk';color:var(--ink2);margin-top:2px}
+.srow .amt{font:600 14px/1 'Schibsted Grotesk';text-align:right}
+.stats{margin-top:24px;display:grid;grid-template-columns:repeat(3,1fr);border-top:1px solid var(--ink);border-bottom:1px solid var(--ink)}
+.stats div{padding:12px 10px 12px 10px;border-right:1px solid var(--hair);min-height:72px}
+.stats div:first-child{padding-left:0}
+.stats div:last-child{border-right:0}
+.stats .v{display:block;font:500 36px/1 'Bodoni Moda';font-variant-numeric:tabular-nums lining-nums}
+.stats .v,.stats .l{width:fit-content}
+.stats .l{display:block;font:600 12px/1.2 'Schibsted Grotesk';color:var(--ink2);margin-top:4px}
+.loop{margin-top:14px;padding:12px 14px;background:var(--green-bg);color:var(--green-ink);display:flex;gap:10px;align-items:center;justify-content:space-between;font:600 13.5px/1.35 'Schibsted Grotesk'}
+.loop .okb{background:var(--green-solid);color:var(--on-solid);flex:0 0 auto}
+.tray{margin-top:12px;padding:4px 14px;background:var(--ai-bg);border-radius:14px}
+.tray .trh{display:flex;justify-content:space-between;align-items:center;padding:10px 0 4px;color:var(--ai);font:700 13.5px/1 'Schibsted Grotesk'}
+.tray .trh b{display:flex;gap:6px;align-items:center;font:inherit}
+.tray .ci{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--ai-hair)}
+.tray .ci .th{width:44px;height:44px;flex:0 0 44px;background:var(--ai-tile);display:grid;place-items:center;font:500 22px/1 'Bodoni Moda';color:var(--ai-ink)}
+.tray .m{flex:1;min-width:0}
+.tray .m b{font:700 14.5px/1.25 'Schibsted Grotesk';display:block}
+.tray i{font-style:normal;font-size:12.5px;color:var(--ai-ink)}
+.tray .foot2{font-size:12.5px;color:var(--ai-ink);padding:8px 0 10px}
+.addprimary{display:flex;align-items:center;gap:14px;width:100%;margin-top:20px;padding:18px 16px;min-height:88px;background:var(--ink);color:var(--on-ink);border-radius:14px;text-align:left}
+.addprimary b{display:block;font:700 17px/1.2 'Schibsted Grotesk'}
+.addprimary .ap{flex:1;min-width:0}
+.addprimary .ap span{display:block;font-size:13.5px;line-height:1.4;color:var(--on-ink-muted);margin-top:3px}
+.arow{display:flex;align-items:center;gap:14px;width:100%;min-height:68px;padding:12px 0;border-bottom:1px solid var(--hair);text-align:left}
+.arow .am{flex:1;min-width:0}
+.arow b{display:flex;align-items:center;gap:8px;font:700 15.5px/1.2 'Schibsted Grotesk'}
+.arow .am>span{display:block;font-size:13px;line-height:1.4;color:var(--ink2);margin-top:3px}
+.arow.soon{color:var(--ink2)}
+.arow.soon b{font-weight:600;color:var(--ink2)}
+.arow.soon .am>span{color:var(--ink3)}
+.field{margin-top:22px}
+.fl{display:flex;justify-content:space-between;align-items:center;font:700 12px/1 'Schibsted Grotesk';letter-spacing:.12em;text-transform:uppercase;color:var(--ink2)}
+.inp{width:100%;height:50px;margin-top:8px;border:0;border-bottom:1.5px solid var(--ink);background:transparent;font:500 16px/1 'Schibsted Grotesk';color:var(--ink);padding:0 2px}
+.inp::placeholder{color:var(--ink3)}
+.nav{display:grid;grid-template-columns:repeat(5,1fr);align-items:center;background:var(--paper);border-top:1px solid var(--ink);padding:8px 8px 20px;margin-top:20px}
+.nav button{display:flex;flex-direction:column;align-items:center;gap:5px;font:600 12px/1 'Schibsted Grotesk';color:var(--ink2);min-height:48px;justify-content:center}
+.nav button[aria-current=page]{color:var(--ink);font-weight:800}
+.nav button[aria-current=page] svg{stroke-width:2.3}
+.nav .add{gap:4px}
+.nav .add .disc{width:46px;height:46px;border-radius:50%;background:var(--ink);color:var(--on-ink);display:grid;place-items:center}
+.sheetdemo{margin-top:14px;background:var(--tile);padding-top:36px;position:relative}
+.sheetdemo::before{content:"";position:absolute;inset:0;background:var(--scrim)}
+.sheet{position:relative;background:var(--paper);border-radius:22px 22px 0 0;padding:20px 20px 28px}
+.sheet h2{font-size:26px;line-height:1.05;margin-bottom:12px}
+.toast{margin-top:14px;background:var(--ink);color:var(--on-ink);padding:12px 14px;border-radius:12px;font-size:13.5px;line-height:1.35}
+.tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:10px}
+.tile{display:flex;flex-direction:column;gap:6px}
+.tile .ti{aspect-ratio:1;background:var(--tile);display:grid;place-items:center;font:500 28px/1 'Bodoni Moda';color:var(--ink3)}
+.tile .cap{font:500 12px/1.25 'Schibsted Grotesk';color:var(--ink2)}
+.tile .cap b{display:block;color:var(--ink);font-weight:700}
+.tile.short .ti{background:var(--amber-bg);color:var(--amber)}
+.tile.short .cap,.tile.short .cap b{color:var(--amber)}
+.hero{position:relative;aspect-ratio:4/3;overflow:hidden;background:var(--tile);margin-top:14px;display:grid;place-items:center;font:500 54px/1 'Bodoni Moda';color:var(--ink3)}
+.hero .pct{position:absolute;right:0;bottom:0;background:var(--paper);padding:7px 10px 5px;font:500 28px/1 'Bodoni Moda';color:var(--ink)}
+.hero .pct small{font:700 12px/1 'Schibsted Grotesk';letter-spacing:.12em;text-transform:uppercase;margin-left:5px;color:var(--ink2)}
+.sp{display:flex;align-items:center;gap:12px;padding:4px 0;font:600 12.5px/1.3 'Schibsted Grotesk';color:var(--ink2)}
+.sp .bar{height:12px;background:var(--ink);flex:0 0 auto}
+.sp b{color:var(--ink);min-width:44px}
+.rads{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:14px;margin-top:14px}
+.rad .box{height:64px;background:var(--tile);border:1.5px solid var(--ink)}
+.rad b{display:block;margin-top:6px;font:700 13px/1.2 'Schibsted Grotesk'}
+.rad span{font:400 12.5px/1.35 'Schibsted Grotesk';color:var(--ink2)}
+.ring{display:inline-block;padding:10px 16px;outline:2.5px solid var(--focus);outline-offset:2px;border-radius:4px;font:600 13px/1 'Schibsted Grotesk'}
+.ctable{width:100%;border-collapse:collapse;margin-top:12px;font-size:12.5px;min-width:720px}
+.ctable th{font:700 12px/1.2 'Schibsted Grotesk';letter-spacing:.08em;text-transform:uppercase;color:var(--ink2);text-align:left;padding:8px 8px 8px 0;border-bottom:1px solid var(--ink)}
+.ctable td{padding:8px 8px 8px 0;border-bottom:1px solid var(--hair);vertical-align:top}
+.ctable .flag{font-weight:700;color:var(--amber)}
+.tscroll{overflow-x:auto}
+.dot{display:inline-block;width:14px;height:14px;border:1px solid var(--hair);vertical-align:-2px;margin-right:6px}
+.foot{margin-top:40px;font-size:12.5px;line-height:1.5;color:var(--ink2);max-width:680px}
+@media (hover:hover){
+  .btn:not(.pri):hover{background:var(--tile)}
+  .btn.pri:hover{background:var(--ink-hover)}
+  .okb:not(.ghost):hover{background:var(--ink-hover)}
+  .okb.ghost:hover{background:var(--tile)}
+  .loop .okb:hover{background:var(--green-hover)}
+  .arow:not(.soon):hover{background:var(--row-hover)}
+  .addprimary:hover{background:var(--ink-hover)}
+  .nav button:not(.add):hover{color:var(--ink)}
+}
+@media (max-width:520px){.title{font-size:40px}.trow{grid-template-columns:1fr}}
+::selection{background:var(--sel-bg);color:var(--sel-fg)}
+</style>
+</head>
+<body><svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+<symbol id="i-home" viewBox="0 0 24 24"><path d="M4 11l8-7 8 7"/><path d="M6 9.5V20h12V9.5"/></symbol>
+<symbol id="i-inv" viewBox="0 0 24 24"><path d="M4 9h16l-1.5 10a2 2 0 0 1-2 1.7h-9a2 2 0 0 1-2-1.7z"/><path d="M8 9l2.5-5"/><path d="M16 9l-2.5-5"/></symbol>
+<symbol id="i-menu" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2.5"/><path d="M3 10h18"/><path d="M8 3v4"/><path d="M16 3v4"/></symbol>
+<symbol id="i-shop" viewBox="0 0 24 24"><path d="M3 3h2l2.6 12.4a1 1 0 0 0 1 .6h8.7a1 1 0 0 0 1-.8L20 8H6"/><circle cx="9.5" cy="20" r="1"/><circle cx="17" cy="20" r="1"/></symbol>
+<symbol id="i-scan" viewBox="0 0 24 24"><path d="M4 8V6a2 2 0 0 1 2-2h2"/><path d="M16 4h2a2 2 0 0 1 2 2v2"/><path d="M20 16v2a2 2 0 0 1-2 2h-2"/><path d="M8 20H6a2 2 0 0 1-2-2v-2"/><path d="M4 12h16"/></symbol>
+<symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3l7 3v5c0 4.6-3 7.8-7 9-4-1.2-7-4.4-7-9V6z"/></symbol>
+<symbol id="i-warn" viewBox="0 0 24 24"><path d="M12 3.5L21.5 20h-19z"/><path d="M12 10v4.5"/><circle cx="12" cy="17.4" r=".6" fill="currentColor"/></symbol>
+<symbol id="i-spark" viewBox="0 0 24 24"><path d="M11 4l1.6 4.2L17 9.8l-4.4 1.6L11 16l-1.6-4.6L5 9.8l4.4-1.6z"/></symbol>
+<symbol id="i-pen" viewBox="0 0 24 24"><path d="M15.5 4.5l4 4L9 19H5v-4z"/></symbol>
+<symbol id="i-receipt" viewBox="0 0 24 24"><path d="M6 3h12v18l-2-1.4L14 21l-2-1.4L10 21l-2-1.4L6 21z"/><path d="M9 8h6"/><path d="M9 12h6"/></symbol>
+</defs></svg>
+<div class="wrap">
+<div class="mast"><span class="name">Smart Kitchen</span><span class="when">Design kit · v6 Cookbook · dark reference</span></div>
+<div class="rule"></div>
+<h1 class="title serif">Token catalog, dark</h1>
+<p class="sub">Every colour, type size, radius and spacing step of prototype v6, drawn with the prototype's own CSS values.</p>
+<p class="notice"><b>Reference rendering, not a shipped theme.</b> The app ships no dark mode (OQ-D6 is open); every dark value here is derived and listed with its light source.</p>
+
+<div class="sec"><h2 class="serif">Colour</h2><span class="num">17 roles</span></div>
+<p class="lead">Allergen red appears only on allergens. The expiry ladder never turns red: rose for today, amber for 2 to 3 days, green after. Amber marks estimates and unknowns. Purple marks AI-read items only. Measured contrast of each pair is in tokens.md section 4 (light) and the measured list at the bottom of this page (dark).</p>
+<div class="swatches"><div class="sw"><div class="chipbox" style="background:var(--paper)"></div><b>paper</b><div class="hex">#121212</div><div class="meta"><code>--paper</code> · tokens.ts paper (value changes in M3-T13)</div><div class="meta">Page canvas, sheet and nav surface<br>Derived from light paper; camera surface #121212. Light value #fbfaf6.</div></div><div class="sw"><div class="chipbox" style="background:var(--tile)"></div><b>tile</b><div class="hex">#2b2a27</div><div class="meta"><code>--tile</code> · tokens.ts sand2 to tile</div><div class="meta">Quiet panel, photo-tile backing, neutral chip<br>Derived from light tile; camera gradient top stop #2b2a27. Light value #f1eee6.</div></div><div class="sw"><div class="chipbox" style="background:var(--ink)"></div><b>ink</b><div class="hex">#f3f1ec</div><div class="meta"><code>--ink</code> · tokens.ts ink</div><div class="meta">Text, rules and the primary action fill<br>Derived from light ink; camera text #f3f1ec. Light value #0f0f0f.</div></div><div class="sw"><div class="chipbox" style="background:var(--ink2)"></div><b>ink2</b><div class="hex">#d9d6cf</div><div class="meta"><code>--ink2</code> · tokens.ts ink2</div><div class="meta">Secondary text<br>Derived from light ink2; camera muted text #d9d6cf. Light value #5f5d58.</div></div><div class="sw"><div class="chipbox" style="background:var(--ink3)"></div><b>ink3</b><div class="hex">#9a978f</div><div class="meta"><code>--ink3</code> · tokens.ts ink3</div><div class="meta">Tertiary text on paper and tile only<br>Derived from light ink3; stage dashed border #9a978f. Light value #6f6c66.</div></div><div class="sw"><div class="chipbox" style="background:var(--hair)"></div><b>hair</b><div class="hex">#3f3f3e</div><div class="meta"><code>--hair</code> · tokens.ts line to hair</div><div class="meta">Hairline row divider<br>Derived from light hair; ink at 20% over dark paper. Light value #dcd8cf.</div></div><div class="sw"><div class="chipbox" style="background:var(--danger)"></div><b>danger</b><div class="hex">#f9d9d9</div><div class="meta"><code>--danger</code> · tokens.ts danger</div><div class="meta">Allergen only: text, border and solid fill<br>Derived from light danger; the light danger-bg tint becomes the text. Light value #882020.</div></div><div class="sw"><div class="chipbox" style="background:var(--danger-bg)"></div><b>danger-bg</b><div class="hex">#351616</div><div class="meta"><code>--danger-bg</code> · tokens.ts dangerBg</div><div class="meta">Allergen tint surface<br>Derived from light danger; hue at 30% over dark paper. Light value #f9d9d9.</div></div><div class="sw"><div class="chipbox" style="background:var(--amber)"></div><b>amber</b><div class="hex">#f6e6c8</div><div class="meta"><code>--amber</code> · tokens.ts amber</div><div class="meta">Estimated, expiring soon, short, data incomplete<br>Derived from light amber; light amber-bg becomes the text. Light value #925b0a.</div></div><div class="sw"><div class="chipbox" style="background:var(--amber-bg)"></div><b>amber-bg</b><div class="hex">#382810</div><div class="meta"><code>--amber-bg</code> · tokens.ts amberBg</div><div class="meta">Amber tint surface<br>Derived from light amber; hue at 30% over dark paper. Light value #f6e6c8.</div></div><div class="sw"><div class="chipbox" style="background:var(--green)"></div><b>green</b><div class="hex">#dfeee3</div><div class="meta"><code>--green</code> · tokens.ts green</div><div class="meta">Known fact, have, fresh, positive<br>Derived from light green; light green-bg becomes the text. Light value #2c744b.</div></div><div class="sw"><div class="chipbox" style="background:var(--green-bg)"></div><b>green-bg</b><div class="hex">#1a2f23</div><div class="meta"><code>--green-bg</code> · tokens.ts greenBg</div><div class="meta">Green tint surface<br>Derived from light green; hue at 30% over dark paper. Light value #dfeee3.</div></div><div class="sw"><div class="chipbox" style="background:var(--rose)"></div><b>rose</b><div class="hex">#f7dcdc</div><div class="meta"><code>--rose</code> · tokens.ts rose</div><div class="meta">Use today (never allergen)<br>Derived from light rose; light rose-bg becomes the text. Light value #9d4b51.</div></div><div class="sw"><div class="chipbox" style="background:var(--rose-bg)"></div><b>rose-bg</b><div class="hex">#3c2325</div><div class="meta"><code>--rose-bg</code> · tokens.ts roseBg</div><div class="meta">Rose tint surface<br>Derived from light rose; hue at 30% over dark paper. Light value #f7dcdc.</div></div><div class="sw"><div class="chipbox" style="background:var(--ai)"></div><b>ai</b><div class="hex">#eadff7</div><div class="meta"><code>--ai</code> · tokens.ts ai</div><div class="meta">AI-read items only<br>Derived from light ai; light ai-bg becomes the text. Light value #7b4cb5.</div></div><div class="sw"><div class="chipbox" style="background:var(--ai-bg)"></div><b>ai-bg</b><div class="hex">#322343</div><div class="meta"><code>--ai-bg</code> · tokens.ts aiBg</div><div class="meta">AI tint surface and confirmation tray<br>Derived from light ai; hue at 30% over dark paper. Light value #eadff7.</div></div><div class="sw"><div class="chipbox" style="background:var(--ai-ink)"></div><b>ai-ink</b><div class="hex">#c5b9d3</div><div class="meta"><code>--ai-ink</code> · tokens.ts aiInk (new in v6)</div><div class="meta">Secondary text on the AI tray<br>Derived from light ai-ink; light ai-bg at 80% over dark ai-bg. Light value #5a4a70.</div></div></div>
+<div class="grp"><h3 class="serif">Literals the prototype hard-codes</h3><span class="num">12</span></div>
+<div class="swatches"><div class="sw"><div class="chipbox" style="background:var(--on-ink)"></div><b>on-ink</b><div class="hex">#121212</div><div class="meta"><code>--on-ink</code></div><div class="meta">Text on ink fills<br>Derived: dark paper (label on a light ink fill). Light value #ffffff.</div></div><div class="sw"><div class="chipbox" style="background:var(--ink-hover)"></div><b>ink-hover</b><div class="hex">#e4e1d9</div><div class="meta"><code>--ink-hover</code></div><div class="meta">Hover fill of ink buttons<br>Derived: invHover #e4e1d9, the prototype inverse-button hover. Light value #2b2b2b.</div></div><div class="sw"><div class="chipbox" style="background:var(--row-hover)"></div><b>row-hover</b><div class="hex">#201f1f</div><div class="meta"><code>--row-hover</code></div><div class="meta">Hover fill of list rows<br>Derived: ink at 6% over dark paper. Light value #f4f2ec.</div></div><div class="sw"><div class="chipbox" style="background:var(--amber-ink)"></div><b>amber-ink</b><div class="hex">#d4c4a7</div><div class="meta"><code>--amber-ink</code></div><div class="meta">Body text on amber tint<br>Derived: light amber-bg at 82% over dark amber-bg. Light value #5b4210.</div></div><div class="sw"><div class="chipbox" style="background:var(--green-ink)"></div><b>green-ink</b><div class="hex">#bcccc0</div><div class="meta"><code>--green-ink</code></div><div class="meta">Body text on green tint (pantry banner)<br>Derived: light green-bg at 82% over dark green-bg. Light value #1f4d33.</div></div><div class="sw"><div class="chipbox" style="background:var(--green-hover)"></div><b>green-hover</b><div class="hex">#235f3d</div><div class="meta"><code>--green-hover</code></div><div class="meta">Hover fill of the green Add button<br>Derived: unchanged. Light value #235f3d.</div></div><div class="sw"><div class="chipbox" style="background:var(--ai-hair)"></div><b>ai-hair</b><div class="hex">#594c65</div><div class="meta"><code>--ai-hair</code></div><div class="meta">Divider inside the AI tray<br>Derived: ink at 20% over dark ai-bg. Light value #d7c6ee.</div></div><div class="sw"><div class="chipbox" style="background:var(--ai-tile)"></div><b>ai-tile</b><div class="hex">#413351</div><div class="meta"><code>--ai-tile</code></div><div class="meta">Thumbnail backing in the AI tray<br>Derived: ink at 8% over dark ai-bg. Light value #f5f0fb.</div></div><div class="sw"><div class="chipbox" style="background:var(--focus)"></div><b>focus</b><div class="hex">#f3f1ec</div><div class="meta"><code>--focus</code></div><div class="meta">Keyboard focus ring<br>Derived: cameraText #f3f1ec, the T8 camera ring. Light value #2442d6.</div></div><div class="sw"><div class="chipbox" style="background:var(--danger-solid)"></div><b>danger-solid</b><div class="hex">#882020</div><div class="meta"><code>--danger-solid</code></div><div class="meta">Solid allergen fills (selected severity button, warning disc)<br>Derived: unchanged (safety colour keeps its value). Light value #882020.</div></div><div class="sw"><div class="chipbox" style="background:var(--green-solid)"></div><b>green-solid</b><div class="hex">#2c744b</div><div class="meta"><code>--green-solid</code></div><div class="meta">The pantry banner Add button fill (the one green action)<br>Derived: unchanged. Light value #2c744b.</div></div><div class="sw"><div class="chipbox" style="background:var(--on-solid)"></div><b>on-solid</b><div class="hex">#ffffff</div><div class="meta"><code>--on-solid</code></div><div class="meta">Text on the two solid fills above<br>Derived: unchanged. Light value #ffffff.</div></div></div>
+
+<div class="sec"><h2 class="serif">Type scale</h2><span class="num">32 rows</span></div>
+<p class="lead">Bodoni Moda 500 for display, Schibsted Grotesk for UI, 12px is the smallest size. Samples render in the real fonts from the same Google Fonts link the prototype uses; offline they fall back to the system serif and sans.</p>
+<div class="tscale"><div class="trow"><div class="spec">54px · 500 · lh 1<i>Initial on a letter tile (.ph.lettr)</i></div><div class="sample serif" style="font-size:54px;line-height:1;">Chicken &amp; spinach</div></div><div class="trow"><div class="spec">46px · 500 · lh 1<i>Item quantity (.qtybig b)</i></div><div class="sample serif" style="font-size:46px;line-height:1;">Chicken &amp; spinach</div></div><div class="trow"><div class="spec">44px · 500 · lh 1 · ls -.015em<i>Screen title (.title)</i></div><div class="sample serif" style="font-size:44px;line-height:1;letter-spacing:-.015em">Chicken &amp; spinach</div></div><div class="trow"><div class="spec">40px · 500 · lh 1.02 · ls -.015em<i>Home headline, recipe name (.h1)</i></div><div class="sample serif" style="font-size:40px;line-height:1.02;letter-spacing:-.015em">Chicken &amp; spinach</div></div><div class="trow"><div class="spec">36px · 500 · lh 1<i>Stat value (.stats .v)</i></div><div class="sample serif" style="font-size:36px;line-height:1;">Chicken &amp; spinach</div></div><div class="trow"><div class="spec">30px · 500 · lh 1.05<i>Scanned product name, camera-denied heading (.pname, .denied h2)</i></div><div class="sample serif" style="font-size:30px;line-height:1.05;">Chicken &amp; spinach</div></div><div class="trow"><div class="spec">28px · 500 · lh 1<i>Coverage badge on hero, rank numeral, empty-state heading (.hero .pct, .row .ix, .emptyst h2)</i></div><div class="sample serif" style="font-size:28px;line-height:1;">Chicken &amp; spinach</div></div><div class="trow"><div class="spec">27px · 500 · lh 1.05<i>Recipe card name (.rec h2)</i></div><div class="sample serif" style="font-size:27px;line-height:1.05;">Chicken &amp; spinach</div></div><div class="trow"><div class="spec">26px · 500 · lh 1<i>Coverage badge on cards, stepper value (.rec .pct, .step b)</i></div><div class="sample serif" style="font-size:26px;line-height:1;">Chicken &amp; spinach</div></div><div class="trow"><div class="spec">26px · 500 · lh 1.05<i>Sheet title (.sheet h2)</i></div><div class="sample serif" style="font-size:26px;line-height:1.05;">Chicken &amp; spinach</div></div><div class="trow"><div class="spec">25px · 500 · lh 1<i>Section heading (.sec h2)</i></div><div class="sample serif" style="font-size:25px;line-height:1;">Chicken &amp; spinach</div></div><div class="trow"><div class="spec">24px · 500 · lh 1<i>Macro value (.macros b)</i></div><div class="sample serif" style="font-size:24px;line-height:1;">Chicken &amp; spinach</div></div><div class="trow"><div class="spec">22px · 500 · lh 1<i>Group heading, menu-card heading (.grp h2, .mh h3)</i></div><div class="sample serif" style="font-size:22px;line-height:1;">Chicken &amp; spinach</div></div><div class="trow"><div class="spec">20px · 500 · lh 1<i>Rail badge, picker percentage, initials (.rph .pct, .pick .pp)</i></div><div class="sample serif" style="font-size:20px;line-height:1;">Chicken &amp; spinach</div></div><div class="trow"><div class="spec">20px · 600 · lh 1<i>Stepper glyph (.step button)</i></div><div class="sample" style="font:600 20px/1 'Schibsted Grotesk'">Olive oil · 1 bottle · opened Aug 30</div></div><div class="trow"><div class="spec">17px · 700 · lh 1.2<i>Primary block title (.addprimary b)</i></div><div class="sample" style="font:700 17px/1.2 'Schibsted Grotesk'">Olive oil · 1 bottle · opened Aug 30</div></div><div class="trow"><div class="spec">16px · 500 · lh 1<i>Text input (.inp)</i></div><div class="sample" style="font:500 16px/1 'Schibsted Grotesk'">Olive oil · 1 bottle · opened Aug 30</div></div><div class="trow"><div class="spec">16px · 700 · lh 1.2<i>Profile name (.me b)</i></div><div class="sample" style="font:700 16px/1.2 'Schibsted Grotesk'">Olive oil · 1 bottle · opened Aug 30</div></div><div class="trow"><div class="spec">15.5px · 700 · lh 1.2<i>Row title (.row b, .arow b)</i></div><div class="sample" style="font:700 15.5px/1.2 'Schibsted Grotesk'">Olive oil · 1 bottle · opened Aug 30</div></div><div class="trow"><div class="spec">15px · 400 · lh 1.45<i>Body default (body)</i></div><div class="sample" style="font:400 15px/1.45 'Schibsted Grotesk'">Olive oil · 1 bottle · opened Aug 30</div></div><div class="trow"><div class="spec">15px · 700 · lh 1.2<i>Shopping row title, box heading (.srow b, .bh, .tastes b)</i></div><div class="sample" style="font:700 15px/1.2 'Schibsted Grotesk'">Olive oil · 1 bottle · opened Aug 30</div></div><div class="trow"><div class="spec">14.5px · 700 · lh 1.25<i>Tray item, ledger title, slot title (.tray b, .led .m b, .slot .m b)</i></div><div class="sample" style="font:700 14.5px/1.25 'Schibsted Grotesk'">Olive oil · 1 bottle · opened Aug 30</div></div><div class="trow"><div class="spec">14.5px · 600 · lh 1.2<i>Picker row, none-option (.pick, .noneopt)</i></div><div class="sample" style="font:600 14.5px/1.2 'Schibsted Grotesk'">Olive oil · 1 bottle · opened Aug 30</div></div><div class="trow"><div class="spec">14px · 700 · lh 1<i>Button (.btn)</i></div><div class="sample" style="font:700 14px/1 'Schibsted Grotesk'">Olive oil · 1 bottle · opened Aug 30</div></div><div class="trow"><div class="spec">14px · 600 · lh 1<i>Segment label, amount, unit label (.seg button, .srow .amt, .unitlbl)</i></div><div class="sample" style="font:600 14px/1 'Schibsted Grotesk'">Olive oil · 1 bottle · opened Aug 30</div></div><div class="trow"><div class="spec">14px · 400 · lh 1.5<i>Paragraph on empty and camera states, chat bubble (.emptyst p, .denied p, .bub)</i></div><div class="sample" style="font:400 14px/1.5 'Schibsted Grotesk'">Olive oil · 1 bottle · opened Aug 30</div></div><div class="trow"><div class="spec">13.5px · 600 · lh 1.35<i>Verdict line, block bar, toast, loop banner, chip label (.verdict, .blockbar, .toast, .loop, .chip)</i></div><div class="sample" style="font:600 13.5px/1.35 'Schibsted Grotesk'">Olive oil · 1 bottle · opened Aug 30</div></div><div class="trow"><div class="spec">13px · 700 · lh 1<i>Ok button, severity button (.okb, .sev button)</i></div><div class="sample" style="font:700 13px/1 'Schibsted Grotesk'">Olive oil · 1 bottle · opened Aug 30</div></div><div class="trow"><div class="spec">13px · 400 · lh 1.5<i>Short note, byline, row meta (.verdict .u, .why, .by, .row .q)</i></div><div class="sample" style="font:400 13px/1.5 'Schibsted Grotesk'">Olive oil · 1 bottle · opened Aug 30</div></div><div class="trow"><div class="spec">12.5px · 400 · lh 1.4<i>Caveat line, note, tray source, ledger detail (.verdict .c, .note, .tray i, .led .m i)</i></div><div class="sample" style="font:400 12.5px/1.4 'Schibsted Grotesk'">Olive oil · 1 bottle · opened Aug 30</div></div><div class="trow"><div class="spec">12px · 700 · lh 1<i>Chip, label, status (.prov, .days, .stat, .kv .k, .fl, .queued, .msrc, .mtag)</i></div><div class="sample" style="font:700 12px/1 'Schibsted Grotesk'">Olive oil · 1 bottle · opened Aug 30</div></div><div class="trow"><div class="spec">12px · 600 · lh 1.2<i>Nav label, caption, group count (.nav button, .grp span, .macros i, .stats .l)</i></div><div class="sample" style="font:600 12px/1.2 'Schibsted Grotesk'">Olive oil · 1 bottle · opened Aug 30</div></div></div>
+
+<div class="sec"><h2 class="serif">Buttons, chips, pills</h2></div>
+<div class="cols"><div class="demo">
+<div class="btns"><button class="btn">Cancel</button><button class="btn pri">Log meal</button></div>
+<div class="row2"><button class="okb">Confirm</button><button class="okb ghost">Edit</button></div>
+<div class="row2"><span class="chip">Fridge</span><span class="chip is-on">Weekend</span><span class="chip alg-on">Peanut</span></div>
+<div class="row2"><span class="sevbtn">Standard</span><span class="sevbtn alg-on">Severe</span><span class="ring">Focus ring</span></div>
+<p class="note">A selected allergen chip is a danger-bg fill with danger text and border; a selected severity button is a solid danger fill with white text (v5 values, D-033 amendment 2026-10-14). Every other selected control is ink. Chips here are static samples; in the app each carries a 44px hit area.</p>
+<div class="loop"><span>Olive oil checked off · add it to the pantry?</span><button class="okb">Add</button></div>
+<p class="note">The green Add is the only green action in the app.</p>
+</div><div class="demo">
+<div class="row2" style="margin-top:14px"><span class="days now">Today</span><span class="days soon">2 days</span><span class="days ok">10 days</span></div>
+<div class="row2"><span class="prov fact">✓ Fact</span><span class="prov est">≈ Est.</span><span class="prov ai">AI · confirm</span><span class="prov alg"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><use href="#i-warn"/></svg>Allergen</span></div>
+<div class="row2"><span class="stat have">Have</span><span class="stat shortby">Short by</span><span class="stat list">On list</span><span class="stat staple">Not tracked</span></div>
+<div class="row2"><span class="msrc">Tonight</span><span class="msrc">Weekend menu</span></div>
+<p class="note">Fact, Est. and AI chips go on every fallible fact. Each pairs a glyph or words with its colour, so colour is never the only signal.</p>
+</div></div>
+
+<div class="sec"><h2 class="serif">Allergen verdict</h2></div>
+<div class="cols"><div class="demo">
+<div class="verdict ok"><div class="l"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"  aria-hidden="true"><use href="#i-shield"/></svg>No known allergen match · 2 members</div><div class="c">Known matches only · not a guarantee this food is safe.</div></div>
+<div class="verdict unk"><div class="l"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><use href="#i-warn"/></svg>Allergen data incomplete for Maya</div><div class="u">There's no ingredient list on file to check for Maya's severe sesame allergy.</div><div class="c">Known matches only · not a guarantee this food is safe.</div></div>
+</div><div class="demo">
+<div class="blockbar"><span class="sh"><svg width="13" height="13" fill="none" stroke="var(--on-solid)" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><use href="#i-warn"/></svg></span>Blocked for Maya</div>
+<p class="note">Verdict copy is verbatim from the prototype and copy-deck.md. The deck wins on safety strings.</p>
+</div></div>
+
+<div class="sec"><h2 class="serif">Lists, rows, panels</h2></div>
+<div class="cols"><div class="demo">
+<div class="grp" style="margin-top:14px"><h3 class="serif">Fridge</h3><span class="num">3</span></div>
+<div class="list">
+<div class="row"><span class="th">C</span><span><b>Chicken breast</b><span class="q num">1.25 lb <span class="days soon">2 days</span></span></span><span class="prov fact">✓ Fact</span></div>
+<div class="row"><span class="th">S</span><span><b>Strawberries</b><span class="q num">1 lb <span class="days now">Today</span></span></span><span class="prov ai">AI · confirm</span></div>
+<div class="row"><span class="th">B</span><span><b>Basmati rice</b><span class="q num">~4 cups · qty derived from 2 meals</span></span><span class="prov est">≈ Est.</span></div>
+</div>
+<div class="stats"><div><span class="v">12</span><span class="l">In stock</span></div><div><span class="v">3</span><span class="l">Use soon</span></div><div><span class="v">2</span><span class="l">To confirm</span></div></div>
+</div><div class="demo">
+<div class="grp" style="margin-top:14px"><h3 class="serif">Shopping</h3></div>
+<div class="srow"><span class="chk"><span></span></span><span class="th">C</span><div><b>Chicken breast</b><div class="s num"><span class="msrc">Tonight</span>need 2 lb · have 1.25 lb</div></div><div class="amt num">0.75 lb</div></div>
+<div class="srow"><span class="chk"><span></span></span><span class="th">B</span><div><b>Broccoli</b><div class="s"><span class="msrc">Weekend menu</span>miso salmon · none on hand</div></div><div class="amt num">2 lb</div></div>
+<div class="tray"><div class="trh"><b><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"  aria-hidden="true"><use href="#i-spark"/></svg>Needs your confirmation</b><span class="prov ai">AI read · 2</span></div>
+<div class="ci"><span class="th">M</span><span class="m"><b>Mushrooms</b><i>AI read from your photo</i></span><button class="okb">Confirm</button></div>
+<div class="foot2">A proposal until you confirm it.</div></div>
+</div></div>
+
+<div class="sec"><h2 class="serif">Photo tiles</h2></div>
+<div class="cols"><div class="demo"><div class="tiles"><div class="tile"><span class="ti">C</span><span class="cap num"><b>Chicken</b>1.25 lb</span></div><div class="tile"><span class="ti">S</span><span class="cap num"><b>Spinach</b>5 oz</span></div><div class="tile"><span class="ti">M</span><span class="cap num"><b>Mushrooms</b>8 oz</span></div><div class="tile short"><span class="ti">G</span><span class="cap num"><b>Garlic</b>short</span></div></div>
+<p class="note">Square, radius 0. A real photo replaces the initial.</p></div>
+<div class="demo"><div class="hero">C<span class="pct num">92<small>% coverage</small></span></div></div></div>
+
+<div class="sec"><h2 class="serif">Add food, input, sheet, tab bar</h2></div>
+<div class="cols"><div class="demo">
+<button class="addprimary"><span class="ap"><b>Scan barcode</b><span>Fastest way to add food</span></span><svg width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.9"  aria-hidden="true"><use href="#i-scan"/></svg></button>
+<div style="border-top:1px solid var(--ink);margin-top:14px"><button class="arow"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#i-pen"/></svg><span class="am"><b>Type it in</b><span>Always available, never blocked</span></span></button>
+<div class="arow soon"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#i-receipt"/></svg><span class="am"><b>Scan receipt</b><span>One photo adds the whole grocery run</span></span></div></div>
+<div class="field"><div class="fl"><span>Item name</span></div><input class="inp" placeholder="Olive oil" aria-label="Item name"></div>
+</div><div class="demo">
+<div class="sheetdemo"><div class="sheet"><h2 class="serif">Cook this</h2><div class="btns" style="margin-top:0"><button class="btn">Cancel</button><button class="btn pri">Log meal</button></div></div></div>
+<div class="toast">Olive oil added to Pantry · inventory updated</div>
+<nav class="nav" aria-label="Sample tab bar"><button aria-current="page"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#i-home"/></svg>Home</button><button><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#i-inv"/></svg>Inventory</button><button class="add" aria-label="Add food"><span class="disc"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><use href="#i-scan"/></svg></span></button><button><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#i-menu"/></svg>Menu</button><button><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#i-shop"/></svg>Shopping</button></nav>
+</div></div>
+
+<div class="sec"><h2 class="serif">Spacing</h2><span class="num">22 values</span></div>
+<p class="lead">Measured from the stylesheet's padding, margin and gap declarations. 20px is the screen gutter. Bars are drawn at 4x.</p>
+<div style="margin-top:10px"><div class="sp"><b class="num">2px</b><span class="bar" style="width:8px"></span></div><div class="sp"><b class="num">3px</b><span class="bar" style="width:12px"></span></div><div class="sp"><b class="num">4px</b><span class="bar" style="width:16px"></span></div><div class="sp"><b class="num">5px</b><span class="bar" style="width:20px"></span></div><div class="sp"><b class="num">6px</b><span class="bar" style="width:24px"></span></div><div class="sp"><b class="num">7px</b><span class="bar" style="width:28px"></span></div><div class="sp"><b class="num">8px</b><span class="bar" style="width:32px"></span></div><div class="sp"><b class="num">9px</b><span class="bar" style="width:36px"></span></div><div class="sp"><b class="num">10px</b><span class="bar" style="width:40px"></span></div><div class="sp"><b class="num">11px</b><span class="bar" style="width:44px"></span></div><div class="sp"><b class="num">12px</b><span class="bar" style="width:48px"></span></div><div class="sp"><b class="num">13px</b><span class="bar" style="width:52px"></span></div><div class="sp"><b class="num">14px</b><span class="bar" style="width:56px"></span></div><div class="sp"><b class="num">15px</b><span class="bar" style="width:60px"></span></div><div class="sp"><b class="num">16px</b><span class="bar" style="width:64px"></span></div><div class="sp"><b class="num">18px</b><span class="bar" style="width:72px"></span></div><div class="sp"><b class="num">20px</b><span class="bar" style="width:80px"></span>gutter</div><div class="sp"><b class="num">22px</b><span class="bar" style="width:88px"></span></div><div class="sp"><b class="num">24px</b><span class="bar" style="width:96px"></span></div><div class="sp"><b class="num">28px</b><span class="bar" style="width:112px"></span></div><div class="sp"><b class="num">30px</b><span class="bar" style="width:120px"></span></div><div class="sp"><b class="num">40px</b><span class="bar" style="width:160px"></span></div></div>
+<div class="sec"><h2 class="serif">Radius</h2><span class="num">9 values</span></div>
+<div class="rads"><div class="rad"><div class="box" style="border-radius:0"></div><b>0</b><span>Photos, tiles, labels (.mtag, .msrc, .tagm)</span></div><div class="rad"><div class="box" style="border-radius:999px"></div><b>999px</b><span>.btn, .chip, .okb, .days, .prov, .stat</span></div><div class="rad"><div class="box" style="border-radius:50%"></div><b>50%</b><span>.av, .iconb, .chk span, nav Add disc</span></div><div class="rad"><div class="box" style="border-radius:22px 22px 0 0"></div><b>22px 22px 0 0</b><span>.sheet, .panel</span></div><div class="rad"><div class="box" style="border-radius:14px"></div><b>14px</b><span>.tray, .addprimary</span></div><div class="rad"><div class="box" style="border-radius:12px"></div><b>12px</b><span>.toast</span></div><div class="rad"><div class="box" style="border-radius:10px"></div><b>10px</b><span>.verdict.unk, .blockbar</span></div><div class="rad"><div class="box" style="border-radius:8px"></div><b>8px</b><span>.verdict.unk.sm</span></div><div class="rad"><div class="box" style="border-radius:4px"></div><b>4px</b><span>:focus-visible ring corner</span></div></div>
+
+<div class="sec"><h2 class="serif">Measured contrast</h2><span class="num">27 pairs</span></div>
+<p class="lead">Every text pair and the focus ring on this page, measured by <code>build-previews.mjs</code> (WCAG 2.x). Targets: 4.5:1 body, 3:1 large text and non-text, 7:1 for allergen alert text (the bar tokens.md section 4 sets). A pair under its target is flagged here and in the handoff report. Nothing is tuned to hide a flag.</p>
+<div class="tscroll"><table class="ctable"><thead><tr><th>Pair</th><th>Text</th><th>Surface</th><th>Where</th><th>Target</th><th>Ratio</th><th>Result</th></tr></thead><tbody><tr><td>ink on paper</td><td><span class="dot" style="background:#f3f1ec"></span>#f3f1ec</td><td><span class="dot" style="background:#121212"></span>#121212</td><td>body and headings</td><td class="num">4.5</td><td class="num">16.60</td><td class="">Pass</td></tr><tr><td>ink on tile</td><td><span class="dot" style="background:#f3f1ec"></span>#f3f1ec</td><td><span class="dot" style="background:#2b2a27"></span>#2b2a27</td><td>neutral panels, stat captions</td><td class="num">4.5</td><td class="num">12.71</td><td class="">Pass</td></tr><tr><td>ink2 on paper</td><td><span class="dot" style="background:#d9d6cf"></span>#d9d6cf</td><td><span class="dot" style="background:#121212"></span>#121212</td><td>sub-lines, meta, nav labels, notes</td><td class="num">4.5</td><td class="num">12.91</td><td class="">Pass</td></tr><tr><td>ink2 on tile</td><td><span class="dot" style="background:#d9d6cf"></span>#d9d6cf</td><td><span class="dot" style="background:#2b2a27"></span>#2b2a27</td><td>notice text, .stat.list, tile captions</td><td class="num">4.5</td><td class="num">9.89</td><td class="">Pass</td></tr><tr><td>ink3 on paper</td><td><span class="dot" style="background:#9a978f"></span>#9a978f</td><td><span class="dot" style="background:#121212"></span>#121212</td><td>placeholder, .stat.staple, soon rows</td><td class="num">4.5</td><td class="num">6.42</td><td class="">Pass</td></tr><tr><td>ink3 on tile</td><td><span class="dot" style="background:#9a978f"></span>#9a978f</td><td><span class="dot" style="background:#2b2a27"></span>#2b2a27</td><td>photo tile initials (24 to 54px Bodoni, large)</td><td class="num">3</td><td class="num">4.92</td><td class="">Pass</td></tr><tr><td>on-ink on ink</td><td><span class="dot" style="background:#121212"></span>#121212</td><td><span class="dot" style="background:#f3f1ec"></span>#f3f1ec</td><td>.btn.pri, .okb, toast, .addprimary title, nav Add disc</td><td class="num">4.5</td><td class="num">16.60</td><td class="">Pass</td></tr><tr><td>on-ink 78% on ink (composite)</td><td><span class="dot" style="background:#444342"></span>#444342</td><td><span class="dot" style="background:#f3f1ec"></span>#f3f1ec</td><td>.addprimary subline</td><td class="num">4.5</td><td class="num">8.75</td><td class="">Pass</td></tr><tr><td>on-ink on ink-hover</td><td><span class="dot" style="background:#121212"></span>#121212</td><td><span class="dot" style="background:#e4e1d9"></span>#e4e1d9</td><td>hover of ink buttons</td><td class="num">4.5</td><td class="num">14.34</td><td class="">Pass</td></tr><tr><td>ink on tile (hover)</td><td><span class="dot" style="background:#f3f1ec"></span>#f3f1ec</td><td><span class="dot" style="background:#2b2a27"></span>#2b2a27</td><td>hover of outlined buttons</td><td class="num">4.5</td><td class="num">12.71</td><td class="">Pass</td></tr><tr><td>ink on row-hover</td><td><span class="dot" style="background:#f3f1ec"></span>#f3f1ec</td><td><span class="dot" style="background:#201f1f"></span>#201f1f</td><td>hover of list rows</td><td class="num">4.5</td><td class="num">14.57</td><td class="">Pass</td></tr><tr><td>danger on danger-bg</td><td><span class="dot" style="background:#f9d9d9"></span>#f9d9d9</td><td><span class="dot" style="background:#351616"></span>#351616</td><td>.blockbar, .prov.alg, selected allergy chip (alert text, 7:1 bar)</td><td class="num">7</td><td class="num">12.49</td><td class="">Pass</td></tr><tr><td>danger on paper</td><td><span class="dot" style="background:#f9d9d9"></span>#f9d9d9</td><td><span class="dot" style="background:#121212"></span>#121212</td><td>allergen lines drawn on paper (alert text, 7:1 bar)</td><td class="num">7</td><td class="num">14.23</td><td class="">Pass</td></tr><tr><td>on-solid on danger-solid</td><td><span class="dot" style="background:#ffffff"></span>#ffffff</td><td><span class="dot" style="background:#882020"></span>#882020</td><td>selected severity button, warning disc glyph</td><td class="num">4.5</td><td class="num">9.23</td><td class="">Pass</td></tr><tr><td>amber on amber-bg</td><td><span class="dot" style="background:#f6e6c8"></span>#f6e6c8</td><td><span class="dot" style="background:#382810"></span>#382810</td><td>.verdict.unk, .days.soon, .prov.est, .stat.shortby</td><td class="num">4.5</td><td class="num">11.54</td><td class="">Pass</td></tr><tr><td>amber-ink on amber-bg</td><td><span class="dot" style="background:#d4c4a7"></span>#d4c4a7</td><td><span class="dot" style="background:#382810"></span>#382810</td><td>.verdict.unk caveat lines</td><td class="num">4.5</td><td class="num">8.28</td><td class="">Pass</td></tr><tr><td>green on green-bg</td><td><span class="dot" style="background:#dfeee3"></span>#dfeee3</td><td><span class="dot" style="background:#1a2f23"></span>#1a2f23</td><td>.days.ok, .prov.fact, .stat.have</td><td class="num">4.5</td><td class="num">11.85</td><td class="">Pass</td></tr><tr><td>green-ink on green-bg</td><td><span class="dot" style="background:#bcccc0"></span>#bcccc0</td><td><span class="dot" style="background:#1a2f23"></span>#1a2f23</td><td>.loop banner text</td><td class="num">4.5</td><td class="num">8.50</td><td class="">Pass</td></tr><tr><td>on-solid on green-solid</td><td><span class="dot" style="background:#ffffff"></span>#ffffff</td><td><span class="dot" style="background:#2c744b"></span>#2c744b</td><td>.loop .okb Add</td><td class="num">4.5</td><td class="num">5.67</td><td class="">Pass</td></tr><tr><td>on-solid on green-hover</td><td><span class="dot" style="background:#ffffff"></span>#ffffff</td><td><span class="dot" style="background:#235f3d"></span>#235f3d</td><td>.loop .okb hover</td><td class="num">4.5</td><td class="num">7.57</td><td class="">Pass</td></tr><tr><td>rose on rose-bg</td><td><span class="dot" style="background:#f7dcdc"></span>#f7dcdc</td><td><span class="dot" style="background:#3c2325"></span>#3c2325</td><td>.days.now</td><td class="num">4.5</td><td class="num">11.12</td><td class="">Pass</td></tr><tr><td>ai on ai-bg</td><td><span class="dot" style="background:#eadff7"></span>#eadff7</td><td><span class="dot" style="background:#322343"></span>#322343</td><td>.prov.ai, tray heading</td><td class="num">4.5</td><td class="num">11.25</td><td class="">Pass</td></tr><tr><td>ai-ink on ai-bg</td><td><span class="dot" style="background:#c5b9d3"></span>#c5b9d3</td><td><span class="dot" style="background:#322343"></span>#322343</td><td>tray source and footnote lines</td><td class="num">4.5</td><td class="num">7.72</td><td class="">Pass</td></tr><tr><td>ink on ai-bg</td><td><span class="dot" style="background:#f3f1ec"></span>#f3f1ec</td><td><span class="dot" style="background:#322343"></span>#322343</td><td>tray item names</td><td class="num">4.5</td><td class="num">12.77</td><td class="">Pass</td></tr><tr><td>ai-ink on ai-tile</td><td><span class="dot" style="background:#c5b9d3"></span>#c5b9d3</td><td><span class="dot" style="background:#413351"></span>#413351</td><td>tray thumbnail initial (22px Bodoni, large)</td><td class="num">3</td><td class="num">6.19</td><td class="">Pass</td></tr><tr><td>focus ring on paper</td><td><span class="dot" style="background:#f3f1ec"></span>#f3f1ec</td><td><span class="dot" style="background:#121212"></span>#121212</td><td>focus ring (non-text)</td><td class="num">3</td><td class="num">16.60</td><td class="">Pass</td></tr><tr><td>focus ring on tile</td><td><span class="dot" style="background:#f3f1ec"></span>#f3f1ec</td><td><span class="dot" style="background:#2b2a27"></span>#2b2a27</td><td>focus ring over tile-backed controls (non-text)</td><td class="num">3</td><td class="num">12.71</td><td class="">Pass</td></tr></tbody></table></div>
+<p class="foot">Source: <code>docs/design/mockups/smart-kitchen-prototype.html</code> (v6) and <code>docs/design/tokens.md</code>. Strings are copied from the prototype and <code>copy-deck.md</code>. Dark values are derived by <code>build-previews.mjs</code>; see README.md.</p>
+</div>
+</body>
+</html>

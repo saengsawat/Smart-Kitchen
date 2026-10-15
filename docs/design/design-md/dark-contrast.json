@@ -1,0 +1,280 @@
+{
+  "dark": {
+    "paper": "#121212",
+    "tile": "#2b2a27",
+    "ink": "#f3f1ec",
+    "ink2": "#d9d6cf",
+    "ink3": "#9a978f",
+    "hair": "#3f3f3e",
+    "danger": "#f9d9d9",
+    "dangerBg": "#351616",
+    "amber": "#f6e6c8",
+    "amberBg": "#382810",
+    "green": "#dfeee3",
+    "greenBg": "#1a2f23",
+    "rose": "#f7dcdc",
+    "roseBg": "#3c2325",
+    "ai": "#eadff7",
+    "aiBg": "#322343",
+    "aiInk": "#c5b9d3"
+  },
+  "literals": {
+    "onInk": "#121212",
+    "inkHover": "#e4e1d9",
+    "rowHover": "#201f1f",
+    "amberInk": "#d4c4a7",
+    "greenInk": "#bcccc0",
+    "greenHover": "#235f3d",
+    "aiHair": "#594c65",
+    "aiTile": "#413351",
+    "focus": "#f3f1ec",
+    "dangerSolid": "#882020",
+    "greenSolid": "#2c744b",
+    "onSolid": "#ffffff"
+  },
+  "pairs": [
+    {
+      "label": "ink on paper",
+      "fg": "#f3f1ec",
+      "bg": "#121212",
+      "where": "body and headings",
+      "tgt": 4.5,
+      "r": 16.6,
+      "ok": true
+    },
+    {
+      "label": "ink on tile",
+      "fg": "#f3f1ec",
+      "bg": "#2b2a27",
+      "where": "neutral panels, stat captions",
+      "tgt": 4.5,
+      "r": 12.71,
+      "ok": true
+    },
+    {
+      "label": "ink2 on paper",
+      "fg": "#d9d6cf",
+      "bg": "#121212",
+      "where": "sub-lines, meta, nav labels, notes",
+      "tgt": 4.5,
+      "r": 12.91,
+      "ok": true
+    },
+    {
+      "label": "ink2 on tile",
+      "fg": "#d9d6cf",
+      "bg": "#2b2a27",
+      "where": "notice text, .stat.list, tile captions",
+      "tgt": 4.5,
+      "r": 9.89,
+      "ok": true
+    },
+    {
+      "label": "ink3 on paper",
+      "fg": "#9a978f",
+      "bg": "#121212",
+      "where": "placeholder, .stat.staple, soon rows",
+      "tgt": 4.5,
+      "r": 6.42,
+      "ok": true
+    },
+    {
+      "label": "ink3 on tile",
+      "fg": "#9a978f",
+      "bg": "#2b2a27",
+      "where": "photo tile initials (24 to 54px Bodoni, large)",
+      "tgt": 3,
+      "r": 4.92,
+      "ok": true
+    },
+    {
+      "label": "on-ink on ink",
+      "fg": "#121212",
+      "bg": "#f3f1ec",
+      "where": ".btn.pri, .okb, toast, .addprimary title, nav Add disc",
+      "tgt": 4.5,
+      "r": 16.6,
+      "ok": true
+    },
+    {
+      "label": "on-ink 78% on ink (composite)",
+      "fg": "#444342",
+      "bg": "#f3f1ec",
+      "where": ".addprimary subline",
+      "tgt": 4.5,
+      "r": 8.75,
+      "ok": true
+    },
+    {
+      "label": "on-ink on ink-hover",
+      "fg": "#121212",
+      "bg": "#e4e1d9",
+      "where": "hover of ink buttons",
+      "tgt": 4.5,
+      "r": 14.34,
+      "ok": true
+    },
+    {
+      "label": "ink on tile (hover)",
+      "fg": "#f3f1ec",
+      "bg": "#2b2a27",
+      "where": "hover of outlined buttons",
+      "tgt": 4.5,
+      "r": 12.71,
+      "ok": true
+    },
+    {
+      "label": "ink on row-hover",
+      "fg": "#f3f1ec",
+      "bg": "#201f1f",
+      "where": "hover of list rows",
+      "tgt": 4.5,
+      "r": 14.57,
+      "ok": true
+    },
+    {
+      "label": "danger on danger-bg",
+      "fg": "#f9d9d9",
+      "bg": "#351616",
+      "where": ".blockbar, .prov.alg, selected allergy chip (alert text, 7:1 bar)",
+      "tgt": 7,
+      "r": 12.49,
+      "ok": true
+    },
+    {
+      "label": "danger on paper",
+      "fg": "#f9d9d9",
+      "bg": "#121212",
+      "where": "allergen lines drawn on paper (alert text, 7:1 bar)",
+      "tgt": 7,
+      "r": 14.23,
+      "ok": true
+    },
+    {
+      "label": "on-solid on danger-solid",
+      "fg": "#ffffff",
+      "bg": "#882020",
+      "where": "selected severity button, warning disc glyph",
+      "tgt": 4.5,
+      "r": 9.23,
+      "ok": true
+    },
+    {
+      "label": "amber on amber-bg",
+      "fg": "#f6e6c8",
+      "bg": "#382810",
+      "where": ".verdict.unk, .days.soon, .prov.est, .stat.shortby",
+      "tgt": 4.5,
+      "r": 11.54,
+      "ok": true
+    },
+    {
+      "label": "amber-ink on amber-bg",
+      "fg": "#d4c4a7",
+      "bg": "#382810",
+      "where": ".verdict.unk caveat lines",
+      "tgt": 4.5,
+      "r": 8.28,
+      "ok": true
+    },
+    {
+      "label": "green on green-bg",
+      "fg": "#dfeee3",
+      "bg": "#1a2f23",
+      "where": ".days.ok, .prov.fact, .stat.have",
+      "tgt": 4.5,
+      "r": 11.85,
+      "ok": true
+    },
+    {
+      "label": "green-ink on green-bg",
+      "fg": "#bcccc0",
+      "bg": "#1a2f23",
+      "where": ".loop banner text",
+      "tgt": 4.5,
+      "r": 8.5,
+      "ok": true
+    },
+    {
+      "label": "on-solid on green-solid",
+      "fg": "#ffffff",
+      "bg": "#2c744b",
+      "where": ".loop .okb Add",
+      "tgt": 4.5,
+      "r": 5.67,
+      "ok": true
+    },
+    {
+      "label": "on-solid on green-hover",
+      "fg": "#ffffff",
+      "bg": "#235f3d",
+      "where": ".loop .okb hover",
+      "tgt": 4.5,
+      "r": 7.57,
+      "ok": true
+    },
+    {
+      "label": "rose on rose-bg",
+      "fg": "#f7dcdc",
+      "bg": "#3c2325",
+      "where": ".days.now",
+      "tgt": 4.5,
+      "r": 11.12,
+      "ok": true
+    },
+    {
+      "label": "ai on ai-bg",
+      "fg": "#eadff7",
+      "bg": "#322343",
+      "where": ".prov.ai, tray heading",
+      "tgt": 4.5,
+      "r": 11.25,
+      "ok": true
+    },
+    {
+      "label": "ai-ink on ai-bg",
+      "fg": "#c5b9d3",
+      "bg": "#322343",
+      "where": "tray source and footnote lines",
+      "tgt": 4.5,
+      "r": 7.72,
+      "ok": true
+    },
+    {
+      "label": "ink on ai-bg",
+      "fg": "#f3f1ec",
+      "bg": "#322343",
+      "where": "tray item names",
+      "tgt": 4.5,
+      "r": 12.77,
+      "ok": true
+    },
+    {
+      "label": "ai-ink on ai-tile",
+      "fg": "#c5b9d3",
+      "bg": "#413351",
+      "where": "tray thumbnail initial (22px Bodoni, large)",
+      "tgt": 3,
+      "r": 6.19,
+      "ok": true
+    },
+    {
+      "label": "focus ring on paper",
+      "fg": "#f3f1ec",
+      "bg": "#121212",
+      "where": "focus ring (non-text)",
+      "tgt": 3,
+      "r": 16.6,
+      "ok": true
+    },
+    {
+      "label": "focus ring on tile",
+      "fg": "#f3f1ec",
+      "bg": "#2b2a27",
+      "where": "focus ring over tile-backed controls (non-text)",
+      "tgt": 3,
+      "r": 12.71,
+      "ok": true
+    }
+  ]
+}
