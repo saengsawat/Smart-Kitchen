@@ -304,7 +304,7 @@ v5's scarcity rule policed a terracotta brand colour. v6 has no brand colour, so
 Values are unchanged. Some **uses** changed between v5 and v6. Item 1 was reverted by the PO (red stays); the rest stand as listed.
 
 1. **Allergen red on allergy selection controls stays (DECIDED, Andy, 2026-10-14, D-033 amendment a).** In v5 `.allergychip.on` and `.sevbtn.on` were `--danger`. The v6 prototype drew them as ordinary ink chips; that was an error in the v6 pass. As in v5: a selected allergen chip is `--danger-bg` fill with `--danger` text and border (7.02:1, border 8.84:1 on paper), and a selected severity button is solid `--danger` with white text (9.23:1). The prototype was corrected in M3-E0-T8 and M3-T13 builds it this way.
-2. **The none-of-the-above allergy option (v5 section 4 item 2, left to the PO between a green check and an ink check) is drawn in ink in v6** (`.noneopt[aria-pressed=true] .box` is ink fill). That is option (b), the neutral check, which removes the "green check beside allergy copy" ambiguity. The PO choice was never recorded as decided. PROPOSED: record option (b) as adopted by D-033.
+2. **The none-of-the-above allergy option (v5 section 4 item 2, left to the PO between a green check and an ink check) is drawn in ink in v6** (`.noneopt[aria-pressed=true] .box` is ink fill). That is option (b), the neutral check, which removes the "green check beside allergy copy" ambiguity. The PO choice was never recorded as decided. Built as the ink box by M3-T13 (2026-10-15); PROPOSED until the PO confirms option (b).
 3. **The shopping check-off (`.chk`, v5 section 4 item 3) is ink in v6, not green.** The green positive sentiment now shows on the "have" chip and the pantry banner only.
 4. **`--rose` versus `--danger` boundary.** Verified by direct grep of the v6 stylesheet: every `--danger` use is allergen context (5 CSS rules, 2 inline styles on blocked lines); the only `--rose` use is `.days.now`. **Zero crossover.** The M3 typed module should forbid `danger` outside allergen-named components (design-direction section 4).
 5. **AI purple exclusivity.** `--ai`, `--ai-bg` and `--ai-ink` appear in `.prov.ai`, `.trh`, `.tray`, `.tray i` and `.tray .foot2` only. Confirmed exclusive.
@@ -365,7 +365,7 @@ Carried forward unchanged; they describe app behaviour, not v5 tokens. One row (
 
 | Rule | Value | Where |
 |---|---|---|
-| Floating tab bar clearance | `TAB_BAR_HEIGHT + TAB_BAR_BOTTOM_OFFSET + insets.bottom + spacing.lg` (66 + 18 + inset + 16) via `useTabBarClearance()` from `src/navigation/TabBar.tsx` | the content bottom padding of every scrolling screen that shows the bar (S4, S5, S6 legend, S11, S12; Home and Menu when they scroll). v6's nav is a full-width bar (min-height 48px, padding `8px 8px 20px`), not floating; M3-T13 revisits this constant |
+| Tab bar clearance (v6, M3-T13) | full-width ink bar, `TAB_BAR_HEIGHT` 56 (8 + 48) plus `max(insets.bottom, TAB_BAR_BOTTOM_OFFSET 20)` plus `spacing.lg` 16, via `useTabBarClearance()` from `src/navigation/TabBar.tsx` (106 at a 34 inset; v5 was a floating bar, 66 + 18 + inset + 16) | the content bottom padding of every scrolling screen that shows the bar (S4, S5, S6 legend, S11, S12; Home and Menu when they scroll). v6's nav is a full-width bar (min-height 48px, padding `8px 8px 20px`), not floating; M3-T13 revisits this constant |
 | Bottom sheets and bottom-anchored inputs | pad by `insets.bottom` plus the sheet's own padding; keep them visible when the keyboard opens | S7 typed-code sheet today; S8 and the miss panel on the device pass |
 | S7 camera panel | at most 55% of the window height, brackets centred in the panel, hint directly under it, paper below | `app/add/scan.tsx` |
 | Screens that hide the bar | no clearance padding (onboarding, the Add flow) | |
@@ -375,6 +375,8 @@ Carried forward unchanged; they describe app behaviour, not v5 tokens. One row (
 ---
 
 ## 11. v5 to v6 token mapping (for M3-T13)
+
+As built by M3-T13 (2026-10-15): `radius.circle` was not added (pills sit on square boxes); `typeScale` steps are named `title`, `h1`, `statValue`, `product`, `empty`, `sheetTitle`, `section`, `group`, `qtyBig`, `stepper`, `rowTitle`, `body`, `button`, `label`, `caption`, `chip`. Hover, focus, scrim and second camera tokens are defined and pinned but only partly used on touch.
 
 Covers every export of `apps/mobile/src/design/tokens.ts` (`colors`, `radius`, `spacing`, `fontFamily`, `typeScale`, `minTouchTarget`) plus the v5 `:root` property `--info`, which tokens.ts never carried. "Same" means the hex is identical in v6. "Removed" means v6 has no equivalent and M3-T13 deletes the token and every use of it. New v6 tokens (names PROPOSED) are listed after the table.
 

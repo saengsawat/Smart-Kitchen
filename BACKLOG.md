@@ -92,21 +92,6 @@ _Finished tickets moved to [BACKLOG_ARCHIVE.md](BACKLOG_ARCHIVE.md): M3-T1, M3-T
 
 _Finished tickets moved to [BACKLOG_ARCHIVE.md](BACKLOG_ARCHIVE.md): M3-T4a, M3-T4b, M2-T3, M3-T4c, M2-T3a, M3-T5, M2-T4a, M3-T4d, M3-T4e, M3-T6, M3-T7, M7-T1, M3-T8, M2-T4c, M2-T7, M3-T9, M2-T8, M3-T11, M3-T12, M3-T10._
 
-#### M3-T13: Restyle the app to prototype v6 (Cookbook)
-*Written 2026-10-13 at the v6 adoption (D-033).*
-- **Implementation model:** Sonnet. Visual change through the token module, the fonts and per-screen styles; no domain, ledger or allergen logic.
-- **Review model:** Sonnet. Not on the rule-23 list, but the reviewer checks that every allergen verdict, caveat and provenance chip keeps its exact meaning, colour role, icon and copy after the restyle.
-- **Objective:** move `apps/mobile` from the v5 look to v6: (a) `tokens.ts` takes the M3-E0-T6 values, with `tokens.test.ts` pins and its contrast recomputation updated to match; (b) bundle Bodoni Moda and Schibsted Grotesk the way Fraunces and Inter are bundled today, with SOURCES.md entries, and remove the old fonts only if nothing uses them (rule 11 note in the report); (c) per-screen style and layout changes so every built screen matches v6 at 390px (Home masthead and headline, ruled lists, the Add food structure, pill controls, rounded tinted panels, the Recently added and confirmation patterns).
-- **Context:** D-033, D-021, D-032; `docs/design/mockups/smart-kitchen-prototype.html` (v6); tokens.md after M3-E0-T6; copy-deck.md; `apps/mobile/src/design/tokens.ts` and its test; `apps/mobile/assets/fonts/SOURCES.md`.
-- **Dependencies:** M3-E0-T6 and M3-E0-T7 accepted (work from `docs/design/design-md/DESIGN.md`, check values against tokens.md).
-- **Architect notes (2026-10-14):** rule 11 font bundling approved by Andy in chat 2026-10-14 ("Okay on bundling"); fetch the two fonts and their OFL.txt from the upstream Google Fonts repos and record URL, commit and date in SOURCES.md (licence check can trail, Andy: "develop first", but record what you fetched). D-033 amendment: selected allergen chips are `danger-bg` fill with `danger` text and border, selected severity buttons solid `danger` with white text (as today in v5, keep them); the green pantry-banner Add is the one green action; user-facing "KitchenSmart" reads "Smart Kitchen" (legend.tsx, the app.json camera permission string and the copy-scan test strings that pin them; do not touch app name, slug or bundle ids). Use the fixed prototype (M3-E0-T8) and `docs/design/design-md/`. Acceptance adds: `impeccable detect` is web-only, so instead the report carries side-by-side 390px screenshots from Expo web against the prototype.
-- **Invariants:** no colour literal outside `tokens.ts` (M3-T1); safety and semantic tokens unchanged; allergen and provenance copy unchanged; 44px targets; no behaviour, data or API change; food photos stay out (they arrive with the D-032 asset pipeline, so placeholders stay).
-- **Acceptance criteria:** every built screen matches v6 in look, side by side at 390px; `tokens.test.ts` green with the new pins; typecheck, lint and the full suite green.
-- **Tests required:** `tokens.test.ts` updated pins and contrast; existing suites unchanged and green.
-- **File scope:** `apps/mobile/**` (styles, `src/design/**`, `assets/fonts/**`), `docs/handoff/M3-T13.worker.md`.
-- **Out of scope:** new screens or behaviour; Plan ahead and the diet picker (M3-E0-T5 and its build tickets); the image pipeline; copy changes beyond the deck.
-- **DoD:** rule 26; side-by-side screenshots in the report; Andy does a device pass.
-
 #### R-6 — Shelf-life data research: USDA FoodKeeper coverage, licence and the estimation rule (docs only)
 - **Implementation model:** Sonnet. A research spike in the R-1 pattern: a script, a raw capture, a findings document; no app code.
 - **Review model:** Sonnet. The reviewer checks the licence statement against the source, re-runs the coverage numbers, and that nothing in the findings is asserted without evidence.
