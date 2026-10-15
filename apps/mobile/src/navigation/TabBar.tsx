@@ -65,7 +65,7 @@ export function TabBar(): React.JSX.Element {
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={`${CENTER_ACTION.label}, scan`}
-            style={({ pressed }) => [styles.disc, pressed && styles.pressed]}
+            style={styles.disc}
           >
             <ScanIcon color={colors.white} />
           </Pressable>
@@ -150,5 +150,4 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  pressed: { transform: [{ scale: 0.98 }] },
 });
