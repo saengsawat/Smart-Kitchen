@@ -4,7 +4,15 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import type { InventoryItemSummaryDto } from "@smart-kitchen/contracts";
 import { apiClient } from "../src/api/client";
-import { colors, fontFamily, minTouchTarget, radius, spacing } from "../src/design/tokens";
+import { provChipStyle } from "../src/design/chips";
+import {
+  colors,
+  fontFamily,
+  minTouchTarget,
+  radius,
+  spacing,
+  typeScale,
+} from "../src/design/tokens";
 import { useTabBarClearance } from "../src/navigation/TabBar";
 import { CENTER_ACTION } from "../src/navigation/tabs";
 import { daysUntil, expiryDisplayText, freshnessRing } from "../src/inventory/expiry";
@@ -425,15 +433,15 @@ function InventoryRow({
         onPress={onPress}
         style={({ pressed }) => [styles.itemMain, pressScaleStyle(pressed, reducedMotion)]}
       >
-        <View style={[styles.ring, ringStyleFor(ring)]}>
-          <Text style={styles.ringGlyph}>{name.charAt(0)}</Text>
+        <View style={styles.thumb}>
+          <Text style={styles.thumbGlyph}>{name.charAt(0)}</Text>
         </View>
         <View style={styles.itemMeta}>
           <Text style={styles.itemName}>{item.displayName}</Text>
-          <Text style={styles.itemQty}>
-            {qty}
-            {urgency ? ` · ${urgency}` : ""}
-          </Text>
+          <View style={styles.qtyLine}>
+            <Text style={styles.itemQty}>{qty}</Text>
+            {urgency ? <Text style={[styles.days, daysStyleFor(ring)]}>{urgency}</Text> : null}
+          </View>
         </View>
       </Pressable>
       {/* Review F9: the AI chip on a row is the Confirm action itself
@@ -444,13 +452,14 @@ function InventoryRow({
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={`Confirm ${name}`}
+          hitSlop={{ top: 11, bottom: 11, left: 4, right: 4 }}
           onPress={onConfirm}
-          style={({ pressed }) => [styles.okButton, pressScaleStyle(pressed, reducedMotion)]}
+          style={({ pressed }) => pressScaleStyle(pressed, reducedMotion)}
         >
-          <Text style={styles.okButtonText}>{chip}</Text>
+          <Text style={provChipStyle("AI_INTERPRETATION")}>{chip}</Text>
         </Pressable>
       ) : chip && tier ? (
-        <Text style={styles.provChip} accessibilityLabel={chipAccessibilityLabel(tier)}>
+        <Text style={provChipStyle(tier)} accessibilityLabel={chipAccessibilityLabel(tier)}>
           {chip}
         </Text>
       ) : null}
@@ -458,212 +467,300 @@ function InventoryRow({
   );
 }
 
-function ringStyleFor(ring: ReturnType<typeof freshnessRing>): { borderColor: string } {
+/**
+ * v6 `.days`: the expiry ladder, rose (use today), amber (soon), green (further
+ * out), each on its tint. Never red. The words always travel with the colour.
+ */
+function daysStyleFor(ring: ReturnType<typeof freshnessRing>): {
+  color: string;
+  backgroundColor: string;
+} {
   switch (ring) {
     case "now":
-      return { borderColor: colors.rose };
+      return { color: colors.rose, backgroundColor: colors.roseBg };
     case "soon":
-      return { borderColor: colors.amber };
+      return { color: colors.amber, backgroundColor: colors.amberBg };
     case "fresh":
-      return { borderColor: colors.green };
+      return { color: colors.green, backgroundColor: colors.greenBg };
     default:
-      return { borderColor: colors.line };
+      return { color: colors.ink2, backgroundColor: colors.tile };
   }
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.sand },
+  screen: { flex: 1, backgroundColor: colors.paper },
   header: {
     flexDirection: "row",
     alignItems: "flex-start",
     justifyContent: "space-between",
-    paddingHorizontal: spacing.lg,
-    paddingBottom: spacing.sm,
+    paddingHorizontal: spacing.gutter,
+    paddingBottom: spacing.xs,
   },
-  headerText: { flex: 1, gap: 2 },
-  title: { fontSize: 28, fontFamily: fontFamily.display, fontWeight: "600", color: colors.ink },
+  headerText: { flex: 1, gap: 6 },
+  // v6 `.title`: Bodoni 44.
+  title: {
+    paddingTop: spacing.md,
+    fontSize: typeScale.title.fontSize,
+    lineHeight: typeScale.title.lineHeight,
+    letterSpacing: typeScale.title.letterSpacing,
+    fontFamily: typeScale.title.fontFamily,
+    fontWeight: typeScale.title.fontWeight,
+    color: colors.ink,
+  },
   subRow: { flexDirection: "row", flexWrap: "wrap", alignItems: "center" },
-  sub: { fontSize: 12.5, color: colors.ink2, fontFamily: fontFamily.body },
-  legendLink: {
-    fontSize: 12.5,
+  sub: {
+    fontSize: 13.5,
+    lineHeight: 18,
+    fontWeight: "500",
     color: colors.ink2,
+    fontFamily: fontFamily.body,
+  },
+  // v6 `.lg`: ink, 600, underlined.
+  legendLink: {
+    fontSize: 13.5,
+    fontWeight: "600",
+    color: colors.ink,
     fontFamily: fontFamily.body,
     textDecorationLine: "underline",
   },
-  iconButton: {
-    width: minTouchTarget,
-    height: minTouchTarget,
-    borderRadius: minTouchTarget / 2,
-    backgroundColor: colors.paper,
-    borderWidth: 1,
-    borderColor: colors.line,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  iconGlyph: { fontSize: 16 },
   staleBanner: {
-    marginHorizontal: spacing.lg,
-    marginBottom: spacing.sm,
-    padding: spacing.sm,
-    borderRadius: radius.sm,
-    backgroundColor: colors.sand2,
+    marginHorizontal: spacing.gutter,
+    marginTop: spacing.md,
+    padding: spacing.md,
+    backgroundColor: colors.tile,
     borderWidth: 1,
-    borderColor: colors.line,
+    borderColor: colors.ink2,
   },
-  staleText: { fontSize: 12, color: colors.ink2, fontFamily: fontFamily.body, lineHeight: 17 },
+  staleText: { fontSize: 13, color: colors.ink2, fontFamily: fontFamily.body, lineHeight: 19 },
+  // v6 `.seg`: underlined tabs, a hairline under the row and a 2px ink bar on
+  // the selected one.
   seg: {
     flexDirection: "row",
-    marginHorizontal: spacing.lg,
-    borderRadius: radius.sm,
-    backgroundColor: colors.paper,
-    borderWidth: 1,
-    borderColor: colors.line,
-    padding: 3,
+    gap: spacing.gutter,
+    marginHorizontal: spacing.gutter,
+    marginTop: spacing.lg,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.hair,
   },
   segButton: {
-    flex: 1,
-    // tokens.md §5 remediation C: `.seg button` sits edge-to-edge in a shared
-    // row, so the row's own height grows to 44pt rather than using hitSlop
-    // (hitSlop here would overlap the neighbouring segment).
+    // tokens.md section 5 remediation C: 44pt tall without hitSlop.
     minHeight: minTouchTarget,
     alignItems: "center",
     justifyContent: "center",
-    borderRadius: radius.sm - 3,
+    borderBottomWidth: 2,
+    borderBottomColor: "transparent",
+    marginBottom: -1,
   },
-  segButtonOn: { backgroundColor: colors.espresso },
-  segText: { fontSize: 12.5, fontWeight: "600", color: colors.ink2, fontFamily: fontFamily.body },
-  segTextOn: { color: colors.cream },
+  segButtonOn: { borderBottomColor: colors.ink },
+  segText: { fontSize: 14, fontWeight: "600", color: colors.ink2, fontFamily: fontFamily.body },
+  segTextOn: { color: colors.ink },
+  // v6 `.chip`: 1.5px ink outline pill; pressed state is ink fill.
   chipsRow: {
     flexDirection: "row",
     gap: spacing.sm,
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.sm,
+    paddingHorizontal: spacing.gutter,
+    paddingTop: spacing.md,
+    paddingBottom: 2,
   },
   chip: {
-    minHeight: minTouchTarget,
-    paddingHorizontal: spacing.md,
+    minHeight: 40,
+    paddingHorizontal: 15,
     borderRadius: radius.pill,
-    borderWidth: 1,
-    borderColor: colors.line,
-    backgroundColor: colors.paper,
+    borderWidth: 1.5,
+    borderColor: colors.ink,
+    backgroundColor: "transparent",
     alignItems: "center",
     justifyContent: "center",
   },
-  chipOn: { backgroundColor: colors.espresso, borderColor: colors.espresso },
-  chipText: { fontSize: 12.5, fontWeight: "600", color: colors.ink2, fontFamily: fontFamily.body },
-  chipTextOn: { color: colors.cream },
+  chipOn: { backgroundColor: colors.ink },
+  chipText: { fontSize: 13.5, fontWeight: "600", color: colors.ink, fontFamily: fontFamily.body },
+  chipTextOn: { color: colors.white },
   content: {
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.md,
+    paddingHorizontal: spacing.gutter,
+    paddingTop: spacing.xs,
   },
+  // v6 `.tray`: AI tint panel, 14px corners, no border, hairlines between rows.
   tray: {
-    borderRadius: radius.md,
+    borderRadius: radius.panel,
     backgroundColor: colors.aiBg,
-    borderWidth: 1,
-    borderColor: colors.ai,
-    padding: spacing.md,
-    marginBottom: spacing.md,
-    gap: spacing.sm,
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.cozy,
+    marginTop: spacing.snug,
   },
-  trayHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-  trayHeading: { fontSize: 13, fontWeight: "700", color: colors.ink, fontFamily: fontFamily.body },
-  trayCount: { fontSize: 12, color: colors.ink2, fontFamily: fontFamily.body },
-  trayRow: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
+  trayHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingTop: spacing.snug,
+    paddingBottom: spacing.xs,
+  },
+  trayHeading: { fontSize: 13.5, fontWeight: "700", color: colors.ai, fontFamily: fontFamily.body },
+  trayCount: { fontSize: 13.5, fontWeight: "700", color: colors.ai, fontFamily: fontFamily.body },
+  trayRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    alignItems: "center",
+    gap: spacing.snug,
+    paddingVertical: spacing.snug,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.aiHair,
+  },
   trayThumb: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    backgroundColor: colors.paper,
+    width: 44,
+    height: 44,
+    backgroundColor: colors.aiTile,
     alignItems: "center",
     justifyContent: "center",
   },
-  trayThumbGlyph: { fontFamily: "monospace", color: colors.ink2 },
-  trayMeta: { flex: 1, gap: 1 },
-  trayName: { fontSize: 13, fontWeight: "700", color: colors.ink, fontFamily: fontFamily.body },
-  traySource: { fontSize: 11, color: colors.ink3, fontFamily: fontFamily.body },
+  trayThumbGlyph: {
+    fontFamily: fontFamily.display,
+    fontWeight: "500",
+    fontSize: 20,
+    color: colors.ink3,
+  },
+  trayMeta: { flex: 1, minWidth: 0 },
+  trayName: {
+    fontSize: 14.5,
+    lineHeight: 18,
+    fontWeight: "700",
+    color: colors.ink,
+    fontFamily: fontFamily.body,
+  },
+  traySource: { fontSize: 12.5, lineHeight: 17, color: colors.aiInk, fontFamily: fontFamily.body },
+  // v6 `.okb`: ink pill, white label, 44px; `.okb.ghost` is an ink outline.
   okButton: {
     minHeight: minTouchTarget,
-    minWidth: 44,
-    paddingHorizontal: spacing.sm,
-    borderRadius: radius.sm,
-    backgroundColor: colors.ai,
+    minWidth: 56,
+    paddingHorizontal: spacing.cozy,
+    borderRadius: radius.pill,
+    backgroundColor: colors.ink,
     alignItems: "center",
     justifyContent: "center",
   },
   okButtonText: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: "700",
     color: colors.white,
     fontFamily: fontFamily.body,
   },
-  okButtonGhost: { backgroundColor: "transparent", borderWidth: 1, borderColor: colors.ai },
+  okButtonGhost: { backgroundColor: "transparent", borderWidth: 1.5, borderColor: colors.ink },
   okButtonGhostText: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: "700",
-    color: colors.ai,
+    color: colors.ink,
     fontFamily: fontFamily.body,
   },
+  // v6 `.grp`: Bodoni 22 over a 1px ink rule, count at the right.
   groupHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
-    paddingTop: spacing.md,
-    paddingBottom: spacing.xs,
+    alignItems: "baseline",
+    marginTop: spacing.xl,
+    paddingBottom: 6,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.ink,
   },
-  groupTitle: { fontSize: 13, fontWeight: "700", color: colors.ink, fontFamily: fontFamily.body },
-  groupCount: { fontSize: 12, color: colors.ink3, fontFamily: fontFamily.body },
+  groupTitle: {
+    fontSize: typeScale.group.fontSize,
+    lineHeight: typeScale.group.lineHeight,
+    fontFamily: typeScale.group.fontFamily,
+    fontWeight: typeScale.group.fontWeight,
+    color: colors.ink,
+  },
+  groupCount: { fontSize: 12, fontWeight: "600", color: colors.ink2, fontFamily: fontFamily.body },
+  // v6 `.row`: 56px square tile, title 15.5 / 700, detail 13 in ink2, hairline.
   item: {
     flexDirection: "row",
     alignItems: "center",
-    gap: spacing.sm,
-    minHeight: minTouchTarget,
-    paddingVertical: spacing.xs,
+    gap: spacing.md,
+    minHeight: 72,
+    paddingVertical: spacing.snug,
     borderBottomWidth: 1,
-    borderBottomColor: colors.line,
+    borderBottomColor: colors.hair,
   },
   // Review F9: the row's navigate-to-detail area and the AI chip's own
   // Confirm action are siblings, not nested Pressables, so a screen reader
   // reaches both as separate focusable elements.
-  itemMain: { flex: 1, flexDirection: "row", alignItems: "center", gap: spacing.sm },
-  ring: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    borderWidth: 2,
+  itemMain: { flex: 1, flexDirection: "row", alignItems: "center", gap: spacing.md },
+  thumb: {
+    width: 56,
+    height: 56,
+    backgroundColor: colors.tile,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: colors.paper,
   },
-  ringGlyph: { fontFamily: "monospace", color: colors.ink2 },
-  itemMeta: { flex: 1, gap: 1 },
-  itemName: { fontSize: 14, fontWeight: "600", color: colors.ink, fontFamily: fontFamily.body },
-  itemQty: { fontSize: 12.5, color: colors.ink2, fontFamily: fontFamily.body },
-  provChip: { fontSize: 11, fontWeight: "700", color: colors.ink2, fontFamily: fontFamily.body },
+  thumbGlyph: {
+    fontFamily: fontFamily.display,
+    fontWeight: "500",
+    fontSize: 24,
+    color: colors.ink3,
+  },
+  itemMeta: { flex: 1, gap: 3 },
+  itemName: {
+    fontSize: typeScale.rowTitle.fontSize,
+    lineHeight: typeScale.rowTitle.lineHeight,
+    fontWeight: "700",
+    color: colors.ink,
+    fontFamily: fontFamily.body,
+  },
+  qtyLine: { flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: spacing.sm },
+  itemQty: { fontSize: 13, lineHeight: 17, color: colors.ink2, fontFamily: fontFamily.body },
+  // v6 `.days`: 12px 700 uppercase pill, tinted by the expiry ladder.
+  days: {
+    fontSize: typeScale.chip.fontSize,
+    lineHeight: 12,
+    fontWeight: "700",
+    fontFamily: fontFamily.body,
+    letterSpacing: 12 * 0.12,
+    textTransform: "uppercase",
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    borderRadius: radius.pill,
+    overflow: "hidden",
+  },
+  // v6 `.emptyst`: dashed ink2 panel, Bodoni 28, ink pill button.
   emptyWrap: {
     alignItems: "center",
-    gap: spacing.sm,
-    paddingHorizontal: spacing.xl,
-    paddingTop: spacing.xxl,
+    gap: spacing.snug,
+    marginHorizontal: spacing.gutter,
+    marginTop: 22,
+    paddingVertical: 28,
+    paddingHorizontal: spacing.gutter,
+    borderWidth: 1,
+    borderStyle: "dashed",
+    borderColor: colors.ink2,
   },
   emptyTitle: {
-    fontSize: 19,
-    fontFamily: fontFamily.display,
-    fontWeight: "600",
+    fontSize: typeScale.empty.fontSize,
+    lineHeight: typeScale.empty.lineHeight,
+    fontFamily: typeScale.empty.fontFamily,
+    fontWeight: typeScale.empty.fontWeight,
     color: colors.ink,
     textAlign: "center",
   },
-  emptyBody: { fontSize: 13, color: colors.ink2, fontFamily: fontFamily.body, textAlign: "center" },
+  emptyBody: {
+    maxWidth: 280,
+    fontSize: 14,
+    lineHeight: 21,
+    color: colors.ink2,
+    fontFamily: fontFamily.body,
+    textAlign: "center",
+  },
+  // v6 `.btn.pri`: ink pill, 50px.
   primaryButton: {
-    minHeight: minTouchTarget,
-    paddingHorizontal: spacing.lg,
-    borderRadius: 14,
-    backgroundColor: colors.brandDeep,
+    minHeight: 50,
+    paddingHorizontal: 22,
+    borderRadius: radius.pill,
+    borderWidth: 1.5,
+    borderColor: colors.ink,
+    backgroundColor: colors.ink,
     alignItems: "center",
     justifyContent: "center",
-    marginTop: spacing.sm,
+    marginTop: spacing.xs,
   },
   primaryButtonText: {
-    color: colors.cream,
-    fontSize: 15,
+    color: colors.white,
+    fontSize: typeScale.button.fontSize,
     fontWeight: "700",
     fontFamily: fontFamily.body,
   },

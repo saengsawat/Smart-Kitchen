@@ -231,7 +231,7 @@ describe("S12 · tab bar clearance (BUG-003)", () => {
       const result = await renderScreen();
       await flushPending();
       expect(contentPaddingBottom(result)).toBe(tabBarClearanceFor(34));
-      expect(tabBarClearanceFor(34)).toBe(134);
+      expect(tabBarClearanceFor(34)).toBe(106);
     } finally {
       setMockBottomInset(0);
     }

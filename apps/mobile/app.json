@@ -12,7 +12,7 @@
       [
         "expo-camera",
         {
-          "cameraPermission": "KitchenSmart uses the camera to scan a barcode when you add food."
+          "cameraPermission": "Smart Kitchen uses the camera to scan a barcode when you add food."
         }
       ]
     ],

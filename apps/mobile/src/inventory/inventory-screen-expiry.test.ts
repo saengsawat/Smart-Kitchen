@@ -82,7 +82,7 @@ async function renderWith(item: InventoryItemSummaryDto): Promise<ReturnType<typ
 describe("S4 · expiry wording (M3-T9, D-030)", () => {
   it("a past Known Fact date reads 'expired' (text and accessibility label)", async () => {
     const result = await renderWith(milk(-3, "KNOWN_FACT"));
-    expect(result.getByText(/ · expired$/)).toBeTruthy();
+    expect(result.getByText("expired")).toBeTruthy();
     expect(result.getByLabelText(/^Milk, .*, expired,/)).toBeTruthy();
     expect(result.queryByText(/may be expired/)).toBeNull();
   });
@@ -91,7 +91,7 @@ describe("S4 · expiry wording (M3-T9, D-030)", () => {
     "a past %s date reads 'may be expired'",
     async (tier) => {
       const result = await renderWith(milk(-3, tier));
-      expect(result.getByText(/ · may be expired$/)).toBeTruthy();
+      expect(result.getByText("may be expired")).toBeTruthy();
       expect(result.getByLabelText(/^Milk, .*, may be expired,/)).toBeTruthy();
     },
   );
@@ -102,7 +102,7 @@ describe("S4 · expiry wording (M3-T9, D-030)", () => {
     ["23:59 today", localAt(0, 23, 59)],
   ])("a best-by %s reads 'use today' (text and accessibility label)", async (_n, at) => {
     const result = await renderWith(milk(at, "ESTIMATED"));
-    expect(result.getByText(/ · use today$/)).toBeTruthy();
+    expect(result.getByText("use today")).toBeTruthy();
     expect(result.getByLabelText(/^Milk, .*, use today,/)).toBeTruthy();
     expect(result.queryByText(/expired/)).toBeNull();
   });
@@ -112,13 +112,13 @@ describe("S4 · expiry wording (M3-T9, D-030)", () => {
     ["23:59 tomorrow", localAt(1, 23, 59)],
   ])("a best-by %s reads 'tomorrow' (text and accessibility label)", async (_n, at) => {
     const result = await renderWith(milk(at, "ESTIMATED"));
-    expect(result.getByText(/ · tomorrow$/)).toBeTruthy();
+    expect(result.getByText("tomorrow")).toBeTruthy();
     expect(result.getByLabelText(/^Milk, .*, tomorrow,/)).toBeTruthy();
     expect(result.queryByText(/use today/)).toBeNull();
   });
 
   it("a best-by yesterday is past", async () => {
     const result = await renderWith(milk(localAt(-1, 23, 59), "KNOWN_FACT"));
-    expect(result.getByText(/ · expired$/)).toBeTruthy();
+    expect(result.getByText("expired")).toBeTruthy();
   });
 });

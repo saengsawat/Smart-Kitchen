@@ -97,14 +97,16 @@ async function renderWith(d: InventoryItemDetailDto): Promise<ReturnType<typeof 
 describe("S5 · lot expiry wording (M3-T9, D-030)", () => {
   it("a past Known Fact lot reads '{label} · expired'", async () => {
     const result = await renderWith(detail(-3, "KNOWN_FACT"));
-    expect(result.getByText("Bought Sep 1 · expired")).toBeTruthy();
+    expect(result.getByText("Bought Sep 1")).toBeTruthy();
+    expect(result.getByText("expired")).toBeTruthy();
   });
 
   it.each(["ESTIMATED", "AI_INTERPRETATION", null] as const)(
     "a past %s lot reads '{label} · may be expired'",
     async (tier) => {
       const result = await renderWith(detail(-3, tier));
-      expect(result.getByText("Bought Sep 1 · may be expired")).toBeTruthy();
+      expect(result.getByText("Bought Sep 1")).toBeTruthy();
+      expect(result.getByText("may be expired")).toBeTruthy();
     },
   );
 
@@ -114,7 +116,8 @@ describe("S5 · lot expiry wording (M3-T9, D-030)", () => {
     ["23:59 today", localAt(0, 23, 59)],
   ])("a lot expiring %s reads 'expires today'", async (_n, at) => {
     const result = await renderWith(detail(at, "ESTIMATED"));
-    expect(result.getByText("Bought Sep 1 · expires today")).toBeTruthy();
+    expect(result.getByText("Bought Sep 1")).toBeTruthy();
+    expect(result.getByText("expires today")).toBeTruthy();
   });
 
   it.each([
@@ -122,11 +125,13 @@ describe("S5 · lot expiry wording (M3-T9, D-030)", () => {
     ["23:59 tomorrow", localAt(1, 23, 59)],
   ])("a lot expiring %s reads 'expires tomorrow'", async (_n, at) => {
     const result = await renderWith(detail(at, "ESTIMATED"));
-    expect(result.getByText("Bought Sep 1 · expires tomorrow")).toBeTruthy();
+    expect(result.getByText("Bought Sep 1")).toBeTruthy();
+    expect(result.getByText("expires tomorrow")).toBeTruthy();
   });
 
   it("a lot that expired yesterday is past", async () => {
     const result = await renderWith(detail(localAt(-1, 23, 59), "KNOWN_FACT"));
-    expect(result.getByText("Bought Sep 1 · expired")).toBeTruthy();
+    expect(result.getByText("Bought Sep 1")).toBeTruthy();
+    expect(result.getByText("expired")).toBeTruthy();
   });
 });

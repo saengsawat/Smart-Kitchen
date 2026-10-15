@@ -118,7 +118,7 @@ const FORBIDDEN_TERMS = [
  */
 const ALLOWED_SAFE_SENTENCES = [
   "Known matches only · not a guarantee this food is safe.",
-  "Every value in KitchenSmart wears a tag showing how sure we are. A tag is our confidence in a fact. It is never a safety check by itself.",
+  "Every value in Smart Kitchen wears a tag showing how sure we are. A tag is our confidence in a fact. It is never a safety check by itself.",
   "No known household match · label declaration · not a safety guarantee",
   "· not a safety guarantee",
   "NO_SAFETY_GUARANTEE",
@@ -247,7 +247,7 @@ describe("scanSourceForViolations (the rule itself, in-memory sources)", () => {
 
   it("allows an allow-listed sentence whose whitespace differs (review F17: multi-line JSX text)", () => {
     const violations = scanSourceForViolations(
-      "export function X() { return <Text>Every value in KitchenSmart wears a tag showing how sure we are. A tag is our\n          confidence in a fact. It is never a safety check by itself.</Text>; }\n",
+      "export function X() { return <Text>Every value in Smart Kitchen wears a tag showing how sure we are. A tag is our\n          confidence in a fact. It is never a safety check by itself.</Text>; }\n",
     );
     expect(violations).toEqual([]);
   });

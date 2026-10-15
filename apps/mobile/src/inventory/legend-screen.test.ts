@@ -33,6 +33,6 @@ describe("S6 · legend · tab bar clearance (BUG-003)", () => {
       if (entry && typeof entry === "object") Object.assign(flat, entry);
     }
     expect(flat.paddingBottom).toBe(tabBarClearanceFor(34));
-    expect(tabBarClearanceFor(34)).toBe(134);
+    expect(tabBarClearanceFor(34)).toBe(106);
   });
 });

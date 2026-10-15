@@ -24,7 +24,15 @@ import {
   type StorageLocationDto,
 } from "@smart-kitchen/contracts";
 import { apiClient } from "../../src/api/client";
-import { colors, fontFamily, minTouchTarget, radius, spacing } from "../../src/design/tokens";
+import { chipHitSlop, provChipStyle } from "../../src/design/chips";
+import {
+  colors,
+  fontFamily,
+  minTouchTarget,
+  radius,
+  spacing,
+  typeScale,
+} from "../../src/design/tokens";
 import { GENERIC_READ_ERROR_MESSAGE, messageForLedgerError } from "../../src/inventory/errors";
 import { LOCATION_LABELS } from "../../src/inventory/list-view";
 import { useReducedMotion } from "../../src/inventory/motion";
@@ -557,9 +565,9 @@ export default function ScanScreen(): React.JSX.Element {
               accessibilityRole="button"
               accessibilityLabel="Enter manually"
               onPress={() => router.push("/add/manual")}
-              style={styles.primaryButtonFlex}
+              style={styles.invButton}
             >
-              <Text style={styles.primaryButtonText}>Enter manually</Text>
+              <Text style={styles.invButtonText}>Enter manually</Text>
             </Pressable>
           </View>
         </View>
@@ -568,7 +576,7 @@ export default function ScanScreen(): React.JSX.Element {
   }
 
   return (
-    <View style={styles.screen}>
+    <View style={[styles.screen, styles.camScreen]}>
       <View testID="scan-camera-panel" style={[styles.cameraPanel, { height: cameraPanelHeight }]}>
         {permission?.granted && !gateCovered ? (
           <CameraView
@@ -790,7 +798,10 @@ function ConfirmSheet({
           {/* Review F13: this identity chip reads the full "Known fact"
               wording (design-direction §7: Known Fact scoped to product
               identity on this surface), not S4/S5's compact row form. */}
-          <Text style={styles.provChip} accessibilityLabel={chipAccessibilityLabel("KNOWN_FACT")}>
+          <Text
+            style={provChipStyle("KNOWN_FACT")}
+            accessibilityLabel={chipAccessibilityLabel("KNOWN_FACT")}
+          >
             ✓ Known fact
           </Text>
           <Text style={styles.identityCaption}>product identity · barcode match</Text>
@@ -860,6 +871,7 @@ function ConfirmSheet({
                 label="fat"
                 value={roundForDisplay(nutritionProfile.values.fatG, "g")}
                 suffix="g"
+                last
               />
             </View>
           </>
@@ -876,7 +888,7 @@ function ConfirmSheet({
         <View style={styles.nutritionTierRow}>
           {nutritionProfile ? (
             <Text
-              style={styles.provChipSmall}
+              style={provChipStyle(nutritionProfile.provenance.tier)}
               accessibilityLabel={chipAccessibilityLabel(nutritionProfile.provenance.tier)}
             >
               {ROW_CHIP_TEXT[nutritionProfile.provenance.tier]}
@@ -932,7 +944,10 @@ function ConfirmSheet({
               Checking allergen data for your household.
             </Text>
           ) : result.verdict === "ALLOWED" ? (
-            <Text style={styles.allergenLine} accessibilityLabel={allowedLine()}>
+            <Text
+              style={[styles.allergenLine, styles.allergenLineAllowed]}
+              accessibilityLabel={allowedLine()}
+            >
               {allowedLine()}
             </Text>
           ) : (
@@ -941,7 +956,10 @@ function ConfirmSheet({
                 const tier = evidenceTier(e, evidence);
                 const line = evidenceLine(e, resolveMemberName);
                 return (
-                  <View key={`evidence-${String(index)}`} style={styles.allergenLineRow}>
+                  <View
+                    key={`evidence-${String(index)}`}
+                    style={[styles.allergenLineRow, styles.blockBar]}
+                  >
                     <Text
                       style={[styles.allergenLine, styles.allergenLineBlocked]}
                       accessibilityLabel={line}
@@ -950,7 +968,7 @@ function ConfirmSheet({
                     </Text>
                     {tier && isProvenanceTier(tier) ? (
                       <Text
-                        style={styles.provChipSmall}
+                        style={provChipStyle(tier)}
                         accessibilityLabel={chipAccessibilityLabel(tier)}
                       >
                         {ROW_CHIP_TEXT[tier]}
@@ -962,13 +980,14 @@ function ConfirmSheet({
               {unknowns.map((u, index) => {
                 const line = unknownLine(u, resolveMemberName);
                 return (
-                  <Text
-                    key={`unknown-${String(index)}`}
-                    style={[styles.allergenLine, styles.allergenLineUnknown]}
-                    accessibilityLabel={line}
-                  >
-                    {line}
-                  </Text>
+                  <View key={`unknown-${String(index)}`} style={styles.unknownPanel}>
+                    <Text
+                      style={[styles.allergenLine, styles.allergenLineUnknown]}
+                      accessibilityLabel={line}
+                    >
+                      {line}
+                    </Text>
+                  </View>
                 );
               })}
             </>
@@ -991,7 +1010,7 @@ function ConfirmSheet({
                 })}
               </Text>
               <Text
-                style={styles.provChipSmall}
+                style={provChipStyle(product.bestBy.provenance.tier)}
                 accessibilityLabel={chipAccessibilityLabel(product.bestBy.provenance.tier)}
               >
                 {ROW_CHIP_TEXT[product.bestBy.provenance.tier]}
@@ -1031,6 +1050,7 @@ function ConfirmSheet({
               accessibilityLabel={LOCATION_LABELS[loc]}
               accessibilityState={{ selected: location === loc }}
               onPress={() => setLocation(loc)}
+              hitSlop={chipHitSlop}
               style={[styles.locChip, location === loc ? styles.locChipOn : null]}
             >
               <Text style={[styles.locChipText, location === loc ? styles.locChipTextOn : null]}>
@@ -1058,7 +1078,9 @@ function ConfirmSheet({
             canAdd ? null : styles.primaryButtonDisabled,
           ]}
         >
-          <Text style={styles.primaryButtonText}>
+          <Text
+            style={[styles.primaryButtonText, blocked ? styles.primaryButtonBlockedText : null]}
+          >
             Add {count} to {LOCATION_LABELS[location]}
           </Text>
         </Pressable>
@@ -1165,7 +1187,7 @@ function PackageSizeField({
 /** One field's compact tier chip, with the full tier name as its accessibility label (copy-deck §4). */
 function TierChip({ tier }: { tier: ProvenanceTierDto }): React.JSX.Element {
   return (
-    <Text style={styles.provChipSmall} accessibilityLabel={chipAccessibilityLabel(tier)}>
+    <Text style={provChipStyle(tier)} accessibilityLabel={chipAccessibilityLabel(tier)}>
       {ROW_CHIP_TEXT[tier]}
     </Text>
   );
@@ -1175,13 +1197,15 @@ function Macro({
   label,
   value,
   suffix,
+  last,
 }: {
   label: string;
   value: number | undefined;
   suffix?: string;
+  last?: boolean;
 }): React.JSX.Element {
   return (
-    <View style={styles.macro}>
+    <View style={[styles.macro, last ? styles.macroLast : null]}>
       <Text style={styles.macroValue}>
         {value ?? "n/a"}
         {value !== undefined && suffix ? suffix : ""}
@@ -1198,54 +1222,61 @@ const CORNER_SIZE = 22;
 const CORNER_THICKNESS = 3;
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.sand },
-  camScreen: { backgroundColor: colors.espresso },
+  screen: { flex: 1, backgroundColor: colors.paper },
+  // v6 `#scan`: the camera screen is the one dark surface (#121212).
+  camScreen: { backgroundColor: colors.cameraBg },
+  // v6 `.back` then a sheet title: a borderless 44px back control above.
   header: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.md,
-    paddingHorizontal: spacing.lg,
-    paddingBottom: spacing.md,
+    alignItems: "flex-start",
+    paddingHorizontal: spacing.gutter,
   },
   iconButton: {
     width: minTouchTarget,
     height: minTouchTarget,
-    borderRadius: minTouchTarget / 2,
-    backgroundColor: colors.paper,
-    borderWidth: 1,
-    borderColor: colors.line,
+    marginLeft: -spacing.sm,
     alignItems: "center",
     justifyContent: "center",
   },
-  iconGlyph: { fontSize: 22, color: colors.ink },
+  iconGlyph: { fontSize: 30, lineHeight: 32, color: colors.ink, fontFamily: fontFamily.body },
+  // v6 `.iconb.light`: a 44px circle with a 1px camera-line border.
   iconButtonLight: {
     width: minTouchTarget,
     height: minTouchTarget,
-    borderRadius: minTouchTarget / 2,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: colors.cameraLine,
     alignItems: "center",
     justifyContent: "center",
   },
-  iconGlyphLight: { fontSize: 22, color: colors.cream },
+  iconGlyphLight: { fontSize: 26, lineHeight: 28, color: colors.cameraText },
   headerTitle: {
-    fontSize: 20,
-    fontFamily: fontFamily.display,
-    fontWeight: "600",
+    paddingTop: 2,
+    fontSize: typeScale.sheetTitle.fontSize,
+    lineHeight: typeScale.sheetTitle.lineHeight,
+    fontFamily: typeScale.sheetTitle.fontFamily,
+    fontWeight: typeScale.sheetTitle.fontWeight,
     color: colors.ink,
   },
   camTop: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: spacing.lg,
+    paddingHorizontal: spacing.md,
   },
-  camTitle: { color: colors.cream, fontWeight: "700", fontSize: 15, fontFamily: fontFamily.body },
-  // BUG-003: the camera panel keeps the prototype's espresso camera look but
-  // is capped (height set inline from the window) and may shrink when the
-  // keyboard takes room; the gap below the hint is the sand screen.
+  // v6 `.camtop h1`: 15 / 700 in camera text.
+  camTitle: {
+    color: colors.cameraText,
+    fontWeight: "700",
+    fontSize: 15,
+    fontFamily: fontFamily.body,
+  },
+  // BUG-003: the camera panel is capped (height set inline from the window) and
+  // may shrink when the keyboard takes room; the gap below the hint is the dark
+  // camera screen.
   cameraPanel: {
     position: "relative",
     flexShrink: 1,
-    backgroundColor: colors.espresso,
+    backgroundColor: colors.cameraBg,
     overflow: "hidden",
   },
   cameraFill: {
@@ -1254,7 +1285,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: colors.espresso2,
+    backgroundColor: colors.cameraBg2,
   },
   sheetSpacer: { flex: 1 },
   frame: {
@@ -1269,7 +1300,7 @@ const styles = StyleSheet.create({
     position: "absolute",
     width: CORNER_SIZE,
     height: CORNER_SIZE,
-    borderColor: colors.brand,
+    borderColor: colors.cameraText,
   },
   cornerTopLeft: {
     top: 0,
@@ -1297,190 +1328,327 @@ const styles = StyleSheet.create({
   },
   laser: {
     position: "absolute",
-    left: 0,
-    right: 0,
+    left: 14,
+    right: 14,
     height: 2,
-    backgroundColor: colors.brand,
+    backgroundColor: colors.cameraText,
+    opacity: 0.85,
   },
+  // v6 `.camhint`: 13 / 600 in camera muted text, directly under the panel.
   camHint: {
     textAlign: "center",
-    color: colors.ink2,
-    fontSize: 12.5,
+    color: colors.cameraTextMuted,
+    fontSize: 13,
+    fontWeight: "600",
+    lineHeight: 17,
     fontFamily: fontFamily.body,
-    marginTop: spacing.sm,
+    marginTop: 18,
+    paddingHorizontal: spacing.gutter,
   },
   lookupErrorBox: {
     position: "absolute",
     bottom: 190,
-    left: spacing.lg,
-    right: spacing.lg,
+    left: spacing.gutter,
+    right: spacing.gutter,
     backgroundColor: colors.paper,
-    borderRadius: radius.sm,
-    padding: spacing.sm,
+    borderRadius: radius.verdict,
+    padding: spacing.md,
     gap: spacing.sm,
   },
-  lookupErrorText: { color: colors.ink, fontSize: 13, fontFamily: fontFamily.body },
+  lookupErrorText: {
+    color: colors.ink,
+    fontSize: 13.5,
+    lineHeight: 19,
+    fontFamily: fontFamily.body,
+  },
   lookupErrorManualButton: {
     alignSelf: "flex-start",
     minHeight: minTouchTarget,
-    paddingHorizontal: spacing.md,
-    borderRadius: radius.sm,
-    backgroundColor: colors.espresso,
+    paddingHorizontal: spacing.cozy,
+    borderRadius: radius.pill,
+    backgroundColor: colors.ink,
     alignItems: "center",
     justifyContent: "center",
   },
   lookupErrorManualButtonText: {
-    color: colors.cream,
+    color: colors.white,
     fontSize: 13,
     fontWeight: "700",
     fontFamily: fontFamily.body,
   },
+  // v6 `.panel`: paper, `22px 22px 0 0` corners, 20px gutters.
   fallbackSheet: {
     backgroundColor: colors.paper,
-    borderTopLeftRadius: radius.lg,
-    borderTopRightRadius: radius.lg,
-    padding: spacing.lg,
+    borderTopLeftRadius: radius.sheet,
+    borderTopRightRadius: radius.sheet,
+    paddingTop: spacing.gutter,
+    paddingHorizontal: spacing.gutter,
     gap: spacing.sm,
   },
-  fallbackLabel: { fontSize: 12.5, color: colors.ink2, fontFamily: fontFamily.body },
-  fallbackRow: { flexDirection: "row", gap: spacing.sm },
+  // v6 `.fl`: 12 / 700 uppercase in ink2.
+  fallbackLabel: {
+    fontSize: typeScale.chip.fontSize,
+    lineHeight: typeScale.chip.lineHeight,
+    fontWeight: "700",
+    letterSpacing: 12 * 0.12,
+    textTransform: "uppercase",
+    color: colors.ink2,
+    fontFamily: fontFamily.body,
+  },
+  fallbackRow: { flexDirection: "row", alignItems: "flex-end", gap: spacing.snug },
+  // v6 `.inp`: no box, a 1.5px ink rule underneath.
   fallbackInput: {
     flex: 1,
-    height: minTouchTarget,
-    borderRadius: radius.sm,
-    borderWidth: 1,
-    borderColor: colors.line,
-    paddingHorizontal: spacing.md,
+    height: 50,
+    borderBottomWidth: 1.5,
+    borderBottomColor: colors.ink,
+    paddingHorizontal: 2,
+    fontSize: 16,
+    fontWeight: "500",
     fontFamily: fontFamily.body,
     color: colors.ink,
-    backgroundColor: colors.paper,
   },
+  // v6 `.okb`: ink pill, 44px.
   fallbackButton: {
-    minHeight: minTouchTarget,
-    paddingHorizontal: spacing.md,
-    borderRadius: radius.sm,
-    backgroundColor: colors.espresso,
+    minHeight: 50,
+    minWidth: 56,
+    paddingHorizontal: spacing.lg,
+    borderRadius: radius.pill,
+    backgroundColor: colors.ink,
     alignItems: "center",
     justifyContent: "center",
   },
-  fallbackButtonText: { color: colors.cream, fontWeight: "700", fontFamily: fontFamily.body },
-  permDenied: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    gap: spacing.md,
-    paddingHorizontal: spacing.xl,
-  },
-  permTitle: {
-    color: colors.cream,
-    fontFamily: fontFamily.display,
-    fontWeight: "600",
-    fontSize: 20,
-    textAlign: "center",
-  },
-  permBody: { color: colors.cream, fontSize: 14, textAlign: "center", fontFamily: fontFamily.body },
-  permButtonRow: { flexDirection: "row", gap: spacing.sm, width: "100%" },
-  secondaryButton: {
-    flex: 1,
-    minHeight: minTouchTarget,
-    borderRadius: radius.sm,
-    borderWidth: 1,
-    borderColor: colors.cream,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  secondaryButtonText: { color: colors.cream, fontWeight: "700", fontFamily: fontFamily.body },
-  primaryButton: {
-    minHeight: minTouchTarget,
-    borderRadius: 14,
-    backgroundColor: colors.brandDeep,
-    alignItems: "center",
-    justifyContent: "center",
-    marginTop: spacing.sm,
-  },
-  primaryButtonFlex: {
-    flex: 1,
-    minHeight: minTouchTarget,
-    borderRadius: radius.sm,
-    backgroundColor: colors.brandDeep,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  primaryButtonBlocked: { backgroundColor: colors.espresso },
-  primaryButtonDisabled: { backgroundColor: colors.line },
-  primaryButtonText: {
-    color: colors.cream,
-    fontSize: 15,
+  fallbackButtonText: {
+    color: colors.white,
+    fontSize: 13,
     fontWeight: "700",
     fontFamily: fontFamily.body,
   },
-  missPanel: { padding: spacing.lg, gap: spacing.md },
+  // v6 `.denied`: Bodoni 30 heading, 14 / 1.5 muted paragraph, two pills.
+  permDenied: {
+    flex: 1,
+    justifyContent: "center",
+    gap: spacing.snug,
+    paddingHorizontal: 24,
+  },
+  permTitle: {
+    color: colors.cameraText,
+    fontFamily: typeScale.product.fontFamily,
+    fontWeight: typeScale.product.fontWeight,
+    fontSize: typeScale.product.fontSize,
+    lineHeight: typeScale.product.lineHeight,
+  },
+  permBody: {
+    color: colors.cameraTextMuted,
+    fontSize: 14,
+    lineHeight: 21,
+    fontFamily: fontFamily.body,
+  },
+  permButtonRow: { flexDirection: "row", gap: spacing.sm, width: "100%", marginTop: spacing.cozy },
+  // v6 `.btn.light`: a camera-line outline pill.
+  secondaryButton: {
+    flex: 1,
+    minHeight: 50,
+    paddingHorizontal: 6,
+    borderRadius: radius.pill,
+    borderWidth: 1.5,
+    borderColor: colors.cameraLineStrong,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  secondaryButtonText: {
+    color: colors.cameraText,
+    fontSize: typeScale.button.fontSize,
+    fontWeight: "700",
+    fontFamily: fontFamily.body,
+  },
+  // v6 `.btn.pri.inv`: the camera-text fill with ink text.
+  invButton: {
+    flex: 1,
+    minHeight: 50,
+    paddingHorizontal: 6,
+    borderRadius: radius.pill,
+    borderWidth: 1.5,
+    borderColor: colors.cameraText,
+    backgroundColor: colors.cameraText,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  invButtonText: {
+    color: colors.ink,
+    fontSize: typeScale.button.fontSize,
+    fontWeight: "700",
+    fontFamily: fontFamily.body,
+  },
+  // v6 `.btn.pri.wide`: ink pill, 52px.
+  primaryButton: {
+    minHeight: 52,
+    borderRadius: radius.pill,
+    borderWidth: 1.5,
+    borderColor: colors.ink,
+    backgroundColor: colors.ink,
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: spacing.lg,
+  },
+  // A blocked verdict demotes Add from the one ink primary to an outlined
+  // button (tokens.md section 5 rule 5). Add stays present and enabled.
+  primaryButtonBlocked: { backgroundColor: "transparent" },
+  primaryButtonBlockedText: { color: colors.ink },
+  primaryButtonDisabled: { backgroundColor: colors.ink3, borderColor: colors.ink3 },
+  primaryButtonText: {
+    color: colors.white,
+    fontSize: typeScale.button.fontSize,
+    fontWeight: "700",
+    fontFamily: fontFamily.body,
+  },
+  missPanel: { paddingHorizontal: spacing.gutter, paddingTop: spacing.gutter, gap: spacing.md },
   missBadgeRow: { flexDirection: "row", alignItems: "center", gap: spacing.sm, flexWrap: "wrap" },
+  // v6 `.prov.est`: amber on its tint.
   missBadge: {
     fontSize: 12,
+    lineHeight: 15,
     fontWeight: "700",
-    color: colors.ink2,
-    backgroundColor: colors.sand2,
+    color: colors.amber,
+    backgroundColor: colors.amberBg,
     borderRadius: radius.pill,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 3,
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+    overflow: "hidden",
+    fontFamily: fontFamily.body,
   },
-  missBadgeCaption: { fontSize: 12, color: colors.ink3, fontFamily: fontFamily.body },
-  missBody: { fontSize: 13.5, color: colors.ink2, lineHeight: 19, fontFamily: fontFamily.body },
+  missBadgeCaption: { fontSize: 12.5, color: colors.ink2, fontFamily: fontFamily.body },
+  missBody: { fontSize: 13.5, color: colors.ink2, lineHeight: 20, fontFamily: fontFamily.body },
+  // v6 `.kv`: a hairline above, 56px minimum, a 12 / 700 uppercase key.
   kvRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingVertical: spacing.sm,
+    gap: spacing.md,
+    minHeight: 56,
+    paddingVertical: spacing.md,
     borderTopWidth: 1,
-    borderTopColor: colors.line,
+    borderTopColor: colors.hair,
   },
   kvValueRow: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
-  kvLabel: { fontSize: 13, color: colors.ink2, fontFamily: fontFamily.body },
+  kvLabel: {
+    fontSize: typeScale.chip.fontSize,
+    lineHeight: typeScale.chip.lineHeight,
+    fontWeight: "700",
+    letterSpacing: 12 * 0.12,
+    textTransform: "uppercase",
+    color: colors.ink2,
+    fontFamily: fontFamily.body,
+  },
   kvValue: { fontSize: 14, fontWeight: "700", color: colors.ink, fontFamily: fontFamily.body },
-  sheet: { padding: spacing.lg, gap: spacing.sm },
-  identityRow: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
-  identityCaption: { fontSize: 12, color: colors.ink3, fontFamily: fontFamily.body },
+  sheet: { paddingHorizontal: spacing.gutter, paddingTop: spacing.sm, gap: spacing.xs },
+  identityRow: { flexDirection: "row", alignItems: "center", gap: spacing.sm, flexWrap: "wrap" },
+  identityCaption: { fontSize: 12.5, color: colors.ink2, fontFamily: fontFamily.body },
+  // v6 `.pname`: Bodoni 30.
   productName: {
-    fontSize: 19,
+    fontSize: typeScale.product.fontSize,
+    lineHeight: typeScale.product.lineHeight,
+    fontFamily: typeScale.product.fontFamily,
+    fontWeight: typeScale.product.fontWeight,
+    color: colors.ink,
+    flexShrink: 1,
+  },
+  productMeta: { fontSize: 13.5, color: colors.ink2, fontFamily: fontFamily.body },
+  nutritionHeaderRow: { flexDirection: "row", justifyContent: "flex-end", marginTop: spacing.sm },
+  basisLabel: { fontSize: 12, color: colors.ink2, fontFamily: fontFamily.body },
+  // v6 `.macros`: four columns between 1px ink rules, hairline dividers.
+  macrosRow: {
+    flexDirection: "row",
+    alignItems: "stretch",
+    marginTop: spacing.xs,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: colors.ink,
+  },
+  macro: {
+    flex: 1,
+    paddingTop: 10,
+    paddingBottom: 9,
+    paddingHorizontal: spacing.sm,
+    borderRightWidth: 1,
+    borderRightColor: colors.hair,
+  },
+  macroLast: { borderRightWidth: 0 },
+  macroValue: {
+    fontSize: 24,
+    lineHeight: 24,
     fontFamily: fontFamily.display,
-    fontWeight: "600",
+    fontWeight: "500",
     color: colors.ink,
   },
-  productMeta: { fontSize: 13, color: colors.ink2, fontFamily: fontFamily.body },
-  nutritionHeaderRow: { flexDirection: "row", justifyContent: "flex-end" },
-  basisLabel: { fontSize: 11, color: colors.ink3, fontFamily: fontFamily.body },
-  macrosRow: { flexDirection: "row", justifyContent: "space-between", paddingVertical: spacing.sm },
-  macro: { alignItems: "center" },
-  macroValue: { fontSize: 15, fontWeight: "700", color: colors.ink, fontFamily: fontFamily.body },
-  macroLabel: { fontSize: 10.5, color: colors.ink3, fontFamily: fontFamily.body },
-  notOnFileText: { fontSize: 13, color: colors.ink2, fontFamily: fontFamily.body },
-  nutritionTierRow: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
-  helperCaption: { fontSize: 11, color: colors.ink3, fontFamily: fontFamily.body, flexShrink: 1 },
-  allergenRow: { gap: spacing.xs, paddingVertical: spacing.sm },
+  macroLabel: {
+    marginTop: 5,
+    fontSize: 12,
+    lineHeight: 12,
+    fontWeight: "600",
+    letterSpacing: 12 * 0.08,
+    textTransform: "uppercase",
+    color: colors.ink2,
+    fontFamily: fontFamily.body,
+  },
+  notOnFileText: {
+    flex: 1,
+    paddingVertical: spacing.md,
+    fontSize: 13.5,
+    color: colors.ink2,
+    fontFamily: fontFamily.body,
+  },
+  nutritionTierRow: { flexDirection: "row", alignItems: "center", gap: spacing.sm, marginTop: 6 },
+  helperCaption: { fontSize: 12.5, color: colors.ink2, fontFamily: fontFamily.body, flexShrink: 1 },
+  allergenRow: { gap: spacing.sm, paddingVertical: spacing.sm },
   allergenLineRow: { flexDirection: "row", alignItems: "flex-start", gap: spacing.sm },
   allergenLine: {
-    fontSize: 13,
+    fontSize: 13.5,
     color: colors.ink,
     fontFamily: fontFamily.body,
-    lineHeight: 18,
+    lineHeight: 19,
     flex: 1,
   },
+  // v6 `.verdict.ok`: a hairline above and below, no tint, no colour.
+  allergenLineAllowed: {
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: colors.hair,
+    paddingVertical: 10,
+  },
   allergenLineBlocked: { color: colors.danger, fontWeight: "700" },
-  notRunGlyph: { fontSize: 13, lineHeight: 18, color: colors.ink2, fontFamily: fontFamily.body },
+  // v6 `.blockbar`: danger tint, 1.5px danger border, 10px corners. Allergen only.
+  blockBar: {
+    backgroundColor: colors.dangerBg,
+    borderWidth: 1.5,
+    borderColor: colors.danger,
+    borderRadius: radius.verdict,
+    paddingVertical: 11,
+    paddingHorizontal: spacing.md,
+  },
+  // v6 `.verdict.unk`: amber tint, 10px corners, amber text.
+  unknownPanel: {
+    backgroundColor: colors.amberBg,
+    borderRadius: radius.verdict,
+    paddingVertical: 11,
+    paddingHorizontal: spacing.md,
+  },
+  notRunGlyph: { fontSize: 13, lineHeight: 19, color: colors.ink2, fontFamily: fontFamily.body },
   fieldRow: { flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: spacing.sm },
-  allergenLineUnknown: { color: colors.amber, fontWeight: "700" },
-  allergenLoadingText: { fontSize: 13, color: colors.ink2, fontFamily: fontFamily.body },
+  allergenLineUnknown: { color: colors.amber, fontWeight: "600" },
+  allergenLoadingText: { fontSize: 13.5, color: colors.ink2, fontFamily: fontFamily.body },
+  // v6 `.offbar`: tile panel with a 1px ink2 border.
   allergenErrorBox: {
-    borderRadius: radius.sm,
     borderWidth: 1,
-    borderColor: colors.line,
-    backgroundColor: colors.sand2,
-    padding: spacing.sm,
+    borderColor: colors.ink2,
+    backgroundColor: colors.tile,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.cozy,
     gap: spacing.sm,
   },
   allergenErrorText: {
-    fontSize: 12.5,
+    fontSize: 13,
+    lineHeight: 19,
     fontWeight: "700",
     color: colors.ink,
     fontFamily: fontFamily.body,
@@ -1488,20 +1656,20 @@ const styles = StyleSheet.create({
   tryAgainButton: {
     alignSelf: "flex-start",
     minHeight: minTouchTarget,
-    paddingHorizontal: spacing.md,
-    borderRadius: radius.sm,
-    backgroundColor: colors.espresso,
+    paddingHorizontal: spacing.cozy,
+    borderRadius: radius.pill,
+    backgroundColor: colors.ink,
     alignItems: "center",
     justifyContent: "center",
   },
   tryAgainButtonText: {
-    color: colors.cream,
+    color: colors.white,
     fontSize: 13,
     fontWeight: "700",
     fontFamily: fontFamily.body,
   },
   extraWarningText: {
-    fontSize: 12,
+    fontSize: 12.5,
     color: colors.ink2,
     fontFamily: fontFamily.body,
     lineHeight: 17,
@@ -1510,81 +1678,93 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
+    minHeight: 56,
     paddingVertical: spacing.sm,
     borderTopWidth: 1,
-    borderTopColor: colors.line,
+    borderTopColor: colors.hair,
   },
   sizeLine: {
     minHeight: minTouchTarget,
     minWidth: minTouchTarget,
     justifyContent: "center",
   },
+  // v6 `.inp`: a rule underneath, no box.
   sizeInput: {
     minWidth: 88,
     minHeight: minTouchTarget,
-    borderRadius: radius.sm,
-    borderWidth: 1,
-    borderColor: colors.line,
-    backgroundColor: colors.paper,
-    paddingHorizontal: spacing.sm,
+    borderBottomWidth: 1.5,
+    borderBottomColor: colors.ink,
+    paddingHorizontal: 2,
     fontSize: 14,
     fontWeight: "700",
     color: colors.ink,
     fontFamily: fontFamily.body,
   },
-  sizeInputInvalid: { borderColor: colors.danger },
-  sizeHint: { fontSize: 12, color: colors.danger, fontFamily: fontFamily.body },
-  step: { flexDirection: "row", alignItems: "center", gap: spacing.md },
+  // Invalid input stays ink, heavier: danger is allergen-only (tokens.md section 5).
+  sizeInputInvalid: { borderBottomWidth: 3 },
+  sizeHint: { fontSize: 12.5, fontWeight: "600", color: colors.ink, fontFamily: fontFamily.body },
+  step: { flexDirection: "row", alignItems: "center", gap: spacing.cozy },
+  // v6 `.step button`: 44px circle, 1.5px ink border, 20 / 600 glyph.
   stepButton: {
     width: minTouchTarget,
     height: minTouchTarget,
-    borderRadius: radius.sm,
-    borderWidth: 1,
-    borderColor: colors.line,
-    backgroundColor: colors.sand2,
+    borderRadius: radius.pill,
+    borderWidth: 1.5,
+    borderColor: colors.ink,
     alignItems: "center",
     justifyContent: "center",
   },
-  stepButtonText: { fontSize: 20, color: colors.ink, fontFamily: fontFamily.body },
-  stepValue: { fontSize: 20, fontWeight: "700", color: colors.ink, fontFamily: fontFamily.body },
-  locsRow: { flexDirection: "row", gap: spacing.sm, paddingVertical: spacing.sm },
+  stepButtonText: {
+    fontSize: 20,
+    lineHeight: 22,
+    fontWeight: "600",
+    color: colors.ink,
+    fontFamily: fontFamily.body,
+  },
+  // v6 `.step b`: Bodoni 26.
+  stepValue: {
+    minWidth: 22,
+    textAlign: "center",
+    fontSize: typeScale.stepper.fontSize,
+    lineHeight: typeScale.stepper.lineHeight,
+    fontFamily: typeScale.stepper.fontFamily,
+    fontWeight: typeScale.stepper.fontWeight,
+    color: colors.ink,
+  },
+  locsRow: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm, paddingTop: spacing.md },
+  // v6 `.chip`: a 1.5px ink outline pill, 40px (hit slop to 44); selected is ink.
   locChip: {
-    flex: 1,
-    minHeight: minTouchTarget,
+    minHeight: 40,
+    paddingHorizontal: 15,
     borderRadius: radius.pill,
-    borderWidth: 1,
-    borderColor: colors.line,
-    backgroundColor: colors.paper,
+    borderWidth: 1.5,
+    borderColor: colors.ink,
+    backgroundColor: "transparent",
     alignItems: "center",
     justifyContent: "center",
   },
-  locChipOn: { backgroundColor: colors.espresso, borderColor: colors.espresso },
-  locChipText: { fontSize: 13, fontWeight: "600", color: colors.ink2, fontFamily: fontFamily.body },
-  locChipTextOn: { color: colors.cream },
-  provChip: {
-    fontSize: 11,
-    fontWeight: "700",
-    color: colors.green,
-    backgroundColor: colors.greenBg,
-    borderRadius: radius.pill,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 3,
+  locChipOn: { backgroundColor: colors.ink },
+  locChipText: {
+    fontSize: 13.5,
+    fontWeight: "600",
+    color: colors.ink,
+    fontFamily: fontFamily.body,
   },
-  provChipSmall: {
-    fontSize: 10.5,
-    fontWeight: "700",
-    color: colors.amber,
-    backgroundColor: colors.amberBg,
-    borderRadius: radius.pill,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 2,
-  },
+  locChipTextOn: { color: colors.white },
+  // v6 `.offbar`: tile panel with a 1px ink2 border.
   noticeBox: {
-    borderRadius: radius.sm,
+    marginTop: spacing.sm,
     borderWidth: 1,
-    borderColor: colors.line,
-    backgroundColor: colors.sand2,
-    padding: spacing.sm,
+    borderColor: colors.ink2,
+    backgroundColor: colors.tile,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.cozy,
   },
-  noticeText: { fontSize: 12.5, fontWeight: "700", color: colors.ink, fontFamily: fontFamily.body },
+  noticeText: {
+    fontSize: 13,
+    lineHeight: 19,
+    fontWeight: "700",
+    color: colors.ink,
+    fontFamily: fontFamily.body,
+  },
 });
