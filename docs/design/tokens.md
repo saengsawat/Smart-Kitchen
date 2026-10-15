@@ -99,7 +99,7 @@ Every font size and weight in v6 CSS, grouped by role. Line heights are as writt
 | Size | Line height | Letter spacing | Role | Selectors |
 |---|---|---|---|---|
 | 54 | 1 | none | Initial on a letter tile | `.ph.lettr` |
-| 46 | 1 | none | Item quantity | `.qtybig b` |
+| 46 | 1 | none | Item quantity | `.qtybig b`. Applied in the prototype by M3-E0-T8 (2026-10-14), `--ink2` border. |
 | 44 | 1 | -.015em | Screen title | `.title` |
 | 40 | 1.02 | -.015em | Home headline, recipe name | `.h1` |
 | 36 | 1 | none | Stat value | `.stats .v` |
@@ -110,7 +110,7 @@ Every font size and weight in v6 CSS, grouped by role. Line heights are as writt
 | 26 | 1.05 | none | Sheet title | `.sheet h2` |
 | 25 | 1 | none | Section heading | `.sec h2` |
 | 24 | 1 | none | Macro value | `.macros b` |
-| 22 | 1 | none | Group heading, menu-card heading | `.grp h2`, `.mh h3` |
+| 22 | 1 | none | Group heading, menu-card heading | `.grp h2`, `.mh h3`. Applied in the prototype by M3-E0-T8 (2026-10-14). |
 | 20 | 1 | none | Rail badge, picker percentage, blocked-ingredient initial | `.rph .pct`, `.pick .pp`, inline initials |
 
 **UI and body (Schibsted Grotesk)**
@@ -245,7 +245,7 @@ Translucent layers are composited first: `result_c = round(alpha*fg_c + (1-alpha
 | 42 | #f3f1ec on #121212 | `#f3f1ec` | `#121212` | .btn.light label 14px 700 | body | 4.5 | 16.60 | PASS |
 | 43 | focus ring on paper | `#2442d6` | `#fbfaf6` | 2.5px ring, 2px offset (non-text, WCAG 1.4.11) | non-text | 3 | 7.12 | PASS |
 | 44 | focus ring on tile | `#2442d6` | `#f1eee6` | ring around tile-backed controls | non-text | 3 | 6.41 | PASS |
-| 45 | focus ring on camera | `#2442d6` | `#121212` | ring on the scan screen controls | non-text | 3 | 2.52 | **FAIL** |
+| 45 | focus ring on camera | `#2442d6` | `#121212` | ring on the scan screen controls | non-text | 3 | 2.52 | **FAIL**. Applied in the prototype by M3-E0-T8 (2026-10-14). |
 | 46 | hair on paper | `#dcd8cf` | `#fbfaf6` | dividers, `.iconb.round` and `.rmv` borders, `.stat.staple` border | non-text | 3 | 1.36 | **FAIL** (see flag) |
 | 47 | ink2 on paper | `#5f5d58` | `#fbfaf6` | .emptyst dashed border, .offbar border | non-text | 3 | 6.30 | PASS |
 | 48 | ink on paper | `#0f0f0f` | `#fbfaf6` | .chk ring, .noneopt box, .btn and .chip borders, .rule, .sec rule | non-text | 3 | 18.35 | PASS |
@@ -303,7 +303,7 @@ v5's scarcity rule policed a terracotta brand colour. v6 has no brand colour, so
 
 Values are unchanged. Some **uses** changed between v5 and v6. Item 1 was reverted by the PO (red stays); the rest stand as listed.
 
-1. **Allergen red on allergy selection controls stays (DECIDED, Andy, 2026-10-14, D-033 amendment a).** In v5 `.allergychip.on` and `.sevbtn.on` were `--danger`. The v6 prototype drew them as ordinary ink chips; that was an error in the v6 pass. A selected allergen chip and a selected severity button use `--danger` fill with white text, as in v5. The prototype is corrected to match and M3-T13 builds red.
+1. **Allergen red on allergy selection controls stays (DECIDED, Andy, 2026-10-14, D-033 amendment a).** In v5 `.allergychip.on` and `.sevbtn.on` were `--danger`. The v6 prototype drew them as ordinary ink chips; that was an error in the v6 pass. As in v5: a selected allergen chip is `--danger-bg` fill with `--danger` text and border (7.02:1, border 8.84:1 on paper), and a selected severity button is solid `--danger` with white text (9.23:1). The prototype was corrected in M3-E0-T8 and M3-T13 builds it this way.
 2. **The none-of-the-above allergy option (v5 section 4 item 2, left to the PO between a green check and an ink check) is drawn in ink in v6** (`.noneopt[aria-pressed=true] .box` is ink fill). That is option (b), the neutral check, which removes the "green check beside allergy copy" ambiguity. The PO choice was never recorded as decided. PROPOSED: record option (b) as adopted by D-033.
 3. **The shopping check-off (`.chk`, v5 section 4 item 3) is ink in v6, not green.** The green positive sentiment now shows on the "have" chip and the pantry banner only.
 4. **`--rose` versus `--danger` boundary.** Verified by direct grep of the v6 stylesheet: every `--danger` use is allergen context (5 CSS rules, 2 inline styles on blocked lines); the only `--rose` use is `.days.now`. **Zero crossover.** The M3 typed module should forbid `danger` outside allergen-named components (design-direction section 4).

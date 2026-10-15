@@ -726,3 +726,17 @@ ARCHITECTURE.md: the top status line (three ADRs are DECIDED), §2 shape (Expo a
 - **File scope:** `docs/design/tokens.md`, `docs/handoff/M3-E0-T6.worker.md`.
 - **Out of scope:** copy-deck edits (listed in the report, applied by the architect); any `apps/**` change (M3-T13); the prototype itself.
 - **DoD:** rule 26.
+
+#### M3-E0-T8: Prototype v6 fixes from the token sheet (red allergy controls, name, contrast flags) (design, docs only) ✅ DONE 2026-10-14
+*Written 2026-10-14 from the M3-E0-T6 flags and the D-033 amendment (Andy, 2026-10-14). Runs beside M3-E0-T7 (disjoint files); M3-T13 builds from the fixed prototype.*
+- **Implementation model:** Sonnet. Small CSS and string edits in one HTML file; no product logic.
+- **Review model:** Sonnet. No rule-23 surface; the reviewer checks each fix against tokens.md section 4 and the D-033 amendment, re-measures the changed pairs and re-runs impeccable detect.
+- **Objective:** fix `docs/design/mockups/smart-kitchen-prototype.html` (v6) in place: (a) a selected allergen chip and a selected severity button match v5's `.allergychip.on` (danger tint, danger text and border) and `.sevbtn.on` (solid danger, white text) exactly (architect correction during the ticket; the first wording said solid fill for both) (`docs/design/mockups/Archives/smart-kitchen-prototype-v5.html`); every other chip stays ink; (b) every "KitchenSmart" reads "Smart Kitchen"; (c) tokens.md section 4 row 22: drop the `opacity: .75` on the blocked row in the Sun dinner sheet so "Blocked for Maya · not selectable" is full strength; (d) row 45: a light focus ring (`#f3f1ec`) on the camera screen only; (e) row 46: `.iconb.round` and `.rmv` get an `--ink2` border, `--hair` stays for dividers.
+- **Context:** D-033 and its 2026-10-14 amendment, D-021 in DECISIONS.md; tokens.md sections 1, 4 and 6; the v5 archive for the red control styles.
+- **Dependencies:** M3-E0-T6 accepted.
+- **Invariants:** no other visual or copy change; allergen red only on allergen controls and verdicts; zero em dashes; no app code.
+- **Acceptance criteria:** each of (a) to (e) visible in the prototype; the changed pairs measured (white on `--danger` for (a), the three fixed rows) and all pass; `grep KitchenSmart` returns nothing; `impeccable detect` on the prototype shows no new findings, or each is fixed or explained in the report; reviewer re-runs it.
+- **Tests required:** none automated. The report includes the measured pairs, the detect output, the grep and a 390px screenshot of the allergy picker with a chip and a severity selected.
+- **File scope:** `docs/design/mockups/smart-kitchen-prototype.html`, `docs/handoff/M3-E0-T8.worker.md`.
+- **Out of scope:** tokens.md and copy-deck edits (proposed in the report, applied by the architect); any `apps/**` change; other prototype polish.
+- **DoD:** rule 26.
