@@ -6,6 +6,8 @@
 
 ## 0. v2 token sheet (authoritative)
 
+> **Replaced by D-033 (2026-10-13).** The brand and neutral rows below are the old look. The v6 Cookbook look lives in [design-md/DESIGN.md](design-md/DESIGN.md) (agent-facing summary) and [tokens.md](tokens.md) (measured values). Safety and semantic rows are unchanged (D-021).
+
 | Token | v2 value | v1 value | Note |
 |---|---|---|---|
 | `bg.page` | `#efe5d5` sand | `#f5f4ed` | warmer, more saturated "pantry paper" |
