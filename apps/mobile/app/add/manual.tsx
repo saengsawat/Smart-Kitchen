@@ -10,7 +10,15 @@ import {
 } from "@smart-kitchen/contracts";
 import { apiClient } from "../../src/api/client";
 import { nextIdempotencyKey } from "../../src/api/idempotency";
-import { colors, fontFamily, minTouchTarget, radius, spacing } from "../../src/design/tokens";
+import { chipHitSlop, provChipStyle } from "../../src/design/chips";
+import {
+  colors,
+  fontFamily,
+  minTouchTarget,
+  radius,
+  spacing,
+  typeScale,
+} from "../../src/design/tokens";
 import { messageForLedgerError } from "../../src/inventory/errors";
 import { LOCATION_LABELS } from "../../src/inventory/list-view";
 import { chipAccessibilityLabel, ROW_CHIP_TEXT } from "../../src/inventory/provenance";
@@ -241,7 +249,10 @@ export default function ManualAddScreen(): React.JSX.Element {
         <View style={styles.field}>
           <View style={styles.fieldHeader}>
             <Text style={styles.fieldLabel}>Name</Text>
-            <Text style={styles.provChip} accessibilityLabel={chipAccessibilityLabel("KNOWN_FACT")}>
+            <Text
+              style={provChipStyle("KNOWN_FACT")}
+              accessibilityLabel={chipAccessibilityLabel("KNOWN_FACT")}
+            >
               {ROW_CHIP_TEXT.KNOWN_FACT}
             </Text>
           </View>
@@ -264,7 +275,10 @@ export default function ManualAddScreen(): React.JSX.Element {
         <View style={styles.field}>
           <View style={styles.fieldHeader}>
             <Text style={styles.fieldLabel}>Amount</Text>
-            <Text style={styles.provChip} accessibilityLabel={chipAccessibilityLabel("KNOWN_FACT")}>
+            <Text
+              style={provChipStyle("KNOWN_FACT")}
+              accessibilityLabel={chipAccessibilityLabel("KNOWN_FACT")}
+            >
               {ROW_CHIP_TEXT.KNOWN_FACT}
             </Text>
           </View>
@@ -276,6 +290,7 @@ export default function ManualAddScreen(): React.JSX.Element {
                 accessibilityLabel={UNIT_KIND_LABELS[kind]}
                 accessibilityState={{ selected: unitKind === kind }}
                 onPress={() => handlePickUnitKind(kind)}
+                hitSlop={chipHitSlop}
                 style={[styles.chip, unitKind === kind ? styles.chipOn : null]}
               >
                 <Text style={[styles.chipText, unitKind === kind ? styles.chipTextOn : null]}>
@@ -321,6 +336,7 @@ export default function ManualAddScreen(): React.JSX.Element {
                     setUnit(u);
                     forgetHeldKey();
                   }}
+                  hitSlop={chipHitSlop}
                   style={[styles.chip, unit === u ? styles.chipOn : null]}
                 >
                   <Text style={[styles.chipText, unit === u ? styles.chipTextOn : null]}>{u}</Text>
@@ -333,7 +349,10 @@ export default function ManualAddScreen(): React.JSX.Element {
         <View style={styles.field}>
           <View style={styles.fieldHeader}>
             <Text style={styles.fieldLabel}>Location</Text>
-            <Text style={styles.provChip} accessibilityLabel={chipAccessibilityLabel("KNOWN_FACT")}>
+            <Text
+              style={provChipStyle("KNOWN_FACT")}
+              accessibilityLabel={chipAccessibilityLabel("KNOWN_FACT")}
+            >
               {ROW_CHIP_TEXT.KNOWN_FACT}
             </Text>
           </View>
@@ -348,6 +367,7 @@ export default function ManualAddScreen(): React.JSX.Element {
                   setLocation(loc);
                   forgetHeldKey();
                 }}
+                hitSlop={chipHitSlop}
                 style={[styles.locChip, location === loc ? styles.locChipOn : null]}
               >
                 <Text style={[styles.locChipText, location === loc ? styles.locChipTextOn : null]}>
@@ -380,122 +400,162 @@ export default function ManualAddScreen(): React.JSX.Element {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.sand },
+  screen: { flex: 1, backgroundColor: colors.paper },
+  // v6 `.back` then `.title`: a borderless 44px back control, Bodoni 44 below.
   header: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.md,
-    paddingHorizontal: spacing.lg,
-    paddingBottom: spacing.md,
+    alignItems: "flex-start",
+    paddingHorizontal: spacing.gutter,
   },
   iconButton: {
     width: minTouchTarget,
     height: minTouchTarget,
-    borderRadius: minTouchTarget / 2,
-    backgroundColor: colors.paper,
-    borderWidth: 1,
-    borderColor: colors.line,
+    marginLeft: -spacing.sm,
     alignItems: "center",
     justifyContent: "center",
   },
-  iconGlyph: { fontSize: 22, color: colors.ink },
+  iconGlyph: { fontSize: 30, lineHeight: 32, color: colors.ink, fontFamily: fontFamily.body },
   headerTitle: {
-    fontSize: 20,
-    fontFamily: fontFamily.display,
-    fontWeight: "600",
+    paddingTop: 2,
+    fontSize: typeScale.title.fontSize,
+    lineHeight: typeScale.title.lineHeight,
+    letterSpacing: typeScale.title.letterSpacing,
+    fontFamily: typeScale.title.fontFamily,
+    fontWeight: typeScale.title.fontWeight,
     color: colors.ink,
   },
-  content: { paddingHorizontal: spacing.lg, paddingBottom: spacing.xxl, gap: spacing.lg },
+  content: { paddingHorizontal: spacing.gutter, paddingBottom: spacing.xxl },
+  // v6 `.codenote`: a square tile panel, 13 / 1.5 in ink2.
   codeNote: {
-    backgroundColor: colors.sand2,
-    borderRadius: radius.sm,
-    padding: spacing.md,
+    marginTop: spacing.cozy,
+    backgroundColor: colors.tile,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.cozy,
   },
-  codeNoteText: { fontSize: 12, color: colors.ink2, lineHeight: 17, fontFamily: fontFamily.body },
-  field: { gap: spacing.sm },
+  codeNoteText: { fontSize: 13, color: colors.ink2, lineHeight: 20, fontFamily: fontFamily.body },
+  // v6 `.field` and `.fl`: 22px above, a 12 / 700 uppercase label in ink2.
+  field: { marginTop: 22 },
   fieldHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  fieldLabel: { fontSize: 13, color: colors.ink2, fontFamily: fontFamily.body, fontWeight: "600" },
-  provChip: {
-    fontSize: 11,
+  fieldLabel: {
+    fontSize: typeScale.chip.fontSize,
+    lineHeight: typeScale.chip.lineHeight,
     fontWeight: "700",
-    color: colors.green,
-    backgroundColor: colors.greenBg,
-    borderRadius: radius.pill,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 3,
+    letterSpacing: 12 * 0.12,
+    textTransform: "uppercase",
+    color: colors.ink2,
+    fontFamily: fontFamily.body,
   },
+  // v6 `.inp`: no box, a 1.5px ink rule underneath, 16 / 500.
   textInput: {
-    minHeight: minTouchTarget,
-    borderRadius: radius.sm,
-    borderWidth: 1,
-    borderColor: colors.line,
-    paddingHorizontal: spacing.md,
+    height: 50,
+    marginTop: spacing.sm,
+    borderBottomWidth: 1.5,
+    borderBottomColor: colors.ink,
+    paddingHorizontal: 2,
+    fontSize: 16,
+    fontWeight: "500",
     fontFamily: fontFamily.body,
     color: colors.ink,
-    backgroundColor: colors.paper,
   },
-  errorText: { fontSize: 12, color: colors.danger, fontFamily: fontFamily.body },
-  chipsRow: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm },
+  errorText: {
+    marginTop: spacing.xs,
+    fontSize: 12.5,
+    color: colors.ink,
+    fontFamily: fontFamily.body,
+  },
+  // v6 `.chip`: a 1.5px ink outline pill, 40px (hit slop to 44); selected is ink.
+  chipsRow: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm, paddingTop: spacing.xs },
   chip: {
-    minHeight: minTouchTarget,
-    paddingHorizontal: spacing.md,
+    minHeight: 40,
+    paddingHorizontal: 15,
     borderRadius: radius.pill,
-    borderWidth: 1,
-    borderColor: colors.line,
-    backgroundColor: colors.paper,
+    borderWidth: 1.5,
+    borderColor: colors.ink,
+    backgroundColor: "transparent",
     alignItems: "center",
     justifyContent: "center",
   },
-  chipOn: { backgroundColor: colors.espresso, borderColor: colors.espresso },
-  chipText: { fontSize: 12.5, fontWeight: "600", color: colors.ink2, fontFamily: fontFamily.body },
-  chipTextOn: { color: colors.cream },
-  amountRow: { gap: spacing.sm },
-  step: { flexDirection: "row", alignItems: "center", gap: spacing.md },
+  chipOn: { backgroundColor: colors.ink },
+  chipText: { fontSize: 13.5, fontWeight: "600", color: colors.ink, fontFamily: fontFamily.body },
+  chipTextOn: { color: colors.white },
+  amountRow: { gap: spacing.xs, marginTop: spacing.md },
+  step: { flexDirection: "row", alignItems: "center", gap: spacing.cozy },
+  // v6 `.step button`: 44px circle, 1.5px ink border, 20 / 600 glyph.
   stepButton: {
     width: minTouchTarget,
     height: minTouchTarget,
-    borderRadius: radius.sm,
-    borderWidth: 1,
-    borderColor: colors.line,
-    backgroundColor: colors.sand2,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  stepButtonText: { fontSize: 20, color: colors.ink, fontFamily: fontFamily.body },
-  stepValue: { fontSize: 20, fontWeight: "700", color: colors.ink, fontFamily: fontFamily.body },
-  locsRow: { flexDirection: "row", gap: spacing.sm },
-  locChip: {
-    flex: 1,
-    minHeight: minTouchTarget,
     borderRadius: radius.pill,
-    borderWidth: 1,
-    borderColor: colors.line,
-    backgroundColor: colors.paper,
+    borderWidth: 1.5,
+    borderColor: colors.ink,
     alignItems: "center",
     justifyContent: "center",
   },
-  locChipOn: { backgroundColor: colors.espresso, borderColor: colors.espresso },
-  locChipText: { fontSize: 13, fontWeight: "600", color: colors.ink2, fontFamily: fontFamily.body },
-  locChipTextOn: { color: colors.cream },
+  stepButtonText: {
+    fontSize: 20,
+    lineHeight: 22,
+    fontWeight: "600",
+    color: colors.ink,
+    fontFamily: fontFamily.body,
+  },
+  // v6 `.step b`: Bodoni 26.
+  stepValue: {
+    minWidth: 22,
+    textAlign: "center",
+    fontSize: typeScale.stepper.fontSize,
+    lineHeight: typeScale.stepper.lineHeight,
+    fontFamily: typeScale.stepper.fontFamily,
+    fontWeight: typeScale.stepper.fontWeight,
+    color: colors.ink,
+  },
+  locsRow: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm, paddingTop: spacing.xs },
+  locChip: {
+    minHeight: 40,
+    paddingHorizontal: 15,
+    borderRadius: radius.pill,
+    borderWidth: 1.5,
+    borderColor: colors.ink,
+    backgroundColor: "transparent",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  locChipOn: { backgroundColor: colors.ink },
+  locChipText: {
+    fontSize: 13.5,
+    fontWeight: "600",
+    color: colors.ink,
+    fontFamily: fontFamily.body,
+  },
+  locChipTextOn: { color: colors.white },
+  // v6 `.offbar`: tile panel with a 1px ink2 border.
   noticeBox: {
-    borderRadius: radius.sm,
+    marginTop: spacing.cozy,
     borderWidth: 1,
-    borderColor: colors.line,
-    backgroundColor: colors.sand2,
-    padding: spacing.sm,
+    borderColor: colors.ink2,
+    backgroundColor: colors.tile,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.cozy,
   },
-  noticeText: { fontSize: 12.5, fontWeight: "700", color: colors.ink, fontFamily: fontFamily.body },
+  noticeText: {
+    fontSize: 13,
+    lineHeight: 19,
+    fontWeight: "700",
+    color: colors.ink,
+    fontFamily: fontFamily.body,
+  },
+  // v6 `.btn.pri.wide`: ink pill, 52px.
   primaryButton: {
-    minHeight: minTouchTarget,
-    borderRadius: 14,
-    backgroundColor: colors.brandDeep,
+    minHeight: 52,
+    marginTop: 22,
+    borderRadius: radius.pill,
+    borderWidth: 1.5,
+    borderColor: colors.ink,
+    backgroundColor: colors.ink,
     alignItems: "center",
     justifyContent: "center",
   },
-  primaryButtonDisabled: { backgroundColor: colors.line },
+  primaryButtonDisabled: { backgroundColor: colors.ink3, borderColor: colors.ink3 },
   primaryButtonText: {
-    color: colors.cream,
-    fontSize: 15,
+    color: colors.white,
+    fontSize: typeScale.button.fontSize,
     fontWeight: "700",
     fontFamily: fontFamily.body,
   },

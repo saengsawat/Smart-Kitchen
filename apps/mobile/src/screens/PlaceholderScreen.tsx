@@ -25,17 +25,18 @@ export function PlaceholderScreen({
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: colors.sand,
+    backgroundColor: colors.paper,
     alignItems: "center",
     justifyContent: "center",
     gap: spacing.sm,
-    paddingHorizontal: spacing.xl,
+    paddingHorizontal: spacing.gutter,
   },
   title: {
-    fontSize: typeScale.heading.fontSize,
-    lineHeight: typeScale.heading.lineHeight,
-    fontFamily: typeScale.heading.fontFamily,
-    fontWeight: typeScale.heading.fontWeight,
+    fontSize: typeScale.title.fontSize,
+    lineHeight: typeScale.title.lineHeight,
+    fontFamily: typeScale.title.fontFamily,
+    fontWeight: typeScale.title.fontWeight,
+    letterSpacing: typeScale.title.letterSpacing,
     color: colors.ink,
   },
   subtitle: {

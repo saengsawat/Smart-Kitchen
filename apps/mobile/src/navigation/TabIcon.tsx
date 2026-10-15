@@ -14,7 +14,16 @@ import type { TabIconKind } from "./tabs";
 const SIZE = 22;
 const STROKE = 1.8;
 
-export function TabIcon({ kind, color }: { kind: TabIconKind; color: string }): React.JSX.Element {
+export function TabIcon({
+  kind,
+  color,
+  stroke = STROKE,
+}: {
+  kind: TabIconKind;
+  color: string;
+  /** v6: the current tab draws at 2.3, the others at 1.8. */
+  stroke?: number;
+}): React.JSX.Element {
   switch (kind) {
     case "home":
       return (
@@ -39,7 +48,7 @@ export function TabIcon({ kind, color }: { kind: TabIconKind; color: string }): 
             style={{
               width: SIZE * 0.7,
               height: SIZE * 0.55,
-              borderWidth: STROKE,
+              borderWidth: stroke,
               borderColor: color,
               borderTopWidth: 0,
             }}
@@ -50,10 +59,10 @@ export function TabIcon({ kind, color }: { kind: TabIconKind; color: string }): 
       return (
         <View style={{ width: SIZE, height: SIZE, justifyContent: "space-between" }}>
           <View
-            style={{ height: SIZE * 0.4, borderWidth: STROKE, borderColor: color, borderRadius: 2 }}
+            style={{ height: SIZE * 0.4, borderWidth: stroke, borderColor: color, borderRadius: 2 }}
           />
           <View
-            style={{ height: SIZE * 0.4, borderWidth: STROKE, borderColor: color, borderRadius: 2 }}
+            style={{ height: SIZE * 0.4, borderWidth: stroke, borderColor: color, borderRadius: 2 }}
           />
         </View>
       );
@@ -63,13 +72,13 @@ export function TabIcon({ kind, color }: { kind: TabIconKind; color: string }): 
           style={{
             width: SIZE,
             height: SIZE,
-            borderWidth: STROKE,
+            borderWidth: stroke,
             borderColor: color,
             borderRadius: 3,
           }}
         >
           <View
-            style={{ height: SIZE * 0.28, borderBottomWidth: STROKE, borderBottomColor: color }}
+            style={{ height: SIZE * 0.28, borderBottomWidth: stroke, borderBottomColor: color }}
           />
         </View>
       );
@@ -80,7 +89,7 @@ export function TabIcon({ kind, color }: { kind: TabIconKind; color: string }): 
             style={{
               width: SIZE * 0.8,
               height: SIZE * 0.55,
-              borderWidth: STROKE,
+              borderWidth: stroke,
               borderColor: color,
               borderTopWidth: 0,
               borderRadius: 2,
@@ -100,7 +109,7 @@ export function TabIcon({ kind, color }: { kind: TabIconKind; color: string }): 
                 width: 4,
                 height: 4,
                 borderRadius: 2,
-                borderWidth: STROKE,
+                borderWidth: stroke,
                 borderColor: color,
               }}
             />
@@ -109,7 +118,7 @@ export function TabIcon({ kind, color }: { kind: TabIconKind; color: string }): 
                 width: 4,
                 height: 4,
                 borderRadius: 2,
-                borderWidth: STROKE,
+                borderWidth: stroke,
                 borderColor: color,
               }}
             />

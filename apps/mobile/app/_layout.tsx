@@ -3,8 +3,8 @@ import { Redirect, Slot, usePathname, useRouter } from "expo-router";
 import { useCallback, useEffect, useLayoutEffect, useState } from "react";
 import { Platform, Pressable, StyleSheet, Text, View } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
-import fraunces from "../assets/fonts/Fraunces.ttf";
-import inter from "../assets/fonts/Inter.ttf";
+import bodoniModa from "../assets/fonts/BodoniModa.ttf";
+import schibstedGrotesk from "../assets/fonts/SchibstedGrotesk.ttf";
 import { apiClient } from "../src/api/client";
 import { colors, fontFamily, minTouchTarget, spacing } from "../src/design/tokens";
 import { GENERIC_READ_ERROR_MESSAGE } from "../src/inventory/errors";
@@ -22,8 +22,8 @@ import {
 // tab-shell ticket) the default hides automatically once the root renders.
 export default function RootLayout(): React.JSX.Element | null {
   const [fontsLoaded, fontError] = useFonts({
-    Fraunces: fraunces,
-    Inter: inter,
+    "Bodoni Moda": bodoniModa,
+    "Schibsted Grotesk": schibstedGrotesk,
   });
   const pathname = usePathname();
   const router = useRouter();
@@ -271,7 +271,7 @@ export default function RootLayout(): React.JSX.Element | null {
 }
 
 const styles = StyleSheet.create({
-  app: { flex: 1, backgroundColor: colors.sand },
+  app: { flex: 1, backgroundColor: colors.paper },
   // Opaque and full-screen: nothing of the covered screen shows through.
   // Spelled out rather than `StyleSheet.absoluteFill` so the vitest
   // react-native stand-in needs no new export.
@@ -281,7 +281,7 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     left: 0,
-    backgroundColor: colors.sand,
+    backgroundColor: colors.paper,
   },
   errorScreen: {
     flex: 1,
@@ -289,12 +289,12 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: spacing.sm,
     paddingHorizontal: spacing.xl,
-    backgroundColor: colors.sand,
+    backgroundColor: colors.paper,
   },
   errorTitle: {
     fontSize: 19,
     fontFamily: fontFamily.display,
-    fontWeight: "600",
+    fontWeight: "500",
     color: colors.ink,
     textAlign: "center",
   },
@@ -303,13 +303,13 @@ const styles = StyleSheet.create({
     minHeight: minTouchTarget,
     paddingHorizontal: spacing.lg,
     borderRadius: 14,
-    backgroundColor: colors.brandDeep,
+    backgroundColor: colors.ink,
     alignItems: "center",
     justifyContent: "center",
     marginTop: spacing.sm,
   },
   errorButtonText: {
-    color: colors.cream,
+    color: colors.white,
     fontSize: 15,
     fontWeight: "700",
     fontFamily: fontFamily.body,

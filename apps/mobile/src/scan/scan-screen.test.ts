@@ -365,10 +365,10 @@ describe("S8 · scan confirm sheet — engine-generated verdicts (review F1/F2/F
     // KNOWN_FACT/manufacturer-label tier, shown at least once.
     expect(result.getAllByText("✓ Fact").length).toBeGreaterThan(0);
 
-    // Not BLOCKED-styled buttons anywhere else — the Add button loses
-    // terracotta (P5).
+    // Not BLOCKED-styled buttons anywhere else: the Add button loses the ink
+    // primary fill and becomes an outlined button (P5).
     const addButton = result.getByLabelText("Add 1 to Fridge");
-    expect(flattenStyle(addButton.props.style).backgroundColor).not.toBe(colors.brandDeep);
+    expect(flattenStyle(addButton.props.style).backgroundColor).not.toBe(colors.ink);
 
     fireEvent.press(addButton);
     await flushPending();
@@ -382,7 +382,7 @@ describe("S8 · scan confirm sheet — engine-generated verdicts (review F1/F2/F
     expect(detail?.history[0]?.type).toBe("PURCHASE");
   });
 
-  it("eggs (ALLOWED_WITH_UNKNOWNS): renders one line per unknown, peanut before sesame, Add keeps terracotta", async () => {
+  it("eggs (ALLOWED_WITH_UNKNOWNS): renders one line per unknown, peanut before sesame, Add keeps the ink primary", async () => {
     const result = await renderScreen();
     await lookUp(result, "060000100070");
 
@@ -393,9 +393,9 @@ describe("S8 · scan confirm sheet — engine-generated verdicts (review F1/F2/F
     expect(result.getByText(peanutLine)).toBeTruthy();
     expect(result.getByText(sesameLine)).toBeTruthy();
 
-    // Not BLOCKED: the Add button keeps its terracotta primary-CTA colour.
+    // Not BLOCKED: the Add button keeps its ink primary-CTA fill.
     expect(flattenStyle(result.getByLabelText("Add 1 to Fridge").props.style).backgroundColor).toBe(
-      colors.brandDeep,
+      colors.ink,
     );
 
     fireEvent.press(result.getByLabelText("Increase quantity"));
@@ -521,7 +521,7 @@ describe("S8 · NOT_RUN screening (M2-T4a, copy-deck §3.3)", () => {
       const add = result.getByLabelText("Add 1 to Fridge");
       const props = add.props as { accessibilityState?: { disabled?: boolean }; style: unknown };
       expect(props.accessibilityState?.disabled).toBe(false);
-      expect(flattenStyle(props.style).backgroundColor).toBe(colors.brandDeep);
+      expect(flattenStyle(props.style).backgroundColor).toBe(colors.ink);
     });
   });
 

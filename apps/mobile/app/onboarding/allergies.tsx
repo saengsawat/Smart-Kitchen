@@ -11,7 +11,14 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { apiClient } from "../../src/api/client";
-import { colors, fontFamily, minTouchTarget, radius, spacing } from "../../src/design/tokens";
+import {
+  colors,
+  fontFamily,
+  minTouchTarget,
+  radius,
+  spacing,
+  typeScale,
+} from "../../src/design/tokens";
 import { GENERIC_READ_ERROR_MESSAGE } from "../../src/inventory/errors";
 import {
   ALLERGY_GATE_MESSAGE,
@@ -281,114 +288,153 @@ export default function AllergiesScreen(): React.JSX.Element {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.sand },
+  screen: { flex: 1, backgroundColor: colors.paper },
+  // v6 `.back` then `.title`: a borderless 44px back control, Bodoni 44 below.
   header: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.md,
-    paddingHorizontal: spacing.lg,
-    paddingBottom: spacing.md,
+    alignItems: "flex-start",
+    paddingHorizontal: spacing.gutter,
   },
   iconButton: {
     width: minTouchTarget,
     height: minTouchTarget,
-    borderRadius: minTouchTarget / 2,
-    backgroundColor: colors.paper,
-    borderWidth: 1,
-    borderColor: colors.line,
+    marginLeft: -spacing.sm,
     alignItems: "center",
     justifyContent: "center",
   },
-  iconGlyph: { fontSize: 22, color: colors.ink, lineHeight: 22 },
-  title: { fontSize: 24, fontFamily: fontFamily.display, fontWeight: "600", color: colors.ink },
-  content: { paddingHorizontal: spacing.lg, paddingBottom: spacing.xxl * 2, gap: spacing.md },
-  body: { fontSize: 13, lineHeight: 19.5, color: colors.ink2, fontFamily: fontFamily.body },
+  iconGlyph: { fontSize: 30, lineHeight: 32, color: colors.ink, fontFamily: fontFamily.body },
+  title: {
+    paddingTop: 2,
+    fontSize: typeScale.title.fontSize,
+    lineHeight: typeScale.title.lineHeight,
+    letterSpacing: typeScale.title.letterSpacing,
+    fontFamily: typeScale.title.fontFamily,
+    fontWeight: typeScale.title.fontWeight,
+    color: colors.ink,
+  },
+  content: {
+    paddingHorizontal: spacing.gutter,
+    paddingBottom: spacing.xxl * 2,
+    gap: spacing.snug,
+  },
+  body: {
+    paddingTop: 6,
+    fontSize: 14,
+    lineHeight: 21,
+    fontWeight: "500",
+    color: colors.ink2,
+    fontFamily: fontFamily.body,
+  },
 
   chipRow: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm },
 
+  // v6 `.sec`: Bodoni 25 over a 1px ink rule; the link is `.lnk`.
   sectionHeader: {
     flexDirection: "row",
     alignItems: "baseline",
     justifyContent: "space-between",
-    paddingTop: spacing.md,
+    marginTop: spacing.md,
+    paddingBottom: 6,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.ink,
   },
   sectionTitle: {
-    fontSize: 18,
-    fontFamily: fontFamily.display,
-    fontWeight: "600",
+    fontSize: typeScale.section.fontSize,
+    lineHeight: typeScale.section.lineHeight,
+    fontFamily: typeScale.section.fontFamily,
+    fontWeight: typeScale.section.fontWeight,
     color: colors.ink,
   },
   skipLink: {
     fontSize: 13,
     fontWeight: "600",
-    color: colors.ink2,
+    color: colors.ink,
     textDecorationLine: "underline",
     fontFamily: fontFamily.body,
   },
 
+  // v6 `.chip`: a 1.5px ink outline pill, 40px (hit slop to 44); selected is ink.
   chip: {
-    minHeight: minTouchTarget,
-    paddingHorizontal: spacing.md,
+    minHeight: 40,
+    paddingHorizontal: 15,
     borderRadius: radius.pill,
-    borderWidth: 1,
-    borderColor: colors.line,
-    backgroundColor: colors.paper,
+    borderWidth: 1.5,
+    borderColor: colors.ink,
+    backgroundColor: "transparent",
     alignItems: "center",
     justifyContent: "center",
   },
-  chipOn: { backgroundColor: colors.espresso, borderColor: colors.espresso },
-  chipText: { fontSize: 13, fontWeight: "600", color: colors.ink2, fontFamily: fontFamily.body },
-  chipTextOn: { color: colors.cream },
+  chipOn: { backgroundColor: colors.ink },
+  chipText: { fontSize: 13.5, fontWeight: "600", color: colors.ink, fontFamily: fontFamily.body },
+  chipTextOn: { color: colors.white },
 
   // No danger/rose here either (see account.tsx's note): this is a form
   // validation/save-failure notice, not an allergen verdict or an
-  // expiry/urgency cue. Non-colour affordance per review F6/F10: an icon +
-  // a sand2-bordered container, not colour alone.
+  // expiry/urgency cue. Non-colour affordance per review F6/F10: an icon + an
+  // ink2-bordered tile panel (v6 `.offbar`), not colour alone.
   noticeBox: {
     flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.sm,
-    borderRadius: radius.sm,
+    alignItems: "flex-start",
+    gap: spacing.snug,
     borderWidth: 1,
-    borderColor: colors.line,
-    backgroundColor: colors.sand2,
-    padding: spacing.sm,
+    borderColor: colors.ink2,
+    backgroundColor: colors.tile,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.cozy,
   },
   noticeIcon: { fontSize: 14, color: colors.ink },
   noticeText: {
     flex: 1,
     fontSize: 13,
+    lineHeight: 19,
     fontWeight: "700",
     color: colors.ink,
     fontFamily: fontFamily.body,
   },
   loadingScreen: { alignItems: "center", justifyContent: "center" },
+  // v6 `.emptyst`: dashed ink2 panel.
   readErrorWrap: {
     alignItems: "center",
-    gap: spacing.sm,
-    paddingHorizontal: spacing.xl,
+    gap: spacing.snug,
+    marginHorizontal: spacing.gutter,
+    paddingVertical: 28,
+    paddingHorizontal: spacing.gutter,
+    borderWidth: 1,
+    borderStyle: "dashed",
+    borderColor: colors.ink2,
   },
   readErrorTitle: {
-    fontSize: 19,
-    fontFamily: fontFamily.display,
-    fontWeight: "600",
+    fontSize: typeScale.empty.fontSize,
+    lineHeight: typeScale.empty.lineHeight,
+    fontFamily: typeScale.empty.fontFamily,
+    fontWeight: typeScale.empty.fontWeight,
     color: colors.ink,
     textAlign: "center",
   },
   readErrorBody: {
-    fontSize: 13,
+    maxWidth: 280,
+    fontSize: 14,
+    lineHeight: 21,
     color: colors.ink2,
     fontFamily: fontFamily.body,
     textAlign: "center",
   },
 
+  // v6 `.btn.pri.wide`: ink pill, 52px.
   button: {
-    height: 48,
-    borderRadius: 14,
+    minHeight: 52,
+    borderRadius: radius.pill,
+    borderWidth: 1.5,
+    borderColor: colors.ink,
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: spacing.lg,
+    marginTop: spacing.xs,
   },
-  buttonPrimary: { backgroundColor: colors.brandDeep },
-  buttonTextOnDark: { color: colors.cream, fontSize: 15, fontWeight: "700" },
+  buttonPrimary: { backgroundColor: colors.ink },
+  buttonTextOnDark: {
+    color: colors.white,
+    fontSize: typeScale.button.fontSize,
+    fontWeight: "700",
+    fontFamily: fontFamily.body,
+  },
 });

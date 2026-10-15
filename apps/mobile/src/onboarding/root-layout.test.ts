@@ -198,7 +198,7 @@ function expectScreenBlocked(result: Rendered): void {
     right: 0,
     bottom: 0,
     left: 0,
-    backgroundColor: colors.sand, // opaque, nothing shows through
+    backgroundColor: colors.paper, // opaque, nothing shows through
   });
   expect(cover.props.accessibilityViewIsModal).toBe(true);
   const wrapper = slotWrapper(result);

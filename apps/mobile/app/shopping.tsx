@@ -5,7 +5,15 @@ import { useRouter } from "expo-router";
 import type { ShoppingListDto, ShoppingRowDto } from "@smart-kitchen/contracts";
 import { apiClient, hasDevOfflineToggle } from "../src/api/client";
 import { nextIdempotencyKey } from "../src/api/idempotency";
-import { colors, fontFamily, minTouchTarget, radius, spacing } from "../src/design/tokens";
+import { provChipStyle } from "../src/design/chips";
+import {
+  colors,
+  fontFamily,
+  minTouchTarget,
+  radius,
+  spacing,
+  typeScale,
+} from "../src/design/tokens";
 import { useTabBarClearance } from "../src/navigation/TabBar";
 import { GENERIC_READ_ERROR_MESSAGE, messageForLedgerError } from "../src/inventory/errors";
 import { LOCATION_LABELS } from "../src/inventory/list-view";
@@ -472,6 +480,22 @@ export default function ShoppingScreen(): React.JSX.Element {
   );
 }
 
+/**
+ * v6 `.srow .th`: a 48px square tile. Food photos arrive with the image
+ * pipeline (D-032), so the tile carries the item's first letter in Bodoni.
+ */
+function Thumb({ name }: { name: string }): React.JSX.Element {
+  return (
+    <View
+      style={styles.thumb}
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
+    >
+      <Text style={styles.thumbGlyph}>{name.charAt(0)}</Text>
+    </View>
+  );
+}
+
 function MemberAvatars({ members }: { members: ShoppingListDto["members"] }): React.JSX.Element {
   return (
     <View style={styles.avatarRow}>
@@ -549,7 +573,7 @@ function ShoppingRow({
   const isAiSuggestion = row.origin.kind === "ai" && !checked;
 
   return (
-    <View style={[styles.row, isAiSuggestion ? styles.rowAiSuggestion : null]}>
+    <View style={styles.row}>
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={`${row.name}, ${checked ? "checked off" : "not checked off"}`}
@@ -559,6 +583,7 @@ function ShoppingRow({
       >
         {checked ? <Text style={styles.chkGlyph}>{"✓"}</Text> : null}
       </Pressable>
+      <Thumb name={row.name} />
       <View style={styles.rowMeta}>
         <Text style={[styles.rowName, checked ? styles.rowNameDone : null]}>{row.name}</Text>
         {statusText ? (
@@ -582,10 +607,9 @@ function ShoppingRow({
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={`Remove ${row.name}`}
-            // tokens.md §5 formula: ceil((44 - 24) / 2) = 10, not 6 — the
-            // Remove control's rendered height is 24px, not the 32px the
-            // deck's own `.okbtn` table entry assumes (review F8).
-            hitSlop={10}
+            // tokens.md section 7: `.rmv` is drawn 36px, so 4px of slop each side
+            // brings the target to 44.
+            hitSlop={4}
             onPress={onRemove}
             style={({ pressed }) => [styles.removeButton, pressScaleStyle(pressed, reducedMotion)]}
           >
@@ -603,7 +627,7 @@ function OriginPrefix({ row }: { row: ShoppingRowDto }): React.JSX.Element | nul
   }
   if (row.origin.kind === "ai") {
     return (
-      <Text style={styles.aiChip} accessibilityLabel="AI">
+      <Text style={provChipStyle("AI_INTERPRETATION")} accessibilityLabel="AI">
         AI
       </Text>
     );
@@ -647,11 +671,15 @@ function SkipRow({ row }: { row: ShoppingRowDto }): React.JSX.Element {
   return (
     <View style={styles.skipRow}>
       <Text style={styles.skipCheck}>{"✓"}</Text>
+      <Thumb name={row.name} />
       <Text style={styles.skipName}>{row.name}</Text>
       <View style={styles.skipTrailing}>
         <Text style={styles.skipAmount}>{amountText}</Text>
         {row.haveTier ? (
-          <Text style={styles.provChip} accessibilityLabel={chipAccessibilityLabel(row.haveTier)}>
+          <Text
+            style={provChipStyle(row.haveTier)}
+            accessibilityLabel={chipAccessibilityLabel(row.haveTier)}
+          >
             {ROW_CHIP_TEXT[row.haveTier]}
           </Text>
         ) : null}
@@ -661,88 +689,104 @@ function SkipRow({ row }: { row: ShoppingRowDto }): React.JSX.Element {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.sand },
+  screen: { flex: 1, backgroundColor: colors.paper },
   header: {
     flexDirection: "row",
     alignItems: "flex-start",
     justifyContent: "space-between",
-    paddingHorizontal: spacing.lg,
-    paddingBottom: spacing.sm,
+    paddingHorizontal: spacing.gutter,
+    paddingBottom: spacing.xs,
     gap: spacing.sm,
   },
-  headerText: { flex: 1, gap: 2 },
-  title: { fontSize: 28, fontFamily: fontFamily.display, fontWeight: "600", color: colors.ink },
-  sub: { fontSize: 12.5, color: colors.ink2, fontFamily: fontFamily.body, lineHeight: 17 },
+  headerText: { flex: 1, gap: 6 },
+  // v6 `.title`: Bodoni 44.
+  title: {
+    paddingTop: spacing.md,
+    fontSize: typeScale.title.fontSize,
+    lineHeight: typeScale.title.lineHeight,
+    letterSpacing: typeScale.title.letterSpacing,
+    fontFamily: typeScale.title.fontFamily,
+    fontWeight: typeScale.title.fontWeight,
+    color: colors.ink,
+  },
+  sub: {
+    fontSize: 13.5,
+    lineHeight: 18,
+    fontWeight: "500",
+    color: colors.ink2,
+    fontFamily: fontFamily.body,
+  },
   subStrong: { color: colors.ink, fontWeight: "700" },
-  avatarRow: { flexDirection: "row" },
+  avatarRow: { flexDirection: "row", paddingTop: spacing.lg },
+  // v6 `.mchip`: ink disc, white initials, 12 / 700.
   avatar: {
     width: 32,
     height: 32,
-    borderRadius: 16,
-    backgroundColor: colors.sand2,
-    borderWidth: 1,
+    borderRadius: radius.pill,
+    backgroundColor: colors.ink,
+    borderWidth: 2,
     borderColor: colors.paper,
     alignItems: "center",
     justifyContent: "center",
   },
   avatarOverlap: { marginLeft: -8 },
-  avatarText: { fontSize: 11, fontWeight: "700", color: colors.ink2, fontFamily: fontFamily.body },
+  avatarText: { fontSize: 12, fontWeight: "700", color: colors.white, fontFamily: fontFamily.body },
   devToggle: {
-    marginHorizontal: spacing.lg,
-    marginBottom: spacing.sm,
+    marginHorizontal: spacing.gutter,
+    marginTop: spacing.md,
     minHeight: minTouchTarget,
     paddingHorizontal: spacing.md,
-    borderRadius: radius.sm,
-    borderWidth: 1,
-    borderColor: colors.line,
-    backgroundColor: colors.paper,
+    borderRadius: radius.pill,
+    borderWidth: 1.5,
+    borderColor: colors.ink2,
     alignItems: "center",
     justifyContent: "center",
     alignSelf: "flex-start",
   },
   devToggleText: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: "600",
-    color: colors.ink2,
+    color: colors.ink,
     fontFamily: fontFamily.body,
   },
+  // v6 `.offbar`: tile panel with a 1px ink2 border, 13 / 1.45.
   banner: {
-    marginHorizontal: spacing.lg,
-    marginBottom: spacing.sm,
-    padding: spacing.sm,
-    borderRadius: radius.sm,
-    backgroundColor: colors.sand2,
+    marginHorizontal: spacing.gutter,
+    marginTop: spacing.cozy,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.cozy,
+    backgroundColor: colors.tile,
     borderWidth: 1,
-    borderColor: colors.line,
+    borderColor: colors.ink2,
   },
-  bannerText: { fontSize: 12.5, color: colors.ink2, fontFamily: fontFamily.body, lineHeight: 17 },
+  bannerText: { fontSize: 13, color: colors.ink, fontFamily: fontFamily.body, lineHeight: 19 },
   bannerStrong: { color: colors.ink, fontWeight: "700" },
+  // v6 `.loop`: green tint banner, green-ink text. Its Add is the one green action.
   loop: {
-    marginHorizontal: spacing.lg,
-    marginBottom: spacing.sm,
-    backgroundColor: colors.brandTint,
-    borderWidth: 1,
-    borderColor: colors.line,
-    borderRadius: radius.md,
-    padding: spacing.md,
+    marginHorizontal: spacing.gutter,
+    marginTop: spacing.cozy,
+    backgroundColor: colors.greenBg,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.cozy,
     flexDirection: "row",
     alignItems: "center",
-    gap: spacing.sm,
+    justifyContent: "space-between",
+    gap: spacing.snug,
   },
   loopText: {
     flex: 1,
     fontSize: 13.5,
-    fontWeight: "700",
-    color: colors.brandOnTint,
+    lineHeight: 18,
+    fontWeight: "600",
+    color: colors.greenInk,
     fontFamily: fontFamily.body,
   },
   loopButton: {
-    height: 34,
-    paddingHorizontal: spacing.md,
-    borderRadius: radius.sm,
-    borderWidth: 1,
-    borderColor: colors.line,
-    backgroundColor: colors.paper,
+    minHeight: minTouchTarget,
+    minWidth: 56,
+    paddingHorizontal: spacing.cozy,
+    borderRadius: radius.pill,
+    backgroundColor: colors.green,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -750,162 +794,208 @@ const styles = StyleSheet.create({
   loopButtonText: {
     fontSize: 13,
     fontWeight: "700",
-    color: colors.ink,
+    color: colors.white,
     fontFamily: fontFamily.body,
   },
-  loopRefused: { fontSize: 12, color: colors.ink3, fontFamily: fontFamily.body },
+  loopRefused: { fontSize: 12.5, color: colors.greenInk, fontFamily: fontFamily.body },
   content: {
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.sm,
+    paddingHorizontal: spacing.gutter,
   },
-  groupHeader: { paddingTop: spacing.md, paddingBottom: spacing.xs },
+  // v6 `.grp`: Bodoni 22 over a 1px ink rule.
+  groupHeader: {
+    marginTop: spacing.xl,
+    paddingBottom: 6,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.ink,
+  },
   groupTitle: {
-    fontSize: 12,
-    fontWeight: "700",
-    letterSpacing: 0.4,
-    textTransform: "uppercase",
-    color: colors.ink3,
-    fontFamily: fontFamily.body,
+    fontSize: typeScale.group.fontSize,
+    lineHeight: typeScale.group.lineHeight,
+    fontFamily: typeScale.group.fontFamily,
+    fontWeight: typeScale.group.fontWeight,
+    color: colors.ink,
   },
+  // v6 `.srow`: checkbox, 48px tile, name and source, amount; hairline rule.
   row: {
-    backgroundColor: colors.paper,
-    borderWidth: 1,
-    borderColor: colors.line,
-    borderRadius: radius.md,
-    padding: spacing.md,
-    marginBottom: spacing.sm,
+    minHeight: 68,
+    paddingVertical: spacing.snug,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.hair,
     flexDirection: "row",
     alignItems: "center",
-    gap: spacing.sm,
+    gap: spacing.snug,
   },
-  rowAiSuggestion: { borderColor: colors.ai, backgroundColor: colors.aiBg },
+  // v6 `.chk`: a 26px circle with a 1.75px ink ring; checked is ink, never green.
+  // The 44px target comes from hit slop; the side margins keep the 44px column.
   chk: {
     width: 26,
     height: 26,
-    borderRadius: 9,
-    borderWidth: 2,
-    borderColor: colors.line,
-    backgroundColor: colors.paper,
+    marginHorizontal: 9,
+    borderRadius: radius.pill,
+    borderWidth: 1.75,
+    borderColor: colors.ink,
+    backgroundColor: "transparent",
     alignItems: "center",
     justifyContent: "center",
   },
-  chkDone: { backgroundColor: colors.green, borderColor: colors.green },
+  chkDone: { backgroundColor: colors.ink },
   chkGlyph: { color: colors.white, fontSize: 13, fontWeight: "700" },
+  thumb: {
+    width: 48,
+    height: 48,
+    backgroundColor: colors.tile,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  thumbGlyph: {
+    fontFamily: fontFamily.display,
+    fontWeight: "500",
+    fontSize: 20,
+    color: colors.ink3,
+  },
   rowMeta: { flex: 1, gap: 2 },
-  rowName: { fontSize: 15, fontWeight: "600", color: colors.ink, fontFamily: fontFamily.body },
+  rowName: {
+    fontSize: 15,
+    lineHeight: 18,
+    fontWeight: "700",
+    color: colors.ink,
+    fontFamily: fontFamily.body,
+  },
   rowNameDone: { textDecorationLine: "line-through", color: colors.ink3 },
   rowSubRow: { flexDirection: "row", alignItems: "center", gap: 6, flexWrap: "wrap" },
-  rowSub: { fontSize: 12, color: colors.ink3, fontFamily: fontFamily.body },
-  rowSubMuted: { fontSize: 12, color: colors.ink3, fontFamily: fontFamily.body },
+  rowSub: { fontSize: 12.5, lineHeight: 17, color: colors.ink2, fontFamily: fontFamily.body },
+  rowSubMuted: { fontSize: 12.5, lineHeight: 17, color: colors.ink2, fontFamily: fontFamily.body },
+  // v6 `.msrc`: 12 / 700 uppercase on a tile, square.
   msrc: {
-    fontSize: 10.5,
-    fontWeight: "800",
-    letterSpacing: 0.3,
+    fontSize: typeScale.chip.fontSize,
+    fontWeight: "700",
+    letterSpacing: 12 * 0.08,
     textTransform: "uppercase",
-    color: colors.brandOnTint,
-    backgroundColor: colors.brandTint,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 6,
-  },
-  aiChip: {
-    fontSize: 10,
-    fontWeight: "800",
-    color: colors.ai,
-    backgroundColor: colors.aiBg,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 6,
-  },
-  mchip: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    fontSize: 10,
-    fontWeight: "800",
     color: colors.ink2,
-    backgroundColor: colors.sand2,
-    textAlign: "center",
-    textAlignVertical: "center",
+    backgroundColor: colors.tile,
+    paddingHorizontal: 6,
+    paddingVertical: 3,
     overflow: "hidden",
+    fontFamily: fontFamily.body,
+  },
+  // v6 `.mchip`: 26px ink disc, white initials.
+  mchip: {
+    width: 26,
+    height: 26,
+    borderRadius: radius.pill,
+    fontSize: 12,
+    lineHeight: 26,
+    fontWeight: "700",
+    color: colors.white,
+    backgroundColor: colors.ink,
+    textAlign: "center",
+    overflow: "hidden",
+    fontFamily: fontFamily.body,
   },
   rowTrailing: { alignItems: "flex-end", gap: 4 },
-  amt: { fontSize: 15, fontWeight: "800", color: colors.ink, fontFamily: fontFamily.body },
-  amtDone: { color: colors.ink3 },
+  // v6 `.srow .amt`: 14 / 600.
+  amt: { fontSize: 14, fontWeight: "600", color: colors.ink, fontFamily: fontFamily.body },
+  amtDone: { color: colors.ink3, textDecorationLine: "line-through" },
+  // v6 `.rmv`: 36px pill, 1px ink2 border, 12 / 600 (hit slop to 44).
   removeButton: {
-    height: 24,
-    paddingHorizontal: 8,
-    borderRadius: radius.sm,
+    minHeight: 36,
+    paddingHorizontal: 10,
+    borderRadius: radius.pill,
     borderWidth: 1,
-    borderColor: colors.ai,
+    borderColor: colors.ink2,
     alignItems: "center",
     justifyContent: "center",
   },
   removeButtonText: {
-    fontSize: 11,
-    fontWeight: "700",
-    color: colors.ai,
+    fontSize: 12,
+    fontWeight: "600",
+    color: colors.ink,
     fontFamily: fontFamily.body,
   },
+  // v6 `.queued`: 12 / 700 on the amber tint, square.
   queuedTag: {
     flexDirection: "row",
     alignItems: "center",
     gap: 3,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: radius.pill,
-    backgroundColor: colors.sand2,
+    paddingHorizontal: 7,
+    paddingVertical: 4,
+    backgroundColor: colors.amberBg,
   },
-  queuedTagGlyph: { fontSize: 11, color: colors.ink3 },
+  queuedTagGlyph: { fontSize: 12, color: colors.amber },
   queuedTagText: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: "700",
-    color: colors.ink3,
+    color: colors.amber,
     fontFamily: fontFamily.body,
   },
   skipRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: spacing.sm,
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.md,
-    marginBottom: spacing.sm,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderStyle: "dashed",
-    borderColor: colors.line,
+    gap: spacing.snug,
+    minHeight: 68,
+    paddingVertical: spacing.snug,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.hair,
   },
-  skipCheck: { color: colors.green, fontSize: 14, fontWeight: "700" },
-  skipName: { flex: 1, fontSize: 14, color: colors.ink2, fontFamily: fontFamily.body },
+  skipCheck: {
+    width: 44,
+    textAlign: "center",
+    color: colors.green,
+    fontSize: 16,
+    fontWeight: "700",
+  },
+  skipName: {
+    flex: 1,
+    fontSize: 15,
+    fontWeight: "600",
+    color: colors.ink2,
+    fontFamily: fontFamily.body,
+  },
   skipTrailing: { flexDirection: "row", alignItems: "center", gap: 6 },
   skipAmount: { fontSize: 12.5, color: colors.ink2, fontFamily: fontFamily.body },
-  provChip: { fontSize: 11, fontWeight: "700", color: colors.ink2, fontFamily: fontFamily.body },
+  // v6 `.emptyst`: dashed ink2 panel, Bodoni 28, ink pill button.
   emptyWrap: {
     alignItems: "center",
-    gap: spacing.sm,
-    paddingHorizontal: spacing.xl,
-    paddingTop: spacing.xxl,
+    gap: spacing.snug,
+    marginHorizontal: spacing.gutter,
+    marginTop: 22,
+    paddingVertical: 28,
+    paddingHorizontal: spacing.gutter,
+    borderWidth: 1,
+    borderStyle: "dashed",
+    borderColor: colors.ink2,
   },
   emptyTitle: {
-    fontSize: 19,
-    fontFamily: fontFamily.display,
-    fontWeight: "600",
+    fontSize: typeScale.empty.fontSize,
+    lineHeight: typeScale.empty.lineHeight,
+    fontFamily: typeScale.empty.fontFamily,
+    fontWeight: typeScale.empty.fontWeight,
     color: colors.ink,
     textAlign: "center",
   },
-  emptyBody: { fontSize: 13, color: colors.ink2, fontFamily: fontFamily.body, textAlign: "center" },
+  emptyBody: {
+    maxWidth: 280,
+    fontSize: 14,
+    lineHeight: 21,
+    color: colors.ink2,
+    fontFamily: fontFamily.body,
+    textAlign: "center",
+  },
+  // v6 `.btn.pri`: ink pill, 50px.
   primaryButton: {
-    minHeight: minTouchTarget,
-    paddingHorizontal: spacing.lg,
-    borderRadius: 14,
-    backgroundColor: colors.brandDeep,
+    minHeight: 50,
+    paddingHorizontal: 22,
+    borderRadius: radius.pill,
+    borderWidth: 1.5,
+    borderColor: colors.ink,
+    backgroundColor: colors.ink,
     alignItems: "center",
     justifyContent: "center",
-    marginTop: spacing.sm,
+    marginTop: spacing.xs,
   },
   primaryButtonText: {
-    color: colors.cream,
-    fontSize: 15,
+    color: colors.white,
+    fontSize: typeScale.button.fontSize,
     fontWeight: "700",
     fontFamily: fontFamily.body,
   },

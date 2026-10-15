@@ -11,7 +11,14 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { apiClient, hasDevOfflineToggle } from "../../src/api/client";
-import { colors, fontFamily, minTouchTarget, radius, spacing } from "../../src/design/tokens";
+import {
+  colors,
+  fontFamily,
+  minTouchTarget,
+  radius,
+  spacing,
+  typeScale,
+} from "../../src/design/tokens";
 import {
   GENERIC_READ_ERROR_MESSAGE,
   LedgerRefusedError,
@@ -364,95 +371,129 @@ export default function AccountScreen(): React.JSX.Element {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.sand },
+  screen: { flex: 1, backgroundColor: colors.paper },
+  // v6 `.back` then `.title`: a borderless 44px back control, Bodoni 44 below.
   header: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.md,
-    paddingHorizontal: spacing.lg,
-    paddingBottom: spacing.md,
+    alignItems: "flex-start",
+    paddingHorizontal: spacing.gutter,
   },
   iconButton: {
     width: minTouchTarget,
     height: minTouchTarget,
-    borderRadius: minTouchTarget / 2,
-    backgroundColor: colors.paper,
-    borderWidth: 1,
-    borderColor: colors.line,
+    marginLeft: -spacing.sm,
     alignItems: "center",
     justifyContent: "center",
   },
-  iconGlyph: { fontSize: 22, color: colors.ink, lineHeight: 22 },
-  title: { fontSize: 24, fontFamily: fontFamily.display, fontWeight: "600", color: colors.ink },
-  content: {
-    paddingHorizontal: spacing.lg,
-    paddingBottom: spacing.xxl * 2,
-    gap: spacing.md,
-  },
-  body: { fontSize: 13, lineHeight: 19.5, color: colors.ink2, fontFamily: fontFamily.body },
-  button: {
-    height: 48,
-    borderRadius: 14,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: spacing.lg,
-  },
-  buttonDark: { backgroundColor: colors.espresso },
-  buttonSecondary: { backgroundColor: colors.sand2 },
-  buttonPrimary: { backgroundColor: colors.brandDeep },
-  buttonTextOnDark: { color: colors.cream, fontSize: 15, fontWeight: "700" },
-  buttonTextOnLight: { color: colors.ink, fontSize: 15, fontWeight: "700" },
-  confirmation: { fontSize: 12.5, color: colors.ink2, fontFamily: fontFamily.body },
-  phaseLabel: { fontSize: 11.5, color: colors.ink3, fontFamily: fontFamily.body },
-  explanation: { fontSize: 12.5, color: colors.ink2, fontFamily: fontFamily.body },
-  sectionHeader: { paddingTop: spacing.md },
-  sectionTitle: {
-    fontSize: 18,
-    fontFamily: fontFamily.display,
-    fontWeight: "600",
+  iconGlyph: { fontSize: 30, lineHeight: 32, color: colors.ink, fontFamily: fontFamily.body },
+  title: {
+    paddingTop: 2,
+    fontSize: typeScale.title.fontSize,
+    lineHeight: typeScale.title.lineHeight,
+    letterSpacing: typeScale.title.letterSpacing,
+    fontFamily: typeScale.title.fontFamily,
+    fontWeight: typeScale.title.fontWeight,
     color: colors.ink,
   },
+  content: {
+    paddingHorizontal: spacing.gutter,
+    paddingBottom: spacing.xxl * 2,
+    gap: spacing.snug,
+  },
+  body: {
+    paddingTop: 6,
+    fontSize: 14.5,
+    lineHeight: 22,
+    fontWeight: "500",
+    color: colors.ink2,
+    fontFamily: fontFamily.body,
+  },
+  // v6 `.btn.wide`: pill, 1.5px ink border, 52px.
+  button: {
+    minHeight: 52,
+    borderRadius: radius.pill,
+    borderWidth: 1.5,
+    borderColor: colors.ink,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: spacing.lg,
+  },
+  buttonDark: { backgroundColor: colors.ink },
+  buttonSecondary: { backgroundColor: "transparent" },
+  buttonPrimary: { backgroundColor: colors.ink },
+  buttonTextOnDark: {
+    color: colors.white,
+    fontSize: typeScale.button.fontSize,
+    fontWeight: "700",
+    fontFamily: fontFamily.body,
+  },
+  buttonTextOnLight: {
+    color: colors.ink,
+    fontSize: typeScale.button.fontSize,
+    fontWeight: "700",
+    fontFamily: fontFamily.body,
+  },
+  confirmation: { fontSize: 12.5, color: colors.ink2, fontFamily: fontFamily.body },
+  phaseLabel: { fontSize: 12.5, color: colors.ink3, fontFamily: fontFamily.body },
+  explanation: { fontSize: 12.5, color: colors.ink2, fontFamily: fontFamily.body },
+  // v6 `.sec`: Bodoni 25 over a 1px ink rule.
+  sectionHeader: {
+    marginTop: spacing.xs,
+    paddingBottom: 6,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.ink,
+  },
+  sectionTitle: {
+    fontSize: typeScale.section.fontSize,
+    lineHeight: typeScale.section.lineHeight,
+    fontFamily: typeScale.section.fontFamily,
+    fontWeight: typeScale.section.fontWeight,
+    color: colors.ink,
+  },
+  // v6 `.boxed`: a 1px ink box, square, 16px padding.
   card: {
-    backgroundColor: colors.paper,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.line,
     padding: spacing.lg,
+    borderWidth: 1,
+    borderColor: colors.ink,
     gap: spacing.sm,
   },
-  // review F10: dropped from ink to ink2 so it reads distinctly from the
-  // (ink, boxed) error notice below it.
-  cardLabel: { fontSize: 13, fontWeight: "700", color: colors.ink2, fontFamily: fontFamily.body },
-  input: {
-    height: minTouchTarget,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: colors.line,
-    paddingHorizontal: spacing.md,
-    fontSize: 14,
+  // v6 `.bh`: 15 / 700.
+  cardLabel: {
+    fontSize: 15,
+    lineHeight: 18,
+    fontWeight: "700",
+    color: colors.ink,
     fontFamily: fontFamily.body,
-    backgroundColor: colors.paper,
+  },
+  // v6 `.inp`: no box, a 1.5px ink rule underneath, 16 / 500.
+  input: {
+    height: 50,
+    borderBottomWidth: 1.5,
+    borderBottomColor: colors.ink,
+    paddingHorizontal: 2,
+    fontSize: 16,
+    fontWeight: "500",
+    fontFamily: fontFamily.body,
     color: colors.ink,
   },
   // No danger/rose here (tokens.md §4: danger is allergen-exclusive, rose is
   // expiry/urgency-exclusive; a form validation message is neither). Non-colour
   // affordance (review F10, consistent with allergies.tsx's F6 notice): an
-  // icon plus a sand2-bordered container, not colour alone, so it reads
-  // distinctly from a plain label rather than by colour.
+  // icon plus an ink2-bordered tile panel (v6 `.offbar`), not colour alone.
   noticeBox: {
     flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.sm,
-    borderRadius: radius.sm,
+    alignItems: "flex-start",
+    gap: spacing.snug,
     borderWidth: 1,
-    borderColor: colors.line,
-    backgroundColor: colors.sand2,
-    padding: spacing.sm,
+    borderColor: colors.ink2,
+    backgroundColor: colors.tile,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.cozy,
   },
   noticeIcon: { fontSize: 14, color: colors.ink },
   noticeText: {
     flex: 1,
-    fontSize: 12.5,
+    fontSize: 13,
+    lineHeight: 19,
     fontWeight: "700",
     color: colors.ink,
     fontFamily: fontFamily.body,

@@ -302,11 +302,11 @@ once in `app.json`. If the user says no, S7 shows "Open Settings" and "Enter
 manually". Typing the code works whether or not the camera is allowed. A test
 on a real phone camera is still owed before release.
 
-**Fonts.** Fraunces (headings) and Inter (body text), both open licence, are
+**Fonts.** Bodoni Moda (headings) and Schibsted Grotesk (body text), both open licence, are
 stored in `assets/fonts/`. `assets/fonts/SOURCES.md` says where they came from.
 
 **Colours.** `src/design/tokens.ts` is the only file allowed to contain a
-colour value (D-021 palette). `src/design/tokens.test.ts` checks every value
+colour value (prototype v6 palette, D-033). `src/design/tokens.test.ts` checks every value
 and its contrast against `docs/design/tokens.md`.
 
 **OneDrive problem (for the record).** If the repo is ever inside a OneDrive

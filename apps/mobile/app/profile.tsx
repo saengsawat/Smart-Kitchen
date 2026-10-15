@@ -17,7 +17,14 @@ import {
   apiClient,
   hasHouseholdCallerActions,
 } from "../src/api/client";
-import { colors, fontFamily, minTouchTarget, radius, spacing } from "../src/design/tokens";
+import {
+  colors,
+  fontFamily,
+  minTouchTarget,
+  radius,
+  spacing,
+  typeScale,
+} from "../src/design/tokens";
 import { useTabBarClearance } from "../src/navigation/TabBar";
 import { GENERIC_READ_ERROR_MESSAGE } from "../src/inventory/errors";
 import { useToast } from "../src/inventory/Toast";
@@ -445,6 +452,7 @@ export default function ProfileScreen(): React.JSX.Element {
                   <Text style={styles.memberName}>{member.displayName}</Text>
                   <Text style={styles.memberCaption}>{summary}</Text>
                 </View>
+                <Text style={styles.memberChevron}>{editingThisMember ? "⌃" : "›"}</Text>
               </Pressable>
               {editingThisMember && editDraft ? (
                 <View style={styles.editPanel}>
@@ -505,8 +513,8 @@ export default function ProfileScreen(): React.JSX.Element {
 
         {!isHttp ? (
           <View style={[styles.memberRow, styles.memberRowMuted]}>
-            <View style={styles.memberChip}>
-              <Text style={styles.memberChipText}>+</Text>
+            <View style={[styles.memberChip, styles.memberChipPlus]}>
+              <Text style={[styles.memberChipText, styles.memberChipPlusText]}>+</Text>
             </View>
             <View style={styles.memberMeta}>
               <Text style={styles.memberName}>Add a member</Text>
@@ -558,204 +566,264 @@ export default function ProfileScreen(): React.JSX.Element {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.sand },
+  screen: { flex: 1, backgroundColor: colors.paper },
+  // v6 `.back` then `.title`: a borderless 44px back control, Bodoni 44 below.
   header: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.md,
-    paddingHorizontal: spacing.lg,
-    paddingBottom: spacing.md,
+    alignItems: "flex-start",
+    paddingHorizontal: spacing.gutter,
   },
   iconButton: {
     width: minTouchTarget,
     height: minTouchTarget,
-    borderRadius: minTouchTarget / 2,
-    backgroundColor: colors.paper,
-    borderWidth: 1,
-    borderColor: colors.line,
+    marginLeft: -spacing.sm,
     alignItems: "center",
     justifyContent: "center",
   },
-  iconGlyph: { fontSize: 22, color: colors.ink, lineHeight: 22 },
-  title: { fontSize: 20, fontFamily: fontFamily.display, fontWeight: "600", color: colors.ink },
-  content: { paddingHorizontal: spacing.lg, gap: spacing.sm },
+  iconGlyph: { fontSize: 30, lineHeight: 32, color: colors.ink, fontFamily: fontFamily.body },
+  title: {
+    paddingTop: 2,
+    fontSize: typeScale.title.fontSize,
+    lineHeight: typeScale.title.lineHeight,
+    letterSpacing: typeScale.title.letterSpacing,
+    fontFamily: typeScale.title.fontFamily,
+    fontWeight: typeScale.title.fontWeight,
+    color: colors.ink,
+  },
+  content: { paddingHorizontal: spacing.gutter },
   loadingScreen: { alignItems: "center", justifyContent: "center" },
 
+  // v6 `.me`: a square tile panel, 52px ink avatar, name 16 / 700.
   identityCard: {
     flexDirection: "row",
     alignItems: "center",
-    gap: spacing.md,
-    backgroundColor: colors.paper,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.line,
-    padding: spacing.md,
+    gap: spacing.cozy,
+    marginTop: spacing.lg,
+    backgroundColor: colors.tile,
+    padding: spacing.lg,
   },
   identityChip: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: colors.espresso,
+    width: 52,
+    height: 52,
+    borderRadius: radius.pill,
+    backgroundColor: colors.ink,
     alignItems: "center",
     justifyContent: "center",
   },
   identityChipText: {
     fontSize: 15,
     fontWeight: "700",
-    color: colors.cream,
+    color: colors.white,
     fontFamily: fontFamily.body,
   },
-  identityMeta: { gap: 2 },
-  identityName: { fontSize: 15, fontWeight: "700", color: colors.ink, fontFamily: fontFamily.body },
-  identityCaption: { fontSize: 12.5, color: colors.ink3, fontFamily: fontFamily.body },
+  identityMeta: { flex: 1, gap: 3 },
+  identityName: { fontSize: 16, fontWeight: "700", color: colors.ink, fontFamily: fontFamily.body },
+  identityCaption: { fontSize: 13, color: colors.ink2, fontFamily: fontFamily.body },
 
+  // v6 `.sec`: Bodoni 25 over a 1px ink rule; the link is `.lnk`.
   sectionHeader: {
     flexDirection: "row",
     alignItems: "baseline",
     justifyContent: "space-between",
-    paddingTop: spacing.md,
+    marginTop: spacing.section,
+    paddingBottom: 6,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.ink,
   },
   sectionTitle: {
-    fontSize: 18,
-    fontFamily: fontFamily.display,
-    fontWeight: "600",
+    fontSize: typeScale.section.fontSize,
+    lineHeight: typeScale.section.lineHeight,
+    fontFamily: typeScale.section.fontFamily,
+    fontWeight: typeScale.section.fontWeight,
     color: colors.ink,
   },
   inviteLink: {
     fontSize: 13,
     fontWeight: "600",
-    color: colors.brandDeep,
+    color: colors.ink,
+    fontFamily: fontFamily.body,
+    textDecorationLine: "underline",
+  },
+  mutedLine: {
+    flex: 1,
+    textAlign: "right",
+    fontSize: 12.5,
+    color: colors.ink2,
     fontFamily: fontFamily.body,
   },
-  mutedLine: { fontSize: 12.5, color: colors.ink3, fontFamily: fontFamily.body },
 
+  // v6 `.row.mem`: a 40px ink disc, name 15.5 / 700, caption 13 in ink2, hairline.
   memberRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: spacing.sm,
-    minHeight: minTouchTarget,
-    paddingVertical: spacing.xs,
+    gap: spacing.md,
+    minHeight: 72,
+    paddingVertical: spacing.snug,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.hair,
   },
-  memberRowMuted: { opacity: 0.75 },
+  memberRowMuted: {},
   memberChip: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    backgroundColor: colors.sand2,
+    width: 40,
+    height: 40,
+    borderRadius: radius.pill,
+    backgroundColor: colors.ink,
     alignItems: "center",
     justifyContent: "center",
   },
+  memberChipPlus: { backgroundColor: colors.tile },
   memberChipText: {
-    fontSize: 12,
+    fontSize: 13,
+    fontWeight: "700",
+    color: colors.white,
+    fontFamily: fontFamily.body,
+  },
+  memberChipPlusText: { fontSize: 18, color: colors.ink },
+  memberMeta: { flex: 1, gap: 3 },
+  memberName: {
+    fontSize: typeScale.rowTitle.fontSize,
+    lineHeight: typeScale.rowTitle.lineHeight,
     fontWeight: "700",
     color: colors.ink,
     fontFamily: fontFamily.body,
   },
-  memberMeta: { flex: 1, gap: 1 },
-  memberName: { fontSize: 14, fontWeight: "700", color: colors.ink, fontFamily: fontFamily.body },
-  memberCaption: { fontSize: 12.5, color: colors.ink3, fontFamily: fontFamily.body },
+  memberCaption: { fontSize: 13, color: colors.ink2, fontFamily: fontFamily.body },
+  memberChevron: { fontSize: 22, color: colors.ink2, fontFamily: fontFamily.body },
 
   editPanel: {
     gap: spacing.sm,
-    paddingLeft: 46,
-    paddingBottom: spacing.sm,
+    paddingLeft: 52,
+    paddingBottom: spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.hair,
   },
   editActions: { flexDirection: "row", gap: spacing.sm, paddingTop: spacing.xs },
+  // v6 `.btn`: pill, 1.5px ink border, 50px.
   actionButton: {
     flex: 1,
-    minHeight: minTouchTarget,
-    borderRadius: 14,
+    minHeight: 50,
+    borderRadius: radius.pill,
+    borderWidth: 1.5,
+    borderColor: colors.ink,
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: spacing.md,
   },
 
+  // v6 `.boxed`: a 1px ink box, square.
   confirmSheet: {
-    gap: spacing.sm,
-    backgroundColor: colors.paper,
-    borderRadius: radius.md,
+    gap: spacing.md,
+    marginTop: spacing.md,
     borderWidth: 1,
-    borderColor: colors.line,
-    padding: spacing.md,
+    borderColor: colors.ink,
+    padding: spacing.lg,
   },
-  confirmText: { fontSize: 13, lineHeight: 19, color: colors.ink2, fontFamily: fontFamily.body },
+  confirmText: { fontSize: 13.5, lineHeight: 20, color: colors.ink2, fontFamily: fontFamily.body },
 
   fastFollowRow: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: spacing.md,
+    gap: spacing.lg,
     paddingTop: spacing.sm,
   },
   fastFollowLink: {
     flexDirection: "row",
     alignItems: "center",
-    gap: spacing.xs,
+    gap: spacing.sm,
     minHeight: minTouchTarget,
   },
+  // v6 `.msrc`: 12 / 700 uppercase on a tile, square. Purple is for AI only.
   phaseBadge: {
-    backgroundColor: colors.aiBg,
-    borderRadius: radius.pill,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 2,
+    backgroundColor: colors.tile,
+    paddingHorizontal: 6,
+    paddingVertical: 3,
   },
   phaseBadgeText: {
-    fontSize: 10.5,
+    fontSize: typeScale.chip.fontSize,
     fontWeight: "700",
-    color: colors.ai,
+    letterSpacing: 12 * 0.08,
+    textTransform: "uppercase",
+    color: colors.ink2,
     fontFamily: fontFamily.body,
   },
   fastFollowText: {
     fontSize: 13,
     fontWeight: "600",
-    color: colors.ink2,
+    color: colors.ink,
     textDecorationLine: "underline",
     fontFamily: fontFamily.body,
   },
 
+  // v6 `.offbar`: tile panel with a 1px ink2 border.
   noticeBox: {
     flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.sm,
-    borderRadius: radius.sm,
+    alignItems: "flex-start",
+    gap: spacing.snug,
     borderWidth: 1,
-    borderColor: colors.line,
-    backgroundColor: colors.sand2,
-    padding: spacing.sm,
+    borderColor: colors.ink2,
+    backgroundColor: colors.tile,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.cozy,
   },
   noticeIcon: { fontSize: 14, color: colors.ink },
   noticeText: {
     flex: 1,
-    fontSize: 12.5,
+    fontSize: 13,
+    lineHeight: 19,
     fontWeight: "700",
     color: colors.ink,
     fontFamily: fontFamily.body,
   },
 
-  readErrorWrap: { alignItems: "center", gap: spacing.sm, paddingHorizontal: spacing.xl },
+  readErrorWrap: {
+    alignItems: "center",
+    gap: spacing.snug,
+    marginHorizontal: spacing.gutter,
+    paddingVertical: 28,
+    paddingHorizontal: spacing.gutter,
+    borderWidth: 1,
+    borderStyle: "dashed",
+    borderColor: colors.ink2,
+  },
   readErrorTitle: {
-    fontSize: 19,
-    fontFamily: fontFamily.display,
-    fontWeight: "600",
+    fontSize: typeScale.empty.fontSize,
+    lineHeight: typeScale.empty.lineHeight,
+    fontFamily: typeScale.empty.fontFamily,
+    fontWeight: typeScale.empty.fontWeight,
     color: colors.ink,
     textAlign: "center",
   },
   readErrorBody: {
-    fontSize: 13,
+    maxWidth: 280,
+    fontSize: 14,
+    lineHeight: 21,
     color: colors.ink2,
     fontFamily: fontFamily.body,
     textAlign: "center",
   },
 
+  // v6 `.btn` and `.btn.pri`: pills; `.btn.wide` is 52px.
   button: {
-    height: 48,
-    borderRadius: 14,
+    minHeight: 52,
+    borderRadius: radius.pill,
+    borderWidth: 1.5,
+    borderColor: colors.ink,
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: spacing.lg,
   },
-  buttonPrimary: { backgroundColor: colors.brandDeep },
-  buttonSecondary: { backgroundColor: colors.sand2 },
-  buttonSecondaryFull: { backgroundColor: colors.sand2, marginTop: spacing.xs },
-  buttonTextOnDark: { color: colors.cream, fontSize: 15, fontWeight: "700" },
-  buttonTextOnLight: { color: colors.ink, fontSize: 15, fontWeight: "700" },
+  buttonPrimary: { backgroundColor: colors.ink },
+  buttonSecondary: { backgroundColor: "transparent" },
+  buttonSecondaryFull: { backgroundColor: "transparent", marginTop: spacing.cozy },
+  buttonTextOnDark: {
+    color: colors.white,
+    fontSize: typeScale.button.fontSize,
+    fontWeight: "700",
+    fontFamily: fontFamily.body,
+  },
+  buttonTextOnLight: {
+    color: colors.ink,
+    fontSize: typeScale.button.fontSize,
+    fontWeight: "700",
+    fontFamily: fontFamily.body,
+  },
 });

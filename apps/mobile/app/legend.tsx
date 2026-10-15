@@ -1,7 +1,8 @@
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
-import { colors, fontFamily, minTouchTarget, spacing } from "../src/design/tokens";
+import { provChipStyle } from "../src/design/chips";
+import { colors, fontFamily, minTouchTarget, spacing, typeScale } from "../src/design/tokens";
 import { useTabBarClearance } from "../src/navigation/TabBar";
 import { LEGEND_CLOSING_LINE, LEGEND_LINES, ROW_CHIP_TEXT } from "../src/inventory/provenance";
 
@@ -39,32 +40,37 @@ export default function LegendScreen(): React.JSX.Element {
 
   return (
     <View style={styles.screen}>
-      <View style={[styles.header, { paddingTop: insets.top + spacing.md }]}>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Back"
-          hitSlop={8}
-          onPress={handleBack}
-          style={styles.iconButton}
-        >
-          <Text style={styles.iconGlyph}>{"‹"}</Text>
-        </Pressable>
-        <Text style={styles.title}>What do these mean?</Text>
-      </View>
       <ScrollView contentContainerStyle={[styles.content, { paddingBottom: tabBarClearance }]}>
+        <View style={[styles.back, { paddingTop: insets.top + spacing.md }]}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Back"
+            hitSlop={8}
+            onPress={handleBack}
+            style={styles.iconButton}
+          >
+            <Text style={styles.iconGlyph}>{"‹"}</Text>
+          </Pressable>
+        </View>
+        <Text style={styles.title}>What do these mean?</Text>
         <Text style={styles.intro}>
-          Every value in KitchenSmart wears a tag showing how sure we are. A tag is our confidence
+          Every value in Smart Kitchen wears a tag showing how sure we are. A tag is our confidence
           in a fact. It is never a safety check by itself.
         </Text>
-        {LEGEND_LINES.map((line) => (
-          <View key={line.tier} style={styles.row}>
-            <Text style={styles.chip}>{ROW_CHIP_TEXT[line.tier]}</Text>
-            <Text style={styles.rowText}>
-              <Text style={styles.rowLabel}>{line.chipLabel}. </Text>
-              {line.legendText}
-            </Text>
-          </View>
-        ))}
+        {/* v6 `.legrows`: a 1px ink rule, then a 116px chip column and the legend line. */}
+        <View style={styles.rows}>
+          {LEGEND_LINES.map((line) => (
+            <View key={line.tier} style={styles.row}>
+              <View style={styles.chipCol}>
+                <Text style={provChipStyle(line.tier)}>{ROW_CHIP_TEXT[line.tier]}</Text>
+              </View>
+              <Text style={styles.rowText}>
+                <Text style={styles.rowLabel}>{line.chipLabel}. </Text>
+                {line.legendText}
+              </Text>
+            </View>
+          ))}
+        </View>
         <Text style={styles.closing}>{LEGEND_CLOSING_LINE}</Text>
       </ScrollView>
     </View>
@@ -72,54 +78,64 @@ export default function LegendScreen(): React.JSX.Element {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.sand },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.md,
-    paddingHorizontal: spacing.lg,
-    paddingBottom: spacing.md,
-  },
+  screen: { flex: 1, backgroundColor: colors.paper },
+  content: {},
+  back: { paddingHorizontal: spacing.md },
   iconButton: {
     width: minTouchTarget,
     height: minTouchTarget,
-    borderRadius: minTouchTarget / 2,
-    backgroundColor: colors.paper,
-    borderWidth: 1,
-    borderColor: colors.line,
     alignItems: "center",
     justifyContent: "center",
   },
-  iconGlyph: { fontSize: 22, color: colors.ink },
+  iconGlyph: { fontSize: 30, lineHeight: 32, color: colors.ink, fontFamily: fontFamily.body },
   title: {
-    flex: 1,
-    fontSize: 20,
-    fontFamily: fontFamily.display,
-    fontWeight: "600",
+    paddingHorizontal: spacing.gutter,
+    paddingTop: 2,
+    fontSize: typeScale.title.fontSize,
+    lineHeight: typeScale.title.lineHeight,
+    letterSpacing: typeScale.title.letterSpacing,
+    fontFamily: typeScale.title.fontFamily,
+    fontWeight: typeScale.title.fontWeight,
     color: colors.ink,
   },
-  content: { paddingHorizontal: spacing.lg, gap: spacing.md },
-  intro: { fontSize: 13, color: colors.ink2, fontFamily: fontFamily.body, lineHeight: 19.5 },
-  row: { flexDirection: "row", alignItems: "flex-start", gap: spacing.sm },
-  chip: {
-    fontSize: 11,
-    fontWeight: "700",
+  intro: {
+    paddingHorizontal: spacing.gutter,
+    paddingTop: 6,
+    fontSize: 14.5,
+    lineHeight: 22,
+    fontWeight: "500",
     color: colors.ink2,
     fontFamily: fontFamily.body,
-    paddingTop: 2,
   },
+  rows: {
+    marginHorizontal: spacing.gutter,
+    marginTop: spacing.lg,
+    borderTopWidth: 1,
+    borderTopColor: colors.ink,
+  },
+  row: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: spacing.md,
+    paddingVertical: spacing.cozy,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.hair,
+  },
+  chipCol: { width: 116, alignItems: "flex-start" },
   rowText: {
     flex: 1,
-    fontSize: 13,
+    fontSize: 13.5,
     color: colors.ink2,
     fontFamily: fontFamily.body,
-    lineHeight: 19,
+    lineHeight: 20,
   },
   rowLabel: { color: colors.ink, fontWeight: "700" },
   closing: {
+    paddingHorizontal: spacing.gutter,
+    paddingTop: spacing.lg,
     fontSize: 12.5,
-    color: colors.ink3,
+    lineHeight: 17,
+    color: colors.ink2,
     fontFamily: fontFamily.body,
-    paddingTop: spacing.sm,
   },
 });

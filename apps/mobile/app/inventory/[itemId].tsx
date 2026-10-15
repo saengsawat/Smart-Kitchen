@@ -18,7 +18,15 @@ import type {
   StorageLocationDto,
 } from "@smart-kitchen/contracts";
 import { apiClient, type RemovalAction } from "../../src/api/client";
-import { colors, fontFamily, minTouchTarget, radius, spacing } from "../../src/design/tokens";
+import { chipHitSlop, provChipStyle } from "../../src/design/chips";
+import {
+  colors,
+  fontFamily,
+  minTouchTarget,
+  radius,
+  spacing,
+  typeScale,
+} from "../../src/design/tokens";
 import { useTabBarClearance } from "../../src/navigation/TabBar";
 import { GENERIC_READ_ERROR_MESSAGE, messageForLedgerError } from "../../src/inventory/errors";
 import {
@@ -430,6 +438,7 @@ export default function ItemDetailScreen(): React.JSX.Element {
           {REMOVAL_REASON_CHIPS.map((reason) => (
             <Pressable
               key={reason.type}
+              hitSlop={chipHitSlop}
               accessibilityRole="button"
               accessibilityLabel={reason.label}
               accessibilityState={{
@@ -463,6 +472,7 @@ export default function ItemDetailScreen(): React.JSX.Element {
             {REMOVAL_SUB_REASONS.map((sub) => (
               <Pressable
                 key={sub}
+                hitSlop={chipHitSlop}
                 accessibilityRole="button"
                 accessibilityLabel={sub}
                 onPress={() => void handleApplyReason(sub)}
@@ -479,6 +489,7 @@ export default function ItemDetailScreen(): React.JSX.Element {
           {otherLocations(summary.storageLocation).map((location) => (
             <Pressable
               key={location}
+              hitSlop={chipHitSlop}
               accessibilityRole="button"
               accessibilityLabel={`Move to ${LOCATION_LABELS[location]}`}
               accessibilityState={{ disabled: moving }}
@@ -506,19 +517,22 @@ export default function ItemDetailScreen(): React.JSX.Element {
               const urgency = expiryDisplayText(days, lotTier);
               return (
                 <View key={lot.lotId} style={styles.lotRow}>
-                  <View style={[styles.lotRing, ringStyleFor(ring)]} />
                   <View style={styles.lotMeta}>
                     <Text style={styles.lotAmount}>
                       {trimAmountText(lot.quantity.amount)} {lot.quantity.unit}
                     </Text>
-                    <Text style={styles.lotCaption}>
-                      {lot.label ?? "acquired"}
-                      {urgency ? ` · ${lotCaptionExpiry(urgency)}` : ""}
-                    </Text>
+                    <View style={styles.lotCaptionRow}>
+                      <Text style={styles.lotCaption}>{lot.label ?? "acquired"}</Text>
+                      {urgency ? (
+                        <Text style={[styles.days, daysStyleFor(ring)]}>
+                          {lotCaptionExpiry(urgency)}
+                        </Text>
+                      ) : null}
+                    </View>
                   </View>
                   {lotTier ? (
                     <Text
-                      style={styles.provChip}
+                      style={provChipStyle(lotTier)}
                       accessibilityLabel={chipAccessibilityLabel(lotTier)}
                     >
                       {ROW_CHIP_TEXT[lotTier]}
@@ -556,21 +570,28 @@ function Header({
   const insets = useSafeAreaInsets();
   return (
     <View style={[styles.header, { paddingTop: insets.top + spacing.md }]}>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="Back"
-        hitSlop={8}
-        onPress={onBack}
-        style={styles.iconButton}
-      >
-        <Text style={styles.iconGlyph}>{"‹"}</Text>
-      </Pressable>
-      <Text style={styles.headerTitle}>{title}</Text>
-      {chip ? (
-        <Text style={styles.provChip} accessibilityLabel={chipAccessibilityLabel(chip)}>
-          {ROW_CHIP_TEXT[chip]}
-        </Text>
-      ) : null}
+      <View style={styles.back}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Back"
+          hitSlop={8}
+          onPress={onBack}
+          style={styles.iconButton}
+        >
+          <Text style={styles.iconGlyph}>{"‹"}</Text>
+        </Pressable>
+      </View>
+      <View style={styles.titleBlock}>
+        <Text style={styles.headerTitle}>{title}</Text>
+        {chip ? (
+          <Text
+            style={[provChipStyle(chip), styles.titleChip]}
+            accessibilityLabel={chipAccessibilityLabel(chip)}
+          >
+            {ROW_CHIP_TEXT[chip]}
+          </Text>
+        ) : null}
+      </View>
     </View>
   );
 }
@@ -621,7 +642,7 @@ function HistoryRow({
             {/* Review F10: there is no "no chip" state (copy-deck.md §4);
                 the clamp is a fallible fact like any other row. */}
             <Text
-              style={styles.provChipSmall}
+              style={provChipStyle(tx.provenance.tier)}
               accessibilityLabel={chipAccessibilityLabel(tx.provenance.tier)}
             >
               {tierChip}
@@ -653,9 +674,6 @@ function HistoryRow({
 
   return (
     <View style={styles.historyRow}>
-      <View style={styles.historyIcon}>
-        <Text style={styles.historyIconGlyph}>{isNegative ? "−" : "+"}</Text>
-      </View>
       <View style={styles.historyMeta}>
         <Text style={styles.historyTitle}>{title}</Text>
         <View style={styles.historyCaptionRow}>
@@ -664,7 +682,7 @@ function HistoryRow({
           ) : null}
           {captionText ? <Text style={styles.historyCaption}>{captionText}</Text> : null}
           <Text
-            style={styles.provChipSmall}
+            style={provChipStyle(tx.provenance.tier)}
             accessibilityLabel={chipAccessibilityLabel(tx.provenance.tier)}
           >
             {tierChip}
@@ -679,254 +697,301 @@ function HistoryRow({
   );
 }
 
-function ringStyleFor(ring: ReturnType<typeof freshnessRing>): { borderColor: string } {
+/** v6 `.days`: rose (use today), amber (soon), green (further out), each on its tint. Never red. */
+function daysStyleFor(ring: ReturnType<typeof freshnessRing>): {
+  color: string;
+  backgroundColor: string;
+} {
   switch (ring) {
     case "now":
-      return { borderColor: colors.rose };
+      return { color: colors.rose, backgroundColor: colors.roseBg };
     case "soon":
-      return { borderColor: colors.amber };
+      return { color: colors.amber, backgroundColor: colors.amberBg };
     case "fresh":
-      return { borderColor: colors.green };
+      return { color: colors.green, backgroundColor: colors.greenBg };
     default:
-      return { borderColor: colors.line };
+      return { color: colors.ink2, backgroundColor: colors.tile };
   }
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.sand },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.md,
-    paddingHorizontal: spacing.lg,
-    paddingBottom: spacing.md,
-  },
+  screen: { flex: 1, backgroundColor: colors.paper },
+  header: { paddingHorizontal: spacing.gutter },
+  // v6 `.back`: the 44px back control sits 8px left of the gutter, no border.
+  back: { marginLeft: -spacing.sm },
   iconButton: {
     width: minTouchTarget,
     height: minTouchTarget,
-    borderRadius: minTouchTarget / 2,
-    backgroundColor: colors.paper,
-    borderWidth: 1,
-    borderColor: colors.line,
     alignItems: "center",
     justifyContent: "center",
   },
-  iconGlyph: { fontSize: 22, color: colors.ink },
+  iconGlyph: { fontSize: 30, lineHeight: 32, color: colors.ink, fontFamily: fontFamily.body },
+  // v6 `.itemhead`: Bodoni 44 title with the tier chip under it.
+  titleBlock: { paddingTop: 2, paddingBottom: spacing.xs, alignItems: "flex-start" },
   headerTitle: {
-    flex: 1,
-    fontSize: 20,
-    fontFamily: fontFamily.display,
-    fontWeight: "600",
+    fontSize: typeScale.title.fontSize,
+    lineHeight: typeScale.title.lineHeight,
+    letterSpacing: typeScale.title.letterSpacing,
+    fontFamily: typeScale.title.fontFamily,
+    fontWeight: typeScale.title.fontWeight,
     color: colors.ink,
   },
-  notFound: { padding: spacing.lg, fontSize: 14, color: colors.ink2, fontFamily: fontFamily.body },
-  content: { paddingHorizontal: spacing.lg, gap: spacing.sm },
+  titleChip: { marginTop: spacing.sm },
+  notFound: {
+    padding: spacing.gutter,
+    fontSize: 14,
+    color: colors.ink2,
+    fontFamily: fontFamily.body,
+  },
+  content: { paddingHorizontal: spacing.gutter },
+  // v6 `.qtybig`: Bodoni 46 between two ink rules.
   qtyBig: {
     flexDirection: "row",
     alignItems: "baseline",
-    gap: spacing.sm,
-    paddingVertical: spacing.sm,
+    gap: spacing.snug,
+    marginTop: 18,
+    paddingVertical: spacing.md,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: colors.ink,
   },
   qtyBigText: {
-    fontSize: 30,
-    fontFamily: fontFamily.display,
-    fontWeight: "600",
+    fontSize: typeScale.qtyBig.fontSize,
+    lineHeight: typeScale.qtyBig.lineHeight,
+    fontFamily: typeScale.qtyBig.fontFamily,
+    fontWeight: typeScale.qtyBig.fontWeight,
     color: colors.ink,
   },
-  qtyBigSub: { fontSize: 13, color: colors.ink3, fontFamily: fontFamily.body },
+  qtyBigSub: { fontSize: 13.5, fontWeight: "600", color: colors.ink2, fontFamily: fontFamily.body },
+  // The AI confirmation tray (v6 `.tray`): AI tint, 14px corners, ai-ink text.
   confirmRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     gap: spacing.sm,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.line,
-    backgroundColor: colors.sand2,
-    padding: spacing.sm,
+    marginTop: spacing.cozy,
+    borderRadius: radius.panel,
+    backgroundColor: colors.aiBg,
+    paddingVertical: spacing.snug,
+    paddingHorizontal: spacing.cozy,
   },
   confirmText: {
     flex: 1,
-    fontSize: 12.5,
+    fontSize: 13.5,
     fontWeight: "700",
-    color: colors.ink,
+    color: colors.ai,
     fontFamily: fontFamily.body,
   },
+  // v6 `.okb`: ink pill, 44px.
   confirmButton: {
-    minHeight: minTouchTarget - 4,
-    paddingHorizontal: spacing.md,
-    borderRadius: radius.sm,
-    backgroundColor: colors.brandDeep,
+    minHeight: minTouchTarget,
+    minWidth: 56,
+    paddingHorizontal: spacing.cozy,
+    borderRadius: radius.pill,
+    backgroundColor: colors.ink,
     alignItems: "center",
     justifyContent: "center",
   },
   confirmButtonText: {
-    color: colors.cream,
+    color: colors.white,
     fontSize: 13,
     fontWeight: "700",
     fontFamily: fontFamily.body,
   },
-  whyBlock: {
-    backgroundColor: colors.paper,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.line,
-    padding: spacing.md,
-    gap: spacing.xs,
-  },
-  whyText: { fontSize: 12.5, color: colors.ink2, fontFamily: fontFamily.body, lineHeight: 18 },
+  // v6 `.whyplain`: unboxed, 13.5 / 1.55 in ink2.
+  whyBlock: { marginTop: spacing.cozy, gap: spacing.xs },
+  whyText: { fontSize: 13.5, color: colors.ink2, fontFamily: fontFamily.body, lineHeight: 21 },
   legendLink: {
-    fontSize: 12.5,
-    color: colors.ink2,
+    fontSize: 13.5,
+    fontWeight: "600",
+    color: colors.ink,
     fontFamily: fontFamily.body,
     textDecorationLine: "underline",
   },
+  // v6 `.sec`: Bodoni 25 over a 1px ink rule, 30px below the previous block.
   sectionHeading: {
-    fontSize: 16,
-    fontFamily: fontFamily.display,
-    fontWeight: "600",
+    marginTop: spacing.section,
+    paddingBottom: 6,
+    fontSize: typeScale.section.fontSize,
+    lineHeight: typeScale.section.lineHeight,
+    fontFamily: typeScale.section.fontFamily,
+    fontWeight: typeScale.section.fontWeight,
     color: colors.ink,
-    paddingTop: spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.ink,
   },
+  // v6 `.boxed`: a 1px ink box, square, 16px padding.
   card: {
-    backgroundColor: colors.paper,
-    borderRadius: radius.md,
+    marginTop: spacing.md,
+    padding: spacing.lg,
     borderWidth: 1,
-    borderColor: colors.line,
-    padding: spacing.md,
-    gap: spacing.sm,
+    borderColor: colors.ink,
+    gap: spacing.md,
   },
-  cardBody: { fontSize: 12.5, color: colors.ink2, fontFamily: fontFamily.body, lineHeight: 18 },
+  cardBody: { fontSize: 13.5, color: colors.ink2, fontFamily: fontFamily.body, lineHeight: 20 },
   // Non-colour affordance (no danger/rose here: a ledger write error is
   // neither an allergen verdict nor an expiry cue, same reasoning as
-  // onboarding's noticeBox pattern): an icon plus a sand2-bordered container.
+  // onboarding's noticeBox pattern): an icon plus an ink2-bordered tile panel
+  // (v6 `.offbar`).
   noticeBox: {
     flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.sm,
-    borderRadius: radius.sm,
+    alignItems: "flex-start",
+    gap: spacing.snug,
+    marginTop: spacing.md,
     borderWidth: 1,
-    borderColor: colors.line,
-    backgroundColor: colors.sand2,
-    padding: spacing.sm,
+    borderColor: colors.ink2,
+    backgroundColor: colors.tile,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.cozy,
   },
   noticeIcon: { fontSize: 14, color: colors.ink },
   noticeText: {
     flex: 1,
-    fontSize: 12.5,
+    fontSize: 13,
+    lineHeight: 19,
     fontWeight: "700",
     color: colors.ink,
     fontFamily: fontFamily.body,
   },
-  stepperRow: { flexDirection: "row", alignItems: "center", gap: spacing.md },
+  stepperRow: { flexDirection: "row", alignItems: "center", gap: spacing.cozy },
+  // v6 `.step button`: 44px circle, 1.5px ink border, 20 / 600 glyph.
   stepButton: {
     width: minTouchTarget,
     height: minTouchTarget,
-    borderRadius: radius.sm,
-    borderWidth: 1,
-    borderColor: colors.line,
-    backgroundColor: colors.sand2,
+    borderRadius: radius.pill,
+    borderWidth: 1.5,
+    borderColor: colors.ink,
     alignItems: "center",
     justifyContent: "center",
   },
-  stepButtonText: { fontSize: 20, color: colors.ink, fontFamily: fontFamily.body },
+  stepButtonText: {
+    fontSize: 20,
+    lineHeight: 22,
+    fontWeight: "600",
+    color: colors.ink,
+    fontFamily: fontFamily.body,
+  },
+  // v6 `.step b` (Bodoni 26) on an editable field: bottom rule like `.inp`.
   amountInput: {
     flex: 1,
     minWidth: 72,
     minHeight: minTouchTarget,
-    borderRadius: radius.sm,
-    borderWidth: 1,
-    borderColor: colors.line,
-    backgroundColor: colors.paper,
-    paddingHorizontal: spacing.sm,
+    borderBottomWidth: 1.5,
+    borderBottomColor: colors.ink,
+    paddingHorizontal: 2,
     textAlign: "center",
-    fontSize: 20,
-    fontWeight: "700",
+    fontSize: typeScale.stepper.fontSize,
+    fontFamily: typeScale.stepper.fontFamily,
+    fontWeight: typeScale.stepper.fontWeight,
     color: colors.ink,
-    fontFamily: fontFamily.body,
   },
-  amountInputInvalid: { borderColor: colors.danger },
-  amountHint: { fontSize: 12, color: colors.danger, fontFamily: fontFamily.body },
-  stepUnit: { fontSize: 13, color: colors.ink3, fontFamily: fontFamily.body },
+  // Invalid input stays ink, heavier: danger is allergen-only (tokens.md section 5).
+  amountInputInvalid: { borderBottomWidth: 3 },
+  amountHint: { fontSize: 12.5, fontWeight: "600", color: colors.ink, fontFamily: fontFamily.body },
+  // v6 `.unitlbl`: 14 / 600 ink2.
+  stepUnit: { fontSize: 14, fontWeight: "600", color: colors.ink2, fontFamily: fontFamily.body },
+  // v6 `.btn.pri.wide`: ink pill, 52px.
   primaryButton: {
-    minHeight: minTouchTarget,
-    borderRadius: 14,
-    backgroundColor: colors.brandDeep,
+    minHeight: 52,
+    borderRadius: radius.pill,
+    borderWidth: 1.5,
+    borderColor: colors.ink,
+    backgroundColor: colors.ink,
     alignItems: "center",
     justifyContent: "center",
   },
-  primaryButtonDisabled: { backgroundColor: colors.line },
+  primaryButtonDisabled: { backgroundColor: colors.ink3, borderColor: colors.ink3 },
   primaryButtonText: {
-    color: colors.cream,
-    fontSize: 15,
+    color: colors.white,
+    fontSize: typeScale.button.fontSize,
     fontWeight: "700",
     fontFamily: fontFamily.body,
   },
-  chipsRow: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm },
+  // v6 `.chips.wrap` and `.chip`: 1.5px ink outline pills, 40px (hit slop to 44).
+  chipsRow: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm, marginTop: spacing.md },
   chip: {
-    minHeight: minTouchTarget,
-    paddingHorizontal: spacing.md,
+    minHeight: 40,
+    paddingHorizontal: 15,
     borderRadius: radius.pill,
-    borderWidth: 1,
-    borderColor: colors.line,
-    backgroundColor: colors.paper,
+    borderWidth: 1.5,
+    borderColor: colors.ink,
+    backgroundColor: "transparent",
     alignItems: "center",
     justifyContent: "center",
   },
-  chipOn: { backgroundColor: colors.espresso, borderColor: colors.espresso },
+  chipOn: { backgroundColor: colors.ink },
   chipDisabled: { opacity: 0.4 },
-  chipText: { fontSize: 12.5, fontWeight: "600", color: colors.ink2, fontFamily: fontFamily.body },
-  chipTextOn: { color: colors.cream },
+  chipText: { fontSize: 13.5, fontWeight: "600", color: colors.ink, fontFamily: fontFamily.body },
+  chipTextOn: { color: colors.white },
+  // v6 `.row` (lots): hairline-ruled, 60px minimum.
   lotRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: spacing.sm,
-    paddingVertical: spacing.xs,
+    gap: spacing.md,
+    minHeight: 60,
+    paddingVertical: spacing.snug,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.hair,
   },
-  lotRing: { width: 32, height: 32, borderRadius: 16, borderWidth: 2 },
-  lotMeta: { flex: 1, gap: 1 },
-  lotAmount: { fontSize: 14, fontWeight: "700", color: colors.ink, fontFamily: fontFamily.body },
-  lotCaption: { fontSize: 11.5, color: colors.ink3, fontFamily: fontFamily.body },
-  provChip: { fontSize: 11, fontWeight: "700", color: colors.ink2, fontFamily: fontFamily.body },
-  provChipSmall: {
-    fontSize: 10.5,
-    fontWeight: "700",
-    color: colors.ink3,
-    fontFamily: fontFamily.body,
-  },
-  historyRow: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: spacing.sm,
-    paddingVertical: spacing.sm,
-    borderTopWidth: 1,
-    borderTopColor: colors.line,
-  },
-  historyRowSystem: { backgroundColor: colors.sand2 },
-  historyIcon: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: colors.paper,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  historyIconGlyph: { fontSize: 13, color: colors.ink2 },
-  historyMeta: { flex: 1, gap: 2 },
-  historyTitleRow: { flexDirection: "row", alignItems: "center", gap: spacing.xs },
-  historyTitle: {
-    fontSize: 13.5,
+  lotMeta: { flex: 1, gap: 3 },
+  lotAmount: {
+    fontSize: typeScale.rowTitle.fontSize,
+    lineHeight: typeScale.rowTitle.lineHeight,
     fontWeight: "700",
     color: colors.ink,
     fontFamily: fontFamily.body,
   },
+  lotCaptionRow: { flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: spacing.sm },
+  lotCaption: { fontSize: 13, lineHeight: 17, color: colors.ink2, fontFamily: fontFamily.body },
+  // v6 `.days`: 12px 700 uppercase pill, tinted by the expiry ladder.
+  days: {
+    fontSize: typeScale.chip.fontSize,
+    lineHeight: 12,
+    fontWeight: "700",
+    fontFamily: fontFamily.body,
+    letterSpacing: 12 * 0.12,
+    textTransform: "uppercase",
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    borderRadius: radius.pill,
+    overflow: "hidden",
+  },
+  // v6 `.led`: ruled ledger rows; the system adjustment sits on a tile.
+  historyRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: spacing.snug,
+    paddingVertical: spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.hair,
+  },
+  historyRowSystem: { backgroundColor: colors.tile, paddingHorizontal: spacing.snug },
+  historyIcon: { width: 20, alignItems: "center", paddingTop: 1 },
+  historyIconGlyph: { fontSize: 14, color: colors.ink2 },
+  historyMeta: { flex: 1, gap: 3 },
+  historyTitleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.xs,
+    flexWrap: "wrap",
+  },
+  historyTitle: {
+    fontSize: 14.5,
+    lineHeight: 18,
+    fontWeight: "700",
+    color: colors.ink,
+    fontFamily: fontFamily.body,
+  },
+  // v6 `.msrc`: 12 / 700 uppercase on a tile, square.
   autoBadge: {
-    fontSize: 10,
+    fontSize: typeScale.chip.fontSize,
     fontWeight: "700",
     color: colors.ink2,
-    backgroundColor: colors.sand,
-    borderRadius: 4,
-    paddingHorizontal: 4,
+    backgroundColor: colors.paper,
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    letterSpacing: 12 * 0.08,
+    textTransform: "uppercase",
     overflow: "hidden",
   },
   historyCaptionRow: {
@@ -935,22 +1000,32 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
     flexWrap: "wrap",
   },
-  historyCaption: { fontSize: 11.5, color: colors.ink2, fontFamily: fontFamily.body },
+  historyCaption: {
+    fontSize: 12.5,
+    lineHeight: 20,
+    color: colors.ink2,
+    fontFamily: fontFamily.body,
+  },
+  // v6 `.mchip`: 26px ink disc, white initials.
   initialsChip: {
-    fontSize: 10,
+    width: 26,
+    height: 26,
+    borderRadius: radius.pill,
+    backgroundColor: colors.ink,
+    color: colors.white,
+    textAlign: "center",
+    lineHeight: 26,
+    fontSize: 12,
     fontWeight: "700",
-    color: colors.ink,
-    backgroundColor: colors.sand2,
-    borderRadius: 4,
-    paddingHorizontal: 4,
+    fontFamily: fontFamily.body,
     overflow: "hidden",
   },
-  historyTime: { fontSize: 10.5, color: colors.ink3, fontFamily: fontFamily.body },
+  historyTime: { fontSize: 12.5, color: colors.ink2, fontFamily: fontFamily.body },
   amtPositive: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: "700",
     color: colors.green,
     fontFamily: fontFamily.body,
   },
-  amtNegative: { fontSize: 13, fontWeight: "700", color: colors.ink, fontFamily: fontFamily.body },
+  amtNegative: { fontSize: 14, fontWeight: "700", color: colors.ink, fontFamily: fontFamily.body },
 });
