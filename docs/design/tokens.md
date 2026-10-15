@@ -285,7 +285,7 @@ v5's scarcity rule policed a terracotta brand colour. v6 has no brand colour, so
 6. **Dark surfaces are the camera screen and ink controls only.** The v5 "one large dark surface" (espresso Home hero) is retired. `#121212` is allowed behind the live camera; ink is allowed as a button, toast or avatar fill. No dark hero, card or banner. PROPOSED.
 7. **Ink rules structure the page, hairlines divide rows.** A 1px ink rule marks a section head, the nav top edge, a stat band or a macro band; a 1px `--hair` rule separates rows inside a list. Tinted panels use `--tile` for neutral content and a semantic tint only for its own meaning. PROPOSED.
 
-**One v6 exception that breaks rule 1 (flag):** the pantry banner `.loop` ("Olive oil checked off · add it to the pantry?") fills its **Add** button with `--green` (hover `#235f3d`) while every other action in v6 is ink. It passes contrast (rows 31, 32). PROPOSED decision for the architect: keep green as a positive-confirmation exception, or move the button to ink. Not decided here.
+**The one exception to rule 1 (DECIDED, Andy, 2026-10-14, D-033 amendment c):** the pantry banner `.loop` ("Olive oil checked off · add it to the pantry?") fills its **Add** button with `--green` (hover `#235f3d`) on purpose, as a positive confirmation. It passes contrast (rows 31, 32). Green fill on an action is allowed on that banner only.
 
 **Colour-bearing rules in v6 and their classification:**
 
@@ -301,9 +301,9 @@ v5's scarcity rule policed a terracotta brand colour. v6 has no brand colour, so
 
 ## 6. Semantic decisions carried forward, and what v6 changed in use
 
-Values are unchanged. Three **uses** changed between v5 and v6; they narrow colour, they do not widen it. Recorded so the architect can confirm each (CLAUDE.md rule 4: none of these is a decision made here).
+Values are unchanged. Some **uses** changed between v5 and v6. Item 1 was reverted by the PO (red stays); the rest stand as listed.
 
-1. **Allergen red on allergy selection controls (v5 section 4 item 1) is gone.** In v5 `.allergychip.on` and `.sevbtn.on` were `--danger`. In v6 the allergen chips and severity buttons are ordinary chips: a selected state is ink fill (`.chip[aria-pressed=true]`, `.sev button[aria-pressed=true]`). Allergen red now appears only where a verdict is shown. This keeps "red only for allergens" true, and it means a declared allergy is no longer drawn red while it is being entered. PROPOSED: accept, since the allergen severity words ("severe") still appear in text.
+1. **Allergen red on allergy selection controls stays (DECIDED, Andy, 2026-10-14, D-033 amendment a).** In v5 `.allergychip.on` and `.sevbtn.on` were `--danger`. The v6 prototype drew them as ordinary ink chips; that was an error in the v6 pass. A selected allergen chip and a selected severity button use `--danger` fill with white text, as in v5. The prototype is corrected to match and M3-T13 builds red.
 2. **The none-of-the-above allergy option (v5 section 4 item 2, left to the PO between a green check and an ink check) is drawn in ink in v6** (`.noneopt[aria-pressed=true] .box` is ink fill). That is option (b), the neutral check, which removes the "green check beside allergy copy" ambiguity. The PO choice was never recorded as decided. PROPOSED: record option (b) as adopted by D-033.
 3. **The shopping check-off (`.chk`, v5 section 4 item 3) is ink in v6, not green.** The green positive sentiment now shows on the "have" chip and the pantry banner only.
 4. **`--rose` versus `--danger` boundary.** Verified by direct grep of the v6 stylesheet: every `--danger` use is allergen context (5 CSS rules, 2 inline styles on blocked lines); the only `--rose` use is `.days.now`. **Zero crossover.** The M3 typed module should forbid `danger` outside allergen-named components (design-direction section 4).
