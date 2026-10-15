@@ -81,7 +81,7 @@ _Finished tickets moved to [BACKLOG_ARCHIVE.md](BACKLOG_ARCHIVE.md): M3-E0, M3-E
 - **Out of scope:** copy-deck, tokens or ux-plan edits (proposed in the report, applied by the architect); any `apps/**` change; the build tickets (MealPlan API and menu-to-gap rule, Opus; diet preference storage and prompt context, Sonnet; shopping rows from menu, M7-T2), written after v6 is accepted.
 - **DoD:** rule 26; PO and Dean have seen v7; the architect writes the build tickets at acceptance.
 
-#### M3-E0-T7: KitchenSmart design kit (DESIGN.md, light and dark token previews, README) from prototype v6 (design, docs only)
+#### M3-E0-T7: Smart Kitchen design kit (DESIGN.md, light and dark token previews, README) from prototype v6 (design, docs only)
 *Written 2026-10-14 at Andy's request, modelled on the awesome-design-md Airbnb sample (DESIGN.md, preview.html, preview-dark.html, README.md). Runs after M3-E0-T6 so DESIGN.md quotes measured values; M3-T13 works from it.*
 - **Implementation model:** Sonnet, `sk-worker` using the impeccable skill (its documenter approach: derive the system from the shipped artifact, not from intentions). Transcribing and presenting values; no product logic.
 - **Review model:** Sonnet. No rule-23 surface; the reviewer checks every value against the v6 prototype's CSS, every safety and semantic rule against D-021 and D-033, and re-runs impeccable detect.
@@ -98,6 +98,20 @@ _Finished tickets moved to [BACKLOG_ARCHIVE.md](BACKLOG_ARCHIVE.md): M3-E0, M3-E
 - **File scope:** `docs/design/design-md/**` (the four files and a `screenshots/` folder), `docs/handoff/M3-E0-T7.worker.md`.
 - **Out of scope:** changing tokens.md, design-direction.md or the prototype (the report proposes: design-direction.md §0 marked as replaced by D-033 with a pointer to the kit; any value the worker finds missing from tokens.md); a dark mode for the app; an `/impeccable critique` or `polish` pass (not wanted; detect is the QC bar).
 - **DoD:** rule 26; Andy has opened both previews before acceptance.
+
+#### M3-E0-T8: Prototype v6 fixes from the token sheet (red allergy controls, name, contrast flags) (design, docs only)
+*Written 2026-10-14 from the M3-E0-T6 flags and the D-033 amendment (Andy, 2026-10-14). Runs beside M3-E0-T7 (disjoint files); M3-T13 builds from the fixed prototype.*
+- **Implementation model:** Sonnet. Small CSS and string edits in one HTML file; no product logic.
+- **Review model:** Sonnet. No rule-23 surface; the reviewer checks each fix against tokens.md section 4 and the D-033 amendment, re-measures the changed pairs and re-runs impeccable detect.
+- **Objective:** fix `docs/design/mockups/smart-kitchen-prototype.html` (v6) in place: (a) a selected allergen chip and a selected severity button use `--danger` fill with white text, as v5's `.allergychip.on` / `.sevbtn.on` did (`docs/design/mockups/Archives/smart-kitchen-prototype-v5.html`); every other chip stays ink; (b) every "KitchenSmart" reads "Smart Kitchen"; (c) tokens.md section 4 row 22: drop the `opacity: .75` on the blocked row in the Sun dinner sheet so "Blocked for Maya · not selectable" is full strength; (d) row 45: a light focus ring (`#f3f1ec`) on the camera screen only; (e) row 46: `.iconb.round` and `.rmv` get an `--ink2` border, `--hair` stays for dividers.
+- **Context:** D-033 and its 2026-10-14 amendment, D-021 in DECISIONS.md; tokens.md sections 1, 4 and 6; the v5 archive for the red control styles.
+- **Dependencies:** M3-E0-T6 accepted.
+- **Invariants:** no other visual or copy change; allergen red only on allergen controls and verdicts; zero em dashes; no app code.
+- **Acceptance criteria:** each of (a) to (e) visible in the prototype; the changed pairs measured (white on `--danger` for (a), the three fixed rows) and all pass; `grep KitchenSmart` returns nothing; `impeccable detect` on the prototype shows no new findings, or each is fixed or explained in the report; reviewer re-runs it.
+- **Tests required:** none automated. The report includes the measured pairs, the detect output, the grep and a 390px screenshot of the allergy picker with a chip and a severity selected.
+- **File scope:** `docs/design/mockups/smart-kitchen-prototype.html`, `docs/handoff/M3-E0-T8.worker.md`.
+- **Out of scope:** tokens.md and copy-deck edits (proposed in the report, applied by the architect); any `apps/**` change; other prototype polish.
+- **DoD:** rule 26.
 
 ### M3 — Basic client inventory experience
 **Build opened 2026-09-21 (D-023) for the locked screens; source of truth for every screen is prototype v4 (`docs/design/mockups/smart-kitchen-prototype.html`; **v5 since 2026-10-08**, M3-E0-T4, same path; **v6 since 2026-10-13**, D-033, same path, for structure and copy, while colours and fonts come from `tokens.ts` until M3-T13) and, for every allergen/provenance string, [copy-deck.md](docs/design/copy-deck.md). Held until Dean's list is triaged: Menu page internals (D-020) and Home dashboard states (OQ-D9).** Build order: M3-T1 scaffold + tokens + shell → M3-T2 onboarding (S1, S2) → M3-T3 inventory list + item detail (S4, S5) → M3-T4 add food (S6 to S9) → M3-T5 shopping (S11) → M3-T6 profile (S12); Menu and Home tickets written when D-020 is ratified. Client talks to the API of M2-T1 onward through fixture identity (D-022); until an endpoint exists, screens read from `packages/adapters` fixtures behind the same client port.
