@@ -365,8 +365,8 @@ ${dark ? '<p class="notice"><b>Reference rendering, not a shipped theme.</b> The
 
 <div class="sec"><h2 class="serif">Buttons, chips, pills</h2></div>
 <div class="cols"><div class="demo">
-<div class="btns"><button class="btn">Cancel</button><button class="btn pri">Log meal</button></div>
-<div class="row2"><button class="okb">Confirm</button><button class="okb ghost">Edit</button></div>
+<div class="btns"><button class="btn">Cancel</button><button class="btn pri">Log meal, record deductions</button></div>
+<div class="row2"><button class="okb">Yes</button><button class="okb ghost">Edit</button></div>
 <div class="row2"><span class="chip">Fridge</span><span class="chip is-on">Weekend</span><span class="chip alg-on">Peanut</span></div>
 <div class="row2"><span class="sevbtn">Standard</span><span class="sevbtn alg-on">Severe</span><span class="ring">Focus ring</span></div>
 <p class="note">A selected allergen chip is a danger-bg fill with danger text and border; a selected severity button is a solid danger fill with white text (v5 values, D-033 amendment 2026-10-14). Every other selected control is ink. Chips here are static samples; in the app each carries a 44px hit area.</p>
@@ -375,7 +375,7 @@ ${dark ? '<p class="notice"><b>Reference rendering, not a shipped theme.</b> The
 </div><div class="demo">
 <div class="row2" style="margin-top:14px"><span class="days now">Today</span><span class="days soon">2 days</span><span class="days ok">10 days</span></div>
 <div class="row2"><span class="prov fact">✓ Fact</span><span class="prov est">≈ Est.</span><span class="prov ai">AI · confirm</span><span class="prov alg">${ico('i-warn', 12, 2.4, 'stroke-linecap="round"')}Allergen</span></div>
-<div class="row2"><span class="stat have">Have</span><span class="stat shortby">Short by</span><span class="stat list">On list</span><span class="stat staple">Not tracked</span></div>
+<div class="row2"><span class="stat have">have</span><span class="stat shortby num">short 0.75 lb</span><span class="stat list">On list</span><span class="stat staple">not tracked</span></div>
 <div class="row2"><span class="msrc">Tonight</span><span class="msrc">Weekend menu</span></div>
 <p class="note">Fact, Est. and AI chips go on every fallible fact. Each pairs a glyph or words with its colour, so colour is never the only signal.</p>
 </div></div>
@@ -397,29 +397,29 @@ ${dark ? '<p class="notice"><b>Reference rendering, not a shipped theme.</b> The
 <div class="row"><span class="th">S</span><span><b>Strawberries</b><span class="q num">1 lb <span class="days now">Today</span></span></span><span class="prov ai">AI · confirm</span></div>
 <div class="row"><span class="th">B</span><span><b>Basmati rice</b><span class="q num">~4 cups · qty derived from 2 meals</span></span><span class="prov est">≈ Est.</span></div>
 </div>
-<div class="stats"><div><span class="v">12</span><span class="l">In stock</span></div><div><span class="v">3</span><span class="l">Use soon</span></div><div><span class="v">2</span><span class="l">To confirm</span></div></div>
+<div class="stats"><div><span class="v">4</span><span class="l">use this week</span></div><div><span class="v">5</span><span class="l">to buy</span></div><div><span class="v">67%</span><span class="l">verified</span></div></div>
 </div><div class="demo">
 <div class="grp" style="margin-top:14px"><h3 class="serif">Shopping</h3></div>
 <div class="srow"><span class="chk"><span></span></span><span class="th">C</span><div><b>Chicken breast</b><div class="s num"><span class="msrc">Tonight</span>need 2 lb · have 1.25 lb</div></div><div class="amt num">0.75 lb</div></div>
 <div class="srow"><span class="chk"><span></span></span><span class="th">B</span><div><b>Broccoli</b><div class="s"><span class="msrc">Weekend menu</span>miso salmon · none on hand</div></div><div class="amt num">2 lb</div></div>
 <div class="tray"><div class="trh"><b>${ico('i-spark', 14, 2)}Needs your confirmation</b><span class="prov ai">AI read · 2</span></div>
-<div class="ci"><span class="th">M</span><span class="m"><b>Mushrooms</b><i>AI read from your photo</i></span><button class="okb">Confirm</button></div>
-<div class="foot2">A proposal until you confirm it.</div></div>
+<div class="ci"><span class="th">M</span><span class="m"><b>Mushrooms · 8 oz?</b><i>receipt read "CREMINI MUSHRM 8OZ"</i></span><button class="okb">Yes</button></div>
+<div class="foot2">Nothing enters your inventory as fact until you say so.</div></div>
 </div></div>
 
 <div class="sec"><h2 class="serif">Photo tiles</h2></div>
-<div class="cols"><div class="demo"><div class="tiles"><div class="tile"><span class="ti">C</span><span class="cap num"><b>Chicken</b>1.25 lb</span></div><div class="tile"><span class="ti">S</span><span class="cap num"><b>Spinach</b>5 oz</span></div><div class="tile"><span class="ti">M</span><span class="cap num"><b>Mushrooms</b>8 oz</span></div><div class="tile short"><span class="ti">G</span><span class="cap num"><b>Garlic</b>short</span></div></div>
+<div class="cols"><div class="demo"><div class="tiles"><div class="tile"><span class="ti">C</span><span class="cap num"><b>Chicken</b>1.25 lb</span></div><div class="tile"><span class="ti">S</span><span class="cap num"><b>Spinach</b>5 oz</span></div><div class="tile"><span class="ti">M</span><span class="cap num"><b>Mushrooms</b>8 oz</span></div><div class="tile short"><span class="ti">C</span><span class="cap num"><b>Chicken</b>0.75 lb short</span></div></div>
 <p class="note">Square, radius 0. A real photo replaces the initial.</p></div>
 <div class="demo"><div class="hero">C<span class="pct num">92<small>% coverage</small></span></div></div></div>
 
 <div class="sec"><h2 class="serif">Add food, input, sheet, tab bar</h2></div>
 <div class="cols"><div class="demo">
-<button class="addprimary"><span class="ap"><b>Scan barcode</b><span>Fastest way to add food</span></span>${ico('i-scan', 26, 1.9)}</button>
+<button class="addprimary"><span class="ap"><b>Scan barcode</b><span>Product facts fill in from the label database</span></span>${ico('i-scan', 26, 1.9)}</button>
 <div style="border-top:1px solid var(--ink);margin-top:14px"><button class="arow">${ico('i-pen', 22, 1.9, ROUND)}<span class="am"><b>Type it in</b><span>Always available, never blocked</span></span></button>
 <div class="arow soon">${ico('i-receipt', 22, 1.9, ROUND)}<span class="am"><b>Scan receipt</b><span>One photo adds the whole grocery run</span></span></div></div>
-<div class="field"><div class="fl"><span>Item name</span></div><input class="inp" placeholder="Olive oil" aria-label="Item name"></div>
+<div class="field"><div class="fl"><span>Name</span></div><input class="inp" aria-label="Name"></div>
 </div><div class="demo">
-<div class="sheetdemo"><div class="sheet"><h2 class="serif">Cook this</h2><div class="btns" style="margin-top:0"><button class="btn">Cancel</button><button class="btn pri">Log meal</button></div></div></div>
+<div class="sheetdemo"><div class="sheet"><h2 class="serif">Cook this · confirm deductions</h2><div class="btns" style="margin-top:0"><button class="btn">Cancel</button><button class="btn pri">Log meal, record deductions</button></div></div></div>
 <div class="toast">Olive oil added to Pantry · inventory updated</div>
 <nav class="nav" aria-label="Sample tab bar"><button aria-current="page">${ico('i-home', 22, 1.8, ROUND)}Home</button><button>${ico('i-inv', 22, 1.8, ROUND)}Inventory</button><button class="add" aria-label="Add food"><span class="disc">${ico('i-scan', 22, 2, 'stroke-linecap="round"')}</span></button><button>${ico('i-menu', 22, 1.8, ROUND)}Menu</button><button>${ico('i-shop', 22, 1.8, ROUND)}Shopping</button></nav>
 </div></div>
