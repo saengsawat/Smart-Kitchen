@@ -47,11 +47,13 @@ pnpm install --frozen-lockfile
 
 ### Step 2: Create a practice database (once, the first time only)
 
-This makes a throwaway Postgres database in your temp folder. It doesn't touch
+This makes a practice Postgres database in `D:\SmartKitchenData`, outside the
+repo. Not in your temp folder: Windows cleans old files out of temp on its own
+and that breaks the database. It doesn't touch
 the Postgres already installed on your PC or its data.
 
 ```powershell
-& "C:\Program Files\PostgreSQL\17\bin\initdb" -D "$env:TEMP\skpg" -U postgres --auth=trust -E UTF8
+& "C:\Program Files\PostgreSQL\17\bin\initdb" -D "D:\SmartKitchenData\pg" -U postgres --auth=trust -E UTF8
 ```
 
 ### Step 3: Window 1, start the database and the API
@@ -61,7 +63,7 @@ the Postgres already installed on your PC or its data.
 cd D:\06_Smart-Kitchen
 
 # start the practice database (do this again after every PC restart)
-& "C:\Program Files\PostgreSQL\17\bin\pg_ctl" -D "$env:TEMP\skpg" -o "-p 55432" -l "$env:TEMP\skpg.log" start
+& "C:\Program Files\PostgreSQL\17\bin\pg_ctl" -D "D:\SmartKitchenData\pg" -o "-p 55432" -l "D:\SmartKitchenData\pg.log" start
 
 # tell the API where the database is
 $env:DATABASE_URL = "postgres://postgres@localhost:55432/postgres"
@@ -120,10 +122,10 @@ again. Reloading isn't enough.
 You only need Step 3 (window 1) and Step 5 (window 2) again. Skip Step 2.
 
 To stop everything: `Ctrl+C` in both windows, then
-`& "C:\Program Files\PostgreSQL\17\bin\pg_ctl" -D "$env:TEMP\skpg" stop`.
+`& "C:\Program Files\PostgreSQL\17\bin\pg_ctl" -D "D:\SmartKitchenData\pg" stop`.
 
 To start the practice database from scratch, stop it and delete the folder
-`%TEMP%\skpg`, then go back to Step 2.
+`D:\SmartKitchenData\pg`, then go back to Step 2.
 
 ---
 
