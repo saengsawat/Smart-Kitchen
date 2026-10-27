@@ -1,0 +1,312 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Foundation Revisit</title>
+<link rel="stylesheet" href="../assets/cookbook-docs.css">
+<style>
+.piece { margin-top: 36px; border-top: 1px solid var(--hair); }
+.piece h3 { margin-top: 16px; }
+.k { font-weight: 700; }
+.box-ex { fill: var(--paper); stroke: var(--green); stroke-width: 1.5; rx: 0; }
+.box-new { fill: var(--paper); stroke: var(--ink); stroke-width: 1.5; stroke-dasharray: 7 5; rx: 0; }
+.box-hub { fill: var(--tile); stroke: var(--ink); stroke-width: 2.5; stroke-dasharray: 7 5; rx: 0; }
+.ttl { fill: var(--ink); font-family: var(--serif); font-size: 18px; font-weight: 500; }
+.sub { fill: var(--ink2); font-size: 12.5px; }
+.badge-new { fill: var(--ink); font-size: 12px; font-weight: 700; letter-spacing: .04em; }
+.badge-ex { fill: var(--green); font-size: 12px; font-weight: 700; letter-spacing: .04em; }
+.edge { stroke: var(--ink2); stroke-width: 1.6; fill: none; }
+.elab { fill: var(--ink); font-size: 12px; }
+.arrowhead { fill: var(--ink2); }
+</style>
+</head>
+<body>
+<nav class="sk-bar" aria-label="Smart Kitchen docs"><div class="sk-bar-in">
+<a class="sk-mark" href="../architecture/blueprint.html">Smart Kitchen</a>
+<div class="sk-nav"><a href="../architecture/blueprint.html">Blueprint</a><a href="../architecture/database.html">Database</a><a href="foundation-revisit-2026-10-20.html" aria-current="page">Foundation revisit</a><a href="../architecture/workflow-diagrams.html">How it's built</a></div>
+</div></nav>
+<main class="sk-page">
+
+<header class="sk-head">
+<h1>Foundation revisit for the menu loop</h1>
+<p class="sk-by">Smart Kitchen · Architect (Buddy) for Andy · 2026-10-20 · docs only</p>
+<p class="sk-lead">What the app needs underneath before Menu planning, plan-driven shopping and cooking can be built: seven foundation pieces, Andy's 2026-10-20 answers for Dean, the 14 conflicts from Dean's v3 document re-run against this foundation, and the decisions to make in one pass.</p>
+</header>
+
+<div class="sk-panel amber"><strong>Status: PROPOSED. Nothing here is decided.</strong> DECISIONS.md, the PRD, domain-model.md, ADRs, BACKLOG.md and M3-E0-T5 are unchanged by this page (Andy, 2026-10-19: hold until the revisit lands, then decide in one pass). Every recommendation is a PROPOSED DECISION until Andy says yes; items marked OPEN need an answer. Inputs: <code>docs/source/Menu Planning Requirements v3.pdf</code> (Dean, 2026-10-11), <a href="menu-planning-v3-triage-2026-10-14.md">menu-planning-v3-triage-2026-10-14.md</a> (full MP-01 to MP-52 triage), <a href="menu-planning-v3-conflicts-2026-10-19.md">menu-planning-v3-conflicts-2026-10-19.md</a> (the 14 conflicts), STATUS.md, DECISIONS.md, domain-model.md, the schema in <code>apps/api/db/migrations/</code>.</div>
+
+<p>Tags used: <span class="chip fact">EXISTS</span> built and tested today · <span class="chip out">NEW</span> needs building · <span class="chip fact">DOCUMENTED</span> already recorded in the repo · <span class="chip est">PROPOSED</span> architect recommendation, not decided · <span class="chip solid">OPEN</span> needs Andy (or Dean).</p>
+
+<h2>1. The short version</h2>
+<ul>
+<li><strong>What stays as is.</strong> The append-only inventory ledger, Postgres row-level security and default-deny authorization, the deterministic allergen engine, exact unit conversion, the provider ports with fixture adapters, idempotency keys on every write. These are tested and nothing in Dean's document asks them to change. <span class="chip fact">DOCUMENTED</span></li>
+<li><strong>What is missing.</strong> The menu loop (plan, then shop for the gap, then cook, then the pantry goes down) joins recipes to the pantry on one thing: <em>which ingredient is this</em>. Nothing in the built app answers that today. The domain model planned a <code>CanonicalIngredient</code> list in September and the schema has an <code>ingredient_ref</code> column on inventory items, but no taxonomy exists and nothing fills the column. That is the centre of this revisit. <span class="chip fact">DOCUMENTED</span></li>
+<li><strong>Recipes come from a small catalogue we own,</strong> drafted by AI offline and reviewed by a person, behind a port so other sources can plug in later. Spoonacular's terms rule it out as the store for a plan (section 5). <span class="chip est">PROPOSED</span></li>
+<li><strong>Plan shopping rows become a computed view</strong> (plan need minus what is on hand), so "auto-add" is true by construction and can never duplicate. <span class="chip est">PROPOSED</span></li>
+<li><strong>The e2e browser check goes into CI</strong> as part of the foundation, because the menu loop is the most multi-screen flow yet. <span class="chip est">PROPOSED</span></li>
+</ul>
+
+<h2>2. How the pieces connect</h2>
+<figure>
+<div class="sk-scroll">
+<svg viewBox="0 0 980 590" width="100%" role="img" aria-labelledby="dg-t dg-d" style="min-width:760px">
+<title id="dg-t">Menu loop foundation diagram</title>
+<desc id="dg-d">The recipe catalogue and inventory items both point at a canonical ingredient list in the centre. Menu plan entries reference recipes after the allergen engine and diet filter screen them. Shopping computes plan need minus on hand per ingredient. Cooking writes a meal log and USE_IN_MEAL ledger rows that lower inventory. Buying a shopping row writes a PURCHASE ledger row.</desc>
+<defs>
+<marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="arrowhead"/></marker>
+</defs>
+
+<!-- Plan entries (top centre) -->
+<rect x="360" y="16" width="260" height="78" rx="10" class="box-new"/>
+<text x="374" y="38" class="badge-new">NEW</text>
+<text x="374" y="58" class="ttl">Menu plan entries</text>
+<text x="374" y="78" class="sub">date × breakfast / lunch / dinner, 1 to 7 days</text>
+
+<!-- Recipe catalogue (left) -->
+<rect x="20" y="150" width="250" height="124" rx="10" class="box-new"/>
+<text x="34" y="172" class="badge-new">NEW · behind RecipeSourcePort</text>
+<text x="34" y="194" class="ttl">Recipe catalogue (owned)</text>
+<text x="34" y="214" class="sub">Recipe: servings, steps, kcal (Est.)</text>
+<text x="34" y="232" class="sub">RecipeIngredient: ingredient key,</text>
+<text x="34" y="250" class="sub">exact qty, unit; reviewed tags</text>
+
+<!-- Ingredient hub (centre) -->
+<rect x="370" y="182" width="240" height="84" rx="10" class="box-hub"/>
+<text x="384" y="204" class="badge-new">NEW · the join everything uses</text>
+<text x="384" y="226" class="ttl">Canonical ingredient list</text>
+<text x="384" y="246" class="sub">key, shopping group, allergen and</text>
+<text x="384" y="261" class="sub">diet tags, unit bridges (Est.)</text>
+
+<!-- Inventory (right) -->
+<rect x="710" y="150" width="250" height="124" rx="10" class="box-ex"/>
+<text x="724" y="172" class="badge-ex">EXISTS</text>
+<text x="724" y="194" class="ttl">Inventory items + ledger</text>
+<text x="724" y="214" class="sub">append-only rows, FEFO lots, RLS</text>
+<text x="724" y="232" class="sub">ingredient_ref column exists,</text>
+<text x="724" y="250" class="sub">empty today (NEW: fill it)</text>
+
+<!-- Shopping (bottom left) -->
+<rect x="150" y="410" width="300" height="118" rx="10" class="box-new"/>
+<text x="164" y="432" class="badge-new">NEW view · stored rows EXIST</text>
+<text x="164" y="454" class="ttl">Shopping list</text>
+<text x="164" y="474" class="sub">plan rows = need − on hand, per ingredient</text>
+<text x="164" y="492" class="sub">ticked / bought state kept per ingredient</text>
+<text x="164" y="510" class="sub">typed-in rows stay stored (M7-T1)</text>
+
+<!-- Cook (bottom right) -->
+<rect x="540" y="410" width="290" height="118" rx="10" class="box-new"/>
+<text x="554" y="432" class="badge-new">NEW · ledger type EXISTS</text>
+<text x="554" y="454" class="ttl">Cook this</text>
+<text x="554" y="474" class="sub">meal log + USE_IN_MEAL rows, one key</text>
+<text x="554" y="492" class="sub">deduct what is on hand, flag the rest</text>
+<text x="554" y="510" class="sub">no match or no bridge: not deducted</text>
+
+<!-- Edges -->
+<path d="M145,150 C145,80 250,55 358,55" class="edge" marker-end="url(#ah)"/>
+<text x="20" y="24" class="elab">picker screens every recipe:</text>
+<text x="20" y="40" class="elab">allergen engine (EXISTS) + diet filter (NEW)</text>
+
+<path d="M270,224 L368,224" class="edge" marker-end="url(#ah)"/>
+<text x="276" y="214" class="elab">refers to</text>
+
+<path d="M710,224 L612,224" class="edge" marker-end="url(#ah)"/>
+<text x="628" y="214" class="elab">maps to</text>
+
+<path d="M380,96 C330,170 315,330 300,408" class="edge" marker-end="url(#ah)"/>
+<text x="230" y="330" class="elab">need: recipe qty × servings,</text>
+<text x="230" y="346" class="elab">converted to one unit</text>
+
+<path d="M800,276 C800,360 520,350 452,430" class="edge" marker-end="url(#ah)"/>
+<text x="610" y="330" class="elab">on hand</text>
+
+<path d="M600,96 C670,160 690,330 682,408" class="edge" marker-end="url(#ah)"/>
+<text x="676" y="372" class="elab" text-anchor="end">cook a planned meal</text>
+
+<path d="M830,450 C900,430 900,330 880,278" class="edge" marker-end="url(#ah)"/>
+<text x="872" y="392" class="elab">USE_IN_MEAL</text>
+
+<path d="M300,528 V566 H950 V280" class="edge" marker-end="url(#ah)"/>
+<text x="480" y="584" class="elab">Add what you bought: PURCHASE row (EXISTS, M7-T1)</text>
+</svg>
+</div>
+<figcaption>Solid border and an EXISTS label: built today. Dashed border and a NEW label: needs building. The labels carry the meaning; the border style only repeats it.</figcaption>
+</figure>
+
+<p>Why the centre box matters: every arrow in the loop needs it. "Need 2 lb chicken" (plan) minus "have 1.25 lb" (pantry) is only computable if both sides agree the thing is <em>chicken breast</em>. Cooking can only take chicken out of the pantry if it knows which pantry items are chicken. Without the list, each of those features would invent its own matching, and they would disagree. <span class="chip est">PROPOSED</span></p>
+
+<h2>3. The seven foundation pieces</h2>
+
+<div class="piece">
+<h3>3.1 Ingredient identity <span class="chip out">NEW</span></h3>
+<p><span class="k">Today.</span> <code>inventory_items.ingredient_ref</code> exists (text, nullable, writable by the app role per migration 0006) and is read and written by the repository, but nothing sets it. Items are a barcode product (<code>product_ref</code>) or a typed name. domain-model.md §2 rule 2 already says "Product ≠ Ingredient" and lists <code>CanonicalIngredient</code> as "small curated taxonomy to start". <span class="chip fact">DOCUMENTED</span></p>
+<p><span class="k">Proposal.</span> <span class="chip est">PROPOSED</span></p>
+<ul>
+<li>A curated ingredient list as versioned data in the repo, sized by what the catalogue needs (a few hundred keys at most to start). Each entry: a stable key (<code>chicken-breast</code>), a label, a shopping group (Produce, Dairy...), a default unit kind (mass, volume or count), the allergen codes it contains, diet tags (meat, poultry, pork, fish, shellfish, dairy, egg, alcohol, gluten-grain...), and optional unit bridges (3.3).</li>
+<li>A migration loads it into a global read-only table so SQL can join on it (no household data in it; the app role gets SELECT only).</li>
+<li>Pantry items get mapped to a key: suggested from the Open Food Facts category on scan, picked from a type-ahead on manual add, and settable on the item page for existing items. A suggested mapping is Estimated until the user confirms it, the same tier rules as everything else.</li>
+<li>An item with no mapping is honest: it does not count toward a recipe and the screens say "not matched", never a guess.</li>
+</ul>
+<p><span class="k">Why first.</span> Pieces 3.3 to 3.5 all join on it. <span class="k">Risk class:</span> schema change, Opus review (rule 23). <span class="k">Migration:</span> yes (rule 16, explained before running).</p>
+</div>
+
+<div class="piece">
+<h3>3.2 Recipe catalogue behind a port <span class="chip out">NEW</span></h3>
+<p><span class="k">Today.</span> No recipes exist outside the prototype's fixtures. D-015 says "AI-original recipes for MVP" and is PROPOSED; Q6 (AI only, or license a database) is open; D-017 gate b (who may mint a Known Fact allergen completeness declaration) is open. <span class="chip fact">DOCUMENTED</span></p>
+<p><span class="k">Proposal.</span> <span class="chip est">PROPOSED</span></p>
+<ul>
+<li>A <code>RecipeSourcePort</code> in <code>packages/adapters</code>, like the product lookup port. First adapter: our own catalogue, stored as schema-validated data files and loaded into global read-only tables (<code>recipes</code>, <code>recipe_ingredients</code>).</li>
+<li>Each recipe: title, servings, time, steps (temperatures stored in °C, shown in the household's system), ingredients (ingredient key, exact quantity in micros, unit, optional flag, the display line), calories and macros per serving (Estimated, with source), image per D-032, and provenance: drafted by (model and date), reviewed by (person and date).</li>
+<li>Diet tags on a recipe are computed from its ingredients' tags (deterministic), not typed by hand.</li>
+<li>Authoring: an AI drafts recipes offline in a session, a person reviews each against a checklist, the reviewed file is committed. Same pattern as D-032 food images. No LLM at runtime, no spend, no quota.</li>
+<li>Size: 20 to 30 recipes is enough for internal testing. The beta size is <span class="chip solid">OPEN</span>.</li>
+<li>Later sources (a licensed API, runtime AI) become more adapters. Their recipes enter as proposals at Estimated tier (rule 8) and can never license "no known allergen match".</li>
+</ul>
+<p><span class="k">Allergen trust.</span> <span class="chip solid">OPEN</span> This is the safety call in the revisit. A reviewed ingredient list is the only way a recipe can ever read "no known allergen match" (D-017 gate b). Options: (a) a two-person review (Andy and Dean) against a written checklist mints the declaration, risk accepted and recorded; (b) no declaration in the beta, so every recipe shows the amber "allergen data incomplete" line until a qualified reviewer signs off. Architect leans (a) for the friends beta with the checklist in the repo, because (b) puts an amber warning on every recipe and trains people to ignore it. Copy never says "safe" in either case (SR-1, SR-2).</p>
+<p><span class="k">Risk class:</span> allergen-adjacent, Opus review.</p>
+</div>
+
+<div class="piece">
+<h3>3.3 Unit bridges <span class="chip out">NEW</span></h3>
+<p><span class="k">Today.</span> Same-kind conversion is exact (M1-T3). Cross-kind conversion (cups of rice to pounds) needs a caller-supplied bridge and otherwise refuses with <code>INCOMPATIBLE_UNITS</code>, never a guess. Where bridge data lives was deferred in OQ-2 ("still open, deferred to M2"). <span class="chip fact">DOCUMENTED</span></p>
+<p><span class="k">Proposal.</span> <span class="chip est">PROPOSED</span></p>
+<ul>
+<li>Bridges live on the ingredient list entry: density for volume and mass, grams per piece for count and mass ("1 medium onion ≈ 150 g"). Always Estimated tier.</li>
+<li>Recipes are authored in the ingredient's default unit kind wherever a cook would accept it, so most lines never need a bridge.</li>
+<li>A quantity converted through a bridge is shown and stored as Estimated (gap rows and cook deductions say "Est.").</li>
+<li>No bridge: the line is listed as "not counted" in the gap and "not deducted" when cooking.</li>
+</ul>
+<p><span class="k">Risk class:</span> inventory arithmetic, Opus.</p>
+</div>
+
+<div class="piece">
+<h3>3.4 Plan shopping rows as a computed view <span class="chip out">NEW</span></h3>
+<p><span class="k">Today.</span> <code>shopping_rows</code> (migration 0009) stores rows with <code>origin_kind</code> limited to <code>'member'</code>; a row may link to one inventory item; <code>GET /v1/shopping</code> computes the gap from that item's snapshot with the domain's <code>neededQuantity</code>. BUG-006 taught that a bought row must show the bought amount from the ledger, not a gap recomputed to 0. <span class="chip fact">DOCUMENTED</span></p>
+<p><span class="k">Proposal.</span> <span class="chip est">PROPOSED</span></p>
+<ul>
+<li>Plan-derived rows are not stored. Each read computes, per ingredient key, over the plan entries in the window: need = sum of recipe quantity × (servings ÷ recipe servings), converted to one unit; on hand = sum of usable stock in items mapped to that key; show the row when need − on hand &gt; 0 (INV-SHOP-1 applied after aggregation).</li>
+<li>User state (ticked, bought) is kept per (household, ingredient key) in an append-only state table. A ticked or bought row never disappears on its own (Dean MP-41). Bought amounts come from the PURCHASE ledger rows (the BUG-006 pattern).</li>
+<li>Typed-in rows stay stored rows and gain an optional ingredient key. If a typed-in row and a plan need share a key, the list shows one row with both labels ("From plan" and "Added by you"), as Dean's MP-45 asks.</li>
+<li>Consequences: "auto-add" is true by construction, re-running can never duplicate a row (Dean's §13 idempotency rule), and the three sync modes are not needed. The current "Add missing" button goes away.</li>
+</ul>
+<p><span class="k">Risk class:</span> shopping-gap math (INV-SHOP-1), Opus. <span class="k">Migration:</span> yes, on M7-T1's table.</p>
+</div>
+
+<div class="piece">
+<h3>3.5 Cooking deducts from the pantry <span class="chip out">NEW</span></h3>
+<p><span class="k">Today.</span> The ledger already has the <code>USE_IN_MEAL</code> type (a decrease), the FEFO lot planner (M1-T8), idempotent writes and compensating-row undo. PRD §4 has meal logging and automatic decrement as fast-follow; the prototype's cook sheet already promises it. Andy, 2026-10-20: "let's get it work". <span class="chip fact">DOCUMENTED</span></p>
+<p><span class="k">Proposal.</span> <span class="chip est">PROPOSED</span></p>
+<ul>
+<li>One cook action = one idempotency key = one transaction: a <code>meal_logs</code> row (append-only) plus one <code>USE_IN_MEAL</code> row per deducted lot, each carrying the meal log id as its correlation.</li>
+<li>Per recipe line: find items mapped to the ingredient key, convert (bridge if needed), allocate FEFO across those items' lots.</li>
+<li>Shortfall policy: deduct what is on hand, record the shortfall on the meal log, never over-consume. This closes OQ-1 and A9 if Andy agrees.</li>
+<li>Unmatched or unbridgeable lines are listed "not deducted" on the confirm sheet. The person can edit amounts before confirming.</li>
+<li>Undo uses compensating rows, as today. The correction-rate metric gets its best signal here.</li>
+</ul>
+<p><span class="k">Risk class:</span> ledger and concurrency, Opus implementation and review, architect code pass.</p>
+</div>
+
+<div class="piece">
+<h3>3.6 Plan entries and household settings <span class="chip out">NEW</span></h3>
+<p><span class="k">Proposal.</span> <span class="chip est">PROPOSED</span></p>
+<ul>
+<li><strong>No "plan" object.</strong> A plan is just entries keyed by (household, date, meal). The horizon (1 to 7 days) is a window over them. Shrinking the window hides entries without deleting them, which gives Dean's "trimmed entries go to history" for free.</li>
+<li>Entry: date, meal (breakfast, lunch, dinner), type (recipe or custom text), recipe id or custom name, servings, status (planned, cooked, skipped), source (manual or suggested), updated by, updated at. One entry per cell, last write wins with "updated by {initials}" shown (ARCHITECTURE §4 already sets last-write-wins for CRUD rows).</li>
+<li>Custom text entries are free text: never screened, never on the shopping list, and the screen says so (Dean MP-15). Free text is untrusted data (PRD §11).</li>
+<li>Household settings (one row per household): unit system, plan length (default 5, max 7), meals shown, diners per meal (default household size), diet profile (household default), calorie goal (off by default). Who may edit them depends on A3.</li>
+<li>Ranking runs on the server and is deterministic (no LLM): uses expiring stock, number of items to buy, diet fit, time. Favourites and history join when they exist.</li>
+</ul>
+<p><span class="k">Risk class:</span> plan API Opus (idempotency, tenancy); settings Sonnet.</p>
+</div>
+
+<div class="piece">
+<h3>3.7 The e2e browser gate in CI <span class="chip out">NEW</span></h3>
+<p><span class="k">Today.</span> <code>apps/mobile/scripts/web-demo-smoke.mjs</code> drives headless Chrome through onboarding with no extra packages. CI only checks that the app builds (<code>expo export</code>); the smoke script runs by hand at acceptance. Andy's device re-test list in STATUS has grown since 2026-10-01. <span class="chip fact">DOCUMENTED</span></p>
+<p><span class="k">Proposal.</span> <span class="chip est">PROPOSED</span> Run the script in the CI <code>quality</code> job on every push, then extend it to the three make-or-break flows (onboarding, scan and add, shopping close-the-loop). The menu loop (plan, shop, cook, pantry down) becomes the fourth flow when it exists. Later, a second level against the real API and the CI Postgres. This does not replace device passes (camera, Android layout).</p>
+<p><span class="k">Risk class:</span> tooling, Sonnet.</p>
+</div>
+
+<h2>4. Andy's answers for Dean (2026-10-20)</h2>
+<p>Recorded here as PO input. They become decisions when Andy confirms them in the one-pass decision (section 7).</p>
+<div class="sk-scroll"><table>
+<thead><tr><th scope="col">Question</th><th scope="col">Andy's answer</th><th scope="col">Architect note</th></tr></thead>
+<tbody>
+<tr><td>Diet list: Dean's 16 (10-07) or the 8 in v3?</td><td>The 8 in v3. Dean likely cut it down to fit the app.</td><td>Still open: may a diet hide a recipe? Proposal in item 3 of section 6.</td></tr>
+<tr><td>Plan layout: named menus (v6) or a grid?</td><td>Meet in the middle: a grid, 1 to 7 days. Dean likely got the idea from Cooklist.</td><td>7 days costs about the same as 14; the cost is in the grid features, not the day count. Proposal in item 6 of section 6.</td></tr>
+<tr><td>Does Dean know recipes and cook deduction are not built?</td><td>The doc assumed they work. No catalogue yet; Andy suggested the Spoonacular free tier for testing. Cook deduction: "let's get it work".</td><td>Spoonacular findings in section 5; cook deduction is piece 3.5.</td></tr>
+</tbody></table></div>
+
+<h2>5. Spoonacular, checked</h2>
+<p>Fetched 2026-10-20 from <a href="https://spoonacular.com/food-api/terms">spoonacular.com/food-api/terms</a> and <a href="https://spoonacular.com/food-api/pricing">spoonacular.com/food-api/pricing</a>. Re-check before relying on these; terms change. <span class="chip fact">DOCUMENTED</span> (as fetched)</p>
+<ul>
+<li><strong>Storage:</strong> caching up to 1 hour, with prior written permission ("After 1 hour, you must delete your cache and refresh the data via the spoonacular API"). Only the recipe id, title and image URL may be stored indefinitely; "you may not store any other data from the spoonacular API".</li>
+<li><strong>Free plan:</strong> 50 points a day, then no more calls; 1 request per second; backlink required.</li>
+<li><strong>Use:</strong> "you cannot use spoonacular data to create a site or application meant to provide the same experience as spoonacular" (Spoonacular offers its own meal planner).</li>
+<li><strong>Disclaimers:</strong> allergy, cost and nutrition disclaimers are the app's responsibility.</li>
+</ul>
+<p><span class="k">What that means for the foundation.</span> <span class="chip est">PROPOSED</span> A plan holds recipes for days; the gap, the cook sheet and the allergen screen all need the ingredient lists for that whole time. With a 1-hour storage limit every plan view re-fetches, and 50 points a day runs out after a few views of a 7-day plan. Their ingredient data is third-party, so it can only be Estimated and can never license "no known allergen match". Recommendation: do not use Spoonacular, even for testing. The owned catalogue (3.2) is free, has no quota, and is the long-term path anyway.</p>
+
+<h2>6. Dean's 14 conflicts, re-run against this foundation</h2>
+<p>Source: <a href="menu-planning-v3-conflicts-2026-10-19.md">menu-planning-v3-conflicts-2026-10-19.md</a>. "Before" is that page's recommendation; "After" is the call this revisit proposes. All PROPOSED.</p>
+<div class="sk-scroll"><table>
+<thead><tr><th scope="col">#</th><th scope="col">Item</th><th scope="col">Before (10-19)</th><th scope="col">After this revisit</th><th scope="col">Rests on</th></tr></thead>
+<tbody>
+<tr><td>1</td><td>Recipe source</td><td>Andy's call</td><td>Owned catalogue behind a port; no Spoonacular; runtime AI and licensed APIs later as Estimated-tier adapters. Amends D-015, closes Q6. Allergen trust root is its own call (D2 below).</td><td>3.2, 5</td></tr>
+<tr><td>2</td><td>Shopping row colours</td><td>Keep ours</td><td>Unchanged: label plus icon, legend, origin filter, no new hue.</td><td>3.4</td></tr>
+<tr><td>3</td><td>Diets</td><td>Andy's call with Dean</td><td>Dean's v3 list of 8. Two tiers: ingredient exclusions (vegetarian, vegan, the exclusion part of halal and kosher) hide recipes, computed from reviewed ingredient tags; copy names the excluded ingredient and never says "certified" or "compliant". Nutrient diets (low-carb/keto, high-protein, DASH, calorie-controlled) rank only until someone qualified signs off the numbers. Gluten-free stays routed to allergies (D-031). Amends D-031.</td><td>3.1, 3.2</td></tr>
+<tr><td>4</td><td>Cooking deducts inventory</td><td>Follow Dean</td><td>MVP. Meal log plus USE_IN_MEAL rows, deduct what is on hand and flag the rest (closes OQ-1, A9).</td><td>3.1, 3.3, 3.5</td></tr>
+<tr><td>5</td><td>New Plan tab</td><td>Keep ours</td><td>Unchanged: planning lives in the Menu tab (D-020).</td><td></td></tr>
+<tr><td>6</td><td>Plan layout</td><td>Andy's call with Dean</td><td>Grid, 1 to 7 days (default 5), breakfast, lunch, dinner. Cells: add, swap, clear, cook. After the beta: custom meal slots, copy and move, drag, auto-fill ("Fill my week"). Replaces v6's named menus, so M3-E0-T5 (v7) is re-scoped to the grid.</td><td>3.6</td></tr>
+<tr><td>7</td><td>Shopping sync</td><td>Follow Dean on auto-add, skip the modes</td><td>Computed view: auto-add by construction, no modes setting, no duplicates possible.</td><td>3.4</td></tr>
+<tr><td>8</td><td>Calorie goal and day totals</td><td>Follow Dean</td><td>Per-recipe calories (Estimated) and a day total come free with the catalogue. The goal setting and "150 over" line: small, deterministic; MVP if the beta scope allows, otherwise right after. <span class="chip solid">OPEN</span></td><td>3.2, 3.6</td></tr>
+<tr><td>9</td><td>Servings scale quantities</td><td>Follow Dean</td><td>Part of the need calculation (multiplication in exact micros).</td><td>3.4</td></tr>
+<tr><td>10</td><td>Offline plan editing</td><td>Keep ours</td><td>Unchanged: online-first (ADR-010), read cache only.</td><td></td></tr>
+<tr><td>11</td><td>Unit default</td><td>Andy's call</td><td>Still Andy's call: US default (A2, launch market) or device locale. Either is one line. <span class="chip solid">OPEN</span></td><td>3.6</td></tr>
+<tr><td>12</td><td>Stock expiring before the meal</td><td>Keep ours</td><td>Unchanged for now. If taken later: exclude only on Known Fact dates, flag on Estimated; worth more once R-6 lands.</td><td></td></tr>
+<tr><td>13</td><td>Right-to-left, externalized strings</td><td>Keep ours</td><td>Unchanged (i18n non-goal, PRD §5).</td><td></td></tr>
+<tr><td>14</td><td>Export and delete of diet, allergy, calorie data</td><td>Keep ours for MVP</td><td>Unchanged; the new tables are household-scoped so they stay enumerable for export and deletion later (ARCHITECTURE §7.13).</td><td>3.6</td></tr>
+</tbody></table></div>
+
+<h2>7. Decisions for Andy, in one pass</h2>
+<p>Each is a yes, a no, or a change. Nothing is written to DECISIONS.md until Andy answers.</p>
+<ol>
+<li><strong>D1 Recipe source.</strong> Owned, reviewed catalogue behind <code>RecipeSourcePort</code>; no Spoonacular; runtime AI later. (Amends D-015, closes Q6.)</li>
+<li><strong>D2 Allergen trust root for catalogue recipes</strong> (D-017 gate b). (a) Andy and Dean two-person review against a checklist mints the declaration, risk recorded; or (b) no declaration until a qualified reviewer, every recipe amber. Architect leans (a) for the friends beta. <span class="chip solid">OPEN</span></li>
+<li><strong>D3 Ingredient identity.</strong> Curated ingredient list as repo data loaded into a read-only table; pantry items mapped by suggestion plus user confirmation; unmapped items never guessed.</li>
+<li><strong>D4 Unit bridges.</strong> On the ingredient entry, always Estimated; recipes authored in default unit kinds; no bridge means not counted and not deducted. (Closes OQ-2's open half.)</li>
+<li><strong>D5 Shopping.</strong> Plan rows computed (need − on hand per ingredient), per-ingredient ticked and bought state, typed-in rows stay stored and gain an optional ingredient key, one row per ingredient with every origin label. Migration on M7-T1's table.</li>
+<li><strong>D6 Cooking deducts in MVP.</strong> Meal log plus USE_IN_MEAL rows under one key; shortfall policy: deduct what is on hand, flag the rest. (Closes OQ-1, A9.)</li>
+<li><strong>D7 Plan.</strong> Grid of entries by date and meal, 1 to 7 days (default 5), breakfast, lunch, dinner, add, swap, clear, cook; last write wins with "updated by"; no plan object. Custom slots, copy, move, drag and auto-fill after the beta.</li>
+<li><strong>D8 Diets.</strong> Dean's v3 list of 8; exclusion diets hide, nutrient diets rank until signed off; gluten-free stays an allergy. (Amends D-031.)</li>
+<li><strong>D9 Unit default.</strong> US or device locale. <span class="chip solid">OPEN</span></li>
+<li><strong>D10 Calorie goal.</strong> In the beta or right after. <span class="chip solid">OPEN</span></li>
+<li><strong>D11 e2e gate.</strong> Smoke script in CI now; three flows; the menu loop as the fourth.</li>
+<li><strong>D12 A3, household permissions.</strong> Still blocks server-side allergies, which the beta needs. The decision-brief recommendation stands: the owner enters for everyone at signup, members edit their own, allergies visible to the household, profiles private. <span class="chip solid">OPEN</span></li>
+</ol>
+
+<h2>8. Order of work once decided</h2>
+<p>Names only; tickets are written after the decisions. Models per rule 23. <span class="chip est">PROPOSED</span></p>
+<ol>
+<li><strong>Now, no dependencies:</strong> e2e gate in CI (Sonnet); STATUS.md header and "Next 3 actions" cleanup (architect).</li>
+<li><strong>Architect docs:</strong> ADR-011 (ingredient identity, recipe catalogue, bridges); domain-model.md and data-model.md updates; DECISIONS entries for D1 to D12; PRD §4 and §7 rows.</li>
+<li><strong>Data:</strong> ingredient list and recipe file format with validators and the review checklist (Sonnet build, Opus review). Content (the first 20 to 30 recipes) is Andy's and Dean's review work with AI drafts.</li>
+<li><strong>Schema:</strong> ingredients, recipes, recipe ingredients, plan entries, household settings, meal logs, shopping state, the optional ingredient key on typed-in rows (Opus; migration explained and approved first, rule 16).</li>
+<li><strong>Mapping UI:</strong> ingredient suggestion on scan, type-ahead on manual add, "What is this?" on the item page (Sonnet, Opus review for the tier rules).</li>
+<li><strong>Prototype v7:</strong> M3-E0-T5 re-scoped to the 7-day grid, the computed shopping list labels and the cook sheet's "not deducted" lines (Sonnet with impeccable, Opus review).</li>
+<li><strong>Plan API and Menu screens</strong> (Opus API, Sonnet screens).</li>
+<li><strong>Shopping computed view</strong> (Opus).</li>
+<li><strong>Cook deduction</strong> (Opus, architect code pass).</li>
+<li><strong>Diet filter, ranking, unit system display, calorie totals</strong> (Sonnet build, Opus review where it sits beside the allergen filter).</li>
+<li><strong>In parallel the day A3 lands:</strong> M2-T4 server-side restrictions and screening (Opus).</li>
+</ol>
+
+<h2>9. What this page does not change</h2>
+<ul>
+<li>DECISIONS.md, MVP_PRD.md, domain-model.md, ADRs, BACKLOG.md, M3-E0-T5 and STATUS.md are untouched.</li>
+<li>The two earlier Dean pages (the 10-14 triage and the 10-19 conflicts) stay as they are; this page builds on them.</li>
+<li>No code, no migrations, no external accounts. Spoonacular was read, not signed up for.</li>
+</ul>
+
+<p class="sk-foot">Classification of this page: inputs from Dean are SOURCE REQUIREMENT; facts about the repo are DOCUMENTED with the file named; everything marked PROPOSED is ENGINEERING INFERENCE awaiting the PO; OPEN items need Andy or Dean.</p>
+</main></body>
+</html>
