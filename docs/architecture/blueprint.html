@@ -1,0 +1,387 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Smart Kitchen Blueprint</title>
+<link rel="stylesheet" href="../assets/cookbook-docs.css">
+<style>
+.legend { display: flex; flex-wrap: wrap; gap: 10px 22px; align-items: center; font-size: 14px; color: var(--ink2); margin: 18px 0 8px; }
+.legend > span { display: inline-flex; gap: 8px; align-items: center; }
+.lane { fill: var(--tile); rx: 0; }
+.lt { fill: var(--ink); font-family: var(--serif); font-size: 18px; font-weight: 500; }
+.ls { fill: var(--ink2); font-size: 12px; }
+.bt { fill: var(--ink); font-size: 13.5px; font-weight: 700; }
+.bs { font-size: 12px; font-weight: 700; letter-spacing: .06em; }
+.b-built, .b-part, .b-proto, .b-not { fill: var(--paper); stroke-width: 1.5; rx: 0; }
+.b-built { stroke: var(--green); }
+.b-part { stroke: var(--amber); }
+.b-proto { stroke: var(--ink); stroke-dasharray: 6 4; }
+.b-not { stroke: var(--ink3); stroke-dasharray: 2 4; }
+.s-built { fill: var(--green); } .s-part { fill: var(--amber); } .s-proto { fill: var(--ink); } .s-not { fill: var(--ink3); }
+.edge { stroke: var(--ink2); stroke-width: 1.5; fill: none; }
+.bus { stroke: var(--ink); stroke-width: 2.5; fill: none; }
+.el { fill: var(--ink2); font-size: 12px; }
+.elb { fill: var(--ink); font-size: 12.5px; font-weight: 700; }
+.ah { fill: var(--ink2); } .ahb { fill: var(--ink); }
+.zone { fill: var(--paper); stroke: var(--ink); stroke-width: 1; rx: 0; }
+.inner { fill: var(--tile); stroke: none; rx: 0; }
+.zt { fill: var(--ink); font-family: var(--serif); font-size: 21px; font-weight: 500; }
+.zs { fill: var(--ink2); font-size: 12px; }
+.tx { fill: var(--ink); font-size: 12.5px; }
+.txm { fill: var(--ink2); font-size: 12px; }
+.txb { fill: var(--ink); font-size: 12.5px; font-weight: 700; }
+.prop { fill: var(--paper); stroke: var(--amber); stroke-width: 1.5; stroke-dasharray: 6 4; rx: 0; }
+.propt { fill: var(--amber); font-size: 12px; font-weight: 700; }
+</style>
+</head>
+<body>
+<nav class="sk-bar" aria-label="Smart Kitchen docs"><div class="sk-bar-in">
+<a class="sk-mark" href="blueprint.html">Smart Kitchen</a>
+<div class="sk-nav"><a href="blueprint.html" aria-current="page">Blueprint</a><a href="database.html">Database</a><a href="../po/foundation-revisit-2026-10-20.html">Foundation revisit</a><a href="workflow-diagrams.html">How it's built</a></div>
+</div></nav>
+<main class="sk-page">
+
+<header class="sk-head">
+<h1>Smart Kitchen blueprint</h1>
+<p class="sk-by">Smart Kitchen · Architect (Buddy) · as of 2026-10-24 (main at e889c16) · docs only</p>
+<p class="sk-lead">Two pictures of the app as it really is today. The <strong>workflow</strong> shows what a household does, step by step, and which steps work. It's the one Andy and Dean review and confirm. The <strong>architecture</strong> shows how the app is built underneath: phone, server, database and outside services.</p>
+</header>
+
+<div class="sk-panel"><strong>What this page is.</strong> A description of the built system, checked against the code (screens in <code>apps/mobile/app/</code>, routes in <code>packages/contracts/src/</code> and <code>apps/api/src/http/</code>, tables in <code>apps/api/db/migrations/</code>). Facts here are DOCUMENTED. The few PROPOSED items are copied from <a href="../po/foundation-revisit-2026-10-20.html">the foundation revisit</a> and are not decided. This page replaces the picture in <a href="system-context.md">system-context.md</a>, which is the 2026-09-03 plan and is now out of date. That file is not edited here. <a href="workflow-diagrams.html">workflow-diagrams.html</a> is a different thing: how a ticket gets built and reviewed.</div>
+
+<ul class="sk-toc"><li><a href="#workflow">1. Workflow</a></li><li><a href="#confirm">2. What to confirm</a></li><li><a href="#architecture">3. Architecture</a></li><li><a href="#endpoints">4. Endpoints</a></li><li><a href="#tables">5. Tables</a></li><li><a href="database.html">Database detail (ERD, full schema)</a></li></ul>
+
+<h2 id="workflow">1. Workflow: what a household does</h2>
+<p>Six stages, read left to right. The loop at the right edge is the point of the product: buying food and cooking food both change the pantry, so the pantry stays true.</p>
+<div class="legend">
+<span><span class="chip fact">BUILT</span> works on the phone against the real server</span>
+<span><span class="chip est">PARTIAL</span> works, with a stated gap</span>
+<span><span class="chip out">PROTOTYPE</span> designed in the v6 prototype, not built</span>
+<span><span class="chip quiet">NOT BUILT</span> not built, or later</span>
+</div>
+
+<figure>
+<div class="sk-scroll">
+<svg viewBox="0 0 1010 712" width="100%" role="img" aria-labelledby="wf-t wf-d" style="min-width:860px">
+<title id="wf-t">Household workflow, six stages</title>
+<desc id="wf-d">Join, Stock, Keep it right, Decide, Shop, Cook. Each step is marked built, partial, prototype or not built. Confirmed food lands in the pantry. Plan shortfalls go to the shopping list. A planned recipe can be cooked. Buying and cooking both change the pantry through the ledger.</desc>
+<defs>
+<marker id="a1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="ah"/></marker>
+<marker id="a2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="ahb"/></marker>
+</defs>
+
+<!-- lane backgrounds -->
+<rect x="0" y="40" width="980" height="96" rx="8" class="lane"/>
+<rect x="0" y="150" width="980" height="96" rx="8" class="lane"/>
+<rect x="0" y="260" width="980" height="96" rx="8" class="lane"/>
+<rect x="0" y="370" width="980" height="96" rx="8" class="lane"/>
+<rect x="0" y="480" width="980" height="96" rx="8" class="lane"/>
+<rect x="0" y="590" width="980" height="96" rx="8" class="lane"/>
+
+<!-- lane labels -->
+<text x="14" y="80" class="lt">1 · Join</text><text x="14" y="98" class="ls">set up the household</text>
+<text x="14" y="190" class="lt">2 · Stock</text><text x="14" y="208" class="ls">add food</text>
+<text x="14" y="300" class="lt">3 · Keep it right</text><text x="14" y="318" class="ls">the pantry</text>
+<text x="14" y="410" class="lt">4 · Decide</text><text x="14" y="428" class="ls">what to eat</text>
+<text x="14" y="520" class="lt">5 · Shop</text><text x="14" y="538" class="ls">buy the gap</text>
+<text x="14" y="630" class="lt">6 · Cook</text><text x="14" y="648" class="ls">use the food</text>
+
+<!-- Lane 1 -->
+<rect x="160" y="56" width="150" height="64" rx="8" class="b-part"/>
+<text x="170" y="80" class="bt">Sign in (S1)</text><text x="170" y="98" class="bs s-part">PARTIAL</text><text x="170" y="112" class="txm">test logins only</text>
+<rect x="325" y="56" width="150" height="64" rx="8" class="b-built"/>
+<text x="335" y="80" class="bt">Create or join</text><text x="335" y="98" class="bs s-built">BUILT</text><text x="335" y="112" class="txm">invite code</text>
+<rect x="490" y="56" width="150" height="64" rx="8" class="b-part"/>
+<text x="500" y="80" class="bt">Allergies (S2)</text><text x="500" y="98" class="bs s-part">PARTIAL</text><text x="500" y="112" class="txm">kept on phone only</text>
+<rect x="655" y="56" width="150" height="64" rx="8" class="b-part"/>
+<text x="665" y="80" class="bt">Home</text><text x="665" y="98" class="bs s-part">PARTIAL</text><text x="665" y="112" class="txm">empty state only</text>
+<rect x="820" y="56" width="150" height="64" rx="8" class="b-built"/>
+<text x="830" y="80" class="bt">Profile (S12)</text><text x="830" y="98" class="bs s-built">BUILT</text><text x="830" y="112" class="txm">members, new code</text>
+<path d="M310,88 H323" class="edge" marker-end="url(#a1)"/><path d="M475,88 H488" class="edge" marker-end="url(#a1)"/><path d="M640,88 H653" class="edge" marker-end="url(#a1)"/><path d="M805,88 H818" class="edge" marker-end="url(#a1)"/>
+
+<!-- Lane 2 -->
+<rect x="160" y="166" width="150" height="64" rx="8" class="b-built"/>
+<text x="170" y="190" class="bt">Add food (S6)</text><text x="170" y="208" class="bs s-built">BUILT</text><text x="170" y="222" class="txm">centre tab</text>
+<rect x="325" y="166" width="150" height="64" rx="8" class="b-built"/>
+<text x="335" y="190" class="bt">Scan or type code</text><text x="335" y="208" class="bs s-built">BUILT</text><text x="335" y="222" class="txm">Open Food Facts</text>
+<rect x="490" y="166" width="150" height="64" rx="8" class="b-part"/>
+<text x="500" y="190" class="bt">Confirm sheet (S8)</text><text x="500" y="208" class="bs s-part">PARTIAL</text><text x="500" y="222" class="txm">allergens "not checked"</text>
+<rect x="655" y="166" width="150" height="64" rx="8" class="b-built"/>
+<text x="665" y="190" class="bt">Type it in (S9)</text><text x="665" y="208" class="bs s-built">BUILT</text><text x="665" y="222" class="txm">no barcode needed</text>
+<rect x="820" y="166" width="150" height="64" rx="8" class="b-not"/>
+<text x="830" y="190" class="bt">Receipt scan</text><text x="830" y="208" class="bs s-not">NOT BUILT</text><text x="830" y="222" class="txm">after launch</text>
+<path d="M310,198 H323" class="edge" marker-end="url(#a1)"/><path d="M475,198 H488" class="edge" marker-end="url(#a1)"/>
+
+<!-- Lane 3 -->
+<rect x="160" y="276" width="150" height="64" rx="8" class="b-built"/>
+<text x="170" y="300" class="bt">Pantry list (S4)</text><text x="170" y="318" class="bs s-built">BUILT</text><text x="170" y="332" class="txm">by location</text>
+<rect x="325" y="276" width="150" height="64" rx="8" class="b-built"/>
+<text x="335" y="300" class="bt">Item page (S5)</text><text x="335" y="318" class="bs s-built">BUILT</text><text x="335" y="332" class="txm">fix qty, remove, undo</text>
+<rect x="490" y="276" width="150" height="64" rx="8" class="b-built"/>
+<text x="500" y="300" class="bt">Confirm, move</text><text x="500" y="318" class="bs s-built">BUILT</text><text x="500" y="332" class="txm">AI guess, Fridge → Pantry</text>
+<rect x="655" y="276" width="150" height="64" rx="8" class="b-built"/>
+<text x="665" y="300" class="bt">Expiry labels</text><text x="665" y="318" class="bs s-built">BUILT</text><text x="665" y="332" class="txm">from typed dates</text>
+<rect x="820" y="276" width="150" height="64" rx="8" class="b-not"/>
+<text x="830" y="300" class="bt">Shelf-life guess</text><text x="830" y="318" class="bs s-not">NOT BUILT</text><text x="830" y="332" class="txm">waits on R-6</text>
+<path d="M310,308 H323" class="edge" marker-end="url(#a1)"/><path d="M475,308 H488" class="edge" marker-end="url(#a1)"/><path d="M640,308 H653" class="edge" marker-end="url(#a1)"/>
+
+<!-- Lane 4 -->
+<rect x="160" y="386" width="150" height="64" rx="8" class="b-proto"/>
+<text x="170" y="410" class="bt">Menu: Tonight</text><text x="170" y="428" class="bs s-proto">PROTOTYPE</text><text x="170" y="442" class="txm">tab is a placeholder</text>
+<rect x="325" y="386" width="150" height="64" rx="8" class="b-proto"/>
+<text x="335" y="410" class="bt">Plan ahead</text><text x="335" y="428" class="bs s-proto">PROTOTYPE</text><text x="335" y="442" class="txm">grid not designed yet</text>
+<rect x="490" y="386" width="150" height="64" rx="8" class="b-proto"/>
+<text x="500" y="410" class="bt">Recipe page</text><text x="500" y="428" class="bs s-proto">PROTOTYPE</text><text x="500" y="442" class="txm">no recipes exist yet</text>
+<rect x="655" y="386" width="150" height="64" rx="8" class="b-part"/>
+<text x="665" y="410" class="bt">Allergy + diet check</text><text x="665" y="428" class="bs s-part">PARTIAL</text><text x="665" y="442" class="txm">allergy engine only</text>
+<path d="M310,418 H323" class="edge" marker-end="url(#a1)"/><path d="M475,418 H488" class="edge" marker-end="url(#a1)"/><path d="M640,418 H653" class="edge" marker-end="url(#a1)"/>
+
+<!-- Lane 5 -->
+<rect x="160" y="496" width="150" height="64" rx="8" class="b-built"/>
+<text x="170" y="520" class="bt">Shopping list (S11)</text><text x="170" y="538" class="bs s-built">BUILT</text><text x="170" y="552" class="txm">gap per pantry item</text>
+<rect x="325" y="496" width="150" height="64" rx="8" class="b-not"/>
+<text x="335" y="520" class="bt">Plan shortfalls</text><text x="335" y="538" class="bs s-not">NOT BUILT</text><text x="335" y="552" class="txm">need minus have</text>
+<rect x="490" y="496" width="150" height="64" rx="8" class="b-not"/>
+<text x="500" y="520" class="bt">Add your own row</text><text x="500" y="538" class="bs s-not">NOT BUILT</text><text x="500" y="552" class="txm">ticket M7-T2</text>
+<rect x="655" y="496" width="150" height="64" rx="8" class="b-built"/>
+<text x="665" y="520" class="bt">Check off</text><text x="665" y="538" class="bs s-built">BUILT</text><text x="665" y="552" class="txm">offline queue in session</text>
+<rect x="820" y="496" width="150" height="64" rx="8" class="b-built"/>
+<text x="830" y="520" class="bt">Add bought</text><text x="830" y="538" class="bs s-built">BUILT</text><text x="830" y="552" class="txm">into the pantry</text>
+<path d="M640,528 H653" class="edge" marker-end="url(#a1)"/><path d="M805,528 H818" class="edge" marker-end="url(#a1)"/>
+
+<!-- Lane 6 -->
+<rect x="490" y="606" width="150" height="64" rx="8" class="b-proto"/>
+<text x="500" y="630" class="bt">Cook this</text><text x="500" y="648" class="bs s-proto">PROTOTYPE</text><text x="500" y="662" class="txm">cook sheet designed</text>
+<rect x="655" y="606" width="150" height="64" rx="8" class="b-proto"/>
+<text x="665" y="630" class="bt">Confirm deductions</text><text x="665" y="648" class="bs s-proto">PROTOTYPE</text><text x="665" y="662" class="txm">what comes out</text>
+<rect x="820" y="606" width="150" height="64" rx="8" class="b-not"/>
+<text x="830" y="630" class="bt">Pantry goes down</text><text x="830" y="648" class="bs s-not">NOT BUILT</text><text x="830" y="662" class="txm">+ meal history</text>
+<path d="M640,638 H653" class="edge" marker-end="url(#a1)"/><path d="M805,638 H818" class="edge" marker-end="url(#a1)"/>
+
+<!-- cross-lane: plan to shortfalls -->
+<path d="M400,450 V494" class="edge" marker-end="url(#a1)"/>
+<text x="394" y="476" class="el" text-anchor="end">shortfalls go to the list</text>
+<!-- cross-lane: recipe to cook -->
+<path d="M565,450 V466 H482 V586 H565 V604" class="edge" marker-end="url(#a1)"/>
+<text x="574" y="472" class="el">cook a planned meal</text>
+<!-- shortfalls to list -->
+<path d="M325,528 H312" class="edge" marker-end="url(#a1)"/>
+
+<!-- The pantry bus: confirm sheet, add bought, pantry goes down all change the pantry -->
+<path d="M565,230 V253" class="bus"/>
+<path d="M730,230 V253" class="bus"/>
+<path d="M970,528 H990" class="bus"/>
+<path d="M970,638 H990 V253 H235 V274" class="bus" marker-end="url(#a2)"/>
+<text x="560" y="271" class="elb">every change reaches the pantry as a ledger row</text>
+<text x="908" y="575" class="el">PURCHASE</text>
+<text x="884" y="595" class="el">USE_IN_MEAL</text>
+</svg>
+</div>
+<figcaption>The heavy ink line is the pantry loop: confirmed food, bought food and cooked food all change the pantry, and each change is a row in the inventory ledger. Buying works today; cooking is the missing half. Every box says its status in words; the border style repeats it.</figcaption>
+</figure>
+
+<h3>Where the loop breaks today</h3>
+<ul>
+<li><strong>Decide (stage 4) has nothing to decide with.</strong> There are no recipes in the app, and the Menu tab is a placeholder. The allergy engine is built and tested, but it has no recipes to check.</li>
+<li><strong>Allergies stay on the phone.</strong> They are not saved on the server, so a scan says allergens are "not checked". Saving them waits on A3 (who enters and who sees allergies).</li>
+<li><strong>Shop (stage 5) only knows pantry items.</strong> A shopping row works out the gap against one pantry item. Nothing turns a plan into shopping rows yet, and you can't type your own row yet.</li>
+<li><strong>Cook (stage 6) doesn't take food out of the pantry.</strong> The cook sheet is designed in the prototype; the ledger already has the right row type (<code>USE_IN_MEAL</code>), but nothing writes it.</li>
+<li><strong>Sign-in is a stand-in.</strong> The app runs as fixed test people. Real accounts and hosting come before the friends beta.</li>
+</ul>
+
+<h2 id="confirm">2. What Andy and Dean confirm on the workflow</h2>
+<p>Each line is one decision from <a href="../po/foundation-revisit-2026-10-20.html#decisions">the foundation revisit</a>, placed on the stage where a household would feel it. Nothing is decided until Andy says so.</p>
+<div class="sk-scroll"><table>
+<thead><tr><th scope="col">Stage</th><th scope="col">Question</th><th scope="col">Architect's proposal</th><th scope="col">Revisit</th></tr></thead>
+<tbody>
+<tr><td>1 · Join</td><td>Who enters allergies, and who can see them?</td><td>The owner enters for everyone at signup, members edit their own, allergies visible to the household, profiles private.</td><td>D12 (A3)</td></tr>
+<tr><td>4 · Decide</td><td>What does Plan ahead look like?</td><td>A grid: 1 to 7 days (default 5) across, breakfast, lunch and dinner down. Each cell: add, swap, clear, cook. Custom meal slots, copy and move, and "Fill my week" come after the beta.</td><td>D7</td></tr>
+<tr><td>4 · Decide</td><td>Where do recipes come from?</td><td>A small catalogue we own: AI drafts, a person reviews, stored as our data. No Spoonacular.</td><td>D1</td></tr>
+<tr><td>4 · Decide</td><td>Who vouches for a recipe's allergen list?</td><td>Andy and Dean review each recipe against a written checklist. Copy never says "safe" either way.</td><td>D2</td></tr>
+<tr><td>4 · Decide</td><td>Which diets, and can a diet hide a recipe?</td><td>Dean's 8. Vegetarian, vegan, and the exclusion part of halal and kosher hide recipes. Keto, high-protein, DASH and calorie-controlled only move better matches up. Gluten-free stays an allergy.</td><td>D8</td></tr>
+<tr><td>5 · Shop</td><td>Do plan shortfalls appear on their own?</td><td>Yes. The list always shows plan need minus what is on hand. A ticked or bought row never disappears on its own. Rows you type stay yours.</td><td>D5</td></tr>
+<tr><td>6 · Cook</td><td>What happens when you cook?</td><td>The app takes out what is on hand, oldest first, and says what was short. Ingredients it can't match to the pantry are listed as "not taken out", never guessed.</td><td>D6</td></tr>
+<tr><td>All</td><td>US or Metric by default?</td><td>Andy's call: US (launch market) or the phone's setting.</td><td>D9</td></tr>
+<tr><td>4 · Decide</td><td>Daily calorie goal in the beta?</td><td>Recipe calories and a day total come with the catalogue; the goal setting is small. In the beta or right after.</td><td>D10</td></tr>
+</tbody></table></div>
+
+<h2 id="architecture">3. Architecture: how it is built today</h2>
+<p>Three parts that run (phone app, API server, database), three shared code packages, and one outside service. Amber dashed items are PROPOSED by the revisit, not built.</p>
+
+<figure>
+<div class="sk-scroll">
+<svg viewBox="0 0 1000 800" width="100%" role="img" aria-labelledby="ar-t ar-d" style="min-width:860px">
+<title id="ar-t">Architecture as built</title>
+<desc id="ar-d">The phone app calls the API server over HTTPS with a bearer token and an idempotency key on writes. The API passes each request through CORS, identity, authorization and a tenant session, then to one of four route modules, and talks to Postgres as a limited role under row-level security. The API calls Open Food Facts for barcode lookups. Shared packages hold the contracts, the pure domain logic and the provider adapters. CI runs quality and secret-scan jobs.</desc>
+<defs>
+<marker id="b1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="ah"/></marker>
+</defs>
+
+<!-- Phone -->
+<rect x="10" y="20" width="290" height="440" rx="12" class="zone"/>
+<text x="26" y="46" class="zt">Phone app</text>
+<text x="26" y="64" class="zs">Expo / React Native · also runs in a browser</text>
+<text x="26" y="92" class="txb">Screens</text>
+<text x="26" y="112" class="tx">S1 sign in · S2 allergies</text>
+<text x="26" y="130" class="tx">Home (empty state)</text>
+<text x="26" y="148" class="tx">S4 pantry · S5 item · legend</text>
+<text x="26" y="166" class="tx">S6 add · S7 scan · S8 confirm</text>
+<text x="26" y="184" class="tx">S9 type it in</text>
+<text x="26" y="202" class="tx">S11 shopping · S12 profile</text>
+<text x="26" y="220" class="txm">Menu tab: placeholder</text>
+<rect x="24" y="238" width="262" height="92" rx="8" class="inner"/>
+<text x="36" y="260" class="txb">ApiClient (one port, two modes)</text>
+<text x="36" y="280" class="tx">Real mode: HttpApiClient → API</text>
+<text x="36" y="298" class="tx">Demo mode: FixtureApiClient</text>
+<text x="36" y="316" class="txm">sample household, no server</text>
+<rect x="24" y="342" width="262" height="104" rx="8" class="inner"/>
+<text x="36" y="364" class="txb">Kept only on the phone today</text>
+<text x="36" y="384" class="tx">Allergies per member</text>
+<text x="36" y="402" class="txm">(server storage waits on A3)</text>
+<text x="36" y="420" class="tx">Shopping offline queue</text>
+<text x="36" y="438" class="txm">(lost if the app closes)</text>
+
+<!-- API -->
+<rect x="350" y="20" width="310" height="440" rx="12" class="zone"/>
+<text x="366" y="46" class="zt">API server</text>
+<text x="366" y="64" class="zs">Node / TypeScript / Fastify · one service</text>
+<rect x="366" y="80" width="278" height="34" rx="6" class="inner"/><text x="378" y="102" class="tx">1. CORS allowlist (browser origins)</text>
+<rect x="366" y="122" width="278" height="34" rx="6" class="inner"/><text x="378" y="144" class="tx">2. Identity: token → user (test logins)</text>
+<rect x="366" y="164" width="278" height="34" rx="6" class="inner"/><text x="378" y="186" class="tx">3. Authorization: default deny</text>
+<rect x="366" y="206" width="278" height="34" rx="6" class="inner"/><text x="378" y="228" class="tx">4. Household transaction, retries</text>
+<path d="M505,114 V120" class="edge"/><path d="M505,156 V162" class="edge"/><path d="M505,198 V204" class="edge"/><path d="M505,240 V252" class="edge" marker-end="url(#b1)"/>
+<text x="366" y="272" class="txb">Route modules</text>
+<rect x="366" y="282" width="134" height="40" rx="6" class="inner"/><text x="376" y="307" class="tx">Households</text>
+<rect x="510" y="282" width="134" height="40" rx="6" class="inner"/><text x="520" y="307" class="tx">Inventory</text>
+<rect x="366" y="330" width="134" height="40" rx="6" class="inner"/><text x="376" y="355" class="tx">Products</text>
+<rect x="510" y="330" width="134" height="40" rx="6" class="inner"/><text x="520" y="355" class="tx">Shopping</text>
+<rect x="366" y="378" width="278" height="34" rx="6" class="prop"/><text x="378" y="400" class="propt">PROPOSED: Menu plan · Cook · Recipes</text>
+<text x="366" y="436" class="txm">Logs redact names, emails, tokens, codes.</text>
+<text x="366" y="452" class="txm">Join by code: 10 tries per 10 minutes.</text>
+
+<!-- Database -->
+<rect x="710" y="20" width="280" height="440" rx="12" class="zone"/>
+<text x="726" y="46" class="zt">Database</text>
+<text x="726" y="64" class="zs">PostgreSQL 17 · 11 migrations</text>
+<text x="726" y="90" class="txb">People and households</text>
+<text x="726" y="108" class="tx">users · households</text>
+<text x="726" y="126" class="tx">household_memberships</text>
+<text x="726" y="144" class="tx">household_join_codes</text>
+<text x="726" y="170" class="txb">Pantry</text>
+<text x="726" y="188" class="tx">inventory_items · inventory_lots</text>
+<text x="726" y="206" class="tx">inventory_transactions (ledger)</text>
+<text x="726" y="224" class="tx">inventory_confirmations</text>
+<text x="726" y="242" class="tx">inventory_item_moves</text>
+<text x="726" y="268" class="txb">Shopping</text>
+<text x="726" y="286" class="tx">shopping_rows · shopping_row_writes</text>
+<text x="726" y="312" class="txb">Views</text>
+<text x="726" y="330" class="tx">reconciliation · correction rate</text>
+<rect x="722" y="344" width="256" height="64" rx="6" class="prop"/>
+<text x="732" y="364" class="propt">PROPOSED: ingredients · recipes</text>
+<text x="732" y="381" class="propt">plan entries · settings</text>
+<text x="732" y="398" class="propt">meal logs · shopping state</text>
+<text x="726" y="430" class="txm">Row-level security per household.</text>
+<text x="726" y="447" class="txm">Ledger: insert only, never edited.</text>
+
+<!-- arrows between zones -->
+<path d="M300,180 H348" class="edge" marker-end="url(#b1)"/>
+<text x="304" y="166" class="el">HTTPS</text>
+<text x="304" y="200" class="txm">token +</text>
+<text x="304" y="214" class="txm">write key</text>
+<path d="M660,180 H708" class="edge" marker-end="url(#b1)"/>
+<text x="664" y="166" class="el">SQL</text>
+<text x="664" y="200" class="txm">limited</text>
+<text x="664" y="214" class="txm">role</text>
+
+<!-- Shared packages -->
+<rect x="10" y="500" width="650" height="150" rx="12" class="zone"/>
+<text x="26" y="526" class="zt">Shared code packages</text>
+<text x="26" y="544" class="zs">one codebase, used by the phone and the server</text>
+<rect x="26" y="556" width="196" height="80" rx="8" class="inner"/>
+<text x="38" y="578" class="txb">contracts</text><text x="38" y="596" class="tx">request and reply shapes,</text><text x="38" y="612" class="tx">route paths, error codes</text>
+<rect x="234" y="556" width="200" height="80" rx="8" class="inner"/>
+<text x="246" y="578" class="txb">domain (no I/O)</text><text x="246" y="596" class="tx">ledger math, allergen engine,</text><text x="246" y="612" class="tx">units, oldest-first lots</text>
+<rect x="446" y="556" width="200" height="80" rx="8" class="inner"/>
+<text x="458" y="578" class="txb">adapters</text><text x="458" y="596" class="tx">product lookup port:</text><text x="458" y="612" class="tx">fixture + Open Food Facts</text>
+<path d="M155,500 V462" class="edge" marker-end="url(#b1)"/>
+<path d="M505,500 V462" class="edge" marker-end="url(#b1)"/>
+<text x="164" y="486" class="txm">used by the app</text>
+<text x="514" y="486" class="txm">used by the API</text>
+
+<!-- External -->
+<rect x="710" y="500" width="280" height="150" rx="12" class="zone"/>
+<text x="726" y="526" class="zt">Outside services</text>
+<text x="726" y="550" class="txb">Open Food Facts (live)</text>
+<text x="726" y="568" class="tx">barcode → product, from API only</text>
+<text x="726" y="586" class="txm">12 calls a minute, memory cache</text>
+<text x="726" y="612" class="txb">Not connected yet</text>
+<text x="726" y="630" class="txm">sign-in vendor · hosting · AI model</text>
+<text x="726" y="646" class="txm">receipt OCR · image storage</text>
+<path d="M646,596 H708" class="edge" marker-end="url(#b1)"/>
+
+<!-- CI -->
+<rect x="10" y="680" width="980" height="100" rx="12" class="zone"/>
+<text x="26" y="706" class="zt">Checks on every push (GitHub Actions)</text>
+<text x="26" y="730" class="tx">quality: frozen install · lint · typecheck · tests with a real Postgres · app export · format · dependency audit</text>
+<text x="26" y="750" class="tx">secret-scan: gitleaks over the pushed commits</text>
+<text x="26" y="770" class="txm">Not in CI yet: a browser run through the app (the e2e gate). Not protected: main still takes direct pushes (branch protection open since 2026-09-08).</text>
+</svg>
+</div>
+<figcaption>Today everything runs on Andy's machine: the API and a practice database locally, the phone over the home network. Nothing is hosted yet.</figcaption>
+</figure>
+
+<h3>The rules the architecture enforces</h3>
+<ul>
+<li><strong>The pantry is a ledger.</strong> Quantities change only by adding a row (bought, used, corrected, thrown out). A correction or an undo is another row, never an edit. That is why history and the correction-rate number can be trusted.</li>
+<li><strong>Households can't see each other.</strong> Every request runs inside one household's transaction, and the database itself refuses rows from another household even if the code forgets to filter.</li>
+<li><strong>Safety math is plain code, never AI.</strong> Allergen checks, quantities and shopping gaps are deterministic and tested. Allergen checks can say "contains" or "not checked", never "safe".</li>
+<li><strong>Every write can be retried safely.</strong> The phone sends a key with each write; sending it twice does nothing the second time.</li>
+<li><strong>Outside services sit behind ports.</strong> Open Food Facts can be swapped or faked in tests; the test suite never calls the internet.</li>
+</ul>
+
+<h2 id="endpoints">4. API endpoints (as built)</h2>
+<p>Paths from <code>packages/contracts/src/</code>. "Member" means any signed-in member of the household; the server works out which household from the token, never from the request.</p>
+<div class="sk-scroll"><table>
+<thead><tr><th scope="col">Endpoint</th><th scope="col">Who</th><th scope="col">What it does</th><th scope="col">Used by</th></tr></thead>
+<tbody>
+<tr><td><code>GET /healthz</code></td><td>anyone</td><td>Is the server up</td><td>ops</td></tr>
+<tr><td><code>OPTIONS /v1/*</code></td><td>anyone</td><td>Browser preflight, allowlisted origins only</td><td>web build</td></tr>
+<tr><td><code>POST /v1/households</code></td><td>signed in</td><td>Create a household; caller becomes owner; code shown once</td><td>S1</td></tr>
+<tr><td><code>POST /v1/households/join</code></td><td>signed in</td><td>Join with a code (rate limited)</td><td>S1</td></tr>
+<tr><td><code>GET /v1/households/mine</code></td><td>signed in</td><td>Households I belong to</td><td>onboarding gate</td></tr>
+<tr><td><code>GET /v1/households/me</code></td><td>member</td><td>My household: members' initials and roles</td><td>S12, onboarding</td></tr>
+<tr><td><code>POST /v1/households/me/join-code</code></td><td>owner</td><td>New invite code; the old one stops working</td><td>S12</td></tr>
+<tr><td><code>GET /v1/inventory/items</code></td><td>member</td><td>Pantry list with quantities and tiers</td><td>S4, Home</td></tr>
+<tr><td><code>POST /v1/inventory/items</code></td><td>member</td><td>Create an item with its first stock row</td><td>S8, S9</td></tr>
+<tr><td><code>GET /v1/inventory/items/:itemId</code></td><td>member</td><td>One item with lots and full history</td><td>S5</td></tr>
+<tr><td><code>POST /v1/inventory/items/:itemId/transactions</code></td><td>member</td><td>Correct or remove (appends ledger rows)</td><td>S5</td></tr>
+<tr><td><code>POST /v1/inventory/items/:itemId/transactions/:transactionId/undo</code></td><td>member</td><td>Undo by a compensating row</td><td>S5, toast</td></tr>
+<tr><td><code>POST /v1/inventory/items/:itemId/confirm</code></td><td>member</td><td>Confirm an AI guess (separate record, ledger untouched)</td><td>S4, S5</td></tr>
+<tr><td><code>POST /v1/inventory/items/:itemId/move</code></td><td>member</td><td>Move to another location</td><td>S5</td></tr>
+<tr><td><code>GET /v1/products/:code</code></td><td>member</td><td>Barcode lookup through Open Food Facts</td><td>S7, S8</td></tr>
+<tr><td><code>GET /v1/shopping</code></td><td>member</td><td>Shopping list with gaps worked out on the server</td><td>S11</td></tr>
+<tr><td><code>POST /v1/shopping/rows/:rowId/check</code></td><td>member</td><td>Check off or un-check</td><td>S11</td></tr>
+<tr><td><code>POST /v1/shopping/rows/:rowId/add-to-inventory</code></td><td>member</td><td>Bought it: one PURCHASE row into the pantry</td><td>S11</td></tr>
+<tr><td><code>POST /v1/shopping/rows/:rowId/remove</code></td><td>member</td><td>Remove a member's row</td><td>S11</td></tr>
+</tbody></table></div>
+
+<h2 id="tables">5. Database tables (as built)</h2>
+<div class="sk-scroll"><table>
+<thead><tr><th scope="col">Table or view</th><th scope="col">Holds</th><th scope="col">Migration</th></tr></thead>
+<tbody>
+<tr><td><code>users</code>, <code>households</code>, <code>household_memberships</code></td><td>People, households, who belongs where and as what role</td><td>0002, 0008</td></tr>
+<tr><td><code>household_join_codes</code></td><td>Invite codes, stored hashed; one live code per household</td><td>0008</td></tr>
+<tr><td><code>inventory_items</code></td><td>One row per pantry item: name, unit, location, product link; <code>ingredient_ref</code> exists but is empty</td><td>0003</td></tr>
+<tr><td><code>inventory_lots</code></td><td>Batches of an item with best-by dates</td><td>0003</td></tr>
+<tr><td><code>inventory_transactions</code></td><td>The ledger: every quantity change, insert only</td><td>0003, 0004</td></tr>
+<tr><td><code>inventory_confirmations</code></td><td>Who confirmed an AI guess, and when</td><td>0010</td></tr>
+<tr><td><code>inventory_item_moves</code></td><td>Location moves</td><td>0011</td></tr>
+<tr><td><code>shopping_rows</code>, <code>shopping_row_writes</code></td><td>Shopping rows (member origin only today) and their check-off and add history</td><td>0009</td></tr>
+<tr><td><code>inventory_reconciliation</code>, <code>inventory_lot_reconciliation</code></td><td>Views that prove the stored totals match the ledger</td><td>0005</td></tr>
+<tr><td><code>inventory_correction_telemetry</code></td><td>View for the correction-rate metric (is the pantry staying true?)</td><td>0007</td></tr>
+</tbody></table></div>
+
+<p class="sk-foot">Classification: everything on this page is DOCUMENTED from the code at e889c16 unless marked PROPOSED (from the 2026-10-20 foundation revisit, not decided). Kept current at each acceptance once Andy adopts it as the standing architecture picture; until then it is a snapshot.</p>
+</main></body>
+</html>

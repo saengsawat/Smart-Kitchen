@@ -1,0 +1,534 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Smart Kitchen Database</title>
+<link rel="stylesheet" href="../assets/cookbook-docs.css">
+<style>
+.mono { font: 500 13.5px/1.4 var(--mono); }
+td:first-child { white-space: nowrap; }
+.k-pk { font-weight: 700; }
+.k-soft { color: var(--amber); font-weight: 600; }
+.note { color: var(--ink2); font-size: 14px; }
+h3 .note { font-family: var(--sans); font-size: 13px; font-weight: 600; margin-left: 6px; }
+.ent { fill: var(--paper); stroke: var(--ink); stroke-width: 1; rx: 0; }
+.enth { fill: var(--tile); rx: 0; }
+.ent-v { fill: var(--tile); stroke: var(--ink2); stroke-width: 1.2; stroke-dasharray: 6 4; rx: 0; }
+.et { fill: var(--ink); font: 700 13.5px var(--mono); }
+.ec { fill: var(--ink); font: 400 12px var(--mono); }
+.epk { fill: var(--ink); font: 700 12px var(--mono); }
+.efk { fill: var(--ink2); font: 500 12px var(--mono); }
+.esoft { fill: var(--amber); font: 600 12px var(--mono); }
+.em { fill: var(--ink2); font-size: 12px; }
+.rel { stroke: var(--ink); stroke-width: 1.4; fill: none; }
+.rel-soft { stroke: var(--amber); stroke-width: 1.6; fill: none; stroke-dasharray: 5 4; }
+.rl { fill: var(--ink2); font-size: 12px; }
+.rls { fill: var(--amber); font-size: 12px; font-weight: 600; }
+.mk { fill: var(--ink); } .mks { fill: var(--amber); }
+</style>
+</head>
+<body>
+<nav class="sk-bar" aria-label="Smart Kitchen docs"><div class="sk-bar-in">
+<a class="sk-mark" href="blueprint.html">Smart Kitchen</a>
+<div class="sk-nav"><a href="blueprint.html">Blueprint</a><a href="database.html" aria-current="page">Database</a><a href="../po/foundation-revisit-2026-10-20.html">Foundation revisit</a><a href="workflow-diagrams.html">How it's built</a></div>
+</div></nav>
+<main class="sk-page">
+
+<header class="sk-head">
+<h1>Database: schema and relationships</h1>
+<p class="sk-by">Smart Kitchen · Architect (Buddy) for Andy · as of 2026-10-24 (main at e889c16, migrations 0001 to 0011) · docs only</p>
+<p class="sk-lead">The PostgreSQL schema as it exists today: an entity relationship diagram, every table with its columns, keys, checks, indexes, triggers, row-level security policy and runtime grants, then the functions and views. Section 8 lists observations for your review as a database developer.</p>
+</header>
+
+<div class="sk-panel"><strong>Source of truth.</strong> Everything here is read from <code>apps/api/db/migrations/0001</code> to <code>0011</code> (DOCUMENTED). If this page and a migration disagree, the migration wins; tell me and I fix the page. Section 8 is ENGINEERING INFERENCE: things worth a look, not decisions. Changing the schema means a new migration, explained and approved before it runs anywhere shared (CLAUDE.md rule 16). Related: <a href="blueprint.html">blueprint</a> (workflow and architecture), <a href="data-model.md">data-model.md</a> (design intent), <a href="../po/foundation-revisit-2026-10-20.html">foundation revisit</a> (proposed new tables, section 9).</div>
+
+<div class="sk-band">
+<div ><b>Engine</b>PostgreSQL 17 (CI pins <code>postgres:17-alpine</code> by digest)</div>
+<div ><b>Migrations</b><code>node-pg-migrate</code> 9.0.0, history table <code>sk_migrations</code>, each file has Up and Down sections</div>
+<div ><b>Roles</b>owner role runs migrations and owns objects; <code>sk_app</code> (NOLOGIN) is the runtime role, assumed with <code>SET ROLE</code></div>
+<div ><b>Tenancy</b>row-level security on every household table, keyed by the transaction-local setting <code>app.household_id</code></div>
+<div ><b>Quantities</b>exact integers in micro-units (<code>bigint</code>, 1 unit = 1,000,000), with a <code>numeric(24,6)</code> mirror checked to agree</div>
+<div ><b>Size</b>11 tables, 3 views, 18 functions (4 called by the app, 14 behind triggers)</div>
+</div>
+
+<ul class="sk-toc">
+<li><a href="#erd">1. Relationship diagram</a></li>
+<li><a href="#tenancy">2. How tenancy and roles work</a></li>
+<li><a href="#identity">3. Identity and households (4 tables)</a></li>
+<li><a href="#inventory">4. Inventory and ledger (5 tables)</a></li>
+<li><a href="#shopping">5. Shopping (2 tables)</a></li>
+<li><a href="#views">6. Views</a></li>
+<li><a href="#functions">7. Functions and triggers</a></li>
+<li><a href="#grants">7a. Grant matrix for sk_app</a></li>
+<li><a href="#review">8. Observations for review</a></li>
+<li><a href="#proposed">9. Proposed tables (not designed)</a></li>
+</ul>
+
+<h2 id="erd">1. Relationship diagram</h2>
+<p>Arrows run from the table holding the foreign key to the table it references (many to one). Ink solid: a declared foreign key. Amber dashed: a link enforced by a trigger or by convention, with no foreign key. References to <code>users</code> from deeper tables are written inside the box (<span class="k-fk">→ users</span>) instead of drawn, to keep the picture readable.</p>
+<figure>
+<div class="sk-scroll">
+<svg viewBox="0 0 1000 790" width="100%" role="img" aria-labelledby="erd-t erd-d" style="min-width:940px">
+<title id="erd-t">Entity relationship diagram, 11 tables and 3 views</title>
+<desc id="erd-d">Households own memberships, join codes, inventory items and shopping rows. Memberships link users to households. Inventory items have lots; ledger transactions reference an item and a lot. Confirmations reference a ledger row; moves reference an item. Shopping row writes reference a shopping row. A shopping row's purchase is linked to a ledger row by trigger. Views read items, lots and transactions.</desc>
+<defs>
+<marker id="m1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="mk"/></marker>
+<marker id="m2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="mks"/></marker>
+</defs>
+
+<!-- Row 1 -->
+<rect x="20" y="40" width="205" height="116" rx="6" class="ent"/><rect x="20" y="40" width="205" height="26" rx="6" class="enth"/>
+<text x="30" y="58" class="et">users</text>
+<text x="30" y="84" class="epk">PK id uuid</text>
+<text x="30" y="100" class="ec">auth_provider_subject UQ</text>
+<text x="30" y="116" class="ec">email</text>
+<text x="30" y="132" class="ec">display_name</text>
+<text x="30" y="148" class="ec">created_at</text>
+
+<rect x="275" y="40" width="205" height="132" rx="6" class="ent"/><rect x="275" y="40" width="205" height="26" rx="6" class="enth"/>
+<text x="285" y="58" class="et">household_memberships</text>
+<text x="285" y="84" class="epk">PK id uuid</text>
+<text x="285" y="100" class="efk">FK household_id</text>
+<text x="285" y="116" class="efk">FK user_id</text>
+<text x="285" y="132" class="ec">role owner|member</text>
+<text x="285" y="148" class="ec">UQ (hh, user_id)</text>
+<text x="285" y="164" class="ec">UQ (hh, id)</text>
+
+<rect x="530" y="40" width="205" height="84" rx="6" class="ent"/><rect x="530" y="40" width="205" height="26" rx="6" class="enth"/>
+<text x="540" y="58" class="et">households</text>
+<text x="540" y="84" class="epk">PK id uuid</text>
+<text x="540" y="100" class="ec">name</text>
+<text x="540" y="116" class="ec">created_at</text>
+
+<rect x="785" y="40" width="205" height="132" rx="6" class="ent"/><rect x="785" y="40" width="205" height="26" rx="6" class="enth"/>
+<text x="795" y="58" class="et">household_join_codes</text>
+<text x="795" y="84" class="epk">PK code_hash text</text>
+<text x="795" y="100" class="efk">FK household_id</text>
+<text x="795" y="116" class="efk">FK created_by → users</text>
+<text x="795" y="132" class="ec">created_at</text>
+<text x="795" y="148" class="ec">revoked_at</text>
+<text x="795" y="164" class="em">one live code per household</text>
+
+<!-- Row 2 -->
+<rect x="20" y="270" width="205" height="132" rx="6" class="ent"/><rect x="20" y="270" width="205" height="26" rx="6" class="enth"/>
+<text x="30" y="288" class="et">inventory_item_moves</text>
+<text x="30" y="314" class="epk">PK id uuid</text>
+<text x="30" y="330" class="efk">FK (hh, item_id)</text>
+<text x="30" y="346" class="efk">FK moved_by → member</text>
+<text x="30" y="362" class="ec">from_ / to_location</text>
+<text x="30" y="378" class="ec">UQ (hh, item, client_key)</text>
+<text x="30" y="394" class="em">append-only</text>
+
+<rect x="275" y="270" width="205" height="196" rx="6" class="ent"/><rect x="275" y="270" width="205" height="26" rx="6" class="enth"/>
+<text x="285" y="288" class="et">inventory_items</text>
+<text x="285" y="314" class="epk">PK id uuid</text>
+<text x="285" y="330" class="efk">FK household_id</text>
+<text x="285" y="346" class="ec">unit (immutable)</text>
+<text x="285" y="362" class="ec">product_ref</text>
+<text x="285" y="378" class="ec">ingredient_ref (empty)</text>
+<text x="285" y="394" class="ec">display_name</text>
+<text x="285" y="410" class="ec">storage_location</text>
+<text x="285" y="426" class="ec">current_qty_micros</text>
+<text x="285" y="442" class="ec">next_sequence</text>
+<text x="285" y="458" class="em">qty is a snapshot of the ledger</text>
+
+<rect x="530" y="270" width="205" height="132" rx="6" class="ent"/><rect x="530" y="270" width="205" height="26" rx="6" class="enth"/>
+<text x="540" y="288" class="et">inventory_lots</text>
+<text x="540" y="314" class="epk">PK id uuid</text>
+<text x="540" y="330" class="efk">FK (hh, item_id)</text>
+<text x="540" y="346" class="ec">acquired_at, expires_at</text>
+<text x="540" y="362" class="ec">expiry_tier, label</text>
+<text x="540" y="378" class="ec">current_qty_micros</text>
+<text x="540" y="394" class="em">UQ (hh, item_id, id)</text>
+
+<rect x="785" y="270" width="205" height="132" rx="6" class="ent"/><rect x="785" y="270" width="205" height="26" rx="6" class="enth"/>
+<text x="795" y="288" class="et">inventory_confirmations</text>
+<text x="795" y="314" class="epk">PK id uuid</text>
+<text x="795" y="330" class="efk">FK → ledger (hh, item, id)</text>
+<text x="795" y="346" class="efk">FK confirmed_by → member</text>
+<text x="795" y="362" class="ec">model_ref, client_key</text>
+<text x="795" y="378" class="ec">UQ (hh, transaction_id)</text>
+<text x="795" y="394" class="em">append-only, AI rows only</text>
+
+<!-- Row 3 -->
+<rect x="20" y="520" width="205" height="132" rx="6" class="ent"/><rect x="20" y="520" width="205" height="26" rx="6" class="enth"/>
+<text x="30" y="538" class="et">shopping_row_writes</text>
+<text x="30" y="564" class="epk">PK (hh, idempotency_key)</text>
+<text x="30" y="580" class="efk">FK (hh, row_id)</text>
+<text x="30" y="596" class="efk">FK actor_member_id</text>
+<text x="30" y="612" class="ec">kind check|add, checked</text>
+<text x="30" y="628" class="esoft">transaction_id (no FK)</text>
+<text x="30" y="644" class="em">insert-only by grant</text>
+
+<rect x="275" y="520" width="205" height="196" rx="6" class="ent"/><rect x="275" y="520" width="205" height="26" rx="6" class="enth"/>
+<text x="285" y="538" class="et">shopping_rows</text>
+<text x="285" y="564" class="epk">PK id uuid</text>
+<text x="285" y="580" class="efk">FK household_id</text>
+<text x="285" y="596" class="efk">FK (hh, item_id) null ok</text>
+<text x="285" y="612" class="efk">FK origin_member_id</text>
+<text x="285" y="628" class="efk">FK checked_off_by</text>
+<text x="285" y="644" class="efk">FK removed_by</text>
+<text x="285" y="660" class="efk">FK created_by → users</text>
+<text x="285" y="676" class="ec">name, unit, need_micros</text>
+<text x="285" y="692" class="esoft">added_transaction_id</text>
+<text x="285" y="708" class="em">origin_kind = 'member' only</text>
+
+<rect x="530" y="520" width="205" height="244" rx="6" class="ent"/><rect x="530" y="520" width="205" height="26" rx="6" class="enth"/>
+<text x="540" y="538" class="et">inventory_transactions</text>
+<text x="540" y="564" class="epk">PK id uuid</text>
+<text x="540" y="580" class="efk">FK (hh, item_id, unit)</text>
+<text x="540" y="596" class="efk">FK (hh, item_id, lot_id)</text>
+<text x="540" y="612" class="ec">sequence UQ per item</text>
+<text x="540" y="628" class="ec">type, qty_delta_micros</text>
+<text x="540" y="644" class="efk">actor_user_id → users</text>
+<text x="540" y="660" class="ec">provenance_tier …</text>
+<text x="540" y="676" class="efk">provenance_confirmed_by</text>
+<text x="540" y="692" class="esoft">correlation_kind, _id</text>
+<text x="540" y="708" class="ec">idempotency_key UQ</text>
+<text x="540" y="724" class="efk">system_flag_* → self</text>
+<text x="540" y="740" class="em">append-only ledger</text>
+<text x="540" y="756" class="em">insert updates the snapshots</text>
+
+<rect x="785" y="520" width="205" height="148" rx="6" class="ent-v"/>
+<text x="795" y="540" class="et">views</text>
+<text x="795" y="562" class="ec">inventory_reconciliation</text>
+<text x="795" y="580" class="ec">inventory_lot_</text>
+<text x="805" y="596" class="ec">reconciliation</text>
+<text x="795" y="614" class="ec">inventory_correction_</text>
+<text x="805" y="630" class="ec">telemetry</text>
+<text x="795" y="650" class="em">security_invoker; read items,</text>
+<text x="795" y="664" class="em">lots and transactions</text>
+
+<!-- Relationships -->
+<!-- memberships to households -->
+<path d="M480,82 H528" class="rel" marker-end="url(#m1)"/>
+<!-- memberships to users -->
+<path d="M275,82 H227" class="rel" marker-end="url(#m1)"/>
+<!-- join codes to households -->
+<path d="M785,82 H737" class="rel" marker-end="url(#m1)"/>
+<!-- items to households -->
+<path d="M455,270 V212 H610 V126" class="rel" marker-end="url(#m1)"/>
+<text x="618" y="200" class="rl">household_id</text>
+<!-- moves to memberships (hh, user_id) -->
+<path d="M150,270 V232 H330 V174" class="rel" marker-end="url(#m1)"/>
+<text x="160" y="226" class="rl">(hh, user_id)</text>
+<!-- confirmations to memberships (hh, user_id) -->
+<path d="M960,270 V246 H400 V174" class="rel" marker-end="url(#m1)"/>
+<text x="760" y="240" class="rl">(hh, user_id)</text>
+<!-- moves to items -->
+<path d="M225,336 H273" class="rel" marker-end="url(#m1)"/>
+<!-- lots to items -->
+<path d="M530,336 H482" class="rel" marker-end="url(#m1)"/>
+<!-- confirmations to transactions -->
+<path d="M800,402 V500 H760 V570 H737" class="rel" marker-end="url(#m1)"/>
+<text x="808" y="460" class="rl">(hh, item_id, id)</text>
+<!-- transactions to lots -->
+<path d="M640,520 V404" class="rel" marker-end="url(#m1)"/>
+<text x="648" y="470" class="rl">(hh, item_id, lot_id)</text>
+<!-- transactions to items -->
+<path d="M560,520 V492 H440 V468" class="rel" marker-end="url(#m1)"/>
+<text x="452" y="486" class="rl">(hh, item_id, unit)</text>
+<!-- shopping rows to items -->
+<path d="M340,520 V468" class="rel" marker-end="url(#m1)"/>
+<text x="334" y="502" class="rl" text-anchor="end">(hh, item_id)</text>
+<!-- row writes to shopping rows -->
+<path d="M225,586 H273" class="rel" marker-end="url(#m1)"/>
+<!-- transactions self (clamp cause) -->
+<path d="M735,724 H760 V748 H737" class="rel" marker-end="url(#m1)"/>
+<!-- shopping row purchase to ledger (trigger) -->
+<path d="M480,688 H528" class="rel-soft" marker-end="url(#m2)"/>
+<text x="436" y="776" class="rls">added_transaction_id → ledger row whose correlation_id = row id</text>
+</svg>
+</div>
+<figcaption>"hh" is household_id. Almost every foreign key is composite and starts with household_id, so a row can only point at a row in the same household. That is enforced by the keys themselves, not only by row-level security.</figcaption>
+</figure>
+
+<h2 id="tenancy">2. How tenancy and roles work</h2>
+<ul>
+<li><strong>Two roles.</strong> The owner role runs migrations, owns every object, and bypasses RLS (used by migrations, the dev seed and the test harness). <code>sk_app</code> is created <code>NOLOGIN</code> in 0001; the API connects and runs <code>SET ROLE sk_app</code> for every request, so policies apply. A LOGIN role with a real password is a deployment task, not in the repo (rule 12).</li>
+<li><strong>Household context.</strong> At the start of each request transaction the API runs <code>set_config('app.household_id', &lt;uuid&gt;, true)</code>. <code>app_current_household()</code> reads it; unset means NULL, every policy compares to NULL, and nothing is visible or writable. Isolation fails closed.</li>
+<li><strong>Policies.</strong> Every household-scoped table has one policy, <code>&lt;table&gt;_current</code>, with <code>USING</code> and <code>WITH CHECK</code> both <code>household_id = app_current_household()</code>. <code>users</code> is visible only when the user shares the current household.</li>
+<li><strong>Not FORCE.</strong> <code>FORCE ROW LEVEL SECURITY</code> is deliberately off, so the SECURITY DEFINER ledger trigger (owned by the owner role) is bound by its foreign keys rather than by the caller's session setting (0006 header).</li>
+<li><strong>Doors with no household yet.</strong> Creating a household, redeeming a join code and listing my memberships happen before a household context exists, so they go through three SECURITY DEFINER functions (section 7) instead of table grants.</li>
+<li><strong>Least privilege.</strong> <code>sk_app</code> has no DELETE anywhere and no UPDATE on any quantity column or the ledger. Section 7a has the full matrix.</li>
+</ul>
+
+<h2 id="identity">3. Identity and households</h2>
+
+<h3><code>users</code> <span class="note">0002</span></h3>
+<p class="note">An authenticated person. Identity is external (ADR-004, still a stub); minimal PII here.</p>
+<div class="sk-scroll"><table>
+<thead><tr><th>Column</th><th>Type</th><th>Null</th><th>Default</th><th>Constraints and notes</th></tr></thead>
+<tbody>
+<tr><td class="mono k-pk">id</td><td class="mono">uuid</td><td>no</td><td></td><td>PRIMARY KEY (app-generated)</td></tr>
+<tr><td class="mono">auth_provider_subject</td><td class="mono">text</td><td>yes</td><td></td><td>UNIQUE</td></tr>
+<tr><td class="mono">email</td><td class="mono">text</td><td>yes</td><td></td><td>PII; redacted from logs</td></tr>
+<tr><td class="mono">display_name</td><td class="mono">text</td><td>yes</td><td></td><td>PII</td></tr>
+<tr><td class="mono">created_at</td><td class="mono">timestamptz</td><td>no</td><td class="mono">now()</td><td></td></tr>
+</tbody></table></div>
+<p><b>RLS:</b> <code>users_shared_household</code> USING EXISTS a membership of this user in the current household (no WITH CHECK; SELECT only). <b>sk_app:</b> SELECT.</p>
+
+<h3><code>households</code> <span class="note">0002</span></h3>
+<p class="note">The tenancy and sharing boundary. Every food row is household-scoped.</p>
+<div class="sk-scroll"><table>
+<thead><tr><th>Column</th><th>Type</th><th>Null</th><th>Default</th><th>Constraints and notes</th></tr></thead>
+<tbody>
+<tr><td class="mono k-pk">id</td><td class="mono">uuid</td><td>no</td><td></td><td>PRIMARY KEY</td></tr>
+<tr><td class="mono">name</td><td class="mono">text</td><td>no</td><td></td><td>CHECK <code>btrim(name) &lt;&gt; ''</code></td></tr>
+<tr><td class="mono">created_at</td><td class="mono">timestamptz</td><td>no</td><td class="mono">now()</td><td></td></tr>
+</tbody></table></div>
+<p><b>RLS:</b> <code>households_current</code> on <code>id</code>. <b>sk_app:</b> SELECT. Rows are inserted only by <code>app_create_household()</code>.</p>
+
+<h3><code>household_memberships</code> <span class="note">0002, 0009</span></h3>
+<div class="sk-scroll"><table>
+<thead><tr><th>Column</th><th>Type</th><th>Null</th><th>Default</th><th>Constraints and notes</th></tr></thead>
+<tbody>
+<tr><td class="mono k-pk">id</td><td class="mono">uuid</td><td>no</td><td></td><td>PRIMARY KEY</td></tr>
+<tr><td class="mono k-fk">household_id</td><td class="mono">uuid</td><td>no</td><td></td><td>FK households(id) ON DELETE CASCADE</td></tr>
+<tr><td class="mono k-fk">user_id</td><td class="mono">uuid</td><td>no</td><td></td><td>FK users(id) ON DELETE CASCADE</td></tr>
+<tr><td class="mono">role</td><td class="mono">text</td><td>no</td><td></td><td>CHECK IN ('owner', 'member')</td></tr>
+<tr><td class="mono">created_at</td><td class="mono">timestamptz</td><td>no</td><td class="mono">now()</td><td>also the "joined at" used to pick the session's household</td></tr>
+</tbody></table></div>
+<p><b>Keys:</b> UNIQUE <code>household_memberships_unique_member (household_id, user_id)</code>; UNIQUE <code>household_memberships_household_id_key (household_id, id)</code> (added in 0009 as a composite FK target). <b>Index:</b> <code>household_memberships_user_idx (user_id)</code>. <b>RLS:</b> <code>household_memberships_current</code>. <b>sk_app:</b> SELECT; inserts only through the SECURITY DEFINER functions.</p>
+
+<h3><code>household_join_codes</code> <span class="note">0008</span></h3>
+<p class="note">Invite codes, stored as HMAC-SHA-256 under a server pepper. The plaintext is returned once and never stored or logged.</p>
+<div class="sk-scroll"><table>
+<thead><tr><th>Column</th><th>Type</th><th>Null</th><th>Default</th><th>Constraints and notes</th></tr></thead>
+<tbody>
+<tr><td class="mono k-pk">code_hash</td><td class="mono">text</td><td>no</td><td></td><td>PRIMARY KEY; CHECK <code>~ '^[0-9a-f]{64}$'</code></td></tr>
+<tr><td class="mono k-fk">household_id</td><td class="mono">uuid</td><td>no</td><td></td><td>FK households(id) ON DELETE CASCADE</td></tr>
+<tr><td class="mono k-fk">created_by</td><td class="mono">uuid</td><td>no</td><td></td><td>FK users(id)</td></tr>
+<tr><td class="mono">created_at</td><td class="mono">timestamptz</td><td>no</td><td class="mono">now()</td><td>the API stamps rotations with <code>clock_timestamp()</code> (M2-T3a)</td></tr>
+<tr><td class="mono">revoked_at</td><td class="mono">timestamptz</td><td>yes</td><td></td><td>CHECK <code>revoked_at IS NULL OR revoked_at &gt;= created_at</code></td></tr>
+</tbody></table></div>
+<p><b>Index:</b> UNIQUE partial <code>household_join_codes_one_live (household_id) WHERE revoked_at IS NULL</code>. <b>Trigger:</b> <code>household_join_codes_revoke_only</code> BEFORE UPDATE: an update may only set <code>revoked_at</code> once. <b>RLS:</b> <code>household_join_codes_current</code>. <b>sk_app:</b> SELECT, INSERT, UPDATE (revoked_at).</p>
+
+<h2 id="inventory">4. Inventory and ledger</h2>
+
+<h3><code>inventory_items</code> <span class="note">0003, 0004</span></h3>
+<p class="note">One row per thing in the pantry. The quantity columns are a snapshot maintained only by the ledger trigger.</p>
+<div class="sk-scroll"><table>
+<thead><tr><th>Column</th><th>Type</th><th>Null</th><th>Default</th><th>Constraints and notes</th></tr></thead>
+<tbody>
+<tr><td class="mono k-pk">id</td><td class="mono">uuid</td><td>no</td><td></td><td>PRIMARY KEY</td></tr>
+<tr><td class="mono k-fk">household_id</td><td class="mono">uuid</td><td>no</td><td></td><td>FK households(id), no cascade; immutable (trigger)</td></tr>
+<tr><td class="mono">unit</td><td class="mono">text</td><td>no</td><td></td><td>CHECK nonblank; immutable (trigger); every lot and ledger row must match it</td></tr>
+<tr><td class="mono">product_ref</td><td class="mono">text</td><td>yes</td><td></td><td>CHECK nonblank when set; the barcode product</td></tr>
+<tr><td class="mono">ingredient_ref</td><td class="mono">text</td><td>yes</td><td></td><td>CHECK nonblank when set; <strong>never set today</strong> (revisit 3.1)</td></tr>
+<tr><td class="mono">display_name</td><td class="mono">text</td><td>yes</td><td></td><td></td></tr>
+<tr><td class="mono">storage_location</td><td class="mono">text</td><td>yes</td><td></td><td>CHECK IN ('FRIDGE', 'FREEZER', 'PANTRY', 'OTHER')</td></tr>
+<tr><td class="mono">current_qty_micros</td><td class="mono">bigint</td><td>no</td><td class="mono">0</td><td>snapshot = Σ ledger deltas (INV-LEDGER-1); ledger trigger only</td></tr>
+<tr><td class="mono">current_qty</td><td class="mono">numeric(24,6)</td><td>no</td><td class="mono">0</td><td>CHECK <code>current_qty = current_qty_micros / 1000000</code></td></tr>
+<tr><td class="mono">next_sequence</td><td class="mono">integer</td><td>no</td><td class="mono">1</td><td>CHECK &gt;= 1; the next ledger sequence for this item</td></tr>
+<tr><td class="mono">created_at</td><td class="mono">timestamptz</td><td>no</td><td class="mono">now()</td><td></td></tr>
+</tbody></table></div>
+<p><b>Keys:</b> UNIQUE <code>(household_id, id)</code>, UNIQUE <code>(household_id, id, unit)</code> (composite FK targets). <b>Index:</b> <code>inventory_items_household_idx (household_id)</code>. <b>Triggers:</b> <code>inventory_items_guard</code> BEFORE UPDATE (snapshot columns change only while <code>sk.ledger_apply = 'on'</code>; household_id and unit immutable, SQLSTATE 42501); <code>inventory_items_nonnegative</code> constraint trigger, DEFERRABLE INITIALLY DEFERRED, fails the commit if the quantity is below zero (INV-LEDGER-4). <b>RLS:</b> <code>inventory_items_current</code>. <b>sk_app:</b> SELECT, INSERT, UPDATE (display_name, storage_location, product_ref, ingredient_ref).</p>
+
+<h3><code>inventory_lots</code> <span class="note">0003, 0004</span></h3>
+<p class="note">Batches of an item, each with its own best-by date and snapshot quantity. Lot selection is oldest first (FEFO, in the domain).</p>
+<div class="sk-scroll"><table>
+<thead><tr><th>Column</th><th>Type</th><th>Null</th><th>Default</th><th>Constraints and notes</th></tr></thead>
+<tbody>
+<tr><td class="mono k-pk">id</td><td class="mono">uuid</td><td>no</td><td></td><td>PRIMARY KEY</td></tr>
+<tr><td class="mono k-fk">household_id</td><td class="mono">uuid</td><td>no</td><td></td><td>part of FK to items; immutable (trigger)</td></tr>
+<tr><td class="mono k-fk">item_id</td><td class="mono">uuid</td><td>no</td><td></td><td>FK <code>(household_id, item_id)</code> → inventory_items(household_id, id); immutable</td></tr>
+<tr><td class="mono">acquired_at</td><td class="mono">timestamptz</td><td>yes</td><td></td><td></td></tr>
+<tr><td class="mono">expires_at</td><td class="mono">timestamptz</td><td>yes</td><td></td><td>best-by; a printed date is stored as UTC midnight (open follow-up: reads a day early west of UTC)</td></tr>
+<tr><td class="mono">expiry_tier</td><td class="mono">text</td><td>yes</td><td></td><td>CHECK IN ('KNOWN_FACT', 'ESTIMATED', 'AI_INTERPRETATION')</td></tr>
+<tr><td class="mono">label</td><td class="mono">text</td><td>yes</td><td></td><td>e.g. typed package size "248 g"</td></tr>
+<tr><td class="mono">current_qty_micros</td><td class="mono">bigint</td><td>no</td><td class="mono">0</td><td>snapshot; ledger trigger only</td></tr>
+<tr><td class="mono">current_qty</td><td class="mono">numeric(24,6)</td><td>no</td><td class="mono">0</td><td>CHECK agrees with micros</td></tr>
+<tr><td class="mono">created_at</td><td class="mono">timestamptz</td><td>no</td><td class="mono">now()</td><td></td></tr>
+</tbody></table></div>
+<p><b>Keys:</b> UNIQUE <code>(household_id, item_id, id)</code>. <b>Index:</b> <code>inventory_lots_item_idx (item_id)</code>. <b>Triggers:</b> <code>inventory_lots_guard</code>, <code>inventory_lots_nonnegative</code> (same pattern as items). <b>RLS:</b> <code>inventory_lots_current</code>. <b>sk_app:</b> SELECT, INSERT, UPDATE (label, acquired_at, expires_at, expiry_tier).</p>
+
+<h3><code>inventory_transactions</code> (the ledger) <span class="note">0003, 0004, 0010</span></h3>
+<p class="note">Every quantity change, insert only. Corrections and undo are new rows. The AFTER INSERT trigger applies each row to the item and lot snapshots.</p>
+<div class="sk-scroll"><table>
+<thead><tr><th>Column</th><th>Type</th><th>Null</th><th>Default</th><th>Constraints and notes</th></tr></thead>
+<tbody>
+<tr><td class="mono k-pk">id</td><td class="mono">uuid</td><td>no</td><td class="mono">gen_random_uuid()</td><td>PRIMARY KEY</td></tr>
+<tr><td class="mono k-fk">household_id</td><td class="mono">uuid</td><td>no</td><td></td><td>leads every composite FK</td></tr>
+<tr><td class="mono k-fk">item_id</td><td class="mono">uuid</td><td>no</td><td></td><td>FK <code>(household_id, item_id, unit)</code> → items(household_id, id, unit)</td></tr>
+<tr><td class="mono k-fk">lot_id</td><td class="mono">uuid</td><td>no</td><td></td><td>FK <code>(household_id, item_id, lot_id)</code> → lots(household_id, item_id, id)</td></tr>
+<tr><td class="mono">sequence</td><td class="mono">integer</td><td>no</td><td></td><td>CHECK &gt;= 1; must equal the item's next_sequence (trigger, SQLSTATE 40001 so the API retries)</td></tr>
+<tr><td class="mono">type</td><td class="mono">text</td><td>no</td><td></td><td>CHECK IN ('INITIAL_STOCK', 'PURCHASE', 'CONSUME', 'USE_IN_MEAL', 'DISCARD', 'EXPIRE', 'DONATE', 'ADJUSTMENT')</td></tr>
+<tr><td class="mono">qty_delta</td><td class="mono">numeric(24,6)</td><td>no</td><td></td><td>CHECK agrees with micros</td></tr>
+<tr><td class="mono">qty_delta_micros</td><td class="mono">bigint</td><td>no</td><td></td><td>CHECK &lt;&gt; 0; CHECK between ±10<sup>14</sup>; sign by type (INITIAL_STOCK and PURCHASE positive, ADJUSTMENT either, the rest negative)</td></tr>
+<tr><td class="mono">unit</td><td class="mono">text</td><td>no</td><td></td><td>must equal the item's unit (via the composite FK)</td></tr>
+<tr><td class="mono">reason</td><td class="mono">text</td><td>yes</td><td></td><td>CHECK nonblank when set</td></tr>
+<tr><td class="mono">actor_kind</td><td class="mono">text</td><td>no</td><td></td><td>CHECK IN ('user', 'system', 'ai-confirmed'); shape CHECK below</td></tr>
+<tr><td class="mono k-fk">actor_user_id</td><td class="mono">uuid</td><td>yes</td><td></td><td>FK users(id)</td></tr>
+<tr><td class="mono">actor_component</td><td class="mono">text</td><td>yes</td><td></td><td>set for system rows (e.g. 'inventory-ledger')</td></tr>
+<tr><td class="mono">actor_model_ref</td><td class="mono">text</td><td>yes</td><td></td><td>set for ai-confirmed rows</td></tr>
+<tr><td class="mono">occurred_at</td><td class="mono">timestamptz</td><td>no</td><td></td><td>CHECK <code>recorded_at &gt;= occurred_at</code></td></tr>
+<tr><td class="mono">recorded_at</td><td class="mono">timestamptz</td><td>no</td><td></td><td></td></tr>
+<tr><td class="mono">provenance_tier</td><td class="mono">text</td><td>no</td><td></td><td>CHECK IN ('KNOWN_FACT', 'ESTIMATED', 'AI_INTERPRETATION')</td></tr>
+<tr><td class="mono">provenance_source</td><td class="mono">text</td><td>no</td><td></td><td>CHECK nonblank (e.g. 'manual', 'barcode-scan')</td></tr>
+<tr><td class="mono">provenance_confidence</td><td class="mono">numeric</td><td>yes</td><td></td><td>CHECK between 0 and 1</td></tr>
+<tr><td class="mono">provenance_model_ref</td><td class="mono">text</td><td>yes</td><td></td><td></td></tr>
+<tr><td class="mono">provenance_observed_at</td><td class="mono">timestamptz</td><td>yes</td><td></td><td></td></tr>
+<tr><td class="mono k-fk">provenance_confirmed_by</td><td class="mono">uuid</td><td>yes</td><td></td><td>FK users(id)</td></tr>
+<tr><td class="mono k-soft">correlation_kind</td><td class="mono">text</td><td>yes</td><td></td><td>CHECK IN ('receipt-line', 'meal-log', 'shopping-item'); paired with correlation_id</td></tr>
+<tr><td class="mono k-soft">correlation_id</td><td class="mono">text</td><td>yes</td><td></td><td>no FK; for 'shopping-item' it holds the shopping row id as text</td></tr>
+<tr><td class="mono">idempotency_key</td><td class="mono">text</td><td>no</td><td></td><td>CHECK nonblank; UNIQUE per household; '::' reserved for the clamp marker</td></tr>
+<tr><td class="mono">system_flag_kind</td><td class="mono">text</td><td>yes</td><td></td><td>CHECK IN ('OVER_CONSUMPTION'); all four system_flag columns set together or not at all</td></tr>
+<tr><td class="mono">system_flag_residual_micros</td><td class="mono">bigint</td><td>yes</td><td></td><td>equals qty_delta_micros on a clamp row</td></tr>
+<tr><td class="mono">system_flag_caused_by_sequence</td><td class="mono">integer</td><td>yes</td><td></td><td>equals sequence − 1 on a clamp row</td></tr>
+<tr><td class="mono k-fk">system_flag_caused_by_idempotency_key</td><td class="mono">text</td><td>yes</td><td></td><td>self FK <code>(household_id, …)</code> → (household_id, idempotency_key)</td></tr>
+</tbody></table></div>
+<p><b>Table checks:</b> <code>qty_forms_agree</code>, <code>qty_nonzero</code>, <code>qty_range</code>, <code>sign_by_type</code>, <code>time_order</code>, <code>actor_shape</code> (user: user id only; system: component only; ai-confirmed: user id and model ref), <code>correlation_pair</code>, <code>system_flag_complete</code>, <code>reserved_marker</code> (a key ending in <code>::over-consumption-clamp</code> must be a well-formed system clamp ADJUSTMENT pointing at the previous sequence; any other key containing <code>::</code> is refused).</p>
+<p><b>Keys:</b> UNIQUE <code>(household_id, idempotency_key)</code>; UNIQUE <code>(household_id, item_id, sequence)</code>; UNIQUE <code>(household_id, item_id, id)</code> (0010, FK target for confirmations). <b>Indexes:</b> <code>item_sequence_idx (household_id, item_id, sequence)</code>; <code>lot_idx (household_id, lot_id)</code>; partial <code>correlation_idx (correlation_kind, correlation_id) WHERE correlation_kind IS NOT NULL</code>.</p>
+<p><b>Triggers:</b> <code>inventory_transactions_apply</code> AFTER INSERT runs <code>inventory_ledger_apply()</code> (SECURITY DEFINER): locks the item row FOR UPDATE, checks household and <code>sequence = next_sequence</code>, then adds the delta to the item and lot snapshots under <code>sk.ledger_apply = 'on'</code>. <code>inventory_transactions_no_mutation</code> BEFORE UPDATE OR DELETE and <code>inventory_transactions_no_truncate</code> raise SQLSTATE 0A000 for every role. <b>RLS:</b> <code>inventory_transactions_current</code>. <b>sk_app:</b> SELECT, INSERT.</p>
+
+<h3><code>inventory_confirmations</code> <span class="note">0010</span></h3>
+<p class="note">A member confirming an AI-interpreted ledger row (D-028). The ledger row is never edited; reads present it as Known Fact.</p>
+<div class="sk-scroll"><table>
+<thead><tr><th>Column</th><th>Type</th><th>Null</th><th>Default</th><th>Constraints and notes</th></tr></thead>
+<tbody>
+<tr><td class="mono k-pk">id</td><td class="mono">uuid</td><td>no</td><td class="mono">gen_random_uuid()</td><td>PRIMARY KEY</td></tr>
+<tr><td class="mono k-fk">household_id</td><td class="mono">uuid</td><td>no</td><td></td><td></td></tr>
+<tr><td class="mono k-fk">item_id</td><td class="mono">uuid</td><td>no</td><td></td><td></td></tr>
+<tr><td class="mono k-fk">transaction_id</td><td class="mono">uuid</td><td>no</td><td></td><td>FK <code>(household_id, item_id, transaction_id)</code> → ledger(household_id, item_id, id); UNIQUE (household_id, transaction_id)</td></tr>
+<tr><td class="mono k-fk">confirmed_by</td><td class="mono">uuid</td><td>no</td><td></td><td>FK <code>(household_id, confirmed_by)</code> → memberships(household_id, <strong>user_id</strong>)</td></tr>
+<tr><td class="mono">model_ref</td><td class="mono">text</td><td>yes</td><td></td><td>CHECK nonblank when set</td></tr>
+<tr><td class="mono">client_key</td><td class="mono">text</td><td>no</td><td></td><td>CHECK <code>~ '^[A-Za-z0-9._-]{1,128}$'</code></td></tr>
+<tr><td class="mono">confirmed_at</td><td class="mono">timestamptz</td><td>no</td><td class="mono">clock_timestamp()</td><td></td></tr>
+</tbody></table></div>
+<p><b>Index:</b> <code>inventory_confirmations_item_idx (household_id, item_id)</code>. <b>Triggers:</b> <code>inventory_confirmations_ai_only</code> AFTER INSERT (the referenced row must be AI_INTERPRETATION); <code>no_mutation</code>, <code>no_truncate</code>. <b>RLS:</b> <code>inventory_confirmations_current</code>. <b>sk_app:</b> SELECT, INSERT.</p>
+
+<h3><code>inventory_item_moves</code> <span class="note">0011</span></h3>
+<p class="note">One row per location move. Written in the same transaction as the <code>inventory_items.storage_location</code> update; never a ledger row.</p>
+<div class="sk-scroll"><table>
+<thead><tr><th>Column</th><th>Type</th><th>Null</th><th>Default</th><th>Constraints and notes</th></tr></thead>
+<tbody>
+<tr><td class="mono k-pk">id</td><td class="mono">uuid</td><td>no</td><td class="mono">gen_random_uuid()</td><td>PRIMARY KEY</td></tr>
+<tr><td class="mono k-fk">household_id</td><td class="mono">uuid</td><td>no</td><td></td><td></td></tr>
+<tr><td class="mono k-fk">item_id</td><td class="mono">uuid</td><td>no</td><td></td><td>FK <code>(household_id, item_id)</code> → items(household_id, id)</td></tr>
+<tr><td class="mono">from_location</td><td class="mono">text</td><td>yes</td><td></td><td>CHECK location set; CHECK <code>from_location IS DISTINCT FROM to_location</code></td></tr>
+<tr><td class="mono">to_location</td><td class="mono">text</td><td>no</td><td></td><td>CHECK location set</td></tr>
+<tr><td class="mono k-fk">moved_by</td><td class="mono">uuid</td><td>no</td><td></td><td>FK <code>(household_id, moved_by)</code> → memberships(household_id, <strong>user_id</strong>)</td></tr>
+<tr><td class="mono">client_key</td><td class="mono">text</td><td>no</td><td></td><td>regex as above; UNIQUE (household_id, item_id, client_key)</td></tr>
+<tr><td class="mono">occurred_at</td><td class="mono">timestamptz</td><td>no</td><td class="mono">clock_timestamp()</td><td></td></tr>
+</tbody></table></div>
+<p><b>Index:</b> <code>inventory_item_moves_item_idx (household_id, item_id, occurred_at)</code>. <b>Triggers:</b> <code>no_mutation</code>, <code>no_truncate</code>. <b>RLS:</b> <code>inventory_item_moves_current</code>. <b>sk_app:</b> SELECT, INSERT.</p>
+
+<h2 id="shopping">5. Shopping</h2>
+
+<h3><code>shopping_rows</code> <span class="note">0009</span></h3>
+<p class="note">The household list. The amount to buy is never stored: it is computed on read from <code>need_micros</code> and the linked item's snapshot.</p>
+<div class="sk-scroll"><table>
+<thead><tr><th>Column</th><th>Type</th><th>Null</th><th>Default</th><th>Constraints and notes</th></tr></thead>
+<tbody>
+<tr><td class="mono k-pk">id</td><td class="mono">uuid</td><td>no</td><td></td><td>PRIMARY KEY; UNIQUE (household_id, id)</td></tr>
+<tr><td class="mono k-fk">household_id</td><td class="mono">uuid</td><td>no</td><td></td><td>FK households(id)</td></tr>
+<tr><td class="mono">name</td><td class="mono">text</td><td>no</td><td></td><td>CHECK nonblank, ≤ 120 chars</td></tr>
+<tr><td class="mono">group_label</td><td class="mono">text</td><td>no</td><td></td><td>CHECK nonblank, ≤ 60 chars (department)</td></tr>
+<tr><td class="mono">origin_kind</td><td class="mono">text</td><td>no</td><td></td><td>CHECK IN ('member') only today</td></tr>
+<tr><td class="mono k-fk">origin_member_id</td><td class="mono">uuid</td><td>yes</td><td></td><td>FK <code>(household_id, …)</code> → memberships(household_id, <strong>id</strong>); set iff origin_kind = 'member'</td></tr>
+<tr><td class="mono">need_micros</td><td class="mono">bigint</td><td>no</td><td></td><td>CHECK &gt; 0</td></tr>
+<tr><td class="mono">unit</td><td class="mono">text</td><td>no</td><td></td><td>CHECK IN ('g', 'kg', 'oz', 'lb', 'ml', 'l', 'tsp', 'tbsp', 'cup', 'each')</td></tr>
+<tr><td class="mono k-fk">item_id</td><td class="mono">uuid</td><td>yes</td><td></td><td>FK <code>(household_id, item_id)</code> → items(household_id, id)</td></tr>
+<tr><td class="mono">default_location</td><td class="mono">text</td><td>no</td><td></td><td>CHECK location set</td></tr>
+<tr><td class="mono">status</td><td class="mono">text</td><td>no</td><td class="mono">'open'</td><td>CHECK IN ('open', 'done', 'skipped')</td></tr>
+<tr><td class="mono k-fk">checked_off_by</td><td class="mono">uuid</td><td>yes</td><td></td><td>FK → memberships(household_id, id); paired with checked_off_at</td></tr>
+<tr><td class="mono">checked_off_at</td><td class="mono">timestamptz</td><td>yes</td><td></td><td></td></tr>
+<tr><td class="mono k-soft">added_transaction_id</td><td class="mono">uuid</td><td>yes</td><td></td><td>no FK; trigger checks it names this row's PURCHASE on its own item; write-once</td></tr>
+<tr><td class="mono">generation</td><td class="mono">integer</td><td>no</td><td class="mono">1</td><td>CHECK &gt;= 1</td></tr>
+<tr><td class="mono">removed_at</td><td class="mono">timestamptz</td><td>yes</td><td></td><td>paired with removed_by; set iff status = 'skipped'</td></tr>
+<tr><td class="mono k-fk">removed_by</td><td class="mono">uuid</td><td>yes</td><td></td><td>FK → memberships(household_id, id)</td></tr>
+<tr><td class="mono k-fk">created_by</td><td class="mono">uuid</td><td>no</td><td></td><td>FK users(id)</td></tr>
+<tr><td class="mono">created_at</td><td class="mono">timestamptz</td><td>no</td><td class="mono">clock_timestamp()</td><td></td></tr>
+<tr><td class="mono">updated_at</td><td class="mono">timestamptz</td><td>no</td><td class="mono">clock_timestamp()</td><td>CHECK &gt;= created_at</td></tr>
+</tbody></table></div>
+<p><b>Table checks:</b> <code>member_origin</code>, <code>checked_pair</code>, <code>done_is_checked</code>, <code>open_is_unchecked</code>, <code>removed_pair</code>, <code>skipped_is_removed</code>, <code>added_needs_item</code>, <code>updated_after_created</code>. <b>Index:</b> <code>shopping_rows_household_created_idx (household_id, created_at, id)</code>. <b>Trigger:</b> <code>shopping_rows_guard</code> BEFORE INSERT OR UPDATE: a new row has no purchase; only status, check-off, purchase, removal and updated_at may change; a removed row stays removed; the purchase is set once and must match a PURCHASE ledger row with <code>correlation_kind = 'shopping-item'</code> and <code>correlation_id = id::text</code>. <b>RLS:</b> <code>shopping_rows_current</code>. <b>sk_app:</b> SELECT, INSERT, UPDATE (status, checked_off_by, checked_off_at, added_transaction_id, removed_at, removed_by, updated_at).</p>
+
+<h3><code>shopping_row_writes</code> <span class="note">0009</span></h3>
+<p class="note">One row per accepted idempotency key on the check and add endpoints; replay and conflict are decided against it.</p>
+<div class="sk-scroll"><table>
+<thead><tr><th>Column</th><th>Type</th><th>Null</th><th>Default</th><th>Constraints and notes</th></tr></thead>
+<tbody>
+<tr><td class="mono k-pk">household_id</td><td class="mono">uuid</td><td>no</td><td></td><td>PRIMARY KEY (household_id, idempotency_key)</td></tr>
+<tr><td class="mono k-pk">idempotency_key</td><td class="mono">text</td><td>no</td><td></td><td>CHECK <code>~ '^[A-Za-z0-9._-]{1,128}$'</code></td></tr>
+<tr><td class="mono k-fk">row_id</td><td class="mono">uuid</td><td>no</td><td></td><td>FK <code>(household_id, row_id)</code> → shopping_rows(household_id, id)</td></tr>
+<tr><td class="mono">kind</td><td class="mono">text</td><td>no</td><td></td><td>CHECK IN ('check', 'add')</td></tr>
+<tr><td class="mono">checked</td><td class="mono">boolean</td><td>yes</td><td></td><td>set iff kind = 'check'</td></tr>
+<tr><td class="mono">generation</td><td class="mono">integer</td><td>no</td><td></td><td>CHECK &gt;= 1</td></tr>
+<tr><td class="mono k-fk">actor_member_id</td><td class="mono">uuid</td><td>no</td><td></td><td>FK → memberships(household_id, <strong>id</strong>)</td></tr>
+<tr><td class="mono k-soft">transaction_id</td><td class="mono">uuid</td><td>yes</td><td></td><td>set iff kind = 'add'; no FK</td></tr>
+<tr><td class="mono">recorded_at</td><td class="mono">timestamptz</td><td>no</td><td class="mono">clock_timestamp()</td><td></td></tr>
+</tbody></table></div>
+<p><b>Index:</b> <code>shopping_row_writes_row_idx (household_id, row_id)</code>. <b>Triggers:</b> none (insert-only by grant, not by trigger). <b>RLS:</b> <code>shopping_row_writes_current</code>. <b>sk_app:</b> SELECT, INSERT.</p>
+
+<h2 id="views">6. Views</h2>
+<p>All three are <code>WITH (security_invoker = true)</code>, so they run under the caller's RLS. <b>sk_app:</b> SELECT on all three.</p>
+<div class="sk-scroll"><table>
+<thead><tr><th>View</th><th>Migration</th><th>Columns</th><th>Purpose</th></tr></thead>
+<tbody>
+<tr><td class="mono">inventory_lot_reconciliation</td><td>0005</td><td class="mono">household_id, item_id, lot_id, snapshot_micros, derived_micros, drift_micros, negative, transaction_count, ok</td><td>Per lot: snapshot vs Σ ledger deltas (INV-LEDGER-1)</td></tr>
+<tr><td class="mono">inventory_reconciliation</td><td>0005</td><td class="mono">household_id, item_id, snapshot_micros, derived_micros, drift_micros, negative, transaction_count, next_sequence, ok</td><td>Per item: snapshot vs Σ deltas, sequence contiguity, and every lot ok. <code>ok = false</code> means drift: alert and repair with a flagged ADJUSTMENT, never an overwrite</td></tr>
+<tr><td class="mono">inventory_correction_telemetry</td><td>0007</td><td class="mono">household_id, item_id, statement_count, user_adjustment_count, clamp_count, correction_event_count, correction_rate, first_recorded_at, last_recorded_at</td><td>The north-star metric: corrections ÷ statements per item (definition DECIDED 2026-09-14, ARCHITECTURE §8)</td></tr>
+</tbody></table></div>
+
+<h2 id="functions">7. Functions and triggers</h2>
+<div class="sk-scroll"><table>
+<thead><tr><th>Function</th><th>Kind</th><th>Security</th><th>What it does</th><th>Used by</th></tr></thead>
+<tbody>
+<tr><td class="mono">app_current_household()</td><td>sql, STABLE</td><td>invoker</td><td>Reads <code>app.household_id</code>; NULL when unset</td><td>every RLS policy; EXECUTE to sk_app</td></tr>
+<tr><td class="mono">app_create_household(hh, name, owner, membership)</td><td>plpgsql</td><td>DEFINER</td><td>Inserts the household and the owner membership; refuses unless hh equals the current context</td><td>POST /v1/households</td></tr>
+<tr><td class="mono">app_redeem_join_code(code_hash, user, membership)</td><td>plpgsql</td><td>DEFINER</td><td>Finds a live code FOR SHARE, inserts a member row ON CONFLICT DO NOTHING, returns (household_id, joined, member_role)</td><td>POST /v1/households/join</td></tr>
+<tr><td class="mono">app_user_memberships(user)</td><td>sql, STABLE</td><td>DEFINER</td><td>A user's memberships with household names, newest first</td><td>identity resolution, /households/mine</td></tr>
+<tr><td class="mono">inventory_ledger_apply()</td><td>trigger</td><td>DEFINER</td><td>AFTER INSERT on the ledger: lock item, check household and sequence, apply delta to item and lot snapshots</td><td>inventory_transactions_apply</td></tr>
+<tr><td class="mono">inventory_items_guard()</td><td>trigger</td><td>invoker</td><td>Snapshot columns only under the ledger flag; household_id and unit immutable</td><td>BEFORE UPDATE items</td></tr>
+<tr><td class="mono">inventory_lots_guard()</td><td>trigger</td><td>invoker</td><td>Same for lots; household_id and item_id immutable</td><td>BEFORE UPDATE lots</td></tr>
+<tr><td class="mono">inventory_items_nonnegative()</td><td>constraint trigger</td><td>DEFINER</td><td>Deferred: quantity ≥ 0 at commit</td><td>items</td></tr>
+<tr><td class="mono">inventory_lots_nonnegative()</td><td>constraint trigger</td><td>DEFINER</td><td>Deferred: quantity ≥ 0 at commit</td><td>lots</td></tr>
+<tr><td class="mono">inventory_transactions_append_only()</td><td>trigger</td><td>invoker</td><td>Raises on UPDATE, DELETE, TRUNCATE</td><td>ledger</td></tr>
+<tr><td class="mono">inventory_confirmations_ai_only()</td><td>trigger</td><td>invoker</td><td>Referenced ledger row must be AI_INTERPRETATION</td><td>AFTER INSERT confirmations</td></tr>
+<tr><td class="mono">inventory_confirmations_append_only()</td><td>trigger</td><td>invoker</td><td>Raises on UPDATE, DELETE, TRUNCATE</td><td>confirmations</td></tr>
+<tr><td class="mono">inventory_item_moves_append_only()</td><td>trigger</td><td>invoker</td><td>Raises on UPDATE, DELETE, TRUNCATE</td><td>moves</td></tr>
+<tr><td class="mono">household_join_codes_revoke_only()</td><td>trigger</td><td>invoker</td><td>An update may only set revoked_at, once</td><td>BEFORE UPDATE join codes</td></tr>
+<tr><td class="mono">shopping_rows_guard()</td><td>trigger</td><td>invoker</td><td>Column immutability, removal is final, purchase is write-once and must match the row's PURCHASE</td><td>BEFORE INSERT OR UPDATE shopping_rows</td></tr>
+</tbody></table></div>
+<p class="note">Every trigger function has <code>REVOKE ALL … FROM PUBLIC</code>; the four app functions are granted EXECUTE to sk_app only. DEFINER functions pin <code>search_path = pg_catalog, public</code>.</p>
+
+<h3 id="grants">7a. Grant matrix for <code>sk_app</code></h3>
+<div class="sk-scroll"><table>
+<thead><tr><th>Object</th><th>SELECT</th><th>INSERT</th><th>UPDATE</th><th>DELETE</th></tr></thead>
+<tbody>
+<tr><td class="mono">users, households, household_memberships</td><td>yes</td><td>no (functions)</td><td>no</td><td>no</td></tr>
+<tr><td class="mono">household_join_codes</td><td>yes</td><td>yes</td><td class="mono">revoked_at</td><td>no</td></tr>
+<tr><td class="mono">inventory_items</td><td>yes</td><td>yes</td><td class="mono">display_name, storage_location, product_ref, ingredient_ref</td><td>no</td></tr>
+<tr><td class="mono">inventory_lots</td><td>yes</td><td>yes</td><td class="mono">label, acquired_at, expires_at, expiry_tier</td><td>no</td></tr>
+<tr><td class="mono">inventory_transactions</td><td>yes</td><td>yes</td><td>no</td><td>no</td></tr>
+<tr><td class="mono">inventory_confirmations, inventory_item_moves</td><td>yes</td><td>yes</td><td>no</td><td>no</td></tr>
+<tr><td class="mono">shopping_rows</td><td>yes</td><td>yes</td><td class="mono">status, checked_off_by, checked_off_at, added_transaction_id, removed_at, removed_by, updated_at</td><td>no</td></tr>
+<tr><td class="mono">shopping_row_writes</td><td>yes</td><td>yes</td><td>no</td><td>no</td></tr>
+<tr><td class="mono">the three views</td><td>yes</td><td>n/a</td><td>n/a</td><td>n/a</td></tr>
+</tbody></table></div>
+
+<h2 id="review">8. Observations for review</h2>
+<p>Things a database developer would likely question. Each is ENGINEERING INFERENCE from reading the DDL, not a decision; several are deliberate trade-offs, noted where the repo says so. Any change is a new migration with your approval.</p>
+<ol>
+<li><strong>Two ways to reference a member.</strong> <code>inventory_confirmations.confirmed_by</code> and <code>inventory_item_moves.moved_by</code> point at memberships by <code>(household_id, user_id)</code>; the shopping tables point by <code>(household_id, id)</code> (membership id). Both work; mixing them makes joins and future deletion rules inconsistent. Worth picking one before more tables are added.</li>
+<li><strong>Units are text in three places with three rules.</strong> <code>inventory_items.unit</code> only checks nonblank (the domain registry validates it in code); <code>shopping_rows.unit</code> has a 10-value CHECK; the ledger copies the item's unit by FK. A lookup table, a domain type, or one shared CHECK would keep them aligned.</li>
+<li><strong>Enumerations are text with CHECK.</strong> Location, tier, type, status and role are all <code>text CHECK IN (…)</code>, repeated per table (the location set appears four times). Deliberate for easy migration; a <code>CREATE DOMAIN</code> per set would remove the repetition without enum-type rigidity.</li>
+<li><strong>Quantity stored twice.</strong> <code>*_micros bigint</code> plus a <code>numeric(24,6)</code> mirror, with a CHECK that they agree. The mirror is for human reads; it could be a generated column (<code>GENERATED ALWAYS AS (… / 1000000) STORED</code>) instead of a written one.</li>
+<li><strong>No ON DELETE path for household data.</strong> Memberships and join codes cascade from households; items, lots, ledger, shopping and the append-only tables do not, and the append-only triggers block DELETE for every role. Deleting or exporting a household (ARCHITECTURE §7.13, needed before launch) has no designed path yet.</li>
+<li><strong>Soft links without foreign keys.</strong> <code>inventory_transactions.correlation_id</code> is <code>text</code> holding a uuid; <code>shopping_rows.added_transaction_id</code> is trigger-checked; <code>shopping_row_writes.transaction_id</code> is unchecked. The correlation design is polymorphic (receipt line, meal log, shopping item), which is why it is not a foreign key.</li>
+<li><strong>Index leading columns.</strong> <code>inventory_lots_item_idx</code> is on <code>(item_id)</code> alone and <code>inventory_transactions_correlation_idx</code> on <code>(correlation_kind, correlation_id)</code> without household_id, while most other indexes lead with household_id. Fine at current size; worth aligning when RLS filters show in plans.</li>
+<li><strong>Timestamp defaults are mixed.</strong> Older tables default to <code>now()</code> (transaction start), newer ones to <code>clock_timestamp()</code>, after M2-T3a showed transaction-start stamps can order wrongly under concurrency.</li>
+<li><strong>Nullable location.</strong> <code>inventory_items.storage_location</code> is nullable while moves and shopping require one. Intentional for imports, but the app always sets it today.</li>
+<li><strong>Insert-only by grant vs by trigger.</strong> The ledger, confirmations and moves block UPDATE and DELETE for every role (trigger); <code>shopping_row_writes</code> relies on sk_app's grants only, so the owner role could change it.</li>
+<li><strong>RLS not forced.</strong> Owner and superuser bypass policies by design (0006 header). Production must make sure nothing in the app path runs as the owner role.</li>
+<li><strong>Printed best-by dates as instants.</strong> <code>inventory_lots.expires_at</code> is <code>timestamptz</code>; a printed date stored as UTC midnight reads a day early west of UTC (open M3-T11 follow-up). A <code>date</code> column for printed dates is the usual fix.</li>
+</ol>
+
+<h2 id="proposed">9. Proposed tables (from the revisit, not designed)</h2>
+<p>Names only, from <a href="../po/foundation-revisit-2026-10-20.html">the foundation revisit</a>; nothing is decided and no DDL exists. Listed so the review above can account for them: <code>ingredients</code> (global, read-only), <code>recipes</code> and <code>recipe_ingredients</code> (global, read-only), <code>plan_entries</code> (household, one per date and meal), <code>household_settings</code> (one row per household), <code>meal_logs</code> (append-only, correlation target for <code>USE_IN_MEAL</code> rows), a per-ingredient shopping state table, and an optional ingredient key on <code>shopping_rows</code>. Observations 1 to 5 are worth settling before these are written, since each new table would otherwise copy the current pattern.</p>
+
+<p class="sk-foot">Classification: sections 1 to 7 DOCUMENTED from migrations 0001 to 0011 at e889c16; section 8 ENGINEERING INFERENCE; section 9 PROPOSED (not decided). Snapshot: refresh when a migration lands.</p>
+</main></body>
+</html>
