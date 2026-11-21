@@ -63,29 +63,31 @@
 
 <figure>
 <div class="sk-scroll">
-<svg viewBox="0 0 1010 712" width="100%" role="img" aria-labelledby="wf-t wf-d" style="min-width:860px">
+<svg viewBox="0 0 1010 792" width="100%" role="img" aria-labelledby="wf-t wf-d" style="min-width:860px">
 <title id="wf-t">Household workflow, six stages</title>
-<desc id="wf-d">Join, Stock, Keep it right, Decide, Shop, Cook. Each step is marked built, partial, prototype or not built. Confirmed food lands in the pantry. Plan shortfalls go to the shopping list. A planned recipe can be cooked. Buying and cooking both change the pantry through the ledger.</desc>
+<desc id="wf-d">Join, Stock, Keep it right, Decide, Shop, Cook. Each step is marked built, partial, prototype or not built. Join has a second row of optional setup: diets (partial, under Allergies), favorite meals and settings (both not built, under Profile). Confirmed food lands in the pantry. Plan shortfalls go to the shopping list. A planned recipe can be cooked. Buying and cooking both change the pantry through the ledger.</desc>
 <defs>
 <marker id="a1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="ah"/></marker>
 <marker id="a2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="ahb"/></marker>
 </defs>
 
 <!-- lane backgrounds -->
-<rect x="0" y="40" width="980" height="96" rx="8" class="lane"/>
+<rect x="0" y="40" width="980" height="176" rx="8" class="lane"/>
+<text x="14" y="80" class="lt">1 · Join</text><text x="14" y="98" class="ls">set up the household</text>
+<text x="14" y="164" class="ls">also part of setup:</text><text x="14" y="180" class="ls">optional, any time</text>
+<!-- lanes 2 to 6 sit 80px lower to make room for lane 1's second row (2026-11-20) -->
+<g transform="translate(0,80)">
 <rect x="0" y="150" width="980" height="96" rx="8" class="lane"/>
 <rect x="0" y="260" width="980" height="96" rx="8" class="lane"/>
 <rect x="0" y="370" width="980" height="96" rx="8" class="lane"/>
 <rect x="0" y="480" width="980" height="96" rx="8" class="lane"/>
 <rect x="0" y="590" width="980" height="96" rx="8" class="lane"/>
-
-<!-- lane labels -->
-<text x="14" y="80" class="lt">1 · Join</text><text x="14" y="98" class="ls">set up the household</text>
 <text x="14" y="190" class="lt">2 · Stock</text><text x="14" y="208" class="ls">add food</text>
 <text x="14" y="300" class="lt">3 · Keep it right</text><text x="14" y="318" class="ls">the pantry</text>
 <text x="14" y="410" class="lt">4 · Decide</text><text x="14" y="428" class="ls">what to eat</text>
 <text x="14" y="520" class="lt">5 · Shop</text><text x="14" y="538" class="ls">buy the gap</text>
 <text x="14" y="630" class="lt">6 · Cook</text><text x="14" y="648" class="ls">use the food</text>
+</g>
 
 <!-- Lane 1 -->
 <rect x="160" y="56" width="150" height="64" rx="8" class="b-part"/>
@@ -100,6 +102,18 @@
 <text x="830" y="80" class="bt">Profile (S12)</text><text x="830" y="98" class="bs s-built">BUILT</text><text x="830" y="112" class="txm">members, new code</text>
 <path d="M310,88 H323" class="edge" marker-end="url(#a1)"/><path d="M475,88 H488" class="edge" marker-end="url(#a1)"/><path d="M640,88 H653" class="edge" marker-end="url(#a1)"/><path d="M805,88 H818" class="edge" marker-end="url(#a1)"/>
 
+<!-- Lane 1, second row (Dean's feedback 2026-11-20): diets, favorite meals, settings -->
+<rect x="490" y="136" width="150" height="64" rx="8" class="b-part"/>
+<text x="500" y="160" class="bt">Diets (optional)</text><text x="500" y="178" class="bs s-part">PARTIAL</text><text x="500" y="192" class="txm">3 chips, full list open</text>
+<rect x="655" y="136" width="150" height="64" rx="8" class="b-not"/>
+<text x="665" y="160" class="bt">Favorite meals</text><text x="665" y="178" class="bs s-not">NOT BUILT</text><text x="665" y="192" class="txm">fills in as you pick</text>
+<rect x="820" y="136" width="150" height="64" rx="8" class="b-not"/>
+<text x="830" y="160" class="bt">Settings</text><text x="830" y="178" class="bs s-not">NOT BUILT</text><text x="830" y="192" class="txm">units, plan options</text>
+<path d="M565,120 V134" class="edge" marker-end="url(#a1)"/>
+<path d="M895,120 V134" class="edge" marker-end="url(#a1)"/>
+<path d="M895,127 H730 V134" class="edge" marker-end="url(#a1)"/>
+
+<g transform="translate(0,80)">
 <!-- Lane 2 -->
 <rect x="160" y="166" width="150" height="64" rx="8" class="b-built"/>
 <text x="170" y="190" class="bt">Add food (S6)</text><text x="170" y="208" class="bs s-built">BUILT</text><text x="170" y="222" class="txm">centre tab</text>
@@ -138,12 +152,16 @@
 <path d="M310,418 H323" class="edge" marker-end="url(#a1)"/><path d="M475,418 H488" class="edge" marker-end="url(#a1)"/><path d="M640,418 H653" class="edge" marker-end="url(#a1)"/>
 
 <!-- Lane 5 -->
-<rect x="160" y="496" width="150" height="64" rx="8" class="b-built"/>
-<text x="170" y="520" class="bt">Shopping list (S11)</text><text x="170" y="538" class="bs s-built">BUILT</text><text x="170" y="552" class="txm">gap per pantry item</text>
+<!-- reordered 2026-11-20 (Dean's feedback): the two sources come first and both point into the list -->
+<text x="160" y="491" class="el">two sources: your own rows and the menu plan</text>
+<rect x="160" y="496" width="150" height="64" rx="8" class="b-not"/>
+<text x="170" y="520" class="bt">Add your own row</text><text x="170" y="538" class="bs s-not">NOT BUILT</text><text x="170" y="552" class="txm">ticket M7-T2</text>
 <rect x="325" y="496" width="150" height="64" rx="8" class="b-not"/>
 <text x="335" y="520" class="bt">Plan shortfalls</text><text x="335" y="538" class="bs s-not">NOT BUILT</text><text x="335" y="552" class="txm">need minus have</text>
-<rect x="490" y="496" width="150" height="64" rx="8" class="b-not"/>
-<text x="500" y="520" class="bt">Add your own row</text><text x="500" y="538" class="bs s-not">NOT BUILT</text><text x="500" y="552" class="txm">ticket M7-T2</text>
+<rect x="490" y="496" width="150" height="64" rx="8" class="b-built"/>
+<text x="500" y="520" class="bt">Shopping list (S11)</text><text x="500" y="538" class="bs s-built">BUILT</text><text x="500" y="552" class="txm">gap per pantry item</text>
+<path d="M475,528 H488" class="edge" marker-end="url(#a1)"/>
+<path d="M235,560 V569 H565 V562" class="edge" marker-end="url(#a1)"/>
 <rect x="655" y="496" width="150" height="64" rx="8" class="b-built"/>
 <text x="665" y="520" class="bt">Check off</text><text x="665" y="538" class="bs s-built">BUILT</text><text x="665" y="552" class="txm">offline queue in session</text>
 <rect x="820" y="496" width="150" height="64" rx="8" class="b-built"/>
@@ -163,10 +181,8 @@
 <path d="M400,450 V494" class="edge" marker-end="url(#a1)"/>
 <text x="394" y="476" class="el" text-anchor="end">shortfalls go to the list</text>
 <!-- cross-lane: recipe to cook -->
-<path d="M565,450 V466 H482 V586 H565 V604" class="edge" marker-end="url(#a1)"/>
+<path d="M565,450 V466 H647 V586 H565 V604" class="edge" marker-end="url(#a1)"/>
 <text x="574" y="472" class="el">cook a planned meal</text>
-<!-- shortfalls to list -->
-<path d="M325,528 H312" class="edge" marker-end="url(#a1)"/>
 
 <!-- The pantry bus: confirm sheet, add bought, pantry goes down all change the pantry -->
 <path d="M565,230 V253" class="bus"/>
@@ -176,6 +192,7 @@
 <text x="560" y="271" class="elb">every change reaches the pantry as a ledger row</text>
 <text x="908" y="575" class="el">PURCHASE</text>
 <text x="884" y="595" class="el">USE_IN_MEAL</text>
+</g>
 </svg>
 </div>
 <figcaption>The heavy ink line is the pantry loop: confirmed food, bought food and cooked food all change the pantry, and each change is a row in the inventory ledger. Buying works today; cooking is the missing half. Every box says its status in words; the border style repeats it.</figcaption>
